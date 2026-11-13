@@ -1,0 +1,1 @@
+- [Commit messages name the plan](commit-messages-name-the-plan.md) — prefix every commit with `[<plan-slug>] phase NN:`; this plan is `master-plan`

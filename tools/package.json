@@ -1,0 +1,16 @@
+{
+  "name": "@simlab/tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --root .. tools/"
+  },
+  "dependencies": {
+    "@simlab/k8s": "0.0.0"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "yaml": "2.9.1"
+  }
+}

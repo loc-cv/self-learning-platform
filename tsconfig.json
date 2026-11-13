@@ -1,0 +1,23 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/kernel" },
+    { "path": "packages/kernel/tsconfig.test.json" },
+    { "path": "packages/host" },
+    { "path": "packages/host/tsconfig.test.json" },
+    { "path": "packages/k8s" },
+    { "path": "packages/k8s/tsconfig.test.json" },
+    { "path": "packages/learn" },
+    { "path": "packages/learn/tsconfig.test.json" },
+    { "path": "packages/content" },
+    { "path": "packages/content/tsconfig.test.json" },
+    { "path": "apps/web" },
+    { "path": "apps/web/tsconfig.test.json" },
+    { "path": "apps/server" },
+    { "path": "apps/server/tsconfig.test.json" },
+    { "path": "apps/cli" },
+    { "path": "apps/cli/tsconfig.test.json" },
+    { "path": "tools" },
+    { "path": "tools/tsconfig.test.json" }
+  ]
+}

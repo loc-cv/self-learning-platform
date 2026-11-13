@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "../.tsbuild/tools/src",
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "allowJs": true
+  },
+  "include": ["src", "eslint"],
+  "exclude": ["**/*.test.ts", "eslint/fixtures"],
+  "references": [{ "path": "../packages/k8s" }]
+}

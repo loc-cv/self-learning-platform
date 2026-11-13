@@ -1,0 +1,103 @@
+# Stable ids for every CKA and CKAD competency. `text` is the official wording from the PDFs
+# recorded in README.md. Ids never change once content references them; when a curriculum
+# revision rewords, moves or drops a competency, prompts/R5 updates this file and the items.
+version: "1.37"
+checked: "2026-11-13"
+exams:
+  cka:
+    title: Certified Kubernetes Administrator (CKA)
+    domains:
+      - id: cka.storage
+        title: Storage
+        weight: 10
+        competencies:
+          - { id: cka.storage.storageclass-provisioning, text: Implement storage classes and dynamic volume provisioning }
+          - { id: cka.storage.volume-config, text: "Configure volume types, access modes and reclaim policies" }
+          - { id: cka.storage.pv-pvc, text: Manage persistent volumes and persistent volume claims }
+      - id: cka.troubleshooting
+        title: Troubleshooting
+        weight: 30
+        competencies:
+          - { id: cka.troubleshooting.clusters-nodes, text: Troubleshoot clusters and nodes }
+          - { id: cka.troubleshooting.cluster-components, text: Troubleshoot cluster components }
+          - { id: cka.troubleshooting.resource-usage, text: Monitor cluster and application resource usage }
+          - { id: cka.troubleshooting.container-output, text: Manage and evaluate container output streams }
+          - { id: cka.troubleshooting.services-networking, text: Troubleshoot services and networking }
+      - id: cka.workloads
+        title: Workloads and Scheduling
+        weight: 15
+        competencies:
+          - { id: cka.workloads.deployments-rollouts, text: Understand application deployments and how to perform rolling update and rollbacks }
+          - { id: cka.workloads.configmaps-secrets, text: Use ConfigMaps and Secrets to configure applications }
+          - { id: cka.workloads.autoscaling, text: Configure workload autoscaling }
+          - { id: cka.workloads.self-healing, text: "Understand the primitives used to create robust, self-healing, application deployments" }
+          - { id: cka.workloads.pod-scheduling, text: "Configure Pod admission and scheduling (limits, node affinity, etc.)" }
+      - id: cka.architecture
+        title: "Cluster Architecture, Installation and Configuration"
+        weight: 25
+        competencies:
+          - { id: cka.architecture.rbac, text: Manage role based access control (RBAC) }
+          - { id: cka.architecture.infrastructure, text: Prepare underlying infrastructure for installing a Kubernetes cluster }
+          - { id: cka.architecture.kubeadm, text: Create and manage Kubernetes clusters using kubeadm }
+          - { id: cka.architecture.cluster-lifecycle, text: Manage the lifecycle of Kubernetes clusters }
+          - { id: cka.architecture.ha-control-plane, text: Implement and configure a highly-available control plane }
+          - { id: cka.architecture.helm-kustomize, text: Use Helm and Kustomize to install cluster components }
+          - { id: cka.architecture.extension-interfaces, text: "Understand extension interfaces (CNI, CSI, CRI, etc.)" }
+          - { id: cka.architecture.crds-operators, text: "Understand CRDs, install and configure operators" }
+      - id: cka.networking
+        title: Servicing and Networking
+        weight: 20
+        competencies:
+          - { id: cka.networking.pod-connectivity, text: Understand connectivity between Pods }
+          - { id: cka.networking.network-policies, text: Define and enforce Network Policies }
+          - { id: cka.networking.service-types, text: "Use ClusterIP, NodePort, LoadBalancer service types and endpoints" }
+          - { id: cka.networking.gateway-api, text: Use the Gateway API to manage Ingress traffic }
+          - { id: cka.networking.ingress, text: Know how to use Ingress controllers and Ingress resources }
+          - { id: cka.networking.coredns, text: Understand and use CoreDNS }
+  ckad:
+    title: Certified Kubernetes Application Developer (CKAD)
+    domains:
+      - id: ckad.design
+        title: Application Design and Build
+        weight: 20
+        competencies:
+          - { id: ckad.design.container-images, text: "Define, build and modify container images" }
+          - { id: ckad.design.workload-resources, text: "Choose and use the right workload resource (Deployment, DaemonSet, CronJob, etc.)" }
+          - { id: ckad.design.multi-container, text: "Understand multi-container Pod design patterns (e.g. sidecar, init and others)" }
+          - { id: ckad.design.volumes, text: Utilize persistent and ephemeral volumes }
+      - id: ckad.deployment
+        title: Application Deployment
+        weight: 20
+        competencies:
+          - { id: ckad.deployment.strategies, text: "Use Kubernetes primitives to implement common deployment strategies (e.g. blue/green or canary)" }
+          - { id: ckad.deployment.rolling-updates, text: Understand Deployments and how to perform rolling updates }
+          - { id: ckad.deployment.helm, text: Use the Helm package manager to deploy existing packages }
+          - { id: ckad.deployment.kustomize, text: Kustomize }
+      - id: ckad.observability
+        title: Application Observability and Maintenance
+        weight: 15
+        competencies:
+          - { id: ckad.observability.api-deprecations, text: Understand API depreciations }
+          - { id: ckad.observability.probes, text: Implement probes and health checks }
+          - { id: ckad.observability.cli-monitoring, text: Use built-in CLI tools to monitor Kubernetes applications }
+          - { id: ckad.observability.container-logs, text: Utilize container logs }
+          - { id: ckad.observability.debugging, text: Debugging in Kubernetes }
+      - id: ckad.config
+        title: "Application Environment, Configuration and Security"
+        weight: 25
+        competencies:
+          - { id: ckad.config.crds-operators, text: "Discover and use resources that extend Kubernetes (CRD, Operators)" }
+          - { id: ckad.config.authn-authz-admission, text: "Understand authentication, authorization and admission control" }
+          - { id: ckad.config.requests-limits-quotas, text: "Understand requests, limits, quotas" }
+          - { id: ckad.config.resource-requirements, text: Define resource requirements }
+          - { id: ckad.config.configmaps, text: Understand ConfigMaps }
+          - { id: ckad.config.secrets, text: Create & consume Secrets }
+          - { id: ckad.config.serviceaccounts, text: Understand ServiceAccounts }
+          - { id: ckad.config.security-contexts, text: "Understand Application Security (SecurityContexts, Capabilities, etc.)" }
+      - id: ckad.networking
+        title: Services and Networking
+        weight: 20
+        competencies:
+          - { id: ckad.networking.network-policies, text: Demonstrate basic understanding of NetworkPolicies }
+          - { id: ckad.networking.services, text: Provide and troubleshoot access to applications via services }
+          - { id: ckad.networking.ingress, text: Use Ingress rules to expose applications }

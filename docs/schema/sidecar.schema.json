@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simlab.invalid/schema/sidecar.schema.json",
+  "title": "Simlab translation sidecar (<id>.<lang>.yaml)",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lang": {
+      "enum": [
+        "vi"
+      ]
+    },
+    "units": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^(title|ticket|debrief|debrief\\.[0-9]+|hints\\.[0-9]+|checks\\.[a-z0-9-]+\\.title|solutions\\.[0-9]+\\.name)$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{16}$"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "source",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "id",
+    "lang",
+    "units"
+  ],
+  "additionalProperties": false
+}

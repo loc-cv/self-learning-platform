@@ -16,7 +16,8 @@
     "typecheck": "tsc -b",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
-    "upstream:fetch": "node tools/src/upstream/fetch.ts"
+    "upstream:fetch": "node tools/src/upstream/fetch.ts",
+    "bench:fork": "node tools/src/bench/fork.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

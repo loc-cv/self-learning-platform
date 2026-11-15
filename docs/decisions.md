@@ -114,3 +114,56 @@ and OpenSSL 3.0.13; the full list is in `docs/FIDELITY.md` §2.1.
   default units) do not, because Pop!_OS changes them.
 - Rules out: installing a second Node version to match the old machine, and copying Pop!_OS
   specifics into simulated hosts.
+
+## Phase 01 (2026-11-15)
+
+**D-018 — Kernel choices left open by the specs.** All recorded in `docs/ARCHITECTURE.md` §2.
+- The PRNG is xoshiro128**, seeded by SplitMix32 from the hash of (seed, stream name). The hash is
+  the cyrb53 core with 64 bits printed, applied as a Merkle hash, so it does not depend on which
+  nodes are frozen. The queue is a binary min-heap in an array. At most 100 000 events may run at
+  one virtual instant.
+- `cancel` removes the event from the heap. The planned `cancelled` map is gone.
+- A topic waiter is always "schedule this event". A waiting process is a `host.proc.run` waiter,
+  so the kernel needs no process concept and stays domain-agnostic.
+- Plugins register input handlers by input kind (`Plugin.inputs`). `Ctx` gains `registry`,
+  `during`, `subscribe` and `unsubscribe`. `Kernel` gains `act(label, fn)` for code that runs
+  outside events (topology build, steps, faults, tests).
+- `Kernel.input` first runs events that are already due. This enforces the ordering rule of §2.5.
+  Without it, a session and its replay interleave zero-delay events differently.
+- The session header names domain pins as `versions: { kubernetes: … }` instead of a
+  `kubernetes` field, because the kernel must not name a domain (CLAUDE.md hard rule 8).
+  Checkpoints record how many inputs came before them.
+- The interactive driver's arithmetic (speed, fractions, pause, skip) lives in the kernel and is
+  tested there. The app supplies only real elapsed time.
+- Rules out: a closure or class instance in world state, and any kernel API that names a domain.
+
+**D-019 — Users, groups and the system environment are files.** `Machine` has no `users`,
+`groups` or `env` tables. They are the contents of `/etc/passwd`, `/etc/group` and
+`/etc/environment`, parsed on demand and cached by inode identity, as glibc's NSS `files`
+backend and pam_env read them. With a table beside each file, the two could disagree, and a
+learner editing `/etc/group` would see no effect. The kernel hostname, by contrast, is a
+machine field, because on Linux it is separate from `/etc/hostname`. This refines the structure
+in `docs/ARCHITECTURE.md` §3.1 and does not change `PLAN.md` §6.2.
+
+**D-020 — Simulated hosts are Ubuntu 24.04.5 LTS servers.** That release matches this
+workstation's base, so formats captured here (coreutils 9.4, bash 5.2.21, glibc 2.39) are the
+simulated host's own. The base system is what the essential packages lay down. Contents are
+copied from base-files 13ubuntu10.5, base-passwd 3.6.3build1 and bash 5.2.21-2ubuntu4 as
+installed here, and each file was checked against dpkg's recorded checksum. Pop!_OS keeps
+Ubuntu's own `os-release`, `lsb-release` and `issue` as `.diverted` files, which matched.
+Directory modes come from base-files' postinst. `/var/log` is 0755 root:root because only
+rsyslog makes it root:syslog. The login user `student` (uid 1000, in `sudo`) follows adduser and
+login.defs.
+- Left for later phases: `/etc/shadow` and `/etc/gshadow` (25a, with passwords, `su` and `sudo`);
+  `/etc/hosts` (17); `/etc/profile.d/01-locale-fix.sh`, which needs `locale-check` (02, with the
+  login environment and locale); packages, their users and units (25b); and `/proc` and `/sys`
+  contents (25a).
+- Rules out copying Pop!_OS files or its package set into a simulated host.
+
+**D-021 — Rank 3 references are committed with their capture script.** A workstation reference
+used in a test lives in `fixtures/reference/<area>/` as the capture script plus its recorded
+output. The script's header gives the command and the versions. The first is
+`fixtures/reference/linux/vfs-syscalls.{py,txt}`: 90 syscall edge cases run as an unprivileged
+user. The VFS test replays each case and must match. Behavior that needs a second user or root
+(sticky directories, link protections) cannot be captured this way. Those tests cite man pages
+and Linux v6.8 `fs/namei.c`.

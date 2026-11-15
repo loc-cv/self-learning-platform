@@ -27,6 +27,7 @@ npm test                      # all unit tests
 npm test -w packages/k8s      # one package
 npx vitest run <file> -t "<name>"   # one test
 npm run upstream:fetch        # fetch pinned upstream Kubernetes sources into .upstream/
+npm run bench:fork            # time fork, hash, snapshot and restore of a three-machine world
 npm run dev                   # (phase 10) web app with hot reload
 npm start                     # (phase 10) build, then serve the app and the persistence API locally
 npm run play -- --topology <name> [--seed N]      # (phase 03) sit in a simulated machine from this terminal
@@ -56,6 +57,7 @@ tools/             upstream fetch, OpenAPI processing, oracle and golden capture
 docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against
 fixtures/golden/   captured real output per Kubernetes version (committed)
+fixtures/reference/ workstation captures (rank 3) with their capture scripts, e.g. linux/vfs-syscalls
 ```
 
 Dependencies point one way: `kernel` ← `host` ← domain plugins. `learn` imports `kernel` only, never

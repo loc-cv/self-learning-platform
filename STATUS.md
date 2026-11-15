@@ -14,7 +14,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 00 `prompts/00-bootstrap-and-specs.md`
 
 **M1 — Thin vertical slice**
-- [ ] 01 `prompts/01-kernel-and-vfs.md`
+- [x] 01 `prompts/01-kernel-and-vfs.md`
 - [ ] 02 `prompts/02-shell-and-coreutils.md`
 - [ ] 03 `prompts/03-tty-and-terminal-player.md`
 - [ ] 04 `prompts/04-oracle-and-golden-fixtures.md` (needs only 00; can run earlier)
@@ -90,7 +90,17 @@ Edit the target line at the top of the prompt file, or name the target in your m
 
 Seeded or simplified behavior that a later phase must replace. Each session adds and removes entries.
 
-None yet.
+- **Link protections are constants** (`PROTECTED` in `packages/host/src/vfs/fs.ts`: Ubuntu's
+  `protected_hardlinks = 1`, `protected_symlinks = 1`, `protected_regular = 2`). Phase 25b reads
+  them from the machine's sysctl table.
+- **`/proc` and `/sys` are empty directories, and `/dev` holds only `null`.** `ls /proc` prints
+  nothing, which no real machine does. Phase 25a makes `/proc` a provider mount with processes;
+  `/dev` entries come with the phases that need them (`/dev/zero`, `/dev/urandom` and the tty
+  devices with phases 02 and 03).
+- **No `/etc/shadow`, `/etc/gshadow` or `/etc/hosts`** (D-020). Shadow files come in phase 25a
+  with passwords, `su` and `sudo`; `/etc/hosts` in phase 17.
+- **Fork does not yet terminate running programs** (`docs/ARCHITECTURE.md` §3.4), because there
+  are none. Phase 02 adds the hook along with processes.
 
 ## Carry-over
 
@@ -99,6 +109,42 @@ Unfinished work from a phase, precise enough for the next session to continue. N
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-15 — **Phase 01 done.** Kernel and VFS, with every exit criterion tested.
+  - Built: `packages/kernel` contains the world (containers plus frozen values), tables, a binary
+    heap event queue, the kernel loop (`runUntil`, `advance`, `settle`, `nextEventTime`, `act`,
+    inputs, topics, a livelock guard), xoshiro128** streams, a Merkle cyrb53 hash with a cache,
+    fork, snapshot and restore with version checks, the input log, recorder and replay with
+    checkpoints, the interactive driver's logic, the trace buffer and ports, the registry, the
+    check, fault, step and topology contracts, and civil-date functions. `packages/host`
+    contains machines, the VFS (`createFs`: 21 calls with Linux check order and errno), Ubuntu's
+    link protections, generated files and devices, executable stubs, users from
+    `/etc/passwd` and `/etc/group`, and `buildUbuntuBase`. 172 tests in 24 files.
+  - Exit criteria. Determinism (same seed and log give the same hash, snapshot plus continue
+    equals continue, a fork never affects its parent) is tested in
+    `packages/kernel/src/determinism.test.ts`. Pending events and waiters survive restore (same
+    file). VFS edge cases, permissions and every errno are covered by
+    `packages/host/src/vfs/linux-reference.test.ts`, which replays 90 captured Linux cases, and
+    `fs.test.ts`. Fork takes 1.2 ms (median) for 3 machines and 9 708 inodes, against a 10 ms
+    target, so the representation stays. The numbers are in `docs/ARCHITECTURE.md` §2.7;
+    rerun them with `npm run bench:fork`.
+  - Decisions D-018 to D-021 in `docs/decisions.md`: kernel API refinements; users, groups and
+    environment as files; simulated hosts are Ubuntu 24.04.5 LTS built from the essential
+    packages' real files; where rank 3 captures live (`fixtures/reference/`).
+  - Surprises. A recorded input could run before zero-delay events already due at the same
+    instant, while replay ran them first, so `Kernel.input` now drains due events (found by the
+    replay test). mkdir(2) drops set-group-ID from its mode argument, so the base builder chmods
+    after mkdir, as base-files does. `/bin/../etc` is ENOENT on a usrmerged system, because `..`
+    is physical. Ubuntu's procps turns on `protected_regular = 2` and `protected_symlinks = 1`,
+    which apply to root too: root cannot `>` into another user's file in `/tmp`. Pop!_OS keeps
+    Ubuntu's identity files as `*.diverted`, which gave a verified `os-release`.
+  - For phase 02. Decide the simulated locale (FIDELITY §2.1) and the process slice budget
+    (ARCHITECTURE §6). Add the fork hook that ends running programs, and deferred deletion of
+    open unlinked files. `checkExec` returns the inode; deciding script versus binary (the
+    kernel's ENOEXEC) is the exec layer's job. `/etc/profile` sources `/etc/profile.d/*.sh`,
+    which is still empty (D-020).
+  - Workflow: the tools package now depends on `@simlab/kernel` and `@simlab/host`, with the
+    lockfile updated offline. New memory: `memory/no-glob-rm-on-variable-paths.md`.
 
 - 2026-11-15 — **Moved to a new workstation.** No phase work. The plan, docs and prompts were
   checked for anything tied to the old machine and adapted (`docs/decisions.md` D-017, `PLAN.md`

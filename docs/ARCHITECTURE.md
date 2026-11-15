@@ -76,20 +76,22 @@ interface World {
   schema: number;
   seed: number;
   clock: Clock;
-  /** Binary min-heap ordered by (at, seq), stored as an array. */
+  /** Binary min-heap ordered by (at, seq), stored as an array. Cancelling removes the entry. */
   queue: PendingEvent[];
-  /** Ids of cancelled events not yet popped (lazy deletion). */
-  cancelled: Record<string, true>;
-  /** One state per named PRNG stream, created on first use. */
+  /** One state per named PRNG stream, created on first use and advanced in place. */
   prng: Record<string, PrngState>;
-  /** Counters for deterministic ids (pids, inode numbers, UIDs). */
+  /** Counters for deterministic ids (pids, inode numbers, input numbers, waiter ids). */
   counters: Record<string, number>;
-  /** Wake topics with their waiting subscribers (§2.4). */
-  topics: Record<string, TopicState>;
+  /** Wake topics with their waiting subscribers (§2.4). A table: entries are frozen. */
+  topics: Table<TopicState>;
   /** One slice per plugin, keyed by plugin name: `host`, `k8s`, … */
   slices: Record<string, unknown>;
 }
 ```
+
+Phase 01 implemented this in `packages/kernel/src/world.ts`. It dropped the planned `cancelled`
+map: `cancel` finds the event in the heap and removes it (O(n) to find, O(log n) to fix), which
+keeps the world free of tombstones.
 
 Rules for everything reachable from `World` (CLAUDE.md hard rule 5):
 
@@ -191,14 +193,23 @@ interface HandlerSpec {
 ```ts
 interface Ctx {
   readonly world: World;
+  readonly registry: Registry;
   readonly now: Millis;
+  /** What is being handled: an event id (`<seq>`), an input id (`in<n>`) or an action label. */
+  readonly during: string;
   schedule(delay: Millis, type: string, payload: Json): string;
-  cancel(eventId: string): void;
+  /** False if the event was not pending. */
+  cancel(eventId: string): boolean;
   random(stream: string): Random;
+  /** Next value of a world counter, starting at 1. */
   nextId(counter: string): number;
+  /** Adds a waiter to `topic` (§2.4); returns its id. */
+  subscribe(topic: string, type: string, payload: Json): string;
+  unsubscribe(topic: string, waiterId: string): void;
   /** Wake everything waiting on `topic` (§2.4). */
   publish(topic: string): void;
-  trace(record: TraceInput): void;
+  /** Returns the record's id, for `causes` of later records. */
+  trace(record: TraceInput): number;
   gap(record: GapInput): void;
   /** Typed access to a plugin's slice. */
   slice<S>(name: string): S;
@@ -219,10 +230,13 @@ interface TopicState {
   /** Subscribers in subscription order. */
   waiters: Waiter[];
 }
-type Waiter =
-  | { kind: 'event'; type: string; payload: Json }   // schedule this event at `now`
-  | { kind: 'proc'; pid: string };                    // resume this process (§3.4)
+/** Schedule this event at `now` when the topic is published. */
+interface Waiter { id: string; type: string; payload: Json }
 ```
+
+A process waiting on a topic is a waiter whose event is `host.proc.run` with its pid (§3.4), so
+the kernel needs no notion of processes. Phase 01 merged the two planned waiter kinds into this
+one for that reason.
 
 `ctx.publish(topic)` schedules one event at the current time for each waiter, in subscription
 order, and clears the list. Waiters are world data. A topic name is a string such as
@@ -233,7 +247,9 @@ order, and clears the list. Waiters are world data. A topic name is a string suc
 ```ts
 interface Kernel {
   readonly world: World;
-  /** Deliver one input at the current time (§2.8). */
+  readonly registry: Registry;
+  readonly now: Millis;
+  /** Deliver one input at the current time (§2.8), after running events already due. */
   input(input: Input): void;
   /** Run every event with `at <= t`, then set the clock to `t`. */
   runUntil(t: Millis): void;
@@ -246,10 +262,17 @@ interface Kernel {
   settle(opts: { timeout: Millis; until?: (w: World) => boolean }): 'quiet' | 'until' | 'timeout';
   /** Time of the next pending non-idle event, if any ("skip to next event"). */
   nextEventTime(): Millis | undefined;
-  fork(): Kernel;
+  /** Runs code with a `Ctx` outside any event: topology build, setup and solution steps, faults, tests. */
+  act<T>(label: string, fn: (ctx: Ctx) => T): T;
+  fork(options?: { ports?: Ports }): Kernel;
   hash(): string;
+  traceRecords(): TraceRecord[];
 }
 ```
+
+`settle` tests `until` before each virtual instant it runs, and returns `'quiet'` without moving
+the clock. Inputs reach plugins through input handlers that a plugin registers by input kind
+(`Plugin.inputs`, §2.11); the kernel registers `learn.action` itself as a no-op.
 
 A **time driver** decides when to call these. It lives in an app, not in the engine, because it
 is the one component allowed to look at a real clock.
@@ -265,20 +288,29 @@ virtual time an input is stamped with*. The stamp is recorded. The engine sees v
 inputs, nothing else, and the replay driver feeds it the same ones.
 
 Ordering rule at one instant: `runUntil(t)` runs all events with `at <= t` before an input stamped
-`t` is delivered.
+`t` is delivered. `Kernel.input` enforces it: it first runs every event already due, including
+events that an earlier input at the same instant scheduled with delay zero. Without that, a
+recorded session and its replay would interleave those events differently (phase 01 found this
+in a test).
 
 **Work per instant is bounded.** A handler or program that loops without consuming virtual time
 would freeze the driver. Two guards:
 
 - A process may execute a fixed number of syscalls per run slice; then it is preempted and
   resumed 1 ms later (§3.4). `yes > /dev/null` therefore burns virtual time and can be interrupted.
-- The kernel counts events dispatched without the clock advancing. Past a limit it throws with the
-  event types involved: that is an engine bug (two handlers scheduling each other at delay zero).
+- The kernel counts events dispatched without the clock advancing. Past a limit
+  (`MAX_EVENTS_PER_INSTANT`, 100 000) it throws with the most frequent event types involved: that
+  is an engine bug (two handlers scheduling each other at delay zero).
+
+The interactive driver's logic is in the kernel (`createInteractiveDriver` in `driver.ts`) and is
+tested headlessly: the app calls `tick(realElapsed)` and `deliver(input, realElapsed)`, and the
+driver carries fractions of a virtual millisecond between ticks. Only reading the wall clock is
+left to the app.
 
 ### 2.6 PRNG streams
 
 ```ts
-/** Four unsigned 32-bit integers. Algorithm fixed in phase 01 (a small, well-known 32-bit generator). */
+/** Four unsigned 32-bit integers: xoshiro128** state. */
 type PrngState = [number, number, number, number];
 
 interface Random {
@@ -293,6 +325,10 @@ interface Random {
 }
 ```
 
+- The generator is xoshiro128** (Blackman and Vigna). A stream's initial state is SplitMix32
+  output seeded from the hash (§2.7) of the world seed and the stream name. `int(n)` uses
+  rejection sampling, so it has no modulo bias. A test pins the generator to the reference
+  algorithm's output.
 - A stream is identified by a name: `k8s.names`, `k8s.scheduler.tiebreak`, `host.pids`.
 - A stream's initial state is a pure function of `(world.seed, name)`. It does not depend on the
   order in which streams are first used, so adding a draw in one subsystem never changes what
@@ -343,12 +379,32 @@ exists yet.
 
 **Hash** identifies a world state for determinism tests and replay verification.
 
-- The hash of a value is a hash of its canonical serialization (object keys in code-unit order).
-- The hash of a container combines its keys and the hashes of its children, keys sorted.
-- Hashes of frozen values are cached by object identity in a `WeakMap` outside the world, so
-  hashing after a small change is cheap.
-- 64 bits from a non-cryptographic function implemented in the kernel (the engine has no access
-  to platform crypto), printed as 16 hex digits. Chosen in phase 01.
+- It is a Merkle hash. A node's canonical form lists its keys in code-unit order, each with its
+  child: primitives in JSON form, objects and arrays by their own hash. The result depends only
+  on the data, never on which nodes are frozen, so a world hashes the same before a snapshot and
+  after a restore.
+- Hashes of frozen nodes are cached by object identity in a `WeakMap` outside the world. After a
+  small change, only the containers on the path to it and the new values are hashed again.
+- The function is the cyrb53 core (bryc, public domain) with both 32-bit lanes printed: 64 bits as
+  16 hex digits. It is non-cryptographic and needs no platform crypto. Tests check it against
+  cyrb53's published values and pin two outputs.
+
+**Measured** (phase 01, `npm run bench:fork`, Node 26.13.1 on the workstation in
+`docs/FIDELITY.md` §2.1). The world had three Ubuntu base machines plus 3 000 extra files each:
+9 708 inodes and 95 MB of file content, 1–20 kB per file.
+
+| Operation | Median | p90 |
+|---|---|---|
+| fork | 1.2 ms | 2.2 ms |
+| hash, warm (nothing changed) | 9 ms | 10 ms |
+| fork, write one file, hash | 11 ms | 13 ms |
+| hash, cold (just restored, no cache) | 1.34 s | 1.37 s |
+| snapshot (95.5 MB of JSON) | 451 ms | 472 ms |
+| restore | 344 ms | 350 ms |
+
+Fork is well under the 10 ms target, so the representation stays. A cold hash is linear in the
+bytes of content; it happens once after a restore. The warm hash is dominated by walking the
+inode tables.
 
 Tests that must hold from phase 01: same seed and input log give the same hash; fork then run
 equals run; snapshot, restore and continue equals continue; a fork that is mutated leaves the
@@ -366,14 +422,14 @@ interface SessionLog {
     params?: Record<string, Json>;   // resolved parameters, for readability; recomputed on replay
     startTime: Millis;        // becomes clock.start
     engine: string;           // engine version
-    kubernetes: string;       // the pin
+    versions?: Record<string, string>;   // domain pins, e.g. { kubernetes: 'v1.37.2' }
     contentHash?: string;     // hash of the item source
   };
   inputs: LoggedInput[];
   /** Virtual time the session reached; replay runs to here after the last input. */
   end: Millis;
   /** Occasional world hashes, to detect a replay that diverges. */
-  checkpoints: { t: Millis; hash: string }[];
+  checkpoints: { t: Millis; inputs: number; hash: string }[];
 }
 
 type LoggedInput = { t: Millis } & Input;
@@ -388,6 +444,11 @@ type Input =
   | { kind: 'learn.action'; action: string; data?: Json };   // hint shown, check pressed, …
 ```
 
+- The header names domain pins generically (`versions`), so the kernel names no domain. A
+  checkpoint records how many inputs had been delivered, because several inputs can share a
+  time stamp. Taking a checkpoint first runs the events already due, as `input` does.
+- `createRecorder(kernel, header)` delivers and logs inputs and takes checkpoints;
+  `replay(log, boot)` rebuilds the world and reports the first checkpoint that does not match.
 - Only inputs change the world from outside. `learn.action` inputs do not change it at all; they
   are logged so that the debrief can place them on the timeline.
 - Speed changes, pauses and skips are not inputs. Their whole effect is in the stamps.
@@ -453,6 +514,8 @@ interface Plugin {
   requires?: string[];
   slice?: SliceSpec<unknown>;
   handlers?: HandlerSpec[];
+  /** Handlers for inputs (§2.8), by input kind: `tty.bytes`, `editor.save`. */
+  inputs?: InputHandlerSpec[];
   /** Contributions for other layers, each keyed by a registry kind. */
   contributions?: { [kind: string]: Contribution[] };
 }
@@ -464,14 +527,18 @@ interface Contribution {
 }
 
 interface Registry {
-  register(plugin: Plugin): void;
+  readonly plugins: readonly Plugin[];       // in registration order
+  readonly slices: readonly SliceSpec<unknown>[];
   handler(type: string): HandlerSpec;
+  input(kind: string): InputHandlerSpec;
   get<T extends Contribution>(kind: string, name: string): T | undefined;
   list<T extends Contribution>(kind: string): T[];   // sorted by name
 }
 ```
 
-The registry is built once at start-up from a fixed list of plugins and is immutable afterwards.
+The registry is built once at start-up from a fixed list of plugins (`createRegistry(plugins)`)
+and is immutable afterwards. It orders plugins by `requires` and refuses a missing requirement,
+a cycle, or a duplicate plugin, handler, input kind or contribution name.
 It is code and static data, so it lives outside world state; two worlds on one engine share it.
 
 Registry kinds. The kernel defines the contracts that `learn` consumes; the host defines the
@@ -519,7 +586,7 @@ interface StepSpec extends Contribution {
   /** Executes one setup or solution step. Throws with a message on failure. */
   run(ctx: StepCtx, args: Json): void;
 }
-interface StepCtx { kernel: Kernel; registry: Registry; session: StepSession; }
+interface StepCtx { kernel: Kernel; registry: Registry; session: StepSession; }  // session: phase 09
 
 interface TopologySpec extends Contribution {
   params: ArgsSchema;
@@ -566,13 +633,12 @@ interface HostSlice {
 
 interface Machine {
   id: string;
+  /** The kernel hostname (`uname -n`); /etc/hostname is a separate file, read at boot. */
   hostname: string;
   kind: 'node' | 'workstation' | 'container';
   /** For a container: the machine and runtime container it belongs to. */
   parent?: { machine: string; container: string };
   vfs: Vfs;
-  users: Table<User>;
-  groups: Table<Group>;
   procs: Table<Proc>;
   /** Mutable per-process state that changes often: fd tables, shell session state. */
   procState: Record<string, ProcState>;
@@ -584,10 +650,20 @@ interface Machine {
   interfaces: Table<NetInterface>;
   /** Listening sockets: `proto:addr:port` → owner. */
   listeners: Table<Listener>;
-  env: Table<string>;                     // system-wide defaults (/etc/environment)
   boot: { bootedAt: Millis; state: 'running' | 'off' };
 }
 ```
+
+Phase 01 built `id`, `hostname`, `kind`, `vfs` and `boot`; each later field arrives with the phase
+that models it. Users, groups and the system-wide environment are **not** fields. As on Linux
+with NSS `files`, they are the contents of `/etc/passwd`, `/etc/group` and `/etc/environment`,
+parsed on demand with a cache keyed by inode identity (`users.ts`, `docs/decisions.md` D-019).
+Editing the file is how a user is added, and nothing else can disagree with it.
+
+`buildUbuntuBase(ctx, machine, { user })` lays down what an Ubuntu 24.04.5 LTS server's
+essential packages create: directories with base-files' modes, the usrmerge links, identity
+files, `/etc/profile` and the skeleton dotfiles, base-passwd's accounts plus one login user, and
+`/dev/null` (D-020).
 
 ### 3.2 VFS
 
@@ -595,16 +671,17 @@ interface Machine {
 interface Vfs {
   root: string;                    // inode id of `/`
   inodes: Table<Inode>;
-  mounts: Table<Mount>;            // by mount point
+  mounts: Table<Mount>;            // by mount point (phases 16a, 17, 25a)
 }
 
 type Inode =
-  | (InodeMeta & { type: 'dir'; entries: Record<string, string> })      // name → inode id
+  | (InodeMeta & { type: 'dir'; entries: Record<string, string>; parent: string })  // name → inode id; `..`
   | (InodeMeta & { type: 'file'; data: string })                        // UTF-8 text
   | (InodeMeta & { type: 'symlink'; target: string })
   | (InodeMeta & { type: 'program'; program: string; size: number })    // an executable
-  | (InodeMeta & { type: 'generated'; provider: string; args: Json })   // content computed on read
-  | (InodeMeta & { type: 'opaque'; what: string; ref: Json; size: number }); // binary stand-in
+  | (InodeMeta & { type: 'generated'; provider: string; args: Json;     // content computed on read;
+                   device?: { major: number; minor: number } })         // with `device`, a char device
+  | (InodeMeta & { type: 'opaque'; what: string; ref: Json; size: number }); // binary stand-in (phase 28)
 
 interface InodeMeta {
   id: string;
@@ -639,6 +716,26 @@ interface Mount {
   the program that reports them (`ls: cannot access …`), grounded per program.
 - Change notification: a write under a directory publishes the topic
   `host.vfs:<machine>:<directory inode>`. The kubelet watches its manifest directory this way.
+
+Phase 01 built the VFS in `packages/host/src/vfs/` without `mounts` and `opaque` inodes; the
+phases that need them add them. Inode ids are decimal numbers from a per-machine counter, and the
+root is 2 as on ext4. A directory records its parent, so `..` is physical: `/bin/..` is `/usr`
+when `/bin` links to `usr/bin`. The calls are made through `createFs(ctx, machine, { cred, cwd,
+umask })`: `stat`, `lstat`, `readFile`, `writeFile` (open with `O_CREAT` plus truncate, append or
+`O_EXCL`), `mkdir`, `rmdir`, `unlink`, `rename`, `link`, `symlink`, `readlink`, `readdir`, `chmod`,
+`chown`, `utimes`, `access`, `realpath`, `checkExec`, `installProgram` and `createGenerated`.
+
+- Failures throw `FsError` with the errno name and number, the syscall and the path.
+  `strerror` gives glibc's message. Something the simulator cannot do (the bytes of an executable
+  stub, writing a generated file whose provider has no `write`) throws `UnsupportedError`, which
+  callers turn into a `[sim]` notice and a gap record. It is never shown as a real error.
+- The order of checks follows the kernel, so when two errors apply, the one Linux reports wins.
+  `fixtures/reference/linux/vfs-syscalls.txt` records 90 cases captured on the workstation, and
+  a test replays every one of them against the simulator.
+- Ubuntu's link protections are on (`fs.protected_hardlinks = 1`, `protected_symlinks = 1`,
+  `protected_regular = 2`). They are constants until the sysctl table exists (phase 25b).
+- A file is deleted when its last link goes. Deferring that while a descriptor is open comes with
+  descriptors (phase 02).
 
 ### 3.3 Processes
 
@@ -1306,7 +1403,8 @@ Each item is decided by the phase named, and recorded here when decided.
 
 | Item | Phase |
 |---|---|
-| PRNG algorithm, hash function, heap implementation, slice budget and zero-time event limit values | 01 |
+| PRNG algorithm (xoshiro128**, §2.6), hash function (cyrb53 core, Merkle, §2.7), heap (binary min-heap in an array, `heap.ts`), zero-time event limit (100 000, §2.5): **decided in 01** | 01 |
+| Process slice budget (syscalls per run slice) | 02 |
 | Supported shell grammar and the list of builtins | 02, 22a |
 | Line editor key bindings; SGR style of the `[sim]` notice | 03 |
 | Normalization tokens; provenance registry implementation | 04 |

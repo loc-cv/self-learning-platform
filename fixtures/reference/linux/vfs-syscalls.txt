@@ -1,0 +1,90 @@
+stat empty: ENOENT
+stat file/: ENOTDIR
+stat file/x: ENOTDIR
+stat missing: ENOENT
+stat loop: ELOOP
+lstat loop: ok
+stat s39 (40 links): ok
+stat s40 (41 links): ELOOP
+stat dangling: ENOENT
+lstat dangling: ok
+lstat dirlink/ is dir: ok True
+lstat dirlink is link: ok True
+stat dirlink/.. is base: ok True
+stat /.. is /: ok True
+mkdir existing: EEXIST
+mkdir missing/x: ENOENT
+mkdir file/x: ENOTDIR
+mkdir dangling: EEXIST
+mkdir dir/..: EEXIST
+mkdir now/x: EACCES
+mkdir newdir/ trailing: ok
+rmdir nonempty: ENOTEMPTY
+rmdir file: ENOTDIR
+rmdir dir/.: EINVAL
+rmdir dir/..: ENOTEMPTY
+rmdir /: EBUSY
+rmdir dirlink: ENOTDIR
+rmdir dirlink/: ENOTDIR
+rmdir missing: ENOENT
+unlink dir: EISDIR
+unlink file/: ENOTDIR
+unlink dirlink/: ENOTDIR
+unlink missing: ENOENT
+unlink missing in now (no w): ENOENT
+unlink existing in now (no w): EACCES
+rename existing out of now (no w): EACCES
+open noread for read: EACCES
+exec file without x: EACCES
+exec directory: EACCES
+exec x file that is not a binary: ENOEXEC
+open dir for write: EISDIR
+open dir for read: ok
+open nox/f (no x): EACCES
+listdir nor (no r): EACCES
+open ro for write: EACCES
+create in now (no w): EACCES
+creat excl existing: EEXIST
+creat excl dangling: EEXIST
+creat new/ trailing: EISDIR
+creat via dangling creates target: ok True
+rename dir into own sub: EINVAL
+rename file over dir: EISDIR
+rename dir over file: ENOTDIR
+rename dir over nonempty: ENOTEMPTY
+rename missing: ENOENT
+rename to missing parent: ENOENT
+rename dir over empty dir: ok
+rename file to itself: ok
+rename dir/. x: EBUSY
+rename x dir/..: EBUSY
+rename file to file/: ENOTDIR
+link dir: EPERM
+link existing: EEXIST
+link missing: ENOENT
+link ok nlink: ok 2
+symlink existing: EEXIST
+readlink file: EINVAL
+readlink missing: ENOENT
+name 255: ENOENT
+name 256: ENAMETOOLONG
+path 4095: ENOENT
+path 4096: ENAMETOOLONG
+path 4097: ENAMETOOLONG
+chmod /etc/passwd: EPERM
+chown file to root: EPERM
+chown file to group root (not member): EPERM
+chown file to own gid: ok
+chown file to own uid: ok
+access X_OK on file 644: ok False
+rmdir now (parent ok): ok
+setgid dir child mode: ok 0o2775
+nlink of dir with 1 sub: ok 3
+size of dir: ok 4096
+size of symlink dirlink: ok 3
+mode of symlink: ok 0o777
+chown own file clears suid/sgid: ok 0o755
+rmdir dir/sub/../sub/.: EINVAL
+stat dir/f/: ENOTDIR
+stat dir//f: ok
+rename dirlink/ x: ENOTDIR

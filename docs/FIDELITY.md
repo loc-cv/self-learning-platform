@@ -114,6 +114,11 @@ the apt sources and their priorities (Pop!_OS pins its own repository at priorit
 `/etc/apt/preferences.d/pop-default-settings`; there are also Tailscale and Ubuntu Pro entries),
 the motd. Take those from Ubuntu server documentation (rank 4) and say so.
 
+**Where captures live.** A rank 3 capture that a test compares against is committed under
+`fixtures/reference/<area>/`, with the script that produced it. The script's header gives the
+command, the locale and the tool versions (`docs/decisions.md` D-021). Example:
+`fixtures/reference/linux/vfs-syscalls.{py,txt}`.
+
 **Missing tools.** When a phase needs real output from a tool listed as not installed, ask the
 owner to install it (`CLAUDE.md` forbids changing the workstation yourself), or use rank 2 or 4
 and tag the unit by what could be verified.

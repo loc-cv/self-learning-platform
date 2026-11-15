@@ -100,6 +100,40 @@ Unfinished work from a phase, precise enough for the next session to continue. N
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
 
+- 2026-11-15 — **Moved to a new workstation.** No phase work. The plan, docs and prompts were
+  checked for anything tied to the old machine and adapted (`docs/decisions.md` D-017, `PLAN.md`
+  §15). Phase 01 is next and needs nothing else first.
+  - The workstation is now Pop!_OS 24.04 (an Ubuntu 24.04 derivative) on x86_64 with Node 26.13.1
+    through nvm, npm 11.20, bash 5.2.21, GNU coreutils 9.4, systemd 255, OpenSSL 3.0.13, gawk and
+    mawk, jq 1.7.1, BIND's `nslookup`/`dig`/`host`, Go 1.27.4 and Python 3.12.3. Not installed:
+    `kubectl`, Docker, kind. The full table is `docs/FIDELITY.md` §2.1, which is now the one place
+    that records the workstation.
+  - Restored the ignored state with `npm ci` and `npm run upstream:fetch` (v1.37.2 at `c50e5395`,
+    192 MB). `npm run check` passes on Node 26: 13 test files, 73 tests. `stable-1.37.txt` still
+    says v1.37.2, and all five oracle binaries answer on dl.k8s.io. `npm ci` reports 9 moderate
+    advisories in development dependencies, as before.
+  - Changed: `PLAN.md` §11 runtime says Node 24 or later; D-004 wording; `docs/FIDELITY.md` §1
+    (kubectl note, recheck) and §2 (rank 3 row, new §2.1); prompts 01, 02, 17, 22a, 22b, 25a and
+    25b name what is really installed here; `CLAUDE.md` gains `npm ci`, reads `memory/MEMORY.md`
+    at the start of a session, points rank 3 at §2.1, and has the fix-freely rule.
+  - Surprises: in the agent's shell, `grep` runs ugrep and `find` runs bfs (Claude Code shims), and
+    oh-my-zsh aliases `ls`, `grep` and `diff`. Capture ground truth in the clean bash from
+    `docs/FIDELITY.md` §2.1. Pop!_OS pins its own apt repository at priority 1001, so
+    `apt-cache policy` priorities here are not a stock Ubuntu server's. Installing `gawk` made it
+    the system `awk`; a stock Ubuntu server's `awk` is mawk (`/usr/bin/mawk`), so phase 22b calls
+    each by name. No rank 3 reference was captured on the old machine, so nothing needs recapturing.
+  - The old machine (`ssh colcv-thinkpad-t440p`, Ubuntu 26.04.1) was checked read-only. Its
+    checkout, `~/projects/learning-platform`, is at the same commit `baaf61e`, clean and in sync
+    with `origin/main`; its only ignored contents are `node_modules/`, `.upstream/` and `.tsbuild/`.
+    Nothing was left behind.
+  - Memory: the old machine's local Claude memory held only a redirect to the repository's
+    `memory/` (in place since 2026-11-04); the same redirect now exists in this machine's local
+    memory, and `CLAUDE.md` says to read `memory/MEMORY.md`. Two memories from the earlier Go
+    version of the project were lost in the 2026-11-13 restart and are restored: the standing
+    permission to fix wrong or stale things without asking (owner confirmed; also in `CLAUDE.md`
+    under "During") and the zsh glob pitfall (rechecked here). Not restored: the owner profile
+    (`PLAN.md` §1 covers it, and its "Vietnamese docs" part was superseded on 2026-11-13) and a
+    `/tmp` quota note (the old machine's `/tmp` was a 7.5 GB tmpfs; here it is on the root disk).
 - 2026-11-13 — **Phase 00 done.** Repository, gate, pin, upstream fetch and the specs exist.
   - Built: npm workspaces (`packages/*`, `apps/*`, `tools`) with TypeScript 6.0.3 strict and
     project references, Vitest 5, ESLint 10. `npm run check` = typecheck + lint + tests.
@@ -126,7 +160,8 @@ Newest first. Each session adds: what was built, decisions made, surprises, know
   - `npm install` reports moderate advisories in development dependencies (lint and test
     tooling); nothing ships to a runtime. Not acted on.
 - 2026-11-13 — Plan, phase prompts and CLAUDE.md written. No code exists. The folder is not a git
-  repository yet; phase 00 initializes it. The workstation is Ubuntu 26.04 on x86_64 with Node 24,
+  repository yet; phase 00 initializes it. (This describes the previous workstation; see
+  2026-11-15.) The workstation is Ubuntu 26.04 on x86_64 with Node 24,
   npm, Python 3.14, git, make, bash 5.3, OpenSSL 3.5, vim and kubectl 1.36.3. It has no Docker,
   kind, Go or pnpm. The v1.37.1 release binaries on dl.k8s.io are reachable (checked for
   kube-apiserver and kube-scheduler), which phase 04 relies on.

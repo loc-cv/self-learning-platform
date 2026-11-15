@@ -34,7 +34,9 @@ cheaply, so correctness and tests matter more here than anywhere.
   carrying errno names so tools can print real messages.
 - Generated files: content computed on read by a registered provider.
 - Executable stubs: a file that names a registered program.
-- A helper that builds a plausible base filesystem for an Ubuntu-like host.
+- A helper that builds a plausible base filesystem for an Ubuntu-like host. This workstation is
+  Pop!_OS, a desktop derivative: don't copy identity files or its set of packages and units
+  (`docs/FIDELITY.md` §2.1).
 
 ## Not in this phase
 

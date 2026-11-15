@@ -45,8 +45,10 @@ here may know about Kubernetes: this is `packages/host`.
 - **Checks and faults** registered by the host plugin: unit active, enabled or failed; process
   running; port listening; faults to stop, disable or break a unit.
 
-**Ground truth.** This workstation runs Ubuntu with systemd: verify layouts and messages against the
-real tools (`systemctl status`, `systemctl cat`, `journalctl`, `ps`, `ss`, `ip`).
+**Ground truth.** This workstation runs Pop!_OS 24.04, an Ubuntu 24.04 derivative, with systemd
+255: verify layouts and messages against the real tools (`systemctl status`, `systemctl cat`,
+`journalctl`, `ps`, `ss`, `ip`). It is a desktop, so take formats from it, not which units, users
+or services exist (`docs/FIDELITY.md` §2.1).
 
 ## Not in this phase
 

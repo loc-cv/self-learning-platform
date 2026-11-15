@@ -33,8 +33,10 @@ long output. Each gets a real parser for a documented subset, and an honest noti
   `journalctl` will use it in phase 25a).
 
 **Ground truth.** Verify against the real tools on this workstation and freeze results as
-transcripts. `gawk` or `mawk` is present on Ubuntu; note which one you verified against, since their
-output can differ. If `jq` isn't installed, ask me to install it before starting on `jq`.
+transcripts, captured as `docs/FIDELITY.md` §2.1 describes. Both awks are installed: plain `awk`
+runs gawk 5.2.1 here, while a stock Ubuntu server's `awk` is mawk 1.3.4 (`/usr/bin/mawk`). Call
+each by its full name and note which one a transcript was verified against, since their output can
+differ. `jq` 1.7.1 is installed.
 
 ## Not in this phase
 

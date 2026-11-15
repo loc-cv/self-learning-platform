@@ -10,6 +10,8 @@ practice with spaced repetition.
 - `prompts/` — one prompt per phase, plus repeatable prompts (`R1`–`R5`).
 - `docs/` — detailed specs, written and kept current by the phases that build each subsystem.
 - `memory/` — standing preferences and feedback from the owner; `memory/MEMORY.md` is the index.
+  Save new feedback here, in the repository, so it moves with the project; machine-local memory
+  doesn't.
 
 ## Commands
 
@@ -17,6 +19,7 @@ If one changes, change this section in the same commit. Commands marked with a p
 exist yet; that phase adds them.
 
 ```bash
+npm ci                        # fresh clone or new machine: install the locked dependencies
 npm run check                 # the gate: typecheck, lint, unit tests (content validation joins in phase 09)
 npm run typecheck             # tsc -b over all project references
 npm run lint                  # eslint, including simlab/package-boundaries and simlab/engine-determinism
@@ -71,7 +74,8 @@ These protect what makes the platform worth using. Breaking one is a bug even if
 3. **Ground every user-visible string in a source.** Table columns, `describe` layouts, event
    reasons and messages, and error text come from a golden capture of the real binaries (the local
    oracle, `docs/FIDELITY.md`), upstream source at the pinned version (`.upstream/`), the real tool
-   on this workstation (bash, coreutils, systemd), or official docs. Don't write them from memory.
+   on this workstation (bash, coreutils, systemd; versions and the clean-shell capture procedure in
+   `docs/FIDELITY.md` §2.1), or official docs. Don't write them from memory.
    Cite the source next to the code and register the unit's provenance.
 4. **Deterministic engine.** No `Date`, `Math.random`, timers or real I/O in engine packages. Use
    the kernel clock and named PRNG streams. Iterate in a defined order.
@@ -85,8 +89,10 @@ These protect what makes the platform worth using. Breaking one is a bug even if
 
 ## Session protocol
 
-**Start.** Read `STATUS.md`. If it lists carry-over for the phase you were given, do only that.
-Read the parts of `PLAN.md` and `docs/` the phase prompt names. From phase 01 on, run
+**Start.** Read `STATUS.md` and `memory/MEMORY.md`. If `STATUS.md` lists carry-over for the phase
+you were given, do only that. Read the parts of `PLAN.md` and `docs/` the phase prompt names. If
+`node_modules/` or `.upstream/` is missing (fresh clone, new machine), run `npm ci` and
+`npm run upstream:fetch` first. From phase 01 on, run
 `npm run check` to confirm a green baseline before changing anything; if it is red, fix or report
 that first.
 
@@ -103,6 +109,11 @@ that first.
   sysctl, services). Reading real tools' output for ground truth is fine.
 - A design decision that contradicts `PLAN.md` or a spec: stop and ask. One that only fills a gap:
   decide, and write it down in `docs/decisions.md`.
+- Anything in the repository that is wrong or no longer relevant (code, docs, comments, prompts,
+  this file): fix it without asking, even outside the current task, and list it in your report and
+  the handoff note. The rules here still apply to the fix. It does not cover design: contradicting
+  `PLAN.md` or reopening a recorded decision still needs the owner, though a wrong fact in a
+  decision's reasoning can simply be corrected. (Granted 2026-11-04, confirmed 2026-11-15.)
 
 **End.**
 1. `npm run check` is green. Show the output; don't claim it.

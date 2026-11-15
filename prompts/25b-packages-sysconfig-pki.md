@@ -42,7 +42,10 @@ upgrades and every certificate task depend on it. Still nothing Kubernetes-speci
 
 **Ground truth.** Verify against the real tools on this workstation (`apt-cache policy`,
 `apt-mark`, `sysctl`, `lsmod`, `openssl x509 -text`). Don't run anything that changes this
-workstation's packages or kernel settings; read-only commands only.
+workstation's packages or kernel settings; read-only commands only. Pop!_OS pins its own
+repository at priority 1001 and adds other sources, so take the layout of `apt-cache policy` from
+here and the sources and priorities of a stock Ubuntu server from `apt_preferences(5)` and Ubuntu
+documentation (`docs/FIDELITY.md` §2.1).
 
 ## Not in this phase
 

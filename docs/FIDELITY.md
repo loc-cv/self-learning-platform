@@ -25,6 +25,9 @@ Sources, all read on the date above:
   tag. Release overview: <https://kubernetes.io/releases/>.
 - Release binaries for the oracle (phase 04): `https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/`
   answered for `kube-apiserver`, `kubectl` and `kubeadm`.
+- Rechecked on 2026-11-15 from the current workstation (§2.1): `stable-1.37.txt` still returned
+  `v1.37.2`, and `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `kubectl` and
+  `kubeadm` all answered at that URL.
 
 The exams name a minor, not a patch. The pin is the latest patch of that minor on the day it was
 checked. `PLAN.md` §4.1 was written when 1.37.1 was the latest; 1.37.2 appeared since
@@ -37,8 +40,9 @@ Rules:
 - Nothing else in the code states a version. Tools import the constant.
 - Moving the pin is `prompts/R5-version-bump.md`: refetch upstream, recapture goldens, diff, fix,
   update this section and `docs/curriculum/`.
-- The `kubectl` on this workstation is 1.36.3. It is not a reference for anything. The reference
-  `kubectl` is the v1.37.2 release binary that phase 04 downloads.
+- A `kubectl` installed on the workstation is not a reference for anything (the current one has
+  none; the previous one had 1.36.3). The reference `kubectl` is the v1.37.2 release binary that
+  phase 04 downloads.
 
 ### Upstream checkout
 
@@ -57,13 +61,62 @@ and the disagreement is worth a note next to the code.
 |---|---|---|---|
 | 1 | **Golden capture** of the real binaries at the pin: the local oracle (API server, etcd, controller manager, scheduler, `kubectl`, `kubeadm`; phase 04) and, optionally, a kind cluster (tier 2, phase 32) | Everything those binaries print or store: tables, `describe`, errors, events, defaulted objects | The fixture path: `fixtures/golden/v1.37.2/<case>` |
 | 2 | **Upstream source** at the pinned tag in `.upstream/` | Formats and strings the oracle cannot produce (kubelet and node output), and the logic behind any output | `// upstream: <path> <symbol>` |
-| 3 | **The real tool on this workstation**: bash 5.3, GNU coreutils, systemd, OpenSSL, vim | Shell, coreutils, `systemctl`, `journalctl`, `openssl` output | `// reference: <tool> <version>, captured <date>` and a transcript fixture |
+| 3 | **The real tool on this workstation** (§2.1): bash, GNU coreutils, systemd, OpenSSL, vim | Shell, coreutils, `systemctl`, `journalctl`, `openssl` output | `// reference: <tool> <version>, captured <date>` and a transcript fixture |
 | 4 | **Official documentation**: kubernetes.io, man pages, project docs for etcd, containerd, Helm, CoreDNS | Behavior and formats not covered above | `// docs: <URL>` |
 | — | Memory, blog posts, answers from an LLM | Nothing | — |
 
 For a tool whose source is not in `kubernetes/kubernetes` (etcd, containerd and `crictl`, Helm,
 CoreDNS, kustomize as a standalone binary), the phase that introduces it records its pinned
 version here and fetches or captures its sources the same way.
+
+### 2.1 The workstation
+
+Rank 3 is whatever this machine has, so its versions are recorded here. A provenance comment names
+the version it was captured from (`// reference: bash 5.2.21, captured <date>`), which keeps it
+meaningful if the work moves to another machine. When the workstation changes, update this section
+and add a handoff note in `STATUS.md`.
+
+Recorded 2026-11-15, after the move from the machine phase 00 ran on. Only phase 00 ran there, so
+no rank 3 reference comes from the previous machine.
+
+| | |
+|---|---|
+| System | Pop!_OS 24.04 LTS, a desktop derivative of Ubuntu 24.04 ("noble"); x86_64, 16 CPUs, 31 GiB RAM |
+| Development runtime | Node 26.13.1 (through nvm), npm 11.20.0, git 2.43.0 |
+| Shell and text tools | bash 5.2.21, GNU coreutils 9.4, GNU grep 3.11, GNU sed 4.9, GNU findutils 4.9.0, GNU diffutils 3.10, jq 1.7.1 (`jq --version` prints `jq-1.7`), less 590, vim 9.1, GNU tar 1.35, gzip 1.12 |
+| awk | GNU Awk 5.2.1 is what `awk` runs here (installing it moved the `awk` alternative to it). mawk 1.3.4, the `awk` of a stock Ubuntu server, is `/usr/bin/mawk`. Call each by its full name when capturing |
+| System tools | systemd 255, procps-ng 4.0.4, iproute2 6.1.0, util-linux 2.39.3, sudo 1.9.15p5, apt 2.8.4, OpenSSH 9.6p1, OpenSSL 3.0.13 |
+| Network clients | curl 8.5.0, GNU Wget 1.21.4, OpenBSD netcat 1.226, iputils ping, `nslookup`, `dig` and `host` from BIND 9.18.39 |
+| Browsers | Firefox 160.0; a Playwright headless Chromium (build 1248) is in `~/.cache/ms-playwright` |
+| Not installed | `kubectl`, Docker, Podman, kind, Helm, `crictl`, pnpm |
+| Installed, unused by the plan | Go 1.27.4, Python 3.12.3 |
+
+**Capture in a clean bash, never in the agent's shell.** The shell Claude Code runs commands in is
+the owner's zsh with oh-my-zsh. There, `grep` is a function that runs ugrep and `find` one that
+runs bfs (both bundled with Claude Code), and `ls`, `grep` and `diff` are aliases that add color
+and exclude options. What they print is not GNU output. Run the real tool in a temporary directory
+like this:
+
+```sh
+env -i HOME="$HOME" PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 TERM=xterm-256color \
+  /bin/bash --noprofile --norc -c '<commands>'
+```
+
+`type grep find ls diff` inside it shows `/usr/bin/…` for each. Choose the locale on purpose and
+record it with the transcript: `sort`, `ls` and some messages depend on it. The owner's login
+locale is `en_US.UTF-8`; `C.UTF-8` is also available. The simulated machine's locale is decided by
+the phase that sets environment defaults (01 or 02), and captures use that one.
+
+**Take formats from this machine, not contents.** Simulated hosts are Ubuntu servers; this is a
+desktop with Pop!_OS changes. Layouts, message formats, exit statuses and error texts transfer.
+These do not: `/etc/os-release` and other identity files, which units, users and services exist,
+the apt sources and their priorities (Pop!_OS pins its own repository at priority 1001 in
+`/etc/apt/preferences.d/pop-default-settings`; there are also Tailscale and Ubuntu Pro entries),
+the motd. Take those from Ubuntu server documentation (rank 4) and say so.
+
+**Missing tools.** When a phase needs real output from a tool listed as not installed, ask the
+owner to install it (`CLAUDE.md` forbids changing the workstation yourself), or use rank 2 or 4
+and tag the unit by what could be verified.
 
 ## 3. Provenance tags
 

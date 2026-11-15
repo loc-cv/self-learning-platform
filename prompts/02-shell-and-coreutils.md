@@ -35,9 +35,11 @@ would have to be thrown away.
 - **Transcript tests**: create the transcript format and runner (setup, commands, expected output
   and exit status) used by every later phase.
 
-**Ground truth.** This workstation runs real bash 5.3 and GNU coreutils. Get expected output and
-error text by running the real command in a temporary directory, then freeze it in a transcript and
-tag it `golden-verified`. Don't write expected output from memory.
+**Ground truth.** This workstation runs real bash and GNU coreutils (versions in
+`docs/FIDELITY.md` §2.1). Get expected output and error text by running the real command in a
+temporary directory, in the clean bash described there rather than your own shell (where `grep` is
+ugrep), then freeze it in a transcript and tag it `golden-verified`. Don't write expected output
+from memory.
 
 ## Not in this phase
 

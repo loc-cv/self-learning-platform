@@ -29,8 +29,9 @@ get decides the priorities.
   within a lab), `!!` and `!$` history expansion, `Ctrl-Z` gets a notice.
 
 **Ground truth.** Verify every tool against the real one on this workstation and freeze the results
-as transcripts. For `sed`, implement a real parser for the supported subset and give a `[sim]`
-notice that names an unsupported command.
+as transcripts. Capture in the clean bash from `docs/FIDELITY.md` §2.1: in your own shell `find`
+runs bfs, `grep` runs ugrep and `diff` adds color. For `sed`, implement a real parser for the
+supported subset and give a `[sim]` notice that names an unsupported command.
 
 ## Not in this phase
 

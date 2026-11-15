@@ -1,1 +1,3 @@
 - [Commit messages name the plan](commit-messages-name-the-plan.md) — prefix every commit with `[<plan-slug>] phase NN:`; this plan is `master-plan`
+- [zsh globs abort tool commands](zsh-glob-aborts-checks.md) — an unmatched glob can skip later checks; confirm checks ran before reporting something absent
+- [Fix wrong things freely](fix-wrong-things-freely.md) — standing permission to correct anything wrong or stale in the repo without asking, then report it; design changes still go to the owner

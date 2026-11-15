@@ -29,8 +29,8 @@ bare list of steps (as in `PLAN.md` §8) or `{ name, steps, when }`; a debrief i
 list of blocks. There are no expressions and no conditionals inside text.
 
 **D-004 — No build step for packages.** Workspace packages export their TypeScript source
-(`exports: ./src/index.ts`). Node 24 runs it by stripping types, Vitest and Vite compile it
-themselves, and `tsc -b` only type-checks (declarations go to `.tsbuild/`). Consequences:
+(`exports: ./src/index.ts`). Node (24 or later) runs it by stripping types, Vitest and Vite
+compile it themselves, and `tsc -b` only type-checks (declarations go to `.tsbuild/`). Consequences:
 relative imports carry the `.ts` extension; `erasableSyntaxOnly` is on, so no enums, namespaces
 or parameter properties, which fits "plain functions and data"; tools are run as
 `node tools/src/….ts`.
@@ -96,3 +96,21 @@ joins it in phase 09 with the first items; until then a test validates the worke
 `until` with a required timeout; a string that is exactly one placeholder takes the parameter's
 type; sidecar source hashes are the first 16 hex digits of a SHA-256 over the normalized English
 unit (`docs/SCENARIO_FORMAT.md` §4, §6, §7, §12).
+
+## Workstation move (2026-11-15)
+
+**D-017 — Continue on the new workstation as it is.** After phase 00 the owner moved the project
+to another machine and asked for the plan, docs and prompts to be adapted to it. It runs Pop!_OS
+24.04 (an Ubuntu 24.04 derivative) with Node 26.13.1, bash 5.2.21, GNU coreutils 9.4, systemd 255
+and OpenSSL 3.0.13; the full list is in `docs/FIDELITY.md` §2.1.
+- Node 26 instead of 24: `engines` already said `>=24`, D-004 works the same on 26, and the gate
+  passes with the locked dependencies. `@types/node` stays at 24.19.2 because engine sources
+  compile without Node types; move it when a tool or test needs a newer Node API.
+- Rank 3 references are this machine's tools, captured in a clean `env -i … bash --noprofile
+  --norc` because the agent's shell runs ugrep for `grep` and bfs for `find`. Nothing was captured
+  on the previous machine, so no existing reference is affected. Provenance comments name the tool
+  version, so a later move only needs a recapture where output differs.
+- Formats come from this machine; Ubuntu-server contents (os-release, apt sources and priorities,
+  default units) do not, because Pop!_OS changes them.
+- Rules out: installing a second Node version to match the old machine, and copying Pop!_OS
+  specifics into simulated hosts.

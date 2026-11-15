@@ -30,7 +30,9 @@ client see?", used by tools, probes and checks alike.
   for testing (`-s`, `-S`, `-I`, `-o`, `-m`, `--connect-timeout`, `-O-`, `-T`, `-q`), `nslookup`,
   `dig` basics, `nc -zv`, `ping` (answering according to the model, with its limits stated),
   `env`, `printenv`, `cat /etc/resolv.conf`, `hostname -i`. Error texts and exit codes are the real
-  tools': get them from the real binaries on this workstation where possible.
+  tools': get them from the real binaries on this workstation where possible. `curl`, `wget`,
+  OpenBSD `nc`, `ping`, and BIND's `nslookup`, `dig` and `host` are installed (`docs/FIDELITY.md`
+  §2.1).
 - **Checks**: `net.reach` (from a Pod or host to a target, expecting an outcome or status code).
 - **Probes** from phase 16b now go through the network model.
 - X-ray: show a connection attempt's path and where it stopped. Add five items on Services, DNS and

@@ -427,7 +427,7 @@ stays UI-independent either way.
 | Area | Choice | Why, and what was rejected |
 |---|---|---|
 | Language | TypeScript, strict | One language for engine, UI and tools; the engine runs in the browser with no round trips. Go or Python engines would need a server hop per keystroke or WebAssembly, and split the codebase. |
-| Runtime | Node 24, npm workspaces | Already installed; no extra tooling. |
+| Runtime | Node 24 or later (the workstation runs Node 26), npm workspaces | Already installed; no extra tooling. |
 | Tests | Vitest, plus Playwright for a few UI smoke tests | Fast, TypeScript-native. |
 | UI | Vite, React, xterm.js, CodeMirror 6 with Vim keys | Mainstream, well documented. All assets bundled; nothing loads from a CDN. |
 | Engine hosting | Web Worker | Keeps the UI responsive; the same engine API is called directly in Node. |
@@ -566,3 +566,10 @@ there is always fresh material to learn from while the platform grows.
     released since.
   - A check is written as `assert: <name>` plus `with: { … }`. The one-line form in the §8
     example was not valid YAML.
+- **2026-11-15** Work moved to a new workstation after phase 00, at my request
+  (`docs/decisions.md` D-017):
+  - It runs Pop!_OS 24.04, an Ubuntu 24.04 derivative, with Node 26. §11 now says Node 24 or later;
+    `package.json` already required `>=24` and the gate passes on 26.
+  - The workstation's own tools (§9) are now bash 5.2, GNU coreutils 9.4 and systemd 255. Their
+    versions and how to capture from them are in `docs/FIDELITY.md` §2.1. It still has no Docker,
+    so tier 2 stays optional as written.

@@ -21,6 +21,15 @@ export const UPSTREAM_SPARSE_PATHS: readonly string[] = [
   'staging/src/k8s.io/apiserver/pkg/registry',
   'staging/src/k8s.io/apiserver/pkg/endpoints',
   'staging/src/k8s.io/apiserver/pkg/admission',
+  // generateName's suffix (names/generate.go), storage errors and preconditions (05a)
+  'staging/src/k8s.io/apiserver/pkg/storage',
+  // API-level helpers: Pod and Service warnings (pkg/api/pod/warnings.go, pkg/api/service), dropping
+  // disabled fields (carry-over of 05a)
+  'pkg/api',
+  // feature gates and their defaults at the pin (kube_features.go)
+  'pkg/features',
+  // the API server's own bootstrap: system namespaces, the kubernetes Service (05a)
+  'pkg/controlplane',
   // per-resource strategies: what create/update allow, immutability (05a onward)
   'pkg/registry',
   // OpenAPI v3 documents: explain, schema validation (05a, 08, 20c)
@@ -42,6 +51,8 @@ export const UPSTREAM_SPARSE_PATHS: readonly string[] = [
   // CRD types, structural schema validation (20c)
   'staging/src/k8s.io/apiextensions-apiserver/pkg/apis',
   'staging/src/k8s.io/apiextensions-apiserver/pkg/apiserver',
+  // APIService types, for the schema of apiregistration.k8s.io (05a)
+  'staging/src/k8s.io/kube-aggregator/pkg/apis',
   // kubeadm (27–29c)
   'cmd/kubeadm',
   // component flags: kube-apiserver, kube-controller-manager, kube-scheduler, kubelet (27)

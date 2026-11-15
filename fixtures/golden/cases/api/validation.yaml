@@ -1,0 +1,657 @@
+description: Status bodies of validation and decoding errors from the raw API - unknown fields and wrong types per field validation mode, semantic validation of the common kinds, immutable fields.
+kwok: false
+steps:
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Strict
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+          portz: []
+        restartPolicyy: Never
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Warn
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo2
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Ignore
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo3
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Strict
+    raw: true
+    body: "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"dupkey\"},\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"a\",\"image\":\"b\"}]}}"
+  - request: POST /api/v1/namespaces/default/pods
+    raw: true
+    body: "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"dupkey2\"},\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"a\",\"image\":\"b\"}]}}"
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: wt
+      spec:
+        replicas: 1.5
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt2
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          ports:
+          - containerPort: "80"
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt3
+      spec:
+        containers:
+        - name: app
+          image:
+            repo: nginx
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt4
+      spec:
+        containers: {}
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt5
+        labels:
+          a: 1
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt6
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          tty: "yes"
+  - request: POST /api/v1/namespaces/default/pods
+    raw: true
+    body: "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"wt7\"},\"spec\":\"none\"}"
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt8
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          resources:
+            limits:
+              cpu: lots
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt9
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          ports:
+          - containerPort: 99999999999
+  - request: POST /api/v1/namespaces/default/pods
+    raw: true
+    body: "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"wt10\"},\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"nginx\"}]},"
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      metadata:
+        name: nokind
+  - request: POST /api/v1/namespaces/default/pods
+    raw: true
+    body: "{\"apiVersion\":\"v1\",\"kind\":\"Pod\",\"metadata\":{\"name\":\"nullimg\"},\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":null}]}}"
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: noimage
+      spec:
+        containers:
+        - name: app
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: Bad_Name
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: Bad
+      spec:
+        containers:
+        - name: Bad
+          image: nginx
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: dup
+      spec:
+        containers:
+        - name: app
+          image: nginx
+        - name: app
+          image: nginx
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: nocontainers
+      spec:
+        containers: []
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: enums
+      spec:
+        restartPolicy: Sometimes
+        containers:
+        - name: app
+          image: nginx
+          imagePullPolicy: Sometimes
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: manyerrors
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          volumeMounts:
+          - name: data
+            mountPath: /data
+          ports:
+          - containerPort: 0
+          - containerPort: 80
+            name: this-name-is-too-long
+          env:
+          - name: 1BAD
+            value: x
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: limits
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          resources:
+            requests:
+              cpu: "2"
+              memory: 1Gi
+            limits:
+              cpu: "1"
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: badlabels
+        labels:
+          'bad key!': x
+          good: 'bad value!'
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: dns
+      spec:
+        dnsPolicy: Sometimes
+        volumes:
+        - name: v
+        - name: v
+          emptyDir: {}
+        containers:
+        - name: app
+          image: nginx:1.27
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: probe
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          livenessProbe:
+            periodSeconds: 5
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: badkey
+      data:
+        'a b': x
+  - request: POST /api/v1/namespaces
+    body: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: Bad.NS
+  - request: POST /api/v1/namespaces
+    body: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: has.dot
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: badport
+      spec:
+        ports:
+        - port: 70000
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: noports
+      spec:
+        selector:
+          app: x
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: badtype
+      spec:
+        type: Internal
+        ports:
+        - port: 80
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: badip
+      spec:
+        clusterIP: 192.168.0.10
+        ports:
+        - port: 80
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: dupports
+      spec:
+        ports:
+        - port: 80
+        - port: 80
+        - port: 81
+          targetPort: 0
+          protocol: HTTP
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: np
+      spec:
+        type: NodePort
+        ports:
+        - port: 80
+          nodePort: 80
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: noselector
+      spec:
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: mismatch
+      spec:
+        selector:
+          matchLabels:
+            app: y
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: negative
+      spec:
+        replicas: -1
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: emptyselector
+      spec:
+        selector: {}
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: badstrategy
+      spec:
+        strategy:
+          type: Recreate
+          rollingUpdate:
+            maxSurge: 1
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: badsurge
+      spec:
+        strategy:
+          rollingUpdate:
+            maxSurge: 0
+            maxUnavailable: 0
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: badpct
+      spec:
+        strategy:
+          rollingUpdate:
+            maxSurge: 150%
+            maxUnavailable: abc
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: restart
+      spec:
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            restartPolicy: Never
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: expr
+      spec:
+        selector:
+          matchExpressions:
+          - key: app
+            operator: In
+          - key: tier
+            operator: Maybe
+            values: [a]
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: notemplate
+      spec:
+        selector:
+          matchLabels:
+            app: x
+  - request: POST /apis/apps/v1/namespaces/default/replicasets
+    body: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        name: rs
+      spec:
+        selector:
+          matchLabels:
+            app: y
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: immutable
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/immutable
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: immutable
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: x
+            tier: y
+        template:
+          metadata:
+            labels:
+              app: x
+              tier: y
+          spec:
+            containers:
+            - name: app
+              image: nginx
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: fixed
+      spec:
+        nodeName: node01
+        schedulerName: nobody
+        containers:
+        - name: app
+          image: nginx:1.27
+  - request: PATCH /api/v1/namespaces/default/pods/fixed
+    contentType: application/merge-patch+json
+    body: "{\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"nginx:1.28\",\"imagePullPolicy\":\"Never\"}]}}"
+  - request: PATCH /api/v1/namespaces/default/pods/fixed
+    contentType: application/merge-patch+json
+    body: "{\"metadata\":{\"uid\":\"00000000-0000-0000-0000-000000000000\",\"creationTimestamp\":\"2020-01-01T00:00:00Z\"}}"
+  - request: PATCH /api/v1/namespaces/default/pods/fixed
+    contentType: application/merge-patch+json
+    body: "{\"metadata\":{\"name\":\"renamed\"}}"
+  - request: DELETE /api/v1/namespaces/default/pods/fixed?gracePeriodSeconds=0
+  - request: PATCH /api/v1/namespaces/default/services/kubernetes
+    contentType: application/merge-patch+json
+    body: "{\"spec\":{\"clusterIP\":\"10.96.0.2\"}}"
+  - request: PATCH /api/v1/namespaces/default/services/kubernetes
+    contentType: application/merge-patch+json
+    body: "{\"spec\":{\"selector\":{\"x\":\"y\"},\"ports\":[{\"port\":443,\"targetPort\":6443,\"name\":\"https\",\"protocol\":\"TCP\"},{\"port\":443,\"protocol\":\"UDP\",\"name\":\"dns\"}]}}"

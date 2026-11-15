@@ -1,0 +1,1664 @@
+# Captured from fixtures/golden/cases/api/lifecycle.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: api/lifecycle
+description: Generation, the status subresource, graceful deletion of Pods, propagation policies and namespace deletion through the raw API.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: gen
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+      status:
+        replicas: 7
+    code: 201
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: gen
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status: {}
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/gen
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: gen
+        labels:
+          only: metadata
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: gen
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        labels:
+          only: metadata
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:only: {}
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status: {}
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/gen
+    contentType: application/merge-patch+json
+    body: '{"spec":{"template":{"spec":{"containers":[{"name":"app","image":"nginx:1.28"}]}}},"status":{"replicas":9}}'
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: gen
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        labels:
+          only: metadata
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:only: {}
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status: {}
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/gen/status
+    contentType: application/merge-patch+json
+    body: '{"spec":{"paused":true},"status":{"collisionCount":4}}'
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: gen
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        labels:
+          only: metadata
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:only: {}
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:collisionCount: {}
+            subresource: status
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status:
+        collisionCount: 4
+  - request: GET /apis/apps/v1/namespaces/default/deployments/gen/status
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: gen
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        labels:
+          only: metadata
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:only: {}
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:collisionCount: {}
+            subresource: status
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status:
+        collisionCount: 4
+  - request: GET /apis/apps/v1/namespaces/default/deployments/gen/scale
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      metadata:
+        name: gen
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+      spec: {}
+      status:
+        replicas: 0
+        selector: app=gen
+  - request: DELETE /apis/apps/v1/namespaces/default/deployments/gen?propagationPolicy=Foreground
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: gen
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 3
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        labels:
+          only: metadata
+        annotations:
+          deployment.kubernetes.io/revision: "2"
+        finalizers:
+          - foregroundDeletion
+        managedFields:
+          - manager: kube-controller-manager
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deployment.kubernetes.io/revision: {}
+              f:status:
+                f:conditions:
+                  .: {}
+                  k:{"type":"Progressing"}:
+                    .: {}
+                    f:lastTransitionTime: {}
+                    f:lastUpdateTime: {}
+                    f:message: {}
+                    f:reason: {}
+                    f:status: {}
+                    f:type: {}
+            subresource: status
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:only: {}
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:collisionCount: {}
+            subresource: status
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status:
+        conditions:
+          - type: Progressing
+            status: "True"
+            lastUpdateTime: <<time>>
+            lastTransitionTime: <<time>>
+            reason: FoundNewReplicaSet
+            message: Found new replica set "gen-<<hash:1>>"
+        collisionCount: 4
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: orphaned
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: orphaned
+        template:
+          metadata:
+            labels:
+              app: orphaned
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 201
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: orphaned
+        namespace: default
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: orphaned
+        template:
+          metadata:
+            labels:
+              app: orphaned
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status: {}
+  - request: DELETE /apis/apps/v1/namespaces/default/deployments/orphaned?propagationPolicy=Orphan
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: orphaned
+        namespace: default
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        finalizers:
+          - orphan
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: orphaned
+        template:
+          metadata:
+            labels:
+              app: orphaned
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status: {}
+  - request: DELETE /apis/apps/v1/namespaces/default/deployments/orphaned?propagationPolicy=Sideways
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DeleteOptions.meta.k8s.io "" is invalid: propagationPolicy: Unsupported value: "Sideways": supported values: "Foreground", "Background", "Orphan", "nil"'
+      reason: Invalid
+      details:
+        group: meta.k8s.io
+        kind: DeleteOptions
+        causes:
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "Sideways": supported values: "Foreground", "Background", "Orphan", "nil"'
+            field: propagationPolicy
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: bound
+      spec:
+        nodeName: node01
+        terminationGracePeriodSeconds: 45
+        containers:
+        - name: app
+          image: nginx:1.27
+    code: 201
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: bound
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:nodeName: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 45
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        nodeName: node01
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: DELETE /api/v1/namespaces/default/pods/bound
+    code: 200
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: bound
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 45
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:nodeName: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 45
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        nodeName: node01
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: DELETE /api/v1/namespaces/default/pods/bound?gracePeriodSeconds=10
+    code: 200
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: bound
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 10
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:nodeName: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 45
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        nodeName: node01
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: PATCH /api/v1/namespaces/default/pods/bound
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"labels":{"late":"label"}}}'
+    code: 200
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: bound
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 10
+        labels:
+          late: label
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:late: {}
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:nodeName: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 45
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        nodeName: node01
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: DELETE /api/v1/namespaces/default/pods/bound?gracePeriodSeconds=0
+    code: 200
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: bound
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        labels:
+          late: label
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:late: {}
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:nodeName: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 45
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        nodeName: node01
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: GET /api/v1/namespaces/default/pods/bound
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: pods "bound" not found
+      reason: NotFound
+      details:
+        name: bound
+        kind: pods
+      code: 404
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: unbound
+      spec:
+        schedulerName: nobody
+        containers:
+        - name: app
+          image: nginx:1.27
+    code: 201
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: unbound
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        securityContext: {}
+        schedulerName: nobody
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: DELETE /api/v1/namespaces/default/pods/unbound
+    code: 200
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: unbound
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        securityContext: {}
+        schedulerName: nobody
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: GET /api/v1/namespaces/default/pods/unbound
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: pods "unbound" not found
+      reason: NotFound
+      details:
+        name: unbound
+        kind: pods
+      code: 404
+  - request: POST /api/v1/namespaces
+    body: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: doomed
+    code: 201
+    response:
+      kind: Namespace
+      apiVersion: v1
+      metadata:
+        name: doomed
+        uid: <<uid:5>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          kubernetes.io/metadata.name: doomed
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:kubernetes.io/metadata.name: {}
+      spec:
+        finalizers:
+          - kubernetes
+      status:
+        phase: Active
+  - request: DELETE /api/v1/namespaces/doomed
+    code: 200
+    response:
+      kind: Namespace
+      apiVersion: v1
+      metadata:
+        name: doomed
+        uid: <<uid:5>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        labels:
+          kubernetes.io/metadata.name: doomed
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:kubernetes.io/metadata.name: {}
+      spec:
+        finalizers:
+          - kubernetes
+      status:
+        phase: Terminating
+  - request: POST /api/v1/namespaces/doomed/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: late
+    code: 403
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'configmaps "late" is forbidden: unable to create new content in namespace doomed because it is being terminated'
+      reason: Forbidden
+      details:
+        name: late
+        kind: configmaps
+        causes:
+          - reason: NamespaceTerminating
+            message: namespace doomed is being terminated
+            field: metadata.namespace
+      code: 403
+  - request: DELETE /api/v1/namespaces/default/configmaps/nope?dryRun=All
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        kind: configmaps
+      code: 404
+  - request: POST /api/v1/namespaces/default/configmaps?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: dry
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: dry
+        namespace: default
+        uid: <<uid:6>>
+        creationTimestamp: <<time>>
+  - request: GET /api/v1/namespaces/default/configmaps/dry
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "dry" not found
+      reason: NotFound
+      details:
+        name: dry
+        kind: configmaps
+      code: 404

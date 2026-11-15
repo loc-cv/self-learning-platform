@@ -9,6 +9,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { request as httpsRequest } from 'node:https';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parse as parseYaml, stringify } from 'yaml';
@@ -16,8 +17,8 @@ import { KUBERNETES_TAG } from '@simlab/k8s';
 import { etcdVersion, fetchBinaries, KWOK_VERSION, versionBinDir } from '../oracle/binaries.ts';
 import { down, up, type OracleState } from '../oracle/controlplane.ts';
 import { casesDir, fixturesDir, repoRoot } from '../oracle/paths.ts';
-import { defaultTable, parseCase, type RunStep, type Step } from './case.ts';
-import { mapOracle, newContext, normalizeJson, normalizeText, type NormalizeContext } from './normalize.ts';
+import { defaultTable, parseCase, type RequestStep, type RunStep, type Step } from './case.ts';
+import { mapOracle, newContext, normalizeJson, normalizeText, normalizeValue, type NormalizeContext } from './normalize.ts';
 
 /** Fields KWOK writes in place of a kubelet. Never assert them as real kubelet output. */
 export const KWOK_AUTHORED = [
@@ -81,6 +82,46 @@ async function prepare(s: Shell, step: Step, where: string): Promise<boolean> {
   return false;
 }
 
+/**
+ * Sends one request to the oracle's API server with the admin client certificate (admin.crt, as
+ * in admin.conf). Resolves with the status code, the Warning headers' texts and the body.
+ */
+function apiRequest(oracle: OracleState, step: RequestStep): Promise<{ code: number; warnings: string[]; body: string }> {
+  const [method, target] = step.request.split(' ') as [string, string];
+  let payload: string | undefined;
+  if (step.body !== undefined) payload = step.raw ? step.body : JSON.stringify(parseYaml(step.body));
+  const url = new URL(target, oracle.server);
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest(
+      url,
+      {
+        method,
+        ca: readFileSync(path.join(oracle.dir, 'ca.crt')),
+        cert: readFileSync(path.join(oracle.dir, 'admin.crt')),
+        key: readFileSync(path.join(oracle.dir, 'admin.key')),
+        headers: {
+          Accept: 'application/json',
+          ...(payload !== undefined ? { 'Content-Type': step.contentType ?? 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {}),
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => {
+          const raw = res.headers.warning;
+          const list = raw === undefined ? [] : Array.isArray(raw) ? raw : [raw];
+          // RFC 7234 warning: `299 - "text"`, several joined by ", " in one header value.
+          const warnings = list.flatMap((h) => [...h.matchAll(/\d{3} \S+ "((?:[^"\\]|\\.)*)"/g)].map((m) => (m[1] as string).replace(/\\(.)/g, '$1')));
+          resolve({ code: res.statusCode ?? 0, warnings, body: Buffer.concat(chunks).toString('utf8') });
+        });
+      },
+    );
+    req.on('error', reject);
+    if (payload !== undefined) req.write(payload);
+    req.end();
+  });
+}
+
 /** One captured step as written in the fixture. */
 type Record_ = Record<string, unknown>;
 
@@ -132,6 +173,27 @@ async function runCase(file: string, log: (s: string) => void, slot: number): Pr
           objects.push({ ref, ...(c.kwok && KWOK_KINDS.test(ref.replace(/^(-\S+\s+\S+\s+)*/, '')) ? { kwok: true } : {}), object: obj });
         }
         out.push({ objects, ...(ctx.anyWorker ? { anyWorker: true } : {}) });
+        continue;
+      }
+      if ('request' in step) {
+        if (!oracle) throw new Error(`${where}: a request step needs a server`);
+        const r = await apiRequest(oracle, step);
+        let body: unknown = r.body;
+        try {
+          body = JSON.parse(r.body) as unknown;
+        } catch {
+          // Not JSON (a plain-text error): kept as text.
+        }
+        if (step.keep && body !== null && typeof body === 'object') {
+          body = Object.fromEntries(Object.entries(body).filter(([k]) => (step.keep as string[]).includes(k)));
+        }
+        const rec: Record_ = { request: step.request };
+        if (step.contentType) rec.contentType = step.contentType;
+        if (step.body !== undefined) rec.body = step.body;
+        Object.assign(rec, { code: r.code });
+        if (r.warnings.length > 0) rec.warnings = r.warnings.map((w) => normalizeValue(mapOracle(w, ctx), ctx));
+        rec.response = typeof body === 'string' ? normalizeValue(mapOracle(body, ctx), ctx) : normalizeJson(body, ctx);
+        out.push(rec);
         continue;
       }
       const st = step as RunStep;

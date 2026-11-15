@@ -1,0 +1,331 @@
+description: The objects the API server returns on create for minimal and richer manifests of every kind phase 05a ports, with every default filled in.
+kwok: false
+steps:
+  - request: POST /api/v1/namespaces/default/secrets
+    body: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: plain
+      stringData:
+        password: s3cret
+      data:
+        user: YWRtaW4=
+  - request: POST /api/v1/namespaces/default/secrets
+    body: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: tls
+      type: kubernetes.io/tls
+      data:
+        tls.crt: Y2VydA==
+        tls.key: a2V5
+  - request: POST /api/v1/namespaces/default/secrets
+    body: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: badtls
+      type: kubernetes.io/tls
+      data:
+        tls.crt: Y2VydA==
+  - request: POST /api/v1/namespaces/default/serviceaccounts
+    body: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: robot
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: everything
+      immutable: true
+      data:
+        a: "1"
+      binaryData:
+        b: AAE=
+  - request: POST /api/v1/namespaces/default/events
+    body: |
+      apiVersion: v1
+      kind: Event
+      metadata:
+        name: web.1
+      involvedObject:
+        kind: Pod
+        name: web
+        namespace: default
+      reason: Testing
+      message: hello
+      type: Normal
+  - request: POST /apis/events.k8s.io/v1/namespaces/default/events
+    body: |
+      apiVersion: events.k8s.io/v1
+      kind: Event
+      metadata:
+        name: web.2
+      eventTime: "2026-11-13T09:00:00.000000Z"
+      reportingController: example.com/test
+      reportingInstance: test-1
+      action: Testing
+      reason: Testing
+      regarding:
+        kind: Pod
+        name: web
+        namespace: default
+      note: hello
+      type: Normal
+  - request: POST /apis/apps/v1/namespaces/default/replicasets
+    body: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        name: rs
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: rs
+        template:
+          metadata:
+            labels:
+              app: rs
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: recreate
+        labels:
+          app: recreate
+      spec:
+        replicas: 0
+        strategy:
+          type: Recreate
+        selector:
+          matchLabels:
+            app: recreate
+        template:
+          metadata:
+            labels:
+              app: recreate
+          spec:
+            initContainers:
+            - name: init
+              image: busybox:1.37
+              command: [sh, -c, "true"]
+            containers:
+            - name: app
+              image: nginx:latest
+              ports:
+              - containerPort: 80
+                name: http
+              env:
+              - name: POD_IP
+                valueFrom:
+                  fieldRef:
+                    fieldPath: status.podIP
+              - name: FROM_CM
+                valueFrom:
+                  configMapKeyRef:
+                    name: cfg
+                    key: k
+              readinessProbe:
+                httpGet:
+                  path: /healthz
+                  port: http
+              livenessProbe:
+                tcpSocket:
+                  port: 80
+              startupProbe:
+                exec:
+                  command: [cat, /etc/ready]
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 128Mi
+              volumeMounts:
+              - name: cfg
+                mountPath: /etc/cfg
+              - name: secret
+                mountPath: /etc/secret
+              - name: scratch
+                mountPath: /scratch
+              - name: host
+                mountPath: /host
+            - name: sidecar
+              image: registry.k8s.io/pause
+              imagePullPolicy: Always
+            volumes:
+            - name: cfg
+              configMap:
+                name: cfg
+            - name: secret
+              secret:
+                secretName: s
+            - name: scratch
+              emptyDir: {}
+            - name: host
+              hostPath:
+                path: /var/log
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: nodeport
+      spec:
+        type: NodePort
+        selector:
+          app: web
+        ports:
+        - name: http
+          port: 80
+          targetPort: http
+        - name: dns
+          port: 53
+          protocol: UDP
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: headless
+      spec:
+        clusterIP: None
+        selector:
+          app: web
+        ports:
+        - port: 80
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: external
+      spec:
+        type: ExternalName
+        externalName: example.com
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: lb
+      spec:
+        type: LoadBalancer
+        selector:
+          app: web
+        ports:
+        - port: 443
+          targetPort: 8443
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: fixedip
+      spec:
+        clusterIP: 10.96.100.100
+        ports:
+        - port: 80
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: takenip
+      spec:
+        clusterIP: 10.96.100.100
+        ports:
+        - port: 80
+  - request: POST /api/v1/namespaces/default/endpoints
+    body: |
+      apiVersion: v1
+      kind: Endpoints
+      metadata:
+        name: manual
+      subsets:
+      - addresses:
+        - ip: 10.244.1.5
+        ports:
+        - port: 8080
+  - request: POST /apis/discovery.k8s.io/v1/namespaces/default/endpointslices
+    body: |
+      apiVersion: discovery.k8s.io/v1
+      kind: EndpointSlice
+      metadata:
+        name: manual-1
+        labels:
+          kubernetes.io/service-name: manual
+      addressType: IPv4
+      endpoints:
+      - addresses:
+        - 10.244.1.5
+      ports:
+      - port: 8080
+  - request: POST /apis/discovery.k8s.io/v1/namespaces/default/endpointslices
+    body: |
+      apiVersion: discovery.k8s.io/v1
+      kind: EndpointSlice
+      metadata:
+        name: empty-1
+      addressType: IPv4
+      endpoints: []
+  - request: POST /apis/coordination.k8s.io/v1/namespaces/default/leases
+    body: |
+      apiVersion: coordination.k8s.io/v1
+      kind: Lease
+      metadata:
+        name: lock
+      spec:
+        holderIdentity: me
+        leaseDurationSeconds: 15
+  - request: POST /api/v1/nodes
+    body: |
+      apiVersion: v1
+      kind: Node
+      metadata:
+        name: node09
+        labels:
+          kubernetes.io/hostname: node09
+      spec:
+        podCIDR: 10.244.9.0/24
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: minimal
+      spec:
+        schedulerName: nobody
+        containers:
+        - name: app
+          image: nginx
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: guaranteed
+        namespace: default
+      spec:
+        schedulerName: nobody
+        restartPolicy: OnFailure
+        automountServiceAccountToken: false
+        hostNetwork: true
+        containers:
+        - name: app
+          image: nginx:1.27
+          resources:
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          ports:
+          - containerPort: 8080

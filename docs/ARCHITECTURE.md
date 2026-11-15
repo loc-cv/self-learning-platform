@@ -1154,14 +1154,19 @@ are taken from upstream by the phase that implements each part.
 interface K8sSlice {
   /** etcd data, per data directory: `<machine>:<path>` → the stored objects. */
   etcd: Record<string, EtcdData>;
-  /** One per API server process: its watch subscriptions. */
+  /** Watch subscriptions of every API server, with their undelivered events. */
   watches: Table<WatchSubscription>;
-  /** Per controller-manager, scheduler and kubelet instance: queues and bookkeeping. */
-  components: Record<string, ComponentState>;
-  runtimes: Record<string, RuntimeState>;      // per node: sandboxes, containers, images
-  network: ClusterNetState;                    // allocations, kube-proxy and CNI state per node
+  // Added by later phases: components (controller, scheduler and kubelet queues), runtimes
+  // (sandboxes, containers, images per node), network (kube-proxy and CNI state per node).
 }
 ```
+
+Code: `packages/k8s/src/apiserver/store.ts` (store, watch), `pipeline.ts` (request handling),
+`types.ts` (requests, responses, the strategy contract), `admission.ts`, `bootstrap.ts`;
+`packages/k8s/src/registry/<group>/<resource>.ts` (strategies),
+`packages/k8s/src/apis/<group>/` (defaulting and validation ported from `pkg/apis`),
+`packages/k8s/src/apimachinery/` (Go JSON semantics, field errors, Status errors, selectors,
+quantities, merge patch), `packages/k8s/src/client/client.ts`.
 
 ### 4.1 Store and watch
 
@@ -1169,25 +1174,29 @@ interface K8sSlice {
 interface EtcdData {
   /** Global revision; each write increments it and becomes the object's resourceVersion. */
   revision: number;
-  /** `<group>/<resource>` → `<namespace>/<name>` (or `<name>`) → object. */
+  /** Storage resource (`pods`, `deployments.apps`; `events` for both Event APIs) → key → object. */
   resources: Record<string, Table<ApiObject>>;
+  /** Keys that are not API objects: allocator ranges. A write takes a revision too. */
+  ranges: Table<Json>;
+  /** Recent changes, so that a watch can start from a past resourceVersion. */
+  history: Table<HistoryEntry>;
 }
 
 interface WatchSubscription {
   id: string;
-  /** API server it was opened against. */
-  server: string;
-  resource: string;
+  etcd: string;            // the data directory the watched server reads
+  storage: string;         // storage resource
+  group: string; version: string; resource: string;   // the API it was opened on (events convert to it)
   namespace?: string;
-  selector?: { labels?: string; fields?: string };
-  owner: { kind: 'proc'; machine: string; pid: string } | { kind: 'component'; id: string };
-  /** Events not yet consumed, in order. */
-  pending: WatchEvent[];
+  labelSelector?: string;  // selector strings; matching recompiles them
+  fieldSelector?: string;
+  owner: Json;             // for cleanup when the owner goes away
+  pending: WatchEvent[];   // events not yet consumed, in order
 }
 
 interface WatchEvent {
   type: 'ADDED' | 'MODIFIED' | 'DELETED';
-  object: ApiObject;
+  object: ApiObject;       // storage version
 }
 ```
 
@@ -1201,7 +1210,13 @@ interface WatchEvent {
   costs one table copy.
 - **Watch.** After a write is persisted, the store appends a `WatchEvent` to every subscription
   it matches (resource, namespace, selectors, in subscription id order) and publishes
-  `k8s.watch:<id>`. A `kubectl get -w` process waits on that topic; a component's subscription
+  `k8s.watch:<id>`. As the watch cache does, a watcher whose selector stops matching an object
+  sees DELETED and one that starts matching sees ADDED. A watch opened without a resourceVersion
+  (or with "0") starts with ADDED for every current object in key order; one opened at a past
+  revision replays the changes after it from `history`, which keeps at least the last 100 events
+  and every event younger than 75 s (upstream: `apiserver/pkg/storage/cacher`
+  `watch_cache_history.go`, `DefaultEventFreshDuration`); older revisions are `Expired`
+  (`too old resource version: N (M)`). A `kubectl get -w` process waits on that topic; a component's subscription
   feeds its work queue (§4.3). Subscriptions are world data; they are removed when their owner
   exits or the API server stops.
 - A list returns objects in key order, as etcd does.
@@ -1216,37 +1231,38 @@ snapshot restore) and fault injectors that model etcd-level damage.
 
 ```ts
 interface ApiRequest {
-  verb: 'get' | 'list' | 'watch' | 'create' | 'update' | 'patch' | 'delete' | 'deletecollection';
+  verb: 'get' | 'list' | 'watch' | 'create' | 'update' | 'patch' | 'delete';
   /** Resolved from the URL path by discovery. */
   group: string;
   version: string;
   resource: string;
-  subresource?: string;
+  subresource?: string;   // status, scale
   namespace?: string;
   name?: string;
   body?: Json;
-  options: {
+  options?: {
     dryRun?: boolean;
     fieldManager?: string;
-    fieldValidation?: 'Strict' | 'Warn' | 'Ignore';
+    fieldValidation?: string;          // Strict | Warn | Ignore; absent means Warn
     labelSelector?: string;
     fieldSelector?: string;
+    resourceVersion?: string;          // where a watch starts
     propagationPolicy?: string;
+    orphanDependents?: boolean;
     gracePeriodSeconds?: number;
-    patchType?: string;
-    force?: boolean;
+    preconditions?: { uid?: string; resourceVersion?: string };
+    patchType?: 'merge' | 'json' | 'strategic' | 'apply';   // only merge so far
   };
-  /** Presented by the client: certificate or token from its kubeconfig or service account. */
-  credentials: Credentials;
-  /** Where the request comes from, for reachability. */
-  source: { machine: string; pid?: string };
+  /** Filled by authentication from the client's credentials (phase 20a). */
+  user?: { username: string; groups: string[] };
 }
 
 type ApiResponse =
   | { ok: true; code: number; object: Json; warnings: string[] }
-  | { ok: false; status: StatusObject; warnings: string[] };   // metav1.Status, as the server returns it
+  | { ok: false; code: number; status: Status; warnings: string[] }      // metav1.Status, as the server returns it
+  | { ok: false; code: 0; notSimulated: string; warnings: string[] };   // a gap: the client prints a [sim] notice
 
-type ClientResult =
+type ClientResult =                    // from the transport, added with kubeconfig handling (phase 07a)
   | { kind: 'response'; response: ApiResponse }
   | { kind: 'transport'; error: ConnectResult };   // refused, timeout, could not resolve, TLS failure
 ```
@@ -1275,13 +1291,30 @@ flowchart TB
   of stages; the configuration of the API server process that received the request selects and
   parameterizes them. An API server started with other flags behaves differently because the
   pipeline reads those flags, not because a scenario said so.
-- The order above restates `PLAN.md` §7. Phase 05a verifies the order of defaulting, admission and
-  validation against upstream (`staging/src/k8s.io/apiserver/pkg/endpoints/handlers/`) and corrects
-  this diagram if they differ.
+- **Verified order** (phase 05a, `staging/src/k8s.io/apiserver/pkg/endpoints/handlers/create.go`,
+  `registry/rest/create.go` `BeforeCreate`, `registry/generic/registry/store.go`). Defaulting
+  happens while decoding, before admission, and authentication and authorization come first, as
+  drawn. What the diagram compresses: on create, mutating admission is followed by the store's
+  own steps, in order: `generateName` (up to 8 attempts while the name is taken), `uid` and
+  `creationTimestamp`, the strategy's `PrepareForCreate`, `Validate` (and the generic ObjectMeta
+  check only if that found nothing), warnings, `Canonicalize`; then validating admission; then
+  storage allocation (Service IPs and ports); then the write, which is where `AlreadyExists` is
+  decided. On update the order is namespace and name checks, mutating admission, existence and
+  `resourceVersion` (Conflict, or unconditional where the strategy allows), `BeforeUpdate`
+  (generation and system fields from the old object, `PrepareForUpdate`, ObjectMeta update
+  checks, `ValidateUpdate`), validating admission, then either removal (the last finalizer of an
+  object being deleted with no grace left) or the write; an update that changes nothing is not
+  written. A patch decodes and defaults the merged object, then takes the update path. Deletion
+  runs `BeforeDelete` (graceful deletion for Pods), then finalizers and propagation, then removal.
+  `pipeline.ts` cites the functions step by step.
+- Admission is an explicit chain (`admission.ts`). Only NamespaceLifecycle exists before phase
+  20b (D-039).
 - Errors are `metav1.Status` objects built by ported upstream functions, so that `kubectl` prints
   them through its own formatting as the real one does.
 - The pipeline is synchronous: a request is handled within one event. Modeled latency belongs to
   the caller (a controller's reaction time), not to the request.
+- Kinds the simulator has no strategy for answer with a gap (`notSimulated`), which a client
+  turns into a `[sim]` notice; the registry still lists every resource the real server serves.
 - A **client library** used by `kubectl`, controllers and kubelets wraps this: it reads a
   kubeconfig (or in-cluster credentials) from the VFS of the calling machine, connects through the
   network model, and returns a `ClientResult`. `kubectl` turning a transport error into its
@@ -1439,6 +1472,36 @@ Each step that changes the outcome emits a trace record (which policy dropped it
 had no endpoints). The result carries only what a real client could observe; the explanation is
 in the trace.
 
+### 4.6 Vendored schema and resource registry
+
+`npm run api:vendor` (`tools/src/openapi/vendor.ts`) writes per Kubernetes version:
+
+- `packages/k8s/src/openapi/data/<tag>.ts`: every type reachable from a served kind. The
+  OpenAPI v3 documents give the structure and annotations, but not what encoding/json does, so
+  the tool also reads the Go type declarations of the API packages (`tools/src/openapi/gotypes.ts`)
+  and fails if the two disagree. Per struct: each field's JSON name, its Go type as an expression
+  (`*int32`, `[]@core/v1.Container`, `map[string]string`, `bytes`), `omitempty`/`omitzero`,
+  OpenAPI `required`, list type and keys, patch strategy and merge key, enum values. Named
+  non-struct types keep their underlying type (`v1.RestartPolicy` → `string`), and types with
+  their own JSON methods are marked (`time`, `microtime`, `quantity`, `intstr`, `json`, …). The
+  Go display names (`v1.PodSpec`) are what encoding/json prints in type errors.
+  `apimachinery/gojson.ts` decodes request bodies against this (case-sensitive fields, strict
+  unknown-field detection, the first type error kept, custom unmarshallers' errors) and encodes
+  results as Go does (struct fields in declaration order, map keys sorted, `omitempty`,
+  `omitzero`, nil as `null`): decode plus encode is the canonical form stored and returned.
+- `packages/k8s/src/discovery/data/<tag>.ts`: the resource registry, from the real API server's
+  discovery documents (`fixtures/golden/<tag>/api/discovery.yaml`, captured by the oracle):
+  groups in discovery order with their versions and preferred version, and per group version every
+  resource and subresource with its singular name, kind (and the kind's group and version for
+  subresources such as `scale`), scope, verbs, short names, categories and storage version hash.
+- Field and type descriptions for `kubectl explain` (739 KiB at v1.37.2) are written only with
+  `--descriptions`, once explain exists (D-038).
+
+The data is a JSON string in a TypeScript module, parsed on first use and cached outside world
+state (§2.12). Measured with `npm run bench:schema` (phase 05a, this workstation): the schema is
+223 KiB (26 KiB gzipped) and the registry 28 KiB (3 KiB); parsing the schema takes about 4 ms,
+building all 760 types reachable from the 142 kinds about 17 ms, the registry about 1.4 ms.
+
 ## 5. The hard questions, answered in one place
 
 **How do blocking programs stay deterministic?** A program is a synchronous generator that
@@ -1490,7 +1553,7 @@ Each item is decided by the phase named, and recorded here when decided.
 | Line editor key bindings (bash 5.2.21's `bind -p`, D-027); SGR style of the `[sim]` notice (yellow, D-026): **decided in 03** | 03 |
 | Normalization tokens (`<<kind>>`, `packages/host/src/transcript/tokens.ts`; D-034, D-035): **decided in 04** | 04 |
 | Provenance registry implementation (`prompts/07a-kubectl-framework-and-get.md`) | 07a |
-| Processed OpenAPI format; exact pipeline stage order verified against upstream | 05a |
+| Processed OpenAPI format (§4.6); exact pipeline stage order verified against upstream (§4.2): **decided in 05a** | 05a |
 | Work queue backoff parameters, controller latencies with their sources | 05b |
 | Declarative behavior model fields beyond `docs/SCENARIO_FORMAT.md` §5.4; image catalog format | 06b |
 | Certificate stand-in format | 25b |

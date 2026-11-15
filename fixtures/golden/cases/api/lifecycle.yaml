@@ -1,0 +1,128 @@
+description: Generation, the status subresource, graceful deletion of Pods, propagation policies and namespace deletion through the raw API.
+kwok: false
+steps:
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: gen
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+      status:
+        replicas: 7
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/gen
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: gen
+        labels:
+          only: metadata
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: gen
+        template:
+          metadata:
+            labels:
+              app: gen
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/gen
+    contentType: application/merge-patch+json
+    body: '{"spec":{"template":{"spec":{"containers":[{"name":"app","image":"nginx:1.28"}]}}},"status":{"replicas":9}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/gen/status
+    contentType: application/merge-patch+json
+    body: '{"spec":{"paused":true},"status":{"collisionCount":4}}'
+  - request: GET /apis/apps/v1/namespaces/default/deployments/gen/status
+  - request: GET /apis/apps/v1/namespaces/default/deployments/gen/scale
+  - request: DELETE /apis/apps/v1/namespaces/default/deployments/gen?propagationPolicy=Foreground
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: orphaned
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: orphaned
+        template:
+          metadata:
+            labels:
+              app: orphaned
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  - request: DELETE /apis/apps/v1/namespaces/default/deployments/orphaned?propagationPolicy=Orphan
+  - request: DELETE /apis/apps/v1/namespaces/default/deployments/orphaned?propagationPolicy=Sideways
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: bound
+      spec:
+        nodeName: node01
+        terminationGracePeriodSeconds: 45
+        containers:
+        - name: app
+          image: nginx:1.27
+  - request: DELETE /api/v1/namespaces/default/pods/bound
+  - request: DELETE /api/v1/namespaces/default/pods/bound?gracePeriodSeconds=10
+  - request: PATCH /api/v1/namespaces/default/pods/bound
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"labels":{"late":"label"}}}'
+  - request: DELETE /api/v1/namespaces/default/pods/bound?gracePeriodSeconds=0
+  - request: GET /api/v1/namespaces/default/pods/bound
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: unbound
+      spec:
+        schedulerName: nobody
+        containers:
+        - name: app
+          image: nginx:1.27
+  - request: DELETE /api/v1/namespaces/default/pods/unbound
+  - request: GET /api/v1/namespaces/default/pods/unbound
+  - request: POST /api/v1/namespaces
+    body: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: doomed
+  - request: DELETE /api/v1/namespaces/doomed
+  - request: POST /api/v1/namespaces/doomed/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: late
+  - request: DELETE /api/v1/namespaces/default/configmaps/nope?dryRun=All
+  - request: POST /api/v1/namespaces/default/configmaps?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: dry
+  - request: GET /api/v1/namespaces/default/configmaps/dry

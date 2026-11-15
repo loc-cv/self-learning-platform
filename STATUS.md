@@ -18,7 +18,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 02 `prompts/02-shell-and-coreutils.md`
 - [x] 03 `prompts/03-tty-and-terminal-player.md`
 - [x] 04 `prompts/04-oracle-and-golden-fixtures.md` (needs only 00; can run earlier)
-- [ ] 05a `prompts/05a-k8s-api-store-and-pipeline.md`
+- [x] 05a `prompts/05a-k8s-api-store-and-pipeline.md`
 - [ ] 05b `prompts/05b-k8s-controllers.md`
 - [ ] 06a `prompts/06a-topology-and-scheduler.md`
 - [ ] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
@@ -108,6 +108,25 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   - bash-completion (which Ubuntu's `.bashrc` loads) is reproduced by completers: builtin ones in
     `shell/complete.ts` (`cd`, `pushd`) and `ProgramSpec.complete`. These stay after 22a, since our
     bash will not run bash-completion's scripts; 22a only stops pretending the files ran.
+- **Default admission plugins other than NamespaceLifecycle are missing** (D-039): new Pods get
+  no `serviceAccountName: default`, `kube-api-access-*` volume and mount (ServiceAccount), no
+  not-ready/unreachable tolerations (DefaultTolerationSeconds), no `priority`/`preemptionPolicy`
+  (Priority); new Nodes no `node.kubernetes.io/not-ready:NoSchedule` taint (TaintNodesByCondition).
+  The differential tests strip exactly these fields (D-046, `POD_ADMISSION` in
+  `tools/src/golden/api.test.ts`, `NOT_THE_API_SERVERS` in `defaulted.test.ts`, one KNOWN entry
+  for the Node). Phase 20b adds the plugins and removes the stripping.
+- **The API server's configuration is passed by callers** (`DEFAULT_APISERVER` in
+  `packages/k8s/src/apiserver/config.ts`: etcd data id, service range, NodePort range, advertise
+  address, secure port), and it is bootstrapped by calling `bootstrapApiServer`. Phase 27 reads
+  them from the static Pod manifest's flags and starts the server as a process.
+- **The API server's own reconcilers do not run**: deleting the `kubernetes` Service, its
+  Endpoints or EndpointSlice does not bring them back (upstream re-creates them every 10 s), and
+  the `kubernetes` ServiceCIDR has no servicecidrs-controller finalizer. Phase 27 (the API server
+  as a process with its loops), or 05b if a controller needs them first.
+- **The client calls the pipeline directly** (`packages/k8s/src/client/client.ts`): no kubeconfig,
+  credentials or network. Phase 07a adds the transport and connection errors.
+- **The scale subresource is read-only** (D-045): writes are a gap. The phase that builds
+  `kubectl scale` (08) implements them.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
@@ -115,6 +134,15 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 ## Carry-over
 
 Unfinished work from a phase, precise enough for the next session to continue.
+
+- **Phase 05a, API warnings (DIV-017).** `pkg/api/pod/warnings.go` (GetWarningsForPod,
+  GetWarningsForPodTemplate) was not in the checkout; it is now. Port it into the Pod, Deployment
+  and ReplicaSet strategies' `warningsOnCreate`/`warningsOnUpdate`, and check the Service
+  warnings of `apis/core/validation/service.ts` (written from oracle probes) against
+  `pkg/api/service/warnings.go`. Owner: phase 07b (apply and create print warnings), or R3.
+- **Phase 05a, the Pod update diff (DIV-016).** Optional: generate the internal PodSpec layout
+  from `pkg/apis/core/types.go` with `tools/src/openapi/gotypes.ts` and port go-difflib's unified
+  diff into `apis/core/validation/podspecdiff.ts`. Owner: R3 if learners report it.
 
 - **Phase 02, program names in messages (DIV-011).** GNU tools print their `argv[0]` as typed.
   `programs/lib/io.ts` (`parseArgs`, `warn`, `usageError`), `lib/argmatch.ts` and about 25 programs
@@ -128,6 +156,63 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 05a done.** The API server: vendored schema and registry, store and watch,
+  request pipeline, 13 kinds (plus IPAddress and ServiceCIDR minimally), a client.
+  - Built: `npm run api:vendor` (`tools/src/openapi/`: OpenAPI v3 plus a reader of the Go type
+    declarations, which give encoding/json's behavior; D-038) writes the schema
+    (`packages/k8s/src/openapi/data/v1.37.2.ts`) and the resource registry from the oracle's
+    discovery (`src/discovery/`; D-041). `src/apimachinery/`: Go JSON decode/encode against the
+    schema (`gojson.ts`), field errors and Status errors in upstream formats, names and ObjectMeta
+    validation, label and field selectors, quantities, IntOrString, merge patch, times, IP/CIDR,
+    base64/PEM. `src/apiserver/`: store (etcd data per data directory, revisions, watch
+    subscriptions, a 75 s/100-event history), the pipeline (stage order verified and documented in
+    `docs/ARCHITECTURE.md` §4.2), NamespaceLifecycle admission (D-039), bootstrap. Strategies in
+    `src/registry/`, defaulting and validation in `src/apis/`: Namespace, ConfigMap, Secret,
+    ServiceAccount, Node, Pod, Service (IP allocation through IPAddress objects, NodePorts), Endpoints,
+    EndpointSlice, Event in both APIs on one storage (D-044), Deployment, ReplicaSet, Lease.
+    `src/client/client.ts`. The golden case format has a `request` step; five raw API cases in
+    `fixtures/golden/cases/api/` (discovery, crud, lifecycle, validation, defaults).
+  - Exit criteria. Defaulted objects: `tools/src/golden/defaulted.test.ts` creates
+    `objects/defaulted`'s manifests through the pipeline and gets the stored objects back
+    (minus controller, KWOK and admission fields, named per field); `api/defaults` covers every
+    kind of the phase. Validation messages: every step of `api/validation` (missing selector,
+    mismatch, names, unknown field strict and warn, wrong types, immutable selector, Pod update
+    rules, Services, ConfigMaps, Namespaces) matches the real server's Status body byte for byte,
+    except the Pod update's diff (DIV-016). Concurrency, finalizers, graceful deletion and
+    selectors: `api/crud`, `api/lifecycle` steps and `apiserver/pipeline.test.ts`. Watch order and
+    world hash: `pipeline.test.ts` (same seed → same hash, snapshot/restore, fork independence).
+    Schema size and load time: `docs/ARCHITECTURE.md` §4.6 (`npm run bench:schema`). Divergences:
+    DIV-015 (managedFields), DIV-016, DIV-017 (Pod warnings), DIV-018 (Event TTL). Exercised live:
+    an ad-hoc probe sent new requests (not in any fixture) to a running oracle and to the
+    simulator; all matched except allocated IPs/NodePorts (random) and admission fields. No
+    program can reach the API yet, so there was nothing to try in `npm run play`.
+  - Surprises. The real server de-duplicates Invalid causes, not only the message (checked on the
+    oracle; upstream source suggests otherwise). Strict field errors on a merge patch are a 422 on
+    the field `patch`, not a 400. Pods have `generation` (1 on create, +1 on spec change and on
+    graceful deletion); Deployments bump it on annotation changes too. A DELETE of a ConfigMap
+    answers a Success Status without `code`; Pods, Services, Namespaces return the object. An
+    unbound Pod is stored with a deletionTimestamp and removed in the same request. Lease refuses
+    unconditional updates with an Invalid naming the resource (`leases.coordination.k8s.io`).
+    ClusterIPs come from the upper half of the range first; dry-run Services show 10.96.0.0 and
+    NodePorts 32769, 32770, …. `image: nginx` (no tag) defaults to `imagePullPolicy: Always`.
+    The workstation's Go 1.27 prints JSON errors in jsonv2 wording, the oracle in the old one, so the
+    oracle is the reference for Go library messages. Feature gate defaults are in
+    `pkg/features/kube_features.go` (added to the checkout at the end; the Pod port used the
+    oracle's `/metrics`, `apis/core/validation/options.ts`).
+  - For later phases. 05b: watch with `client.resource(…).watch(ns, {resourceVersion}, owner)`
+    and read events after `k8s.watch:<id>` is published; list then watch at the list's
+    resourceVersion is replayed from history; `namespaces/finalize` (the namespace controller's
+    subresource) is not served yet; `lifecycle#6`'s KNOWN entry goes when the deployment
+    controller writes the revision annotation. 07a: `ApiResponse` has a third case,
+    `notSimulated`, for the `[sim]` notice; warnings come back in `warnings`; Status bodies are
+    what kubectl formats (`errors/validation` shows kubectl's renderings of the same errors).
+    20b: delete the admission stripping in the differential tests (D-046).
+  - Upstream checkout gained `apiserver/pkg/storage`, `kube-aggregator/pkg/apis`,
+    `pkg/controlplane`, `pkg/api`, `pkg/features`.
+  - Workflow: three research and helper agents (request semantics, Quantity, selectors and merge
+    patch) and three kind agents (Pod/apps, Service/endpoints, the rest) worked in parallel on the
+    core written first; a running oracle answered their questions.
 
 - 2026-11-16 — **Phase 04 done.** The real control plane as an oracle; 20 golden cases captured.
   - Built: `tools/src/oracle/` (`binaries.ts` fetches and verifies kube-apiserver,

@@ -1,0 +1,911 @@
+# Captured from fixtures/golden/cases/api/crud.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: api/crud
+description: Create, read, update, patch and delete through the raw API - Status errors, optimistic concurrency, generateName, selectors and finalizers.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+        labels:
+          app: one
+          tier: web
+      data:
+        k: v
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cm1
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: one
+          tier: web
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:k: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+                  f:tier: {}
+      data:
+        k: v
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+    code: 409
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "cm1" already exists
+      reason: AlreadyExists
+      details:
+        name: cm1
+        kind: configmaps
+      code: 409
+  - request: GET /api/v1/namespaces/default/configmaps/cm1
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cm1
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: one
+          tier: web
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:k: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+                  f:tier: {}
+      data:
+        k: v
+  - request: GET /api/v1/namespaces/default/configmaps/nope
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        kind: configmaps
+      code: 404
+  - request: GET /api/v1/namespaces/nowhere/configmaps/nope
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        kind: configmaps
+      code: 404
+  - request: PUT /api/v1/namespaces/default/configmaps/cm1
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+        resourceVersion: "1"
+      data:
+        k: stale
+    code: 409
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Operation cannot be fulfilled on configmaps "cm1": the object has been modified; please apply your changes to the latest version and try again'
+      reason: Conflict
+      details:
+        name: cm1
+        kind: configmaps
+      code: 409
+  - request: PUT /api/v1/namespaces/default/configmaps/cm1
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+        labels:
+          app: one
+          tier: web
+      data:
+        k: unconditional
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cm1
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: one
+          tier: web
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:k: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+                  f:tier: {}
+      data:
+        k: unconditional
+  - request: PUT /api/v1/namespaces/default/configmaps/cm1
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: other
+      data:
+        k: v
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the name of the object (other) does not match the name on the URL (cm1)
+      reason: BadRequest
+      code: 400
+  - request: PUT /api/v1/namespaces/default/configmaps/nope
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: nope
+      data:
+        k: v
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        kind: configmaps
+      code: 404
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: elsewhere
+        namespace: kube-system
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the namespace of the provided object does not match the namespace sent on the request
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: wrongkind
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Secret in version "v1" cannot be handled as a ConfigMap: converting (v1.Secret) to (core.ConfigMap): unknown conversion'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          app: nameless
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'ConfigMap "" is invalid: metadata.name: Required value: name or generateName is required'
+      reason: Invalid
+      details:
+        kind: ConfigMap
+        causes:
+          - reason: FieldValueRequired
+            message: "Required value: name or generateName is required"
+            field: metadata.name
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/cm1
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"labels":{"tier":null,"patched":"yes"}},"data":{"k2":"v2"}}'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cm1
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: one
+          patched: yes
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:k: {}
+                f:k2: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+                  f:patched: {}
+      data:
+        k: unconditional
+        k2: v2
+  - request: PATCH /api/v1/namespaces/default/configmaps/cm1
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"resourceVersion":"1"},"data":{"k3":"v3"}}'
+    code: 409
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Operation cannot be fulfilled on configmaps "cm1": the object has been modified; please apply your changes to the latest version and try again'
+      reason: Conflict
+      details:
+        name: cm1
+        kind: configmaps
+      code: 409
+  - request: PATCH /api/v1/namespaces/default/configmaps/cm1
+    contentType: application/merge-patch+json
+    body: '{"data":'
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: invalid JSON patch
+      reason: BadRequest
+      code: 400
+  - request: PATCH /api/v1/namespaces/default/configmaps/nope
+    contentType: application/merge-patch+json
+    body: '{"data":{"a":"b"}}'
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        kind: configmaps
+      code: 404
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        generateName: gen-
+        labels:
+          app: two
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: gen-<<suffix>>
+        generateName: gen-
+        namespace: default
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: two
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:generateName: {}
+                f:labels:
+                  .: {}
+                  f:app: {}
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm3
+        labels:
+          app: three
+          tier: db
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cm3
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: three
+          tier: db
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+                  f:tier: {}
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%3Done
+    code: 200
+    response:
+      kind: ConfigMapList
+      apiVersion: v1
+      items:
+        - metadata:
+            name: cm1
+            namespace: default
+            uid: <<uid:1>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            labels:
+              app: one
+              patched: yes
+            managedFields:
+              - manager: unknown
+                operation: Update
+                apiVersion: v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:data:
+                    .: {}
+                    f:k: {}
+                    f:k2: {}
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                      f:patched: {}
+          data:
+            k: unconditional
+            k2: v2
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%20in%20(two%2Cthree)%2C!patched
+    code: 200
+    response:
+      kind: ConfigMapList
+      apiVersion: v1
+      items:
+        - metadata:
+            name: cm3
+            namespace: default
+            uid: <<uid:3>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            labels:
+              app: three
+              tier: db
+            managedFields:
+              - manager: unknown
+                operation: Update
+                apiVersion: v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                      f:tier: {}
+        - metadata:
+            name: gen-<<suffix>>
+            generateName: gen-
+            namespace: default
+            uid: <<uid:2>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            labels:
+              app: two
+            managedFields:
+              - manager: unknown
+                operation: Update
+                apiVersion: v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:metadata:
+                    f:generateName: {}
+                    f:labels:
+                      .: {}
+                      f:app: {}
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=tier
+    code: 200
+    response:
+      kind: ConfigMapList
+      apiVersion: v1
+      items:
+        - metadata:
+            name: cm3
+            namespace: default
+            uid: <<uid:3>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            labels:
+              app: three
+              tier: db
+            managedFields:
+              - manager: unknown
+                operation: Update
+                apiVersion: v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                      f:tier: {}
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%3D%3D%3Done
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "unable to parse requirement: found '=', expected: identifier"
+      reason: BadRequest
+      code: 400
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%20notin%20two
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "unable to parse requirement: found 'two' expected: '('"
+      reason: BadRequest
+      code: 400
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=Bad%20Key%3Dx
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "unable to parse requirement: found 'Key', expected: in, notin, =, ==, !=, gt, lt"
+      reason: BadRequest
+      code: 400
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name%3Dcm3
+    code: 200
+    response:
+      kind: ConfigMapList
+      apiVersion: v1
+      items:
+        - metadata:
+            name: cm3
+            namespace: default
+            uid: <<uid:3>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            labels:
+              app: three
+              tier: db
+            managedFields:
+              - manager: unknown
+                operation: Update
+                apiVersion: v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                      f:tier: {}
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name!%3Dcm3%2Cmetadata.namespace%3Ddefault&labelSelector=app
+    code: 200
+    response:
+      kind: ConfigMapList
+      apiVersion: v1
+      items:
+        - metadata:
+            name: cm1
+            namespace: default
+            uid: <<uid:1>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            labels:
+              app: one
+              patched: yes
+            managedFields:
+              - manager: unknown
+                operation: Update
+                apiVersion: v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:data:
+                    .: {}
+                    f:k: {}
+                    f:k2: {}
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                      f:patched: {}
+          data:
+            k: unconditional
+            k2: v2
+        - metadata:
+            name: gen-<<suffix>>
+            generateName: gen-
+            namespace: default
+            uid: <<uid:2>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            labels:
+              app: two
+            managedFields:
+              - manager: unknown
+                operation: Update
+                apiVersion: v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:metadata:
+                    f:generateName: {}
+                    f:labels:
+                      .: {}
+                      f:app: {}
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=data.k%3Dv
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: '"data.k" is not a known field selector: only "metadata.name", "metadata.namespace"'
+      reason: BadRequest
+      code: 400
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "invalid selector: 'metadata.name'; can't understand 'metadata.name'"
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: held
+        finalizers:
+          - example.com/hold
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: held
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        finalizers:
+          - example.com/hold
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:finalizers:
+                  .: {}
+                  v:"example.com/hold": {}
+  - request: DELETE /api/v1/namespaces/default/configmaps/held
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: held
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        finalizers:
+          - example.com/hold
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:finalizers:
+                  .: {}
+                  v:"example.com/hold": {}
+  - request: GET /api/v1/namespaces/default/configmaps/held
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: held
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        finalizers:
+          - example.com/hold
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:finalizers:
+                  .: {}
+                  v:"example.com/hold": {}
+  - request: DELETE /api/v1/namespaces/default/configmaps/held
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: held
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        finalizers:
+          - example.com/hold
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:finalizers:
+                  .: {}
+                  v:"example.com/hold": {}
+  - request: PATCH /api/v1/namespaces/default/configmaps/held
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"finalizers":["example.com/hold","example.com/another"]}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'ConfigMap "held" is invalid: metadata.finalizers: Forbidden: no new finalizers can be added if the object is being deleted, found new finalizers []string{"example.com/another"}'
+      reason: Invalid
+      details:
+        name: held
+        kind: ConfigMap
+        causes:
+          - reason: FieldValueForbidden
+            message: 'Forbidden: no new finalizers can be added if the object is being deleted, found new finalizers []string{"example.com/another"}'
+            field: metadata.finalizers
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/held
+    contentType: application/merge-patch+json
+    body: '{"data":{"still":"writable"}}'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: held
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        finalizers:
+          - example.com/hold
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:still: {}
+              f:metadata:
+                f:finalizers:
+                  .: {}
+                  v:"example.com/hold": {}
+      data:
+        still: writable
+  - request: PATCH /api/v1/namespaces/default/configmaps/held
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"finalizers":null}}'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: held
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:still: {}
+      data:
+        still: writable
+  - request: GET /api/v1/namespaces/default/configmaps/held
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "held" not found
+      reason: NotFound
+      details:
+        name: held
+        kind: configmaps
+      code: 404
+  - request: DELETE /api/v1/namespaces/default/configmaps/cm3
+    code: 200
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Success
+      details:
+        name: cm3
+        kind: configmaps
+        uid: <<uid:3>>
+  - request: DELETE /api/v1/namespaces/default/configmaps/cm3
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "cm3" not found
+      reason: NotFound
+      details:
+        name: cm3
+        kind: configmaps
+      code: 404
+  - request: DELETE /api/v1/namespaces/default/configmaps/cm1?gracePeriodSeconds=30
+    code: 200
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Success
+      details:
+        name: cm1
+        kind: configmaps
+        uid: <<uid:1>>
+  - request: GET /api/v1/namespaces/default/configmaps/gen
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "gen" not found
+      reason: NotFound
+      details:
+        name: gen
+        kind: configmaps
+      code: 404

@@ -151,3 +151,28 @@ Every row is golden-verified unless marked otherwise. Transcripts:
 | `whoami`, `id` | `id -u -g -G -n -r -z -a`, a user by name or number | `-Z USER` |
 | `hostname` (3.23) | `-s`, `-b`, `-F`, `-y`, `domainname`, `nisdomainname`, `-V` | `-a -A -d -f -i -I`, setting the name as root |
 | `echo`, `printf`, `true`, `false`, `pwd`, `test`, `[` (binaries) | as their coreutils versions, which differ from the builtins | `printf %a`, `test -N` |
+
+## Kubernetes API server (v1.37.2)
+
+Started by phase 05a (`packages/k8s/src/apiserver/`, `registry/`, `apis/`). No program reaches it
+yet: kubectl arrives in phase 07a, controllers in 05b. Verification: **golden** means the raw API
+fixtures (`fixtures/golden/v1.37.2/api/`) are replayed through the pipeline and match the real
+server (`tools/src/golden/api.test.ts`, `defaulted.test.ts`); **source** means ported and unit
+tested.
+
+| Area | Status | Notes |
+|---|---|---|
+| Discovery: every resource and subresource the real server serves, verbs, short names, categories | golden | generated from the oracle's discovery documents (D-041) |
+| Decoding: unknown fields (Strict, Warn — the default —, Ignore), type errors, quantities, times, base64 | golden | bodies are JSON values: malformed JSON and duplicate keys never reach the server (D-042) |
+| create, get, list, update (optimistic concurrency, unconditional, create on update), JSON merge patch, delete | golden | strategic merge, JSON and apply patches: notice |
+| generateName, uid, creationTimestamp, generation, resourceVersion, no-op updates | golden | uids and suffixes from named PRNG streams |
+| Deletion: grace periods (Pods), finalizers, `orphan`/`foregroundDeletion` from propagation policies, Namespace deletion | golden | |
+| Label and field selectors, per-kind field labels | golden | |
+| Status subresources | golden | |
+| Scale subresource (Deployment, ReplicaSet) | golden (GET) | writes: notice (D-045) |
+| Watch: from now, from a past resourceVersion (75 s / 100 events), Expired, selector transitions | source | `apiserver/pipeline.test.ts`; bookmarks are not sent |
+| dryRun=All | golden | |
+| Admission: NamespaceLifecycle (missing and terminating namespaces, immortal namespaces) | golden | the other default plugins: phase 20b (D-039) |
+| Bootstrap: kube-system, kube-public, kube-node-lease, default; the `kubernetes` Service, its ServiceCIDR, IPAddress, Endpoints and EndpointSlice | source | checked against the oracle by hand |
+| Kinds with defaulting, validation and registry rules: Namespace, ConfigMap, Secret, ServiceAccount, Node, Pod, Service (ClusterIP and NodePort allocation), Endpoints, EndpointSlice, Event (core and events.k8s.io, one storage), Deployment, ReplicaSet, Lease; IPAddress and ServiceCIDR minimally | golden | every other resource: notice (D-043); unported validation of a used field writes the gap log |
+| managedFields | — | not maintained (DIV-015) |

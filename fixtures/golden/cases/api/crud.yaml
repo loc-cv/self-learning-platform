@@ -1,0 +1,149 @@
+description: Create, read, update, patch and delete through the raw API - Status errors, optimistic concurrency, generateName, selectors and finalizers.
+kwok: false
+steps:
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+        labels:
+          app: one
+          tier: web
+      data:
+        k: v
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+  - request: GET /api/v1/namespaces/default/configmaps/cm1
+  - request: GET /api/v1/namespaces/default/configmaps/nope
+  - request: GET /api/v1/namespaces/nowhere/configmaps/nope
+  - request: PUT /api/v1/namespaces/default/configmaps/cm1
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+        resourceVersion: "1"
+      data:
+        k: stale
+  - request: PUT /api/v1/namespaces/default/configmaps/cm1
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm1
+        labels:
+          app: one
+          tier: web
+      data:
+        k: unconditional
+  - request: PUT /api/v1/namespaces/default/configmaps/cm1
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: other
+      data:
+        k: v
+  - request: PUT /api/v1/namespaces/default/configmaps/nope
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: nope
+      data:
+        k: v
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: elsewhere
+        namespace: kube-system
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: wrongkind
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          app: nameless
+  - request: PATCH /api/v1/namespaces/default/configmaps/cm1
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"labels":{"tier":null,"patched":"yes"}},"data":{"k2":"v2"}}'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cm1
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"resourceVersion":"1"},"data":{"k3":"v3"}}'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cm1
+    contentType: application/merge-patch+json
+    raw: true
+    body: '{"data":'
+  - request: PATCH /api/v1/namespaces/default/configmaps/nope
+    contentType: application/merge-patch+json
+    body: '{"data":{"a":"b"}}'
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        generateName: gen-
+        labels:
+          app: two
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cm3
+        labels:
+          app: three
+          tier: db
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%3Done
+    keep: [kind, apiVersion, items]
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%20in%20(two%2Cthree)%2C!patched
+    keep: [kind, apiVersion, items]
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=tier
+    keep: [kind, apiVersion, items]
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%3D%3D%3Done
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%20notin%20two
+  - request: GET /api/v1/namespaces/default/configmaps?labelSelector=Bad%20Key%3Dx
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name%3Dcm3
+    keep: [kind, apiVersion, items]
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name!%3Dcm3%2Cmetadata.namespace%3Ddefault&labelSelector=app
+    keep: [kind, apiVersion, items]
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=data.k%3Dv
+  - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: held
+        finalizers:
+          - example.com/hold
+  - request: DELETE /api/v1/namespaces/default/configmaps/held
+  - request: GET /api/v1/namespaces/default/configmaps/held
+  - request: DELETE /api/v1/namespaces/default/configmaps/held
+  - request: PATCH /api/v1/namespaces/default/configmaps/held
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"finalizers":["example.com/hold","example.com/another"]}}'
+  - request: PATCH /api/v1/namespaces/default/configmaps/held
+    contentType: application/merge-patch+json
+    body: '{"data":{"still":"writable"}}'
+  - request: PATCH /api/v1/namespaces/default/configmaps/held
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"finalizers":null}}'
+  - request: GET /api/v1/namespaces/default/configmaps/held
+  - request: DELETE /api/v1/namespaces/default/configmaps/cm3
+  - request: DELETE /api/v1/namespaces/default/configmaps/cm3
+  - request: DELETE /api/v1/namespaces/default/configmaps/cm1?gracePeriodSeconds=30
+  - request: GET /api/v1/namespaces/default/configmaps/gen

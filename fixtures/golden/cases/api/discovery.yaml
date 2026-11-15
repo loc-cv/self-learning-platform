@@ -1,0 +1,30 @@
+description: Discovery documents of the API server as kubeadm starts it (default runtime config) - the source of the resource registry.
+kwok: false
+steps:
+  - request: GET /api
+  - request: GET /apis
+  - request: GET /api/v1
+  - request: GET /apis/admissionregistration.k8s.io/v1
+  - request: GET /apis/apiextensions.k8s.io/v1
+  - request: GET /apis/apiregistration.k8s.io/v1
+  - request: GET /apis/apps/v1
+  - request: GET /apis/authentication.k8s.io/v1
+  - request: GET /apis/authorization.k8s.io/v1
+  - request: GET /apis/autoscaling/v1
+  - request: GET /apis/autoscaling/v2
+  - request: GET /apis/batch/v1
+  - request: GET /apis/certificates.k8s.io/v1
+  - request: GET /apis/coordination.k8s.io/v1
+  - request: GET /apis/discovery.k8s.io/v1
+  - request: GET /apis/events.k8s.io/v1
+  - request: GET /apis/flowcontrol.apiserver.k8s.io/v1
+  - request: GET /apis/networking.k8s.io/v1
+  - request: GET /apis/node.k8s.io/v1
+  - request: GET /apis/policy/v1
+  - request: GET /apis/rbac.authorization.k8s.io/v1
+  - request: GET /apis/resource.k8s.io/v1
+  - request: GET /apis/scheduling.k8s.io/v1
+  - request: GET /apis/storage.k8s.io/v1
+  - request: GET /apis/storagemigration.k8s.io/v1
+  - run: kubectl api-resources -o wide
+    table: none

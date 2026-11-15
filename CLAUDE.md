@@ -28,6 +28,8 @@ npm test -w packages/k8s      # one package
 npx vitest run <file> -t "<name>"   # one test
 npm run upstream:fetch        # fetch pinned upstream Kubernetes sources into .upstream/
 npm run bench:fork            # time fork, hash, snapshot and restore of a three-machine world
+npm run bench:schema          # size and load time of the vendored API schema and resource registry
+npm run api:vendor [-- --check]   # regenerate the vendored schema (OpenAPI v3 + Go types) and registry (discovery fixture)
 npm run transcript:capture -- <file|dir>  # write real bash/coreutils output into golden-verified transcripts
 npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
 npm run dev                   # (phase 10) web app with hot reload
@@ -58,10 +60,12 @@ tools run as `node tools/src/<tool>.ts`. The Kubernetes pin is `KUBERNETES_VERSI
 packages/kernel    virtual clock, event queue, world state, snapshot/replay, PRNG, plugin registry, trace
 packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd, processes
 packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kubelet, network, kubectl, kubeadm, …
+                   (src/apiserver pipeline and store, src/registry strategies, src/apis defaulting and
+                   validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
 packages/content   content packs (YAML + Markdown), topology templates
 apps/web  apps/server  apps/cli
-tools/             upstream fetch, OpenAPI processing, oracle and golden capture, transcript capture, update check;
+tools/             upstream fetch, OpenAPI processing (openapi/), oracle and golden capture, transcript capture, update check;
                    tools/eslint holds the two lint rules, their fixtures and the dependency table
 docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against

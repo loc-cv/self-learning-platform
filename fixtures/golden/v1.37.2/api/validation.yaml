@@ -1,0 +1,2175 @@
+# Captured from fixtures/golden/cases/api/validation.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: api/validation
+description: Status bodies of validation and decoding errors from the raw API - unknown fields and wrong types per field validation mode, semantic validation of the common kinds, immutable fields.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Strict
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+          portz: []
+        restartPolicyy: Never
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: strict decoding error: unknown field "spec.containers[0].imagePullPolice", unknown field "spec.containers[0].portz", unknown field "spec.restartPolicyy"'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Warn
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+    code: 201
+    warnings:
+      - unknown field "spec.containers[0].imagePullPolice"
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: typo
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo2
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+    code: 201
+    warnings:
+      - unknown field "spec.containers[0].imagePullPolice"
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: typo2
+        namespace: default
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Ignore
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: typo3
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+          imagePullPolice: Always
+    code: 201
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: typo3
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Strict
+    body: '{"apiVersion":"v1","kind":"Pod","metadata":{"name":"dupkey"},"spec":{"containers":[{"name":"app","image":"a","image":"b"}]}}'
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: strict decoding error: duplicate field "spec.containers[0].image"'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: '{"apiVersion":"v1","kind":"Pod","metadata":{"name":"dupkey2"},"spec":{"containers":[{"name":"app","image":"a","image":"b"}]}}'
+    code: 201
+    warnings:
+      - duplicate field "spec.containers[0].image"
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: dupkey2
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: b
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: Always
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        securityContext: {}
+        schedulerName: default-scheduler
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: wt
+      spec:
+        replicas: 1.5
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment in version "v1" cannot be handled as a Deployment: json: cannot unmarshal number 1.5 into Go struct field DeploymentSpec.spec.replicas of type int32'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt2
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          ports:
+          - containerPort: "80"
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal string into Go struct field ContainerPort.spec.containers.ports.containerPort of type int32'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt3
+      spec:
+        containers:
+        - name: app
+          image:
+            repo: nginx
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal object into Go struct field Container.spec.containers.image of type string'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt4
+      spec:
+        containers: {}
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal object into Go struct field PodSpec.spec.containers of type []v1.Container'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt5
+        labels:
+          a: 1
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal number into Go struct field ObjectMeta.metadata.labels of type string'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt6
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          tty: "yes"
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal string into Go struct field Container.spec.containers.tty of type bool'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: '{"apiVersion":"v1","kind":"Pod","metadata":{"name":"wt7"},"spec":"none"}'
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal string into Go struct field Pod.spec of type v1.PodSpec'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt8
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          resources:
+            limits:
+              cpu: lots
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Pod in version \"v1\" cannot be handled as a Pod: quantities must match the regular expression '^([+-]?[0-9.]+)([eEinumkKMGTP]*[-+]?[0-9]*)$'"
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: wt9
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          ports:
+          - containerPort: 99999999999
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal number 99999999999 into Go struct field ContainerPort.spec.containers.ports.containerPort of type int32'
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: '{"apiVersion":"v1","kind":"Pod","metadata":{"name":"wt10"},"spec":{"containers":[{"name":"app","image":"nginx"}]},'
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "the object provided is unrecognized (must be of type Pod): couldn't get version/kind; json parse error: unexpected end of JSON input ({\"apiVersion\":\"v1\",\"kind\":\"Pod ...)"
+      reason: BadRequest
+      code: 400
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      metadata:
+        name: nokind
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "nokind" is invalid: spec.containers: Required value'
+      reason: Invalid
+      details:
+        name: nokind
+        kind: Pod
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.containers
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: '{"apiVersion":"v1","kind":"Pod","metadata":{"name":"nullimg"},"spec":{"containers":[{"name":"app","image":null}]}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "nullimg" is invalid: spec.containers[0].image: Required value'
+      reason: Invalid
+      details:
+        name: nullimg
+        kind: Pod
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.containers[0].image
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: noimage
+      spec:
+        containers:
+        - name: app
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "noimage" is invalid: spec.containers[0].image: Required value'
+      reason: Invalid
+      details:
+        name: noimage
+        kind: Pod
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.containers[0].image
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: Bad_Name
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Pod \"Bad_Name\" is invalid: metadata.name: Invalid value: \"Bad_Name\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')"
+      reason: Invalid
+      details:
+        name: Bad_Name
+        kind: Pod
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"Bad_Name\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')"
+            field: metadata.name
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: Bad
+      spec:
+        containers:
+        - name: Bad
+          image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Pod \"Bad\" is invalid: [metadata.name: Invalid value: \"Bad\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'), spec.containers[0].name: Invalid value: \"Bad\": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')]"
+      reason: Invalid
+      details:
+        name: Bad
+        kind: Pod
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"Bad\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')"
+            field: metadata.name
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"Bad\": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')"
+            field: spec.containers[0].name
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: dup
+      spec:
+        containers:
+        - name: app
+          image: nginx
+        - name: app
+          image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "dup" is invalid: spec.containers[1].name: Duplicate value: "app"'
+      reason: Invalid
+      details:
+        name: dup
+        kind: Pod
+        causes:
+          - reason: FieldValueDuplicate
+            message: 'Duplicate value: "app"'
+            field: spec.containers[1].name
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: nocontainers
+      spec:
+        containers: []
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "nocontainers" is invalid: spec.containers: Required value'
+      reason: Invalid
+      details:
+        name: nocontainers
+        kind: Pod
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.containers
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: enums
+      spec:
+        restartPolicy: Sometimes
+        containers:
+        - name: app
+          image: nginx
+          imagePullPolicy: Sometimes
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "enums" is invalid: [spec.containers[0].imagePullPolicy: Unsupported value: "Sometimes": supported values: "Always", "IfNotPresent", "Never", spec.restartPolicy: Unsupported value: "Sometimes": supported values: "Always", "OnFailure", "Never"]'
+      reason: Invalid
+      details:
+        name: enums
+        kind: Pod
+        causes:
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "Sometimes": supported values: "Always", "IfNotPresent", "Never"'
+            field: spec.containers[0].imagePullPolicy
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "Sometimes": supported values: "Always", "OnFailure", "Never"'
+            field: spec.restartPolicy
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: manyerrors
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          volumeMounts:
+          - name: data
+            mountPath: /data
+          ports:
+          - containerPort: 0
+          - containerPort: 80
+            name: this-name-is-too-long
+          env:
+          - name: 1BAD
+            value: x
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "manyerrors" is invalid: [spec.containers[0].ports[0].containerPort: Required value, spec.containers[0].ports[1].name: Invalid value: "this-name-is-too-long": must be no more than 15 characters, spec.containers[0].volumeMounts[0].name: Not found: "data"]'
+      reason: Invalid
+      details:
+        name: manyerrors
+        kind: Pod
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.containers[0].ports[0].containerPort
+          - reason: FieldValueInvalid
+            message: 'Invalid value: "this-name-is-too-long": must be no more than 15 characters'
+            field: spec.containers[0].ports[1].name
+          - reason: FieldValueNotFound
+            message: 'Not found: "data"'
+            field: spec.containers[0].volumeMounts[0].name
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: limits
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          resources:
+            requests:
+              cpu: "2"
+              memory: 1Gi
+            limits:
+              cpu: "1"
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "limits" is invalid: spec.containers[0].resources.requests: Invalid value: "2": must be less than or equal to cpu limit of 1'
+      reason: Invalid
+      details:
+        name: limits
+        kind: Pod
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: "2": must be less than or equal to cpu limit of 1'
+            field: spec.containers[0].resources.requests
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: badlabels
+        labels:
+          'bad key!': x
+          good: 'bad value!'
+      spec:
+        containers:
+        - name: app
+          image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Pod \"badlabels\" is invalid: [metadata.labels: Invalid value: \"bad key!\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]'), metadata.labels: Invalid value: \"bad value!\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')]"
+      reason: Invalid
+      details:
+        name: badlabels
+        kind: Pod
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"bad key!\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"
+            field: metadata.labels
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"bad value!\": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')"
+            field: metadata.labels
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: dns
+      spec:
+        dnsPolicy: Sometimes
+        volumes:
+        - name: v
+        - name: v
+          emptyDir: {}
+        containers:
+        - name: app
+          image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "dns" is invalid: [spec.volumes[1].name: Duplicate value: "v", spec.dnsPolicy: Unsupported value: "Sometimes": supported values: "ClusterFirstWithHostNet", "ClusterFirst", "Default", "None"]'
+      reason: Invalid
+      details:
+        name: dns
+        kind: Pod
+        causes:
+          - reason: FieldValueDuplicate
+            message: 'Duplicate value: "v"'
+            field: spec.volumes[1].name
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "Sometimes": supported values: "ClusterFirstWithHostNet", "ClusterFirst", "Default", "None"'
+            field: spec.dnsPolicy
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: probe
+      spec:
+        containers:
+        - name: app
+          image: nginx
+          livenessProbe:
+            periodSeconds: 5
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "probe" is invalid: spec.containers[0].livenessProbe: Required value: must specify a handler type'
+      reason: Invalid
+      details:
+        name: probe
+        kind: Pod
+        causes:
+          - reason: FieldValueRequired
+            message: "Required value: must specify a handler type"
+            field: spec.containers[0].livenessProbe
+      code: 422
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: badkey
+      data:
+        'a b': x
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "ConfigMap \"badkey\" is invalid: data[a b]: Invalid value: \"a b\": a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')"
+      reason: Invalid
+      details:
+        name: badkey
+        kind: ConfigMap
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"a b\": a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')"
+            field: data[a b]
+      code: 422
+  - request: POST /api/v1/namespaces
+    body: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: Bad.NS
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Namespace \"Bad.NS\" is invalid: metadata.name: Invalid value: \"Bad.NS\": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')"
+      reason: Invalid
+      details:
+        name: Bad.NS
+        kind: Namespace
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"Bad.NS\": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')"
+            field: metadata.name
+      code: 422
+  - request: POST /api/v1/namespaces
+    body: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: has.dot
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Namespace "has.dot" is invalid: metadata.name: Invalid value: "has.dot": must not contain dots'
+      reason: Invalid
+      details:
+        name: has.dot
+        kind: Namespace
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: "has.dot": must not contain dots'
+            field: metadata.name
+      code: 422
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: badport
+      spec:
+        ports:
+        - port: 70000
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Service "badport" is invalid: [spec.ports[0].port: Invalid value: 70000: must be between 1 and 65535, inclusive, spec.ports[0].targetPort: Invalid value: 70000: must be between 1 and 65535, inclusive]'
+      reason: Invalid
+      details:
+        name: badport
+        kind: Service
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: 70000: must be between 1 and 65535, inclusive"
+            field: spec.ports[0].port
+          - reason: FieldValueInvalid
+            message: "Invalid value: 70000: must be between 1 and 65535, inclusive"
+            field: spec.ports[0].targetPort
+      code: 422
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: noports
+      spec:
+        selector:
+          app: x
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Service "noports" is invalid: spec.ports: Required value'
+      reason: Invalid
+      details:
+        name: noports
+        kind: Service
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.ports
+      code: 422
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: badtype
+      spec:
+        type: Internal
+        ports:
+        - port: 80
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Service "badtype" is invalid: spec.type: Unsupported value: "Internal": supported values: "ClusterIP", "ExternalName", "LoadBalancer", "NodePort"'
+      reason: Invalid
+      details:
+        name: badtype
+        kind: Service
+        causes:
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "Internal": supported values: "ClusterIP", "ExternalName", "LoadBalancer", "NodePort"'
+            field: spec.type
+      code: 422
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: badip
+      spec:
+        clusterIP: 192.168.0.10
+        ports:
+        - port: 80
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Service "badip" is invalid: spec.clusterIPs: Invalid value: ["192.168.0.10"]: failed to allocate IP 192.168.0.10: the provided network does not match the current range'
+      reason: Invalid
+      details:
+        name: badip
+        kind: Service
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: ["192.168.0.10"]: failed to allocate IP 192.168.0.10: the provided network does not match the current range'
+            field: spec.clusterIPs
+      code: 422
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: dupports
+      spec:
+        ports:
+        - port: 80
+        - port: 80
+        - port: 81
+          targetPort: 0
+          protocol: HTTP
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Service "dupports" is invalid: [spec.ports[0].name: Required value, spec.ports[1].name: Required value, spec.ports[2].name: Required value, spec.ports[2].protocol: Unsupported value: "HTTP": supported values: "SCTP", "TCP", "UDP", spec.ports[1]: Duplicate value: {"Name":"","Protocol":"TCP","AppProtocol":null,"Port":80,"TargetPort":0,"NodePort":0}]'
+      reason: Invalid
+      details:
+        name: dupports
+        kind: Service
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.ports[0].name
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.ports[1].name
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.ports[2].name
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "HTTP": supported values: "SCTP", "TCP", "UDP"'
+            field: spec.ports[2].protocol
+          - reason: FieldValueDuplicate
+            message: 'Duplicate value: {"Name":"","Protocol":"TCP","AppProtocol":null,"Port":80,"TargetPort":0,"NodePort":0}'
+            field: spec.ports[1]
+      code: 422
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: np
+      spec:
+        type: NodePort
+        ports:
+        - port: 80
+          nodePort: 80
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Service "np" is invalid: spec.ports[0].nodePort: Invalid value: 80: provided port is not in the valid range. The range of valid ports is 30000-32767'
+      reason: Invalid
+      details:
+        name: np
+        kind: Service
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: 80: provided port is not in the valid range. The range of valid ports is 30000-32767"
+            field: spec.ports[0].nodePort
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: noselector
+      spec:
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "noselector" is invalid: [spec.selector: Required value, spec.template.metadata.labels: Invalid value: {"app":"x"}: `selector` does not match template `labels`]'
+      reason: Invalid
+      details:
+        name: noselector
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.selector
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"app":"x"}: `selector` does not match template `labels`'
+            field: spec.template.metadata.labels
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: mismatch
+      spec:
+        selector:
+          matchLabels:
+            app: y
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "mismatch" is invalid: spec.template.metadata.labels: Invalid value: {"app":"x"}: `selector` does not match template `labels`'
+      reason: Invalid
+      details:
+        name: mismatch
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"app":"x"}: `selector` does not match template `labels`'
+            field: spec.template.metadata.labels
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: negative
+      spec:
+        replicas: -1
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "negative" is invalid: spec.replicas: Invalid value: -1: must be greater than or equal to 0'
+      reason: Invalid
+      details:
+        name: negative
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: -1: must be greater than or equal to 0"
+            field: spec.replicas
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: emptyselector
+      spec:
+        selector: {}
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "emptyselector" is invalid: spec.selector: Invalid value: {}: empty selector is invalid for deployment'
+      reason: Invalid
+      details:
+        name: emptyselector
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: {}: empty selector is invalid for deployment"
+            field: spec.selector
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: badstrategy
+      spec:
+        strategy:
+          type: Recreate
+          rollingUpdate:
+            maxSurge: 1
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Deployment.apps \"badstrategy\" is invalid: spec.strategy.rollingUpdate: Forbidden: may not be specified when strategy `type` is 'Recreate'"
+      reason: Invalid
+      details:
+        name: badstrategy
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueForbidden
+            message: "Forbidden: may not be specified when strategy `type` is 'Recreate'"
+            field: spec.strategy.rollingUpdate
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: badsurge
+      spec:
+        strategy:
+          rollingUpdate:
+            maxSurge: 0
+            maxUnavailable: 0
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "badsurge" is invalid: spec.strategy.rollingUpdate.maxUnavailable: Invalid value: 0: may not be 0 when `maxSurge` is 0'
+      reason: Invalid
+      details:
+        name: badsurge
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: 0: may not be 0 when `maxSurge` is 0"
+            field: spec.strategy.rollingUpdate.maxUnavailable
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: badpct
+      spec:
+        strategy:
+          rollingUpdate:
+            maxSurge: 150%
+            maxUnavailable: abc
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Deployment.apps \"badpct\" is invalid: spec.strategy.rollingUpdate.maxUnavailable: Invalid value: \"abc\": a valid percent string must be a numeric string followed by an ending '%' (e.g. '1%',  or '93%', regex used for validation is '[0-9]+%')"
+      reason: Invalid
+      details:
+        name: badpct
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"abc\": a valid percent string must be a numeric string followed by an ending '%' (e.g. '1%',  or '93%', regex used for validation is '[0-9]+%')"
+            field: spec.strategy.rollingUpdate.maxUnavailable
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: restart
+      spec:
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            restartPolicy: Never
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "restart" is invalid: spec.template.spec.restartPolicy: Unsupported value: "Never": supported values: "Always"'
+      reason: Invalid
+      details:
+        name: restart
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "Never": supported values: "Always"'
+            field: spec.template.spec.restartPolicy
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: expr
+      spec:
+        selector:
+          matchExpressions:
+          - key: app
+            operator: In
+          - key: tier
+            operator: Maybe
+            values: [a]
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "Deployment.apps \"expr\" is invalid: [spec.selector.matchExpressions[0].values: Required value: must be specified when `operator` is 'In' or 'NotIn', spec.selector.matchExpressions[1].operator: Invalid value: \"Maybe\": not a valid selector operator, spec.selector: Invalid value: {\"matchExpressions\":[{\"key\":\"app\",\"operator\":\"In\"},{\"key\":\"tier\",\"operator\":\"Maybe\",\"values\":[\"a\"]}]}: invalid label selector]"
+      reason: Invalid
+      details:
+        name: expr
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueRequired
+            message: "Required value: must be specified when `operator` is 'In' or 'NotIn'"
+            field: spec.selector.matchExpressions[0].values
+          - reason: FieldValueInvalid
+            message: 'Invalid value: "Maybe": not a valid selector operator'
+            field: spec.selector.matchExpressions[1].operator
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"matchExpressions":[{"key":"app","operator":"In"},{"key":"tier","operator":"Maybe","values":["a"]}]}: invalid label selector'
+            field: spec.selector
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: notemplate
+      spec:
+        selector:
+          matchLabels:
+            app: x
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "notemplate" is invalid: [spec.template.metadata.labels: Invalid value: null: `selector` does not match template `labels`, spec.template.spec.containers: Required value]'
+      reason: Invalid
+      details:
+        name: notemplate
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: null: `selector` does not match template `labels`"
+            field: spec.template.metadata.labels
+          - reason: FieldValueRequired
+            message: Required value
+            field: spec.template.spec.containers
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/replicasets
+    body: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        name: rs
+      spec:
+        selector:
+          matchLabels:
+            app: y
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'ReplicaSet.apps "rs" is invalid: spec.template.metadata.labels: Invalid value: {"app":"x"}: `selector` does not match template `labels`'
+      reason: Invalid
+      details:
+        name: rs
+        group: apps
+        kind: ReplicaSet
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"app":"x"}: `selector` does not match template `labels`'
+            field: spec.template.metadata.labels
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: immutable
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 201
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: immutable
+        namespace: default
+        uid: <<uid:5>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: x
+        template:
+          metadata:
+            labels:
+              app: x
+          spec:
+            containers:
+              - name: app
+                image: nginx
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: Always
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status: {}
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/immutable
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: immutable
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: x
+            tier: y
+        template:
+          metadata:
+            labels:
+              app: x
+              tier: y
+          spec:
+            containers:
+            - name: app
+              image: nginx
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Deployment.apps "immutable" is invalid: spec.selector: Invalid value: {"matchLabels":{"app":"x","tier":"y"}}: field is immutable'
+      reason: Invalid
+      details:
+        name: immutable
+        group: apps
+        kind: Deployment
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"matchLabels":{"app":"x","tier":"y"}}: field is immutable'
+            field: spec.selector
+      code: 422
+  - request: POST /api/v1/namespaces/default/pods
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: fixed
+      spec:
+        nodeName: node01
+        schedulerName: nobody
+        containers:
+        - name: app
+          image: nginx:1.27
+    code: 201
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: fixed
+        namespace: default
+        uid: <<uid:6>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:nodeName: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        nodeName: node01
+        securityContext: {}
+        schedulerName: nobody
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: PATCH /api/v1/namespaces/default/pods/fixed
+    contentType: application/merge-patch+json
+    body: '{"spec":{"containers":[{"name":"app","image":"nginx:1.28","imagePullPolicy":"Never"}]}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: |
+        Pod "fixed" is invalid: spec: Forbidden: pod updates may not change fields other than `spec.containers[*].image`,`spec.initContainers[*].image`,`spec.activeDeadlineSeconds`,`spec.tolerations` (only additions to existing tolerations),`spec.terminationGracePeriodSeconds` (allow it to be set to 1 if it was previously negative)
+        @@ -111,18 +111,7 @@
+            "ResizePolicy": null,
+            "RestartPolicy": null,
+            "RestartPolicyRules": null,
+        -   "VolumeMounts": [
+        -    {
+        -     "Name": "kube-api-access-<<suffix>>",
+        -     "ReadOnly": true,
+        -     "RecursiveReadOnly": null,
+        -     "MountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+        -     "SubPath": "",
+        -     "MountPropagation": null,
+        -     "SubPathExpr": "",
+        -     "BindMountOptions": null
+        -    }
+        -   ],
+        +   "VolumeMounts": null,
+            "VolumeDevices": null,
+            "LivenessProbe": null,
+            "ReadinessProbe": null,
+        @@ -130,7 +119,7 @@
+            "Lifecycle": null,
+            "TerminationMessagePath": "/dev/termination-log",
+            "TerminationMessagePolicy": "File",
+        -   "ImagePullPolicy": "IfNotPresent",
+        +   "ImagePullPolicy": "Never",
+            "SecurityContext": null,
+            "Stdin": false,
+            "StdinOnce": false,
+      reason: Invalid
+      details:
+        name: fixed
+        kind: Pod
+        causes:
+          - reason: FieldValueForbidden
+            message: |
+              Forbidden: pod updates may not change fields other than `spec.containers[*].image`,`spec.initContainers[*].image`,`spec.activeDeadlineSeconds`,`spec.tolerations` (only additions to existing tolerations),`spec.terminationGracePeriodSeconds` (allow it to be set to 1 if it was previously negative)
+              @@ -111,18 +111,7 @@
+                  "ResizePolicy": null,
+                  "RestartPolicy": null,
+                  "RestartPolicyRules": null,
+              -   "VolumeMounts": [
+              -    {
+              -     "Name": "kube-api-access-<<suffix>>",
+              -     "ReadOnly": true,
+              -     "RecursiveReadOnly": null,
+              -     "MountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+              -     "SubPath": "",
+              -     "MountPropagation": null,
+              -     "SubPathExpr": "",
+              -     "BindMountOptions": null
+              -    }
+              -   ],
+              +   "VolumeMounts": null,
+                  "VolumeDevices": null,
+                  "LivenessProbe": null,
+                  "ReadinessProbe": null,
+              @@ -130,7 +119,7 @@
+                  "Lifecycle": null,
+                  "TerminationMessagePath": "/dev/termination-log",
+                  "TerminationMessagePolicy": "File",
+              -   "ImagePullPolicy": "IfNotPresent",
+              +   "ImagePullPolicy": "Never",
+                  "SecurityContext": null,
+                  "Stdin": false,
+                  "StdinOnce": false,
+            field: spec
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/pods/fixed
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"uid":"00000000-0000-0000-0000-000000000000","creationTimestamp":"2020-01-01T00:00:00Z"}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Pod "fixed" is invalid: metadata.uid: Invalid value: "<<uid:7>>": field is immutable'
+      reason: Invalid
+      details:
+        name: fixed
+        kind: Pod
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: "<<uid:7>>": field is immutable'
+            field: metadata.uid
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/pods/fixed
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"name":"renamed"}}'
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the name of the object (renamed) does not match the name on the URL (fixed)
+      reason: BadRequest
+      code: 400
+  - request: DELETE /api/v1/namespaces/default/pods/fixed?gracePeriodSeconds=0
+    code: 200
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: fixed
+        namespace: default
+        uid: <<uid:6>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        deletionTimestamp: <<time>>
+        deletionGracePeriodSeconds: 0
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:nodeName: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+      spec:
+        volumes:
+          - name: kube-api-access-<<suffix>>
+            projected:
+              sources:
+                - serviceAccountToken:
+                    expirationSeconds: 3607
+                    path: token
+                - configMap:
+                    name: kube-root-ca.crt
+                    items:
+                      - key: ca.crt
+                        path: ca.crt
+                - downwardAPI:
+                    items:
+                      - path: namespace
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+              defaultMode: 420
+        containers:
+          - name: app
+            image: nginx:1.27
+            resources: {}
+            volumeMounts:
+              - name: kube-api-access-<<suffix>>
+                readOnly: true
+                mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            imagePullPolicy: IfNotPresent
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirst
+        serviceAccountName: default
+        serviceAccount: default
+        nodeName: node01
+        securityContext: {}
+        schedulerName: nobody
+        tolerations:
+          - key: node.kubernetes.io/not-ready
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+          - key: node.kubernetes.io/unreachable
+            operator: Exists
+            effect: NoExecute
+            tolerationSeconds: 300
+        priority: 0
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+      status:
+        phase: Pending
+        qosClass: BestEffort
+  - request: PATCH /api/v1/namespaces/default/services/kubernetes
+    contentType: application/merge-patch+json
+    body: '{"spec":{"clusterIP":"10.96.0.2"}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Service "kubernetes" is invalid: spec.clusterIPs[0]: Invalid value: ["<<ip>>"]: may not change once set'
+      reason: Invalid
+      details:
+        name: kubernetes
+        kind: Service
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: ["<<ip>>"]: may not change once set'
+            field: spec.clusterIPs[0]
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/services/kubernetes
+    contentType: application/merge-patch+json
+    body: '{"spec":{"selector":{"x":"y"},"ports":[{"port":443,"targetPort":6443,"name":"https","protocol":"TCP"},{"port":443,"protocol":"UDP","name":"dns"}]}}'
+    code: 200
+    response:
+      kind: Service
+      apiVersion: v1
+      metadata:
+        name: kubernetes
+        namespace: default
+        uid: <<uid:8>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          component: apiserver
+          provider: kubernetes
+        managedFields:
+          - manager: kube-apiserver
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:component: {}
+                  f:provider: {}
+              f:spec:
+                f:clusterIP: {}
+                f:internalTrafficPolicy: {}
+                f:ipFamilyPolicy: {}
+                f:ports:
+                  .: {}
+                  k:{"port":443,"protocol":"TCP"}:
+                    .: {}
+                    f:name: {}
+                    f:port: {}
+                    f:protocol: {}
+                f:sessionAffinity: {}
+                f:type: {}
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:ports:
+                  k:{"port":443,"protocol":"TCP"}:
+                    f:targetPort: {}
+                  k:{"port":443,"protocol":"UDP"}:
+                    .: {}
+                    f:name: {}
+                    f:port: {}
+                    f:protocol: {}
+                    f:targetPort: {}
+                f:selector: {}
+      spec:
+        ports:
+          - name: https
+            protocol: TCP
+            port: 443
+            targetPort: 6443
+          - name: dns
+            protocol: UDP
+            port: 443
+            targetPort: 443
+        selector:
+          x: y
+        clusterIP: 10.96.0.1
+        clusterIPs:
+          - 10.96.0.1
+        type: ClusterIP
+        sessionAffinity: None
+        ipFamilies:
+          - IPv4
+        ipFamilyPolicy: SingleStack
+        internalTrafficPolicy: Cluster
+      status:
+        loadBalancer: {}

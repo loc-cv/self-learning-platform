@@ -348,3 +348,74 @@ scheduler picks among equal scores at random (upstream: `pkg/scheduler/schedule_
 `selectHost`). A case that needs `kubectl run` as typed, without a node selector, marks the steps
 whose output shows the placement `anyWorker: true`: `node01`/`node02` become `<<node>>` and their
 addresses `<<ip>>`. Cases where the node matters pin it with a node selector or `nodeName`.
+
+## Phase 05a (2026-11-16)
+
+**D-038 — The schema is vendored from OpenAPI v3 and the Go types; descriptions wait for explain.**
+The OpenAPI documents describe structure but not what encoding/json does with it: whether a
+field has `omitempty` or `omitzero`, whether it is a pointer, a nil slice that prints `null`, a
+non-pointer `metav1.Time` that prints `null`, the Go type names that type errors print
+(`v1.RestartPolicy`, `[]v1.Container`). `npm run api:vendor` therefore reads the Go declarations
+of the API packages too (a small reader of gofmt'ed struct declarations, `tools/src/openapi/gotypes.ts`)
+and fails when they and the OpenAPI properties disagree. Format and measurements:
+`docs/ARCHITECTURE.md` §4.6. Descriptions (739 KiB) have no consumer until `kubectl explain`, so
+they are generated only with `--descriptions`; the explain phase turns that on.
+- Rules out guessing Go encoding from OpenAPI `default` values, which mark some non-omitempty
+  fields but not nil slices (`EndpointSlice.endpoints: null`) or non-pointer times
+  (`lastProbeTime: null`).
+
+**D-039 — NamespaceLifecycle admission exists before the admission phase.** Phase 20b owns the
+admission chain, but without NamespaceLifecycle the simulated server would accept objects into a
+namespace that does not exist, or one being deleted, which learners hit constantly and which no
+real server does (hard rule 2). It is ported now (`apiserver/admission.ts`, from
+`apiserver/pkg/admission/plugin/namespace/lifecycle`), including the immortal namespaces. The other
+default plugins (ServiceAccount, DefaultTolerationSeconds, Priority, …) stay in 20b; until then
+Pods lack what they add (STATUS.md, temporary shortcuts).
+
+**D-040 — Where Go iterates a map, the port iterates in key order.** Validation of labels,
+annotations and data keys, the order of a Namespace's GC finalizers, and LabelSelectorAsSelector
+iterate Go maps, whose order is random: the real server's message order varies between requests.
+Sorted key order is one of the orders the real server produces, so it is not a divergence, and it
+keeps the simulator deterministic.
+
+**D-041 — Raw API golden cases, and the registry generated from the oracle's discovery.** The
+golden case format gains a `request` step: one HTTP request to the oracle's API server as the
+admin identity, recording the status code, warnings and normalized body. This is what the request
+pipeline must reproduce (kubectl output depends on kubectl too). Cases in
+`fixtures/golden/cases/api/` (discovery, crud, lifecycle, validation, defaults);
+`tools/src/golden/api.test.ts` replays every request step through the simulator. The resource
+registry (every resource the real server serves, with verbs, short names and categories) is
+generated from the captured discovery documents rather than from upstream source: it is exactly
+what a kubeadm-started v1.37.2 server serves, alpha APIs excluded.
+
+**D-042 — Request bodies are JSON values.** The simulator's clients (kubectl, controllers) hand
+the pipeline parsed values, so malformed JSON and duplicate keys cannot reach it: real kubectl
+rejects both while parsing its input. The differential runner skips the fixture steps that send
+such bodies. A number arrives as a JavaScript number, so a quantity written `1e3` in JSON is
+canonicalized as `1k`; kubectl converts YAML to JSON with float64 numbers, which loses the
+spelling the same way.
+
+**D-043 — Kinds without a strategy answer with a gap.** The registry lists every served
+resource, but only kinds with a ported strategy (defaults, validation, registry rules) store
+objects. A request for any other kind returns `notSimulated`, which clients print as a `[sim]`
+notice, rather than storing objects that were never validated. Unported validation of a field
+that a request uses calls `StrategyCtx.notPorted`, which writes the gap log.
+
+**D-044 — Two APIs can share one storage resource.** core/v1 and events.k8s.io/v1 Events are the
+same objects in etcd (`/registry/events`), stored as core/v1. A strategy names its `storage`
+resource and its storage version and group (`storageVersion`, `storageGroup`); the pipeline
+converts with the strategy's `toStorage`/`fromStorage` (a port of `pkg/apis/events/v1`
+conversion) whenever the request's group version is not the storage's, for writes, reads and
+watch events. So an Event a kubelet records through events.k8s.io shows up in
+`kubectl get events`, as it does in reality.
+
+**D-045 — The scale subresource is read-only until kubectl scale needs it.** GET of
+`deployments/scale` and `replicasets/scale` answers with the autoscaling/v1 Scale. Writing it has
+to apply the Scale to `spec.replicas` through the main strategy and answer with a Scale; until the
+phase with `kubectl scale` builds that, a write is a gap rather than a wrong answer.
+
+**D-046 — Differential tests strip what admission plugins of phase 20b add, field by field.**
+Rather than listing whole steps as known differences, `tools/src/golden/api.test.ts` and
+`defaulted.test.ts` remove the fields the ServiceAccount, DefaultTolerationSeconds and Priority
+plugins write from both sides of Pod responses, so that every other field (graceful deletion,
+generation, defaults) is still compared with the real server. Phase 20b deletes the stripping.

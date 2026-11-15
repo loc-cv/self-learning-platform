@@ -291,6 +291,10 @@ Entry format:
 | DIV-012 | Terminal: paste | bash 5.2 turns on bracketed paste (`ESC[?2004h` before each prompt, readline's enable-bracketed-paste on, `bind -v`): a pasted block lands in the line as one edit and runs only when Enter is pressed | Bracketed paste is not turned on: the terminal sends a paste as typed keys, so each pasted newline runs its line at once, as bash does with enable-bracketed-paste off | The line editor would have to edit and display multi-line pasted buffers; the screens after Enter are the same | A pasted multi-line block runs line by line without waiting for Enter; a pasted line with a mistake runs before it can be fixed | 03 |
 | DIV-013 | Line editor | readline implements about 120 bound commands, a kill ring with M-y, undo, keyboard macros and numeric arguments; an edit to a recalled history line stays in the history after Enter (revert-all-at-newline off); `\j` and `\#` in PS1 count jobs and commands | The common commands are implemented (`docs/COVERAGE.md`, Terminal); every other bound command prints a notice; the kill ring holds one entry; edits to recalled history lines are kept only while the line is being edited; `\j` is 0 (no job control) and `\#` equals `\!` | Behavior beyond the common editing keys is rarely used under exam conditions | A rarely used key prints a notice instead of acting | 03 |
 | DIV-014 | `vim`, `vi`, `nano` | They draw a full-screen editor on the terminal (alternate screen) | They ask the front end to edit the file: an editor overlay in the web UI (phase 10), the user's own `$EDITOR` in the terminal player; one named file only, no options | A terminal-native vi is out of scope (`PLAN.md` §6.2) | Key bindings come from the overlay or the user's editor, not the real vim; `:!cmd`, `:r !cmd` and multiple buffers do not exist | 03 |
+| DIV-015 | API server: `managedFields` | Every write records field ownership per manager in `metadata.managedFields` (`fieldsV1`), which server-side apply uses; `kubectl get -o yaml --show-managed-fields` prints it | Objects have no `managedFields` | Field ownership matters only to server-side apply, which no phase has scheduled yet; kubectl hides the field by default | `--show-managed-fields` shows nothing; conflicts of server-side apply cannot be practiced | 05a |
+| DIV-016 | API server: Pod updates | A forbidden Pod update is rejected with `spec: Forbidden: pod updates may not change fields other than …` followed by a unified diff of the old and new internal PodSpec (`json.MarshalIndent` with Go field names, go-difflib, 3 lines of context; `apimachinery/pkg/util/diff`) | The first line only | The diff needs the whole internal PodSpec layout and a port of difflib's SequenceMatcher (`apis/core/validation/podspecdiff.ts` holds the stub) | kubectl shows the rejection without the hint of which field changed; the debrief should name it | 05a |
+| DIV-017 | API server: Pod warnings | Creating a Pod or Pod template returns warnings for deprecated or dubious settings (`pkg/api/pod/warnings.go` GetWarningsForPod: deprecated annotations, node labels, `ndots`, …) | Only the DNS-label name warning; Service warnings were reproduced from probes of the real server | `pkg/api` was not in the upstream checkout during phase 05a (added since) | kubectl prints fewer `Warning:` lines on create and apply | 05a |
+| DIV-018 | API server: Event lifetime | Events expire after `--event-ttl` (1 h) | Events stay until deleted | No expiry in etcd yet | `kubectl get events` keeps showing old events in long sessions | 05a |
 
 The non-goals in `PLAN.md` §4.3 (no packets, no real cryptography, a bash subset,
 an editor overlay instead of a terminal vi, a curated image catalog) become entries when the phase
@@ -375,7 +379,18 @@ steps:
     normalize: false                     # keep values as captured (help text)
   - do: kubectl wait --for=condition=Ready pod/x   # do, until and sleep may appear among steps
   - objects: [pod/api, -n kube-system lease]       # kubectl get <ref> -o json, normalized
+  - request: POST /api/v1/namespaces/default/pods?fieldValidation=Strict   # raw HTTP as the admin
+    body: |                              # YAML or JSON, sent as JSON (raw: true sends it verbatim)
+      apiVersion: v1
+      ...
+    contentType: application/merge-patch+json        # for PATCH
+    keep: [kind, apiVersion, items]      # keep only these top-level keys of the response
 ```
+
+A `request` step records the status code, the texts of the `Warning` headers and the normalized
+response body: what the API server itself answers, independent of kubectl (D-041). The cases in
+`cases/api/` are replayed through the simulator's request pipeline by
+`tools/src/golden/api.test.ts`.
 
 Commands run in `/bin/bash --noprofile --norc -c` with `PATH` holding the pinned binaries first,
 `HOME` the working directory (with `~/.kube/config` = the admin kubeconfig for a server case),

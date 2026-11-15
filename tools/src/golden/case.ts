@@ -49,7 +49,23 @@ export interface SleepStep {
   sleep: number;
 }
 
-export type Step = RunStep | DoStep | UntilStep | ObjectsStep | SleepStep;
+/**
+ * One HTTP request straight to the API server as the admin identity, bypassing kubectl: what the
+ * request pipeline answers (status code, warnings, body). `request` is `<METHOD> <path?query>`;
+ * `body` is YAML or JSON and is sent as JSON, or verbatim with `raw: true` (duplicate keys,
+ * malformed JSON).
+ */
+export interface RequestStep {
+  request: string;
+  body?: string;
+  raw?: boolean;
+  /** Default application/json; a PATCH names its patch type (application/merge-patch+json). */
+  contentType?: string;
+  /** Keep only these top-level keys of the response body (a discovery list too big to keep whole). */
+  keep?: string[];
+}
+
+export type Step = RunStep | DoStep | UntilStep | ObjectsStep | SleepStep | RequestStep;
 
 export interface GoldenCase {
   description: string;
@@ -69,6 +85,7 @@ const STEP_KEYS: Record<string, string[]> = {
   until: ['until', 'match', 'timeout'],
   objects: ['objects', 'anyWorker'],
   sleep: ['sleep'],
+  request: ['request', 'body', 'raw', 'contentType', 'keep'],
 };
 
 function checkStep(s: unknown, where: string, allowed: string[]): Step {
@@ -77,6 +94,7 @@ function checkStep(s: unknown, where: string, allowed: string[]): Step {
   if (!kind || !allowed.includes(kind)) throw new Error(`${where}: expected one of ${allowed.join(', ')}`);
   for (const k of Object.keys(s)) if (!(STEP_KEYS[kind] as string[]).includes(k)) throw new Error(`${where}: unknown key "${k}" in a ${kind} step`);
   const st = s as Record<string, unknown>;
+  if (kind === 'request' && !(typeof st.request === 'string' && /^(GET|POST|PUT|PATCH|DELETE) \/\S*$/.test(st.request))) throw new Error(`${where}: request is "<METHOD> <path>"`);
   if (kind === 'run' || kind === 'do' || kind === 'until') if (typeof st[kind] !== 'string') throw new Error(`${where}: ${kind} must be a string`);
   if (kind === 'until' && typeof st.match !== 'string') throw new Error(`${where}: until needs match`);
   if (kind === 'objects' && !(Array.isArray(st.objects) && st.objects.every((o) => typeof o === 'string'))) throw new Error(`${where}: objects is a list of strings`);

@@ -33,10 +33,12 @@ long output. Each gets a real parser for a documented subset, and an honest noti
   `journalctl` will use it in phase 25a).
 
 **Ground truth.** Verify against the real tools on this workstation and freeze results as
-transcripts, captured as `docs/FIDELITY.md` §2.1 describes. Both awks are installed: plain `awk`
-runs gawk 5.2.1 here, while a stock Ubuntu server's `awk` is mawk 1.3.4 (`/usr/bin/mawk`). Call
-each by its full name and note which one a transcript was verified against, since their output can
-differ. `jq` 1.7.1 is installed.
+transcripts, captured as `docs/FIDELITY.md` §2.1 describes. The simulated server's `awk` is gawk
+5.2.1, as on the Ubuntu 24.04 cloud image (`docs/decisions.md` D-032), and so is the workstation's
+`awk`: capture with `/usr/bin/gawk` to be explicit. mawk 1.3.4 is also installed on both
+(`/usr/bin/mawk`); it stays a "not simulated" stub unless the gap log asks for it. Register the
+divergence for gawk-only features a learner could come to rely on (`gensub`, `strftime`, `asort`,
+`--re-interval` defaults): on a host where `awk` is mawk they fail. `jq` 1.7.1 is installed.
 
 ## Not in this phase
 

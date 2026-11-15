@@ -84,7 +84,7 @@ no rank 3 reference comes from the previous machine.
 | System | Pop!_OS 24.04 LTS, a desktop derivative of Ubuntu 24.04 ("noble"); x86_64, 16 CPUs, 31 GiB RAM |
 | Development runtime | Node 26.13.1 (through nvm), npm 11.20.0, git 2.43.0 |
 | Shell and text tools | bash 5.2.21, GNU coreutils 9.4, GNU grep 3.11, GNU sed 4.9, GNU findutils 4.9.0, GNU diffutils 3.10, jq 1.7.1 (`jq --version` prints `jq-1.7`), less 590, vim 9.1, GNU tar 1.35, gzip 1.12 |
-| awk | GNU Awk 5.2.1 is what `awk` runs here (installing it moved the `awk` alternative to it). mawk 1.3.4, the `awk` of a stock Ubuntu server, is `/usr/bin/mawk`. Call each by its full name when capturing |
+| awk | GNU Awk 5.2.1 is what `awk` runs here, as on the simulated hosts (the Ubuntu 24.04 cloud image installs gawk, whose alternative outranks mawk's; `docs/decisions.md` D-032). mawk 1.3.4 is `/usr/bin/mawk` on both. Call each by its full name when capturing |
 | System tools | systemd 255, procps-ng 4.0.4, iproute2 6.1.0, util-linux 2.39.3, sudo 1.9.15p5, apt 2.8.4, OpenSSH 9.6p1, OpenSSL 3.0.13 |
 | Network clients | curl 8.5.0, GNU Wget 1.21.4, OpenBSD netcat 1.226, iputils ping, `nslookup`, `dig` and `host` from BIND 9.18.39 |
 | Browsers | Firefox 160.0; a Playwright headless Chromium (build 1248) is in `~/.cache/ms-playwright` |

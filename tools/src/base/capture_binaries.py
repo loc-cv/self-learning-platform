@@ -13,7 +13,8 @@ has vim-gtk3) is read from the .deb of exactly that version in the directory giv
 
 Pop!_OS changes none of these packages. Alternatives are computed as a stock server has them, from
 the postinsts of PACKAGES alone (automatic mode: the highest priority wins), not read from this
-workstation's /etc/alternatives (awk -> gawk, vi -> vim.gtk3 here).
+workstation's /etc/alternatives (vi -> vim.gtk3 here). With gawk installed, as on the cloud image,
+awk and nawk go to gawk (priority 10 over mawk's 5; docs/decisions.md D-032).
 
 Run: python3 -I tools/src/base/capture_binaries.py [--debs <dir>] > packages/host/src/base/binaries.ts
 """
@@ -36,6 +37,7 @@ PACKAGES = {
     "debianutils": "5.17build1",
     "diffutils": "1:3.10-1ubuntu0.1",
     "findutils": "4.9.0-5build1",
+    "gawk": "1:5.2.1-2ubuntu0.1",
     "grep": "3.11-4build1",
     "gzip": "1.12-1ubuntu3.2",
     "hostname": "3.23+nmu2ubuntu2",

@@ -282,3 +282,16 @@ headless runs answer with supplied content.
 `~/.bashrc` would leave when `~/.profile` and `~/.bashrc` are the files the system installed
 (the colored `\u@\h:\w\$ ` with the xterm title for a user on an `*-256color` terminal, plain
 for root), and bash's default otherwise. A temporary shortcut until phase 22a runs the files.
+
+**D-032 — The simulated server's `awk` is gawk.** Decided with the owner on 2026-11-16, after
+phase 03. The Ubuntu 24.04 server cloud image manifest lists `gawk 1:5.2.1-2ubuntu0.1` next to
+mawk, and gawk's postinst registers the `awk` alternative (with `nawk`) at priority 10 against
+mawk's 5, so `awk` runs gawk there. The base system follows the cloud image for its package set and
+versions (D-029) and for its locale (D-022); exam nodes are cloud VMs; and the workstation's
+`awk` is the same gawk 5.2.1, so captures need no special handling. `capture_binaries.py` includes
+gawk, and the alternatives come out as `awk`, `nawk` → `/usr/bin/gawk`; mawk stays as
+`/usr/bin/mawk`.
+- Rules out mawk as `awk`, which an installer-built server may have (not verified) but which
+  would make `awk` the one thing not taken from the cloud image.
+- gawk-only features (`gensub`, `strftime`, …) fail on a host whose `awk` is mawk; phase 22b
+  registers that as a divergence note for learners.

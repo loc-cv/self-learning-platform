@@ -174,9 +174,8 @@ Newest first. Each session adds: what was built, decisions made, surprises, know
     Phase 10's web terminal drives the same `tty.*` and `editor.*` inputs and renders the
     `editor.open` record as the overlay; it should decide on bracketed paste (DIV-012). Raw-mode
     readers (a pager, phase 22b) set `Tty.mode` through `setTtyMode` (`tty/discipline.ts`), which
-    has no `ProcApi` method yet. The cloud image manifest lists gawk, whose postinst makes `awk`
-    → gawk (priority 10 over mawk's 5); FIDELITY §2.1 and phase 22b assume a server's `awk` is
-    mawk: phase 22b should check which install the simulated host stands for.
+    has no `ProcApi` method yet. The simulated server's `awk` is gawk, as on the cloud image
+    (D-032, decided with the owner after this phase; `prompts/22b-awk-jq-pager.md` updated).
   - Workflow: two parallel agents captured the readline reference and regenerated the base
     binaries while the engine was written.
 
@@ -281,7 +280,8 @@ Newest first. Each session adds: what was built, decisions made, surprises, know
     oh-my-zsh aliases `ls`, `grep` and `diff`. Capture ground truth in the clean bash from
     `docs/FIDELITY.md` §2.1. Pop!_OS pins its own apt repository at priority 1001, so
     `apt-cache policy` priorities here are not a stock Ubuntu server's. Installing `gawk` made it
-    the system `awk`; a stock Ubuntu server's `awk` is mawk (`/usr/bin/mawk`), so phase 22b calls
+    the system `awk`; a stock Ubuntu server's `awk` is mawk (`/usr/bin/mawk`) (later corrected: the
+    cloud image has gawk as `awk` too, D-032), so phase 22b calls
     each by name. No rank 3 reference was captured on the old machine, so nothing needs recapturing.
   - The old machine (`ssh colcv-thinkpad-t440p`, Ubuntu 26.04.1) was checked read-only. Its
     checkout, `~/projects/learning-platform`, is at the same commit `baaf61e`, clean and in sync

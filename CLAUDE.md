@@ -28,6 +28,8 @@ npm test -w packages/k8s      # one package
 npx vitest run <file> -t "<name>"   # one test
 npm run upstream:fetch        # fetch pinned upstream Kubernetes sources into .upstream/
 npm run bench:fork            # time fork, hash, snapshot and restore of a three-machine world
+npm run transcript:capture -- <file|dir>  # write real bash/coreutils output into golden-verified transcripts
+npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
 npm run dev                   # (phase 10) web app with hot reload
 npm start                     # (phase 10) build, then serve the app and the persistence API locally
 npm run play -- --topology <name> [--seed N]      # (phase 03) sit in a simulated machine from this terminal
@@ -52,10 +54,11 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
 packages/content   content packs (YAML + Markdown), topology templates
 apps/web  apps/server  apps/cli
-tools/             upstream fetch, OpenAPI processing, oracle and golden capture, update check;
+tools/             upstream fetch, OpenAPI processing, oracle and golden capture, transcript capture, update check;
                    tools/eslint holds the two lint rules, their fixtures and the dependency table
 docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against
+packages/*/transcripts/  transcript tests (docs/TRANSCRIPTS.md), run by each package's transcripts.test.ts
 fixtures/golden/   captured real output per Kubernetes version (committed)
 fixtures/reference/ workstation captures (rank 3) with their capture scripts, e.g. linux/vfs-syscalls
 ```

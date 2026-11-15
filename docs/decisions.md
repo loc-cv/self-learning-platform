@@ -167,3 +167,51 @@ output. The script's header gives the command and the versions. The first is
 user. The VFS test replays each case and must match. Behavior that needs a second user or root
 (sticky directories, link protections) cannot be captured this way. Those tests cite man pages
 and Linux v6.8 `fs/namei.c`.
+
+## Phase 02 (2026-11-16)
+
+**D-022 — Simulated hosts use the C.UTF-8 locale; a login gets sshd's environment.**
+`/etc/default/locale` holds `LANG=C.UTF-8`, which pam_env reads at login. Ubuntu's minimized
+cloud images set that default (livecd-rootfs, LP #1759003,
+<https://code.launchpad.net/~mwhudson/livecd-rootfs/default-LANG-C.UTF-8/+merge/342144>, read
+2026-11-16); an installer-built server may have en_US.UTF-8 instead, so this is a choice, not the
+only real configuration. In C.UTF-8, `sort`, `ls` and glob results use code-point order and messages are the
+untranslated ones, which keeps every ordering a pure function of the data. Ground truth is
+captured with the same locale (`docs/TRANSCRIPTS.md`). A login starts with PATH (sshd's built-in
+value, then `/etc/environment`), MAIL, USER, LOGNAME, HOME, SHELL and TERM, as sshd(8) and the
+workstation's `/etc/pam.d/sshd` set them; the shell adds PWD, SHLVL and OLDPWD. The umask is 022.
+- Rules out en_US.UTF-8, which needs glibc's collation tables to sort like a real host does.
+- SSH_* variables arrive with `ssh` in phase 25a.
+
+**D-023 — Process runtime choices.** Recorded in `docs/ARCHITECTURE.md` §3.3–§3.6.
+- A run slice is **1000 syscalls**; a process that uses it up is resumed 1 ms later.
+- `ProcState` is merged into `Proc`: one frozen record per process holds its descriptors, wait
+  state, signal dispositions and restart data. Descriptors change rarely enough that one record
+  costs nothing, and one record cannot disagree with another.
+- Open file descriptions are a per-machine table (`Machine.files`), so `2>&1` and inherited
+  descriptors share an offset as on Linux; an unlinked file lives until its last description closes.
+- Coroutine frames live in the runtime, keyed by the world object. A slice may declare `attach`,
+  which the kernel calls when it creates a kernel over a world (boot, fork, restore); the host
+  ends there every program without a frame that is not at a restart point (§3.4).
+- `exec` is real: a process can replace its program, keeping pid, descriptors and process group.
+  Pipeline stages run in subshell processes that exec external commands, as bash does.
+- Pids start at 1000 on each machine; lower numbers are left for boot-time processes (phase 25a).
+- Contents are text: escapes that produce bytes are decoded as UTF-8; other binary data is not
+  representable (`docs/FIDELITY.md` DIV-002).
+- The output port carries `{ kind: 'tty', tty, data }` with `onlcr` applied.
+
+**D-024 — Transcripts are captured from a real interactive bash on a pty.** The capture runs
+`-bash --noprofile --norc --noediting -i` with a PROMPT_COMMAND sentinel, so one session carries
+state across commands and every message has the interactive prefix (`-bash: foo: command not
+found`), exactly what a learner sees. Format and procedure: `docs/TRANSCRIPTS.md`.
+- Rules out capturing with `bash -c` per command, which prints `bash: line 1:` prefixes, loses
+  state between commands and lists `ls` output one per line instead of in columns.
+
+**D-025 — Gaps that wait for later phases.**
+- Startup files (`/etc/profile`, `~/.profile`, `~/.bashrc`) are not read: they need `if`, `case`
+  and `for` (phase 22a). A login shell starts as `bash --noprofile --norc`, so `ll`, `la` and the
+  `--color=auto` aliases of Ubuntu's `.bashrc` do not exist yet (STATUS.md, temporary shortcuts).
+- The terminal is minimal: canonical input, Ctrl-C and Ctrl-D, `onlcr`. No echo, no line editing,
+  no prompt drawing; the shell passes its prompt and phase 03's line editor draws it.
+- `debianutils`' `which` is a `/bin/sh` script; it is simulated as a program (DIV-001), because
+  `/bin/sh` is dash, which is not simulated.

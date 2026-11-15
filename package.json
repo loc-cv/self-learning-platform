@@ -17,7 +17,8 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "upstream:fetch": "node tools/src/upstream/fetch.ts",
-    "bench:fork": "node tools/src/bench/fork.ts"
+    "bench:fork": "node tools/src/bench/fork.ts",
+    "transcript:capture": "node tools/src/transcript/capture.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

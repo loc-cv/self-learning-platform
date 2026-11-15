@@ -17,6 +17,8 @@ export default tseslint.config(
       // Guarantee 1: imports follow the dependency graph (PLAN.md §6).
       'simlab/package-boundaries': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      // `const { field: _, ...rest } = record` is how a frozen record loses a field.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true, varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
     },
   },
   {

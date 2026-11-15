@@ -15,6 +15,7 @@ import { put, remove } from './table.ts';
 import {
   createTraceBuffer,
   type GapInput,
+  type OutputRecord,
   type Ports,
   type TraceInput,
   type TraceRecord,
@@ -51,6 +52,8 @@ export interface Ctx {
   /** Emits a trace record. Returns its id, for `causes` of later records. */
   trace(record: TraceInput): number;
   gap(record: GapInput): void;
+  /** Sends bytes out through the output port. Write-only: nothing in the engine reads them back. */
+  output(record: OutputRecord): void;
   /** Typed access to a plugin's slice. */
   slice<S>(name: string): S;
 }
@@ -202,6 +205,9 @@ export function createKernel(world: World, registry: Registry, options: KernelOp
         }),
       );
     },
+    output(record) {
+      ports.output?.(deepFreeze({ ...record }));
+    },
     slice<S>(name: string): S {
       if (!(name in world.slices)) throw new Error(`no slice named ${name}`);
       return world.slices[name] as S;
@@ -261,6 +267,10 @@ export function createKernel(world: World, registry: Registry, options: KernelOp
     }
     return best?.at;
   };
+
+  for (const spec of registry.slices) {
+    if (spec.attach) withDuring('attach', () => spec.attach?.(ctx));
+  }
 
   return {
     world,

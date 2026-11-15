@@ -3,7 +3,8 @@
 // here: like on Linux they are the contents of /etc/passwd, /etc/group and /etc/environment
 // (docs/decisions.md D-019).
 
-import { put, type Ctx, type Millis } from '@simlab/kernel';
+import { put, type Ctx, type Millis, type Table } from '@simlab/kernel';
+import type { OpenFile, Proc, Stream, Tty } from './proc/types.ts';
 import type { DirInode, Vfs } from './vfs/types.ts';
 
 export interface Machine {
@@ -12,11 +13,19 @@ export interface Machine {
   hostname: string;
   kind: 'node' | 'workstation' | 'container';
   vfs: Vfs;
+  /** Processes by pid (proc/types.ts). */
+  procs: Table<Proc>;
+  /** Open file descriptions by id: what a file descriptor of kind `file` points at. */
+  files: Table<OpenFile>;
   boot: { bootedAt: Millis; state: 'running' | 'off' };
 }
 
 export interface HostSlice {
   machines: Record<string, Machine>;
+  /** Pipes and other byte channels, by id. */
+  streams: Table<Stream>;
+  /** Terminals, by id. */
+  ttys: Table<Tty>;
 }
 
 export function hostSlice(ctx: Ctx): HostSlice {
@@ -61,6 +70,8 @@ export function createMachine(
     hostname: spec.hostname,
     kind: spec.kind,
     vfs,
+    procs: {},
+    files: {},
     boot: { bootedAt: ctx.now, state: 'running' },
   };
   slice.machines[spec.id] = machine;

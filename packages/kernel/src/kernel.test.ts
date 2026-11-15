@@ -253,3 +253,38 @@ describe('inputs, trace and gaps', () => {
     expect(() => k.act('t', (ctx) => ctx.slice('nope'))).toThrow('no slice named nope');
   });
 });
+
+describe('slice attach hook and output port', () => {
+  test('attach runs when a kernel is created over a world: at boot, fork and restore', () => {
+    const calls: string[] = [];
+    const plugin: Plugin = {
+      name: 'att',
+      slice: {
+        name: 'att',
+        version: 1,
+        init: () => ({ n: 0 }),
+        adopt: () => {},
+        attach(ctx) {
+          calls.push(ctx.during);
+          (ctx.slice<{ n: number }>('att')).n++;
+        },
+      },
+    };
+    const k = bootKernel(createRegistry([plugin]), { seed: 1, startTime: 0 });
+    expect(calls).toEqual(['attach']);
+    const f = k.fork();
+    expect(calls).toEqual(['attach', 'attach']);
+    expect((f.world.slices['att'] as { n: number }).n).toBe(2);
+    expect((k.world.slices['att'] as { n: number }).n).toBe(1);
+  });
+
+  test('output records go to the port and nowhere else', () => {
+    const out: unknown[] = [];
+    const k = bootKernel(createRegistry([]), { seed: 1, startTime: 0, ports: { output: (r) => out.push(r) } });
+    const before = k.hash();
+    k.act('t', (ctx) => ctx.output({ kind: 'tty', tty: 'x', data: 'hi' }));
+    expect(out).toEqual([{ kind: 'tty', tty: 'x', data: 'hi' }]);
+    expect(Object.isFrozen(out[0])).toBe(true);
+    expect(k.hash()).toBe(before);
+  });
+});

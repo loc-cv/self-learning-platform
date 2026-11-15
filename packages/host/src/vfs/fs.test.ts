@@ -366,17 +366,17 @@ describe('generated files and executable stubs', () => {
 
   test('a program stub resolves for exec, has a size, and is not readable as text', () => {
     const k = bootHost();
-    asUser(k, 'root', (fs) => fs.installProgram('/usr/bin/ls', 'ls', { size: 138208 }));
+    asUser(k, 'root', (fs) => fs.installProgram('/usr/local/bin/tool', 'tool', { size: 138208 }));
     asUser(k, 'student', (fs) => {
-      expect(fs.stat('/bin/ls')).toMatchObject({ type: 'file', kind: 'program', size: 138208, mode: 0o755, uid: 0 });
-      expect(fs.checkExec('/bin/ls')).toMatchObject({ type: 'program', program: 'ls' });
-      expect(code(() => fs.readFile('/bin/ls'))).toBe('unsupported');
-      expect(code(() => fs.writeFile('/bin/ls', 'x'))).toBe('EACCES');
+      expect(fs.stat('/usr/local/bin/tool')).toMatchObject({ type: 'file', kind: 'program', size: 138208, mode: 0o755, uid: 0 });
+      expect(fs.checkExec('/usr/local/bin/tool')).toMatchObject({ type: 'program', program: 'tool' });
+      expect(code(() => fs.readFile('/usr/local/bin/tool'))).toBe('unsupported');
+      expect(code(() => fs.writeFile('/usr/local/bin/tool', 'x'))).toBe('EACCES');
     });
     asUser(k, 'root', (fs) => {
-      expect(code(() => fs.writeFile('/usr/bin/ls', 'x', { append: true }))).toBe('unsupported');
-      fs.writeFile('/usr/bin/ls', '#!/bin/sh\n');
-      expect(fs.stat('/usr/bin/ls')).toMatchObject({ kind: 'file', size: 10, mode: 0o755 });
+      expect(code(() => fs.writeFile('/usr/local/bin/tool', 'x', { append: true }))).toBe('unsupported');
+      fs.writeFile('/usr/local/bin/tool', '#!/bin/sh\n');
+      expect(fs.stat('/usr/local/bin/tool')).toMatchObject({ kind: 'file', size: 10, mode: 0o755 });
     });
   });
 });

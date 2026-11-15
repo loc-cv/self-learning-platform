@@ -3,6 +3,7 @@
 // mutable and belong to one world; the values in them are deeply frozen and may be shared.
 
 import type { Json } from './json.ts';
+import type { Ctx } from './kernel.ts';
 import type { Millis } from './civil.ts';
 import type { PendingEvent } from './heap.ts';
 import type { PrngState } from './prng.ts';
@@ -57,6 +58,12 @@ export interface SliceSpec<S> {
   init(seed: number): S;
   /** After deserialization: freeze the values so later forks share them (§2.7). */
   adopt(slice: S): void;
+  /**
+   * Called when a kernel is created over a world, before anything else runs: after boot, fork and
+   * restore. The host uses it to end programs whose coroutine frames this runtime does not hold
+   * (docs/ARCHITECTURE.md §3.4). Must be a no-op on a world whose runtime state is complete.
+   */
+  attach?(ctx: Ctx): void;
 }
 
 export function emptyWorld(seed: number, startTime: Millis): World {

@@ -14,6 +14,7 @@ import { getMachine } from '../machine.ts';
 import { formatGroup, formatPasswd, parseGroup, parsePasswd } from '../users.ts';
 import { createFs, type Fs } from '../vfs/fs.ts';
 import { ROOT_CRED } from '../vfs/types.ts';
+import { ALTERNATIVES, BINARIES } from './binaries.ts';
 import * as files from './files.ts';
 
 export interface UbuntuBaseOptions {
@@ -28,6 +29,7 @@ const DIRS: [string, number, number?][] = [
   ['/boot', 0o755],
   ['/dev', 0o755],
   ['/etc', 0o755],
+  ['/etc/alternatives', 0o755],
   ['/etc/default', 0o755],
   ['/etc/opt', 0o755],
   ['/etc/profile.d', 0o755],
@@ -132,6 +134,17 @@ export function buildUbuntuBase(ctx: Ctx, machineId: string, options: UbuntuBase
   file('/var/log/lastlog', '', 0o664, 0, GID.utmp);
 
   fs.createGenerated('/dev/null', 'host.null', { mode: 0o666, device: { major: 1, minor: 3 } });
+
+  // The locale of every simulated host (docs/decisions.md D-022), as update-locale writes it.
+  file('/etc/default/locale', 'LANG=C.UTF-8\n');
+
+  // Executables: stubs naming registered programs, scripts, symlinks and alternatives.
+  for (const [path, entry] of BINARIES) {
+    if (typeof entry === 'string') fs.symlink(entry, path);
+    else if (Array.isArray(entry)) fs.installProgram(path, entry[2], { size: entry[0], mode: entry[1] });
+    else file(path, entry.script, entry.mode);
+  }
+  for (const [name, target] of ALTERNATIVES) fs.symlink(target, `/etc/alternatives/${name}`);
 
   // Accounts. base-passwd's update-passwd installs the master files; shadow's pwconv replaces each
   // password field with `x`. The workstation's /etc/passwd matches passwd.master this way

@@ -58,6 +58,21 @@ export interface WriteOptions {
   mode?: number;
 }
 
+export interface OpenFlags {
+  read?: boolean;
+  write?: boolean;
+  /** O_CREAT */
+  create?: boolean;
+  /** O_TRUNC */
+  truncate?: boolean;
+  /** O_APPEND: recorded by the caller's open file description; accepted here for symmetry. */
+  append?: boolean;
+  /** O_EXCL */
+  exclusive?: boolean;
+  /** Mode of a new file before the umask. Default 0666. */
+  mode?: number;
+}
+
 export interface Fs {
   readonly machine: Machine;
   stat(path: string): Stat;
@@ -65,6 +80,11 @@ export interface Fs {
   readFile(path: string): string;
   /** open(O_WRONLY|O_CREAT|O_TRUNC or O_APPEND [|O_EXCL]) and one write. */
   writeFile(path: string, data: string, opts?: WriteOptions): void;
+  /**
+   * open(2): resolves, checks and (with `create`) creates the file; with `truncate` empties it.
+   * Returns the inode id, which an open file description then holds (proc/files.ts).
+   */
+  open(path: string, flags: OpenFlags): string;
   mkdir(path: string, mode?: number): void;
   rmdir(path: string): void;
   unlink(path: string): void;
@@ -263,11 +283,15 @@ export function createFs(ctx: Ctx, machineId: string, options: FsOptions): Fs {
     changed(dirId);
   };
 
-  /** Drops one link to an inode, deleting it when none is left. */
+  /**
+   * Drops one link to an inode. With none left it is deleted, unless an open file description
+   * still holds it: then it lives on with nlink 0 until the last one is closed (unlink(2)).
+   */
   const dropLink = (id: string): void => {
     const i = inode(id);
-    if (i.type === 'dir' || i.nlink <= 1) remove(vfs.inodes, id);
-    else store({ ...i, nlink: i.nlink - 1, ctime: ctx.now });
+    if (i.type !== 'dir' && i.nlink > 1) store({ ...i, nlink: i.nlink - 1, ctime: ctx.now });
+    else if (i.type !== 'dir' && isOpen(machine, id)) store({ ...i, nlink: 0, ctime: ctx.now });
+    else remove(vfs.inodes, id);
   };
 
   /** Owner and group of a new inode in `dir`: the directory's group if it is set-group-ID (mkdir(2), open(2)). */
@@ -323,15 +347,28 @@ export function createFs(ctx: Ctx, machineId: string, options: FsOptions): Fs {
     },
 
     writeFile(path, data, opts = {}) {
-      const found = walk(path, opts.exclusive ? 'never' : 'always', true, 'open');
+      const ino = fs.open(path, { write: true, create: true, ...(opts.append ? { append: true } : { truncate: true }), ...(opts.exclusive ? { exclusive: true } : {}), ...(opts.mode !== undefined ? { mode: opts.mode } : {}) });
+      if (data !== '' || !opts.append) writeInode(ctx, machine, ino, data, opts.append ? 'append' : 0);
+    },
+
+    open(path, flags) {
+      const create = flags.create ?? false;
+      // open(2): O_CREAT with a trailing slash is EISDIR once the parent directories resolve,
+      // whether or not the final name exists. reference: the files group's captures, 2026-11-16
+      if (create && path.endsWith('/') && split(path).length > 0) {
+        walk(path.replace(/\/+$/, ''), 'always', true, 'open');
+        fail('EISDIR', 'open', path);
+      }
+      const found = walk(path, flags.exclusive ? 'never' : 'always', create, 'open');
       if (found.ino !== undefined) {
-        if (opts.exclusive) fail('EEXIST', 'open', path);
+        if (flags.exclusive) fail('EEXIST', 'open', path);
         const i = inode(found.ino);
-        if (i.type === 'dir') fail('EISDIR', 'open', path);
+        if (i.type === 'dir' && flags.write) fail('EISDIR', 'open', path);
         // protected_regular (O_CREAT on an existing regular file in a sticky directory that is
         // world-writable, or group-writable at level 2): only the file's owner or the directory's.
         const d = found.dir === undefined ? undefined : dirInode(found.dir);
         if (
+          create &&
           d &&
           PROTECTED.regular &&
           (i.type === 'file' || i.type === 'program') &&
@@ -342,27 +379,34 @@ export function createFs(ctx: Ctx, machineId: string, options: FsOptions): Fs {
         ) {
           fail('EACCES', 'open', path);
         }
-        if (!may(i, W)) fail('EACCES', 'open', path);
-        switch (i.type) {
-          case 'file':
-            store({ ...i, data: opts.append ? i.data + data : data, mtime: ctx.now, ctime: ctx.now });
-            break;
-          case 'program': {
-            if (opts.append) throw new UnsupportedError(`appending to the binary content of ${path}`);
-            // Truncating an executable leaves an ordinary file holding the new text.
-            const { id, mode, uid, gid, nlink } = i;
-            store({ id, mode, uid, gid, nlink, type: 'file', data, mtime: ctx.now, ctime: ctx.now });
-            break;
+        const want = (flags.read ? R : 0) | (flags.write ? W : 0);
+        if (want && !may(i, want)) fail('EACCES', 'open', path);
+        if (flags.truncate && flags.write) {
+          switch (i.type) {
+            case 'file':
+              if (i.data !== '') {
+                store({ ...i, data: '', mtime: ctx.now, ctime: ctx.now });
+                // The content changed: `tail -f` reports "file truncated" (fileTopic's contract).
+                ctx.publish(fileTopic(machineId, i.id));
+              } else store({ ...i, mtime: ctx.now, ctime: ctx.now });
+              break;
+            case 'program': {
+              // Truncating an executable leaves an ordinary, empty file.
+              const { id, mode, uid, gid, nlink } = i;
+              store({ id, mode, uid, gid, nlink, type: 'file', data: '', mtime: ctx.now, ctime: ctx.now });
+              break;
+            }
+            case 'generated':
+              if (!provider(i.provider).write) throw new UnsupportedError(`writing to ${path}`);
+              break;
           }
-          case 'generated': {
-            const p = provider(i.provider);
-            if (!p.write) throw new UnsupportedError(`writing to ${path}`);
-            p.write(ctx, machine, i.args, data, opts.append ?? false);
-            break;
-          }
+          if (found.dir !== undefined) changed(found.dir);
+        } else if (flags.write && i.type === 'program') {
+          throw new UnsupportedError(`writing into the binary content of ${path}`);
+        } else if (flags.write && i.type === 'generated' && !provider(i.provider).write) {
+          throw new UnsupportedError(`writing to ${path}`);
         }
-        if (found.dir !== undefined) changed(found.dir);
-        return;
+        return i.id;
       }
       if (found.trailing) fail('EISDIR', 'open', path);
       const dir = dirInode(found.dir as string);
@@ -371,14 +415,15 @@ export function createFs(ctx: Ctx, machineId: string, options: FsOptions): Fs {
       store({
         id,
         type: 'file',
-        data,
-        mode: (opts.mode ?? 0o666) & ~umask & 0o7777,
+        data: '',
+        mode: (flags.mode ?? 0o666) & ~umask & 0o7777,
         ...newOwner(dir),
         mtime: ctx.now,
         ctime: ctx.now,
         nlink: 1,
       });
       addEntry(dir.id, found.name, id, false);
+      return id;
     },
 
     mkdir(path, mode = 0o777) {
@@ -462,6 +507,8 @@ export function createFs(ctx: Ctx, machineId: string, options: FsOptions): Fs {
       const src = inode(a.ino as string);
       const b = walk(newPath, 'never', true, 'link');
       if (b.ino !== undefined) fail('EEXIST', 'link', newPath);
+      // A new name with a trailing slash names a directory that would have to exist.
+      if (b.trailing) fail('ENOENT', 'link', newPath);
       // protected_hardlinks (may_linkat, before vfs_link's own checks): the owner, CAP_FOWNER, or
       // a "safe" source: a regular file, not set-user-ID or executable set-group-ID, that the
       // caller may read and write.
@@ -478,7 +525,8 @@ export function createFs(ctx: Ctx, machineId: string, options: FsOptions): Fs {
     },
 
     symlink(target, path) {
-      const { dir, name } = creating('symlink', path);
+      const { dir, name, found } = creating('symlink', path);
+      if (found.trailing) fail('ENOENT', 'symlink', path);
       const id = nextInode(ctx, machineId);
       store({ id, type: 'symlink', target, mode: 0o777, ...newOwner(dir), mtime: ctx.now, ctime: ctx.now, nlink: 1 });
       addEntry(dir.id, name, id, false);
@@ -615,4 +663,72 @@ export function createFs(ctx: Ctx, machineId: string, options: FsOptions): Fs {
   }
 
   return fs;
+}
+
+/** Published whenever a file's content changes, through a descriptor or a path (`tail -f` waits on it). */
+export const fileTopic = (machine: string, ino: string): string => `host.file:${machine}:${ino}`;
+
+/** True when an open file description on the machine holds the inode. */
+function isOpen(machine: Machine, ino: string): boolean {
+  const files = machine.files;
+  for (const k of Object.keys(files)) if (files[k]?.inode === ino) return true;
+  return false;
+}
+
+function providerOf(ctx: Ctx, name: string): FileProviderSpec {
+  const p = ctx.registry.get<FileProviderSpec>(FILE_PROVIDER, name);
+  if (!p) throw new Error(`no file provider ${name}`);
+  return p;
+}
+
+/**
+ * Content of an inode as read through an open descriptor: no path resolution and no permission
+ * check, which happened at open. Throws `UnsupportedError` for an executable stub.
+ */
+export function readInode(ctx: Ctx, machine: Machine, ino: string): string {
+  const i = machine.vfs.inodes[ino];
+  if (!i) throw new Error(`machine ${machine.id}: dangling inode ${ino}`);
+  switch (i.type) {
+    case 'file':
+      return i.data;
+    case 'generated':
+      return providerOf(ctx, i.provider).read(ctx, machine, i.args);
+    case 'program':
+      throw new UnsupportedError(`binary content of an executable stub for ${i.program}`);
+    case 'dir':
+      throw new FsError('EISDIR', 'read', '');
+    case 'symlink':
+      throw new Error('unreachable: an open descriptor never holds a symlink');
+  }
+}
+
+/**
+ * Writes through an open descriptor at `offset` (in UTF-16 code units of the stored text), or at
+ * the end for `append`. Returns the offset after the write.
+ */
+export function writeInode(ctx: Ctx, machine: Machine, ino: string, data: string, offset: number | 'append'): number {
+  const i = machine.vfs.inodes[ino];
+  if (!i) throw new Error(`machine ${machine.id}: dangling inode ${ino}`);
+  switch (i.type) {
+    case 'file': {
+      const at = offset === 'append' ? i.data.length : offset;
+      const before = i.data.length >= at ? i.data.slice(0, at) : i.data + '\0'.repeat(at - i.data.length);
+      const next = before + data + i.data.slice(at + data.length);
+      put(machine.vfs.inodes, ino, { ...i, data: next, mtime: ctx.now, ctime: ctx.now });
+      ctx.publish(fileTopic(machine.id, ino));
+      return at + data.length;
+    }
+    case 'generated': {
+      const p = providerOf(ctx, i.provider);
+      if (!p.write) throw new UnsupportedError(`writing to a ${i.provider} file`);
+      p.write(ctx, machine, i.args, data, offset === 'append');
+      return offset === 'append' ? 0 : offset + data.length;
+    }
+    case 'program':
+      throw new UnsupportedError(`writing into the binary content of an executable stub for ${i.program}`);
+    case 'dir':
+      throw new FsError('EISDIR', 'write', '');
+    case 'symlink':
+      throw new Error('unreachable: an open descriptor never holds a symlink');
+  }
 }

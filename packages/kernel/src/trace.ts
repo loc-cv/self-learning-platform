@@ -60,9 +60,21 @@ export interface GapEvent {
   error?: { message: string; stack?: string };
 }
 
+/**
+ * Bytes for a terminal (docs/ARCHITECTURE.md §2.10). The engine keeps no screen: the UI's terminal
+ * emulator does. Phase 03 adds editor requests to this union.
+ */
+export interface OutputRecord {
+  kind: 'tty';
+  /** Terminal id. */
+  tty: string;
+  data: string;
+}
+
 export interface Ports {
   trace?: (record: TraceRecord) => void;
   gap?: (record: GapEvent) => void;
+  output?: (record: OutputRecord) => void;
 }
 
 /** A bounded buffer of the most recent trace records. Oldest records are dropped first. */

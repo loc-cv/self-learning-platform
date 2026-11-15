@@ -133,6 +133,8 @@ interface SliceSpec<S> {
   init(seed: number): S;
   /** After deserialization: freeze the values so later forks share them (§2.7). */
   adopt(slice: S): void;
+  /** When a kernel is created over a world (boot, fork, restore); phase 02 added it (§3.4). */
+  attach?(ctx: Ctx): void;
 }
 ```
 
@@ -503,7 +505,9 @@ The engine does no I/O. Three write-only ports carry what must leave it; the app
 | `gap` | `GapRecord` without wall time (`docs/FIDELITY.md` §4.4) | `data/gaps.jsonl` through the server; failure in content tests |
 
 Write-only is what allows these to live outside world state: nothing the engine does can depend
-on them.
+on them. Phase 02 added `output` to `Ports` and `Ctx.output(record)`; a record is
+`{ kind: 'tty', tty, data }`, with newlines already turned into CR LF by the terminal's `onlcr`.
+Phase 03 adds editor requests.
 
 ### 2.11 Plugin registry and extension contracts
 
@@ -654,8 +658,9 @@ interface Machine {
 }
 ```
 
-Phase 01 built `id`, `hostname`, `kind`, `vfs` and `boot`; each later field arrives with the phase
-that models it. Users, groups and the system-wide environment are **not** fields. As on Linux
+Phase 01 built `id`, `hostname`, `kind`, `vfs` and `boot`; phase 02 added `procs` and `files` (open
+file descriptions, §3.3) and the slice's `streams` and `ttys`; each later field arrives with the
+phase that models it. `procState` does not exist: phase 02 merged it into `Proc` (§3.3). Users, groups and the system-wide environment are **not** fields. As on Linux
 with NSS `files`, they are the contents of `/etc/passwd`, `/etc/group` and `/etc/environment`,
 parsed on demand with a cache keyed by inode identity (`users.ts`, `docs/decisions.md` D-019).
 Editing the file is how a user is added, and nothing else can disagree with it.
@@ -777,6 +782,16 @@ type Fd =
   | { kind: 'null' };
 ```
 
+Phase 02 built program processes (`packages/host/src/proc/`) with these refinements
+(`docs/decisions.md` D-023): `ProcState` is merged into `Proc`, which also holds `traps` (signal
+dispositions: ignored, or turned into an `Interrupted` error at the blocked syscall), `signal` (a
+signal not yet acted on), `groups`, `umask` and `spawnData` (what a parent hands its child, such as
+a subshell's command). A descriptor of kind `file` names an open file description in
+`Machine.files` (`{ inode, offset, read, write, append, refs }`), shared by `dup` and inheritance as
+on Linux, so `> f 2>&1` writes both streams at one offset. A file unlinked while open keeps
+`nlink` 0 until its last description closes. The first pid on a machine is 1000. Processes are
+iterated in numeric pid order.
+
 Two kinds of process share the table, `ps` and signals:
 
 - A **program** process runs a coroutine (§3.4). Everything a shell starts is one.
@@ -884,7 +899,25 @@ Model processes receive signals as events and react according to their behavior 
 A program that throws is a simulator bug. The kernel turns the exception into a `[sim]` notice of
 kind `internal`, a gap record and exit status 250.
 
+**As built in phase 02** (`proc/runtime.ts`, `proc/api.ts`, `proc/program.ts`):
+
+- The slice budget is 1000 syscalls (`SLICE_BUDGET`). The blocking operations are the syscalls
+  `read`, `write`, `sleep`, `wait` and `waitpid`; everything that cannot block (file system calls,
+  `open`, `close`, `dup2`, `pipe`, `spawn`, `kill`, `setCwd`, `setResume`, `trap`) is a plain method
+  of `ProcApi` that acts on the world at once. A failed syscall is thrown into the generator
+  (`FsError` with `EBADF` for a closed descriptor).
+- `exit(code)` and `exec(...)` throw; the runtime catches them. `exec` replaces the program of the
+  process in place (same pid, descriptors and process group; caught signals reset).
+- `finally` blocks run on SIGINT, SIGTERM, SIGHUP and SIGPIPE and must not perform syscalls.
+- Frames are kept per world object. The host slice's `attach` ends every running program without
+  a frame, in machine and pid order, as if by SIGKILL, unless it is at a restart point; a program
+  at a restart point is recreated through `restart` the next time it runs. The interactive shell
+  stores its whole state at each prompt with `setResume` and clears it when a line arrives.
+- An `UnsupportedError` that escapes a program becomes a `[sim]` notice of kind `behavior`.
+
 ### 3.5 Streams and pipelines
+
+Phase 02 stores the unread data as one string (`data`) and records the stream's `machine`.
 
 ```ts
 interface Stream {
@@ -957,6 +990,12 @@ interface LineEditorState {
   terminal output back.
 - The UI moves bytes and nothing else: keystrokes in, output bytes out, plus resize.
 
+Phase 02 built only what the shell needs (`Tty` in `proc/types.ts`): input queued as text with
+end-of-file marks from Ctrl-D, a canonical read returning one line, Ctrl-C discarding pending input
+and sending SIGINT to the foreground process group, and `onlcr` output. `tty.open` and `tty.bytes`
+inputs drive it. There is no echo, mode or line editor yet; the shell passes its prompt, which
+phase 03's editor will draw.
+
 ### 3.7 Shell
 
 The shell is a program (`bash`) with three parts, each testable alone: a lexer and parser
@@ -967,6 +1006,15 @@ runs. The supported surface is documented in `docs/` by phases 02 and 22a.
 
 Builtins run inside the shell process. External commands are resolved through `PATH` in the VFS.
 The shell's session state lives in `ProcState.resume`, which is what makes it restartable.
+
+Phase 02 built it in `packages/host/src/shell/`: `parse.ts` (lexer and parser, one command line at
+a time, with alias substitution and here-documents), `expand.ts` and `glob.ts`, `shell.ts`
+(executor), `state.ts` (session state as data), `builtins/` and `bash.ts` (invocation and the read
+loop). The AST is plain JSON, so a subshell receives the node it runs as spawn data. Each stage of
+a multi-stage pipeline is a subshell process that execs an external command; a single command
+runs in the shell (builtin) or as one child (external). An interactive shell gives each foreground
+job its own process group and makes it the terminal's foreground group. The supported grammar and
+builtins are listed in `docs/COVERAGE.md`.
 
 ### 3.8 Editor protocol
 
@@ -1404,8 +1452,8 @@ Each item is decided by the phase named, and recorded here when decided.
 | Item | Phase |
 |---|---|
 | PRNG algorithm (xoshiro128**, §2.6), hash function (cyrb53 core, Merkle, §2.7), heap (binary min-heap in an array, `heap.ts`), zero-time event limit (100 000, §2.5): **decided in 01** | 01 |
-| Process slice budget (syscalls per run slice) | 02 |
-| Supported shell grammar and the list of builtins | 02, 22a |
+| Process slice budget: **1000 syscalls, decided in 02** (§3.4) | 02 |
+| Supported shell grammar and the list of builtins: **phase 02's in `docs/COVERAGE.md`** | 02, 22a |
 | Line editor key bindings; SGR style of the `[sim]` notice | 03 |
 | Normalization tokens; provenance registry implementation | 04 |
 | Processed OpenAPI format; exact pipeline stage order verified against upstream | 05a |

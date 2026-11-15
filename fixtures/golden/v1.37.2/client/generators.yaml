@@ -1,0 +1,221 @@
+# Captured from fixtures/golden/cases/client/generators.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: client/generators
+description: Manifests kubectl generates without a server (--dry-run=client -o yaml).
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl run nginx --image=nginx:1.27 --dry-run=client -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl run busy --image=busybox:1.37 --restart=Never --labels=app=busy,tier=x --env=A=1 --port=8080 --dry-run=client -o yaml -- sleep 3600
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl create deployment web --image=nginx:1.27 --replicas=3 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        replicas: 3
+        selector:
+          matchLabels:
+            app: web
+        strategy: {}
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.27
+              name: nginx
+              resources: {}
+      status: {}
+    stderr: ""
+  - run: kubectl create deployment web --image=nginx:1.27 --port=80 --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Deployment",
+          "apiVersion": "apps/v1",
+          "metadata": {
+              "name": "web",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "replicas": 1,
+              "selector": {
+                  "matchLabels": {
+                      "app": "web"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "labels": {
+                          "app": "web"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "name": "nginx",
+                              "image": "nginx:1.27",
+                              "ports": [
+                                  {
+                                      "containerPort": 80
+                                  }
+                              ],
+                              "resources": {}
+                          }
+                      ]
+                  }
+              },
+              "strategy": {}
+          },
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl create service clusterip web --tcp=80:8080 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - name: 80-8080
+          port: 80
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: web
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service nodeport web --tcp=80:8080 --node-port=30080 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - name: 80-8080
+          nodePort: 30080
+          port: 80
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: web
+        type: NodePort
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create configmap app --from-literal=a=1 --from-literal=b=2 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "1"
+        b: "2"
+      kind: ConfigMap
+      metadata:
+        name: app
+    stderr: ""
+  - run: kubectl create secret generic creds --from-literal=user=admin --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        user: YWRtaW4=
+      kind: Secret
+      metadata:
+        name: creds
+    stderr: ""
+  - run: kubectl create namespace dev --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: dev
+      spec: {}
+      status: {}
+    stderr: ""
+  - run: kubectl create job once --image=busybox:1.37 --dry-run=client -o yaml -- date
+    exit: 0
+    stdout: |
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: once
+      spec:
+        template:
+          metadata: {}
+          spec:
+            containers:
+            - command:
+              - date
+              image: busybox:1.37
+              name: once
+              resources: {}
+            restartPolicy: Never
+      status: {}
+    stderr: ""
+  - run: kubectl create cronjob tick --image=busybox:1.37 --schedule='*/5 * * * *' --dry-run=client -o yaml -- date
+    exit: 0
+    stdout: |
+      apiVersion: batch/v1
+      kind: CronJob
+      metadata:
+        name: tick
+      spec:
+        jobTemplate:
+          metadata:
+            name: tick
+          spec:
+            template:
+              metadata: {}
+              spec:
+                containers:
+                - command:
+                  - date
+                  image: busybox:1.37
+                  name: tick
+                  resources: {}
+                restartPolicy: OnFailure
+        schedule: '*/5 * * * *'
+      status: {}
+    stderr: ""
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=client
+    exit: 0
+    stdout: |
+      deployment.apps/web created (dry run)
+    stderr: ""
+  - run: kubectl run nginx --image=nginx:1.27 --dry-run=client -o name
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?

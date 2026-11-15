@@ -1,0 +1,92 @@
+description: Pods the scheduler cannot place (taint, node selector, CPU, memory, both), their FailedScheduling events and describe output; a toleration that fixes the taint case.
+files:
+  pods.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: on-controlplane
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: controlplane
+      containers:
+      - name: app
+        image: nginx:1.27
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: wants-ssd
+    spec:
+      nodeSelector:
+        disktype: ssd
+      containers:
+      - name: app
+        image: nginx:1.27
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: too-much-cpu
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          requests:
+            cpu: "3"
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: too-much-memory
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          requests:
+            memory: 8Gi
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: too-much-both
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          requests:
+            cpu: "3"
+            memory: 8Gi
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: tolerates
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: controlplane
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: app
+        image: nginx:1.27
+setup:
+  - do: kubectl create -f pods.yaml
+  - do: kubectl wait --for=condition=Ready pod/tolerates --timeout=60s
+  - until: kubectl get events --field-selector reason=FailedScheduling -o name
+    match: '(?:\n.*){4}'
+steps:
+  - run: kubectl get pods -o wide
+    kwok: true
+  - run: kubectl describe pod on-controlplane
+  - run: kubectl describe pod wants-ssd
+  - run: kubectl describe pod too-much-cpu
+  - run: kubectl describe pod too-much-memory
+  - run: kubectl describe pod too-much-both
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+  - objects: [pod/wants-ssd, pod/tolerates]

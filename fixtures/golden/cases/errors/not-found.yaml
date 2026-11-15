@@ -1,0 +1,24 @@
+description: Not-found and wrong-name errors from get, describe, delete, edit-less verbs and unknown resource types.
+setup:
+  - do: kubectl create namespace dev
+steps:
+  - run: kubectl get pod missing
+  - run: kubectl get pods missing other
+  - run: kubectl describe pod missing
+  - run: kubectl delete pod missing
+  - run: kubectl delete deployment missing --ignore-not-found
+  - run: kubectl get deployment missing -n dev
+  - run: kubectl get pods -n nowhere
+  - run: kubectl get pod missing -n nowhere
+  - run: kubectl get pdos
+  - run: kubectl get pods.v2
+  - run: kubectl describe nothing missing
+  - run: kubectl logs missing
+  - run: kubectl get svc missing -o yaml
+  - run: kubectl get pods
+  - run: kubectl get deployments -A
+  - run: kubectl get ns missing
+  - run: kubectl scale deployment missing --replicas=2
+  - run: kubectl expose deployment missing --port=80
+  - run: kubectl rollout status deployment/missing
+  - run: kubectl get pod -l 'app in (a,b'

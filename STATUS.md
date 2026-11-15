@@ -17,7 +17,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 01 `prompts/01-kernel-and-vfs.md`
 - [x] 02 `prompts/02-shell-and-coreutils.md`
 - [x] 03 `prompts/03-tty-and-terminal-player.md`
-- [ ] 04 `prompts/04-oracle-and-golden-fixtures.md` (needs only 00; can run earlier)
+- [x] 04 `prompts/04-oracle-and-golden-fixtures.md` (needs only 00; can run earlier)
 - [ ] 05a `prompts/05a-k8s-api-store-and-pipeline.md`
 - [ ] 05b `prompts/05b-k8s-controllers.md`
 - [ ] 06a `prompts/06a-topology-and-scheduler.md`
@@ -128,6 +128,54 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 04 done.** The real control plane as an oracle; 20 golden cases captured.
+  - Built: `tools/src/oracle/` (`binaries.ts` fetches and verifies kube-apiserver,
+    kube-controller-manager, kube-scheduler, kubectl, kubeadm v1.37.2, etcd v3.7.0 and KWOK v0.8.0
+    into `.upstream/bin/v1.37.2/`, digests pinned in `checksums.json`; `controlplane.ts` up/down;
+    `pki.ts`; `topology.ts` with the `kubeadm-1cp-2w` Nodes; `kwok-stages.yaml`; `cli.ts` =
+    `npm run oracle -- fetch|up|down|status|env`). `tools/src/golden/` (`case.ts` format,
+    `normalize.ts`, `tabwriter.ts` = kubectl's tab writer and its inverse, `capture.ts` =
+    `npm run golden:capture`, `pty_run.py`, `kubectl_manifest.ts` =
+    `npm run golden:kubectl-manifest`). Tokens shared with transcripts:
+    `packages/host/src/transcript/tokens.ts`; the transcript test accepts them. Cases in
+    `fixtures/golden/cases/` (pods, deployments incl. rollout, services, namespaces, configmaps,
+    nodes, defaulted objects, errors, apply, delete, scheduling, and five client-only cases),
+    fixtures in `fixtures/golden/v1.37.2/`, plus `kubectl-commands.json` (109 commands, 30 global
+    flags). Docs: `docs/FIDELITY.md` §6 (new), `docs/TRANSCRIPTS.md` Tokens, D-033…D-037.
+  - Exit criteria. `npm run oracle -- up` (about 12 s) and `down` leave no process or port: `down`
+    checks with `kill -0`, `ss` and `pgrep` and fails otherwise; shown at the end of the session.
+    All 20 cases re-capture byte-identical (`npm run golden:capture -- --check`, run several
+    times). The manifest re-generates identically (`--check`). `npm run check` reads only
+    committed files; it was run inside `unshare -rn` (no network) and passed.
+  - Surprises. kubectl 1.37 prints `deployment.apps "web" deleted from default namespace` and
+    offers `-o kyaml`. `kubectl get` aligns with github.com/liggitt/tabwriter (RememberWidths),
+    but each kind gets its own writer (`get all`'s tables have independent widths). describe
+    writes Conditions as `"%v \t%v \n"`, so cells end in a space the layout reveals. The
+    scheduler's tie-break between the two identical workers is random (D-037). kubectl prints
+    local time unless `TZ=UTC`. The scheduler's events carry `reportingInstance:
+    default-scheduler-<hostname>`, and leader leases `<hostname>_<uuid>`: mapped to
+    `controlplane`. Ports chosen as free in the ephemeral range got taken by the components'
+    own outgoing connections; oracle ports now come from 20000–29999.
+  - For later phases. 05a: defaulted objects in `objects/defaulted`, validation errors in
+    `errors/validation` (missing selector, mismatch, names, unknown field, wrong type, immutable
+    selector, Pod update forbidden). 05b: `deployments/rollout` (events, ReplicaSets, history).
+    06a: build the topology from `tools/src/oracle/topology.ts` (D-033), compare Nodes with
+    `nodes/read`; FailedScheduling messages in `scheduling/failures` (KWOK's Node conditions are
+    not real). 07a: the differential runner should normalize simulator output with
+    `normalizeText`/`normalizeJson` from `tools/src/golden/normalize.ts` (re-aligned tables,
+    sorted suffix rows), skip or relax steps marked `kwok`, and read `kubectl-commands.json`;
+    the tab writer port in `tools/src/golden/tabwriter.ts` (render) can move into `packages/k8s`
+    for the simulator's printers, with tools importing it. 07b/08: `delete/cascade`,
+    `apply/created-configured-unchanged`, `client/generators`, `client/config`,
+    `client/kustomize`, `client/help` (80-column help).
+  - Known gaps. No kube-system workloads in the oracle (no CoreDNS, kube-proxy, static Pods);
+    a case that needs them creates them. kubectl progress lines and `--watch` are not captured
+    (timing). Kubelet-side output waits for tier 2 (phase 32). Fixtures are YAML with literal
+    blocks; trailing spaces inside them are significant (describe's `Container ID:   `), so
+    editors must not strip them (fixtures are never edited by hand anyway).
+  - Fixed on the way: `docs/ARCHITECTURE.md` §6 assigned the provenance registry to phase 04;
+    `prompts/07a` builds it, and the table now says so.
 
 - 2026-11-16 — **Phase 03 done.** Terminal, line editor, completion, editor protocol, `play` and `sim`.
   - Built: the line discipline and readline's emacs mode in the engine (`packages/host/src/tty/`:

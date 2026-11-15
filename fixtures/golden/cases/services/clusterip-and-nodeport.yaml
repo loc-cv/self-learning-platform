@@ -1,0 +1,38 @@
+description: Expose a Deployment as ClusterIP and NodePort Services; read them in each format; describe them; endpoints.
+files:
+  nodeport.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: web-np
+    spec:
+      type: NodePort
+      selector:
+        app: web
+      ports:
+      - port: 80
+        targetPort: 80
+        nodePort: 30080
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=2 --port=80
+  - do: kubectl rollout status deployment/web --timeout=60s
+steps:
+  - run: kubectl expose deployment web --port=80 --target-port=80
+  - run: kubectl create -f nodeport.yaml
+  - run: kubectl create service nodeport auto --tcp=8080:80
+  - until: kubectl get endpointslices -l kubernetes.io/service-name=web -o jsonpath='{.items[0].endpoints[*].addresses[0]}'
+    match: '\S+ \S+'
+  - run: kubectl get services
+  - run: kubectl get svc -o wide
+  - run: kubectl get svc web -o yaml
+  - run: kubectl get svc web-np -o json
+  - run: kubectl describe service web
+    kwok: true
+  - run: kubectl describe svc web-np
+    kwok: true
+  - run: kubectl describe svc kubernetes
+  - run: kubectl get endpoints
+    kwok: true
+  - run: kubectl get endpointslices
+    kwok: true
+  - objects: [service/web, service/web-np, service/kubernetes]

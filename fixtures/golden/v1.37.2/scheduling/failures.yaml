@@ -1,0 +1,434 @@
+# Captured from fixtures/golden/cases/scheduling/failures.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: scheduling/failures
+description: Pods the scheduler cannot place (taint, node selector, CPU, memory, both), their FailedScheduling events and describe output; a toleration that fixes the taint case.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME              READY   STATUS    RESTARTS   AGE       IP       NODE           NOMINATED NODE   READINESS GATES
+      on-controlplane   0/1     Pending   0          <<age>>   <none>   <none>         <none>           <none>
+      tolerates         1/1     Running   0          <<age>>   <<ip>>   controlplane   <none>           <none>
+      too-much-both     0/1     Pending   0          <<age>>   <none>   <none>         <none>           <none>
+      too-much-cpu      0/1     Pending   0          <<age>>   <none>   <none>         <none>           <none>
+      too-much-memory   0/1     Pending   0          <<age>>   <none>   <none>         <none>           <none>
+      wants-ssd         0/1     Pending   0          <<age>>   <none>   <none>         <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod on-controlplane
+    exit: 0
+    stdout: |
+      Name:             on-controlplane
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:        nginx:1.27
+          Port:         <none>
+          Host Port:    <none>
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=controlplane
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl describe pod wants-ssd
+    exit: 0
+    stdout: |
+      Name:             wants-ssd
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:        nginx:1.27
+          Port:         <none>
+          Host Port:    <none>
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              disktype=ssd
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl describe pod too-much-cpu
+    exit: 0
+    stdout: |
+      Name:             too-much-cpu
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Requests:
+            cpu:        3
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl describe pod too-much-memory
+    exit: 0
+    stdout: |
+      Name:             too-much-memory
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Requests:
+            memory:     8Gi
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient memory. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl describe pod too-much-both
+    exit: 0
+    stdout: |
+      Name:             too-much-both
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Requests:
+            cpu:        3
+            memory:     8Gi
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu, 2 Insufficient memory. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT                MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/on-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/too-much-both     0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu, 2 Insufficient memory. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/too-much-cpu      0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/too-much-memory   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient memory. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/wants-ssd         0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT                SUBOBJECT   SOURCE                                              MESSAGE                                                                                                                                                                                              FIRST SEEN   COUNT   NAME
+      <<age>>     Warning   FailedScheduling   pod/on-controlplane               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.   <<age>>      1       on-controlplane.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/too-much-both                 default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu, 2 Insufficient memory. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.             <<age>>      1       too-much-both.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/too-much-cpu                  default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.                                    <<age>>      1       too-much-cpu.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/too-much-memory               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient memory. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.                                 <<age>>      1       too-much-memory.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/wants-ssd                     default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.   <<age>>      1       wants-ssd.<<hex>>
+    stderr: ""
+  - objects:
+      - ref: pod/wants-ssd
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: wants-ssd
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeSelector:
+              disktype: ssd
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: BestEffort
+      - ref: pod/tolerates
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: tolerates
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeName: controlplane
+            nodeSelector:
+              kubernetes.io/hostname: controlplane
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoSchedule
+                key: node-role.kubernetes.io/control-plane
+                operator: Exists
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Initialized
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Ready
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: ContainersReady
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: PodScheduled
+            containerStatuses:
+              - image: nginx:1.27
+                imageID: ""
+                lastState: {}
+                name: app
+                ready: true
+                restartCount: 0
+                state:
+                  running:
+                    startedAt: <<time>>
+            hostIP: 172.16.0.10
+            hostIPs:
+              - ip: 172.16.0.10
+            phase: Running
+            podIP: <<ip>>
+            podIPs:
+              - ip: <<ip>>
+            qosClass: BestEffort
+            startTime: <<time>>

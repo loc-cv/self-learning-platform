@@ -1,0 +1,39 @@
+description: A Pod from a manifest with resources, a port, environment and a node selector; describe shows them.
+files:
+  pod.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: api
+      labels:
+        app: api
+        tier: backend
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node01
+      containers:
+      - name: api
+        image: nginx:1.27
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: MODE
+          value: production
+        resources:
+          requests:
+            cpu: 250m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 128Mi
+setup:
+  - do: kubectl create -f pod.yaml
+  - do: kubectl wait --for=condition=Ready pod/api --timeout=60s
+steps:
+  - run: kubectl get pod api -o wide
+    kwok: true
+  - run: kubectl describe pod api
+    kwok: true
+  - objects: [pod/api]
+  - run: kubectl create -f pod.yaml

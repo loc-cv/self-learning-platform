@@ -1,0 +1,137 @@
+# Captured from fixtures/golden/cases/namespaces/create-and-read.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: namespaces/create-and-read
+description: Create, read and delete Namespaces; objects in a namespace and across all of them.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get namespaces
+    exit: 0
+    stdout: |
+      NAME              STATUS   AGE
+      default           Active   <<age>>
+      dev               Active   <<age>>
+      kube-node-lease   Active   <<age>>
+      kube-public       Active   <<age>>
+      kube-system       Active   <<age>>
+    stderr: ""
+  - run: kubectl get ns dev -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          kubernetes.io/metadata.name: dev
+        name: dev
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        finalizers:
+        - kubernetes
+      status:
+        phase: Active
+    stderr: ""
+  - run: kubectl get ns -o name
+    exit: 0
+    stdout: |
+      namespace/default
+      namespace/dev
+      namespace/kube-node-lease
+      namespace/kube-public
+      namespace/kube-system
+    stderr: ""
+  - run: kubectl get ns --show-labels
+    exit: 0
+    stdout: |
+      NAME              STATUS   AGE       LABELS
+      default           Active   <<age>>   kubernetes.io/metadata.name=default
+      dev               Active   <<age>>   kubernetes.io/metadata.name=dev
+      kube-node-lease   Active   <<age>>   kubernetes.io/metadata.name=kube-node-lease
+      kube-public       Active   <<age>>   kubernetes.io/metadata.name=kube-public
+      kube-system       Active   <<age>>   kubernetes.io/metadata.name=kube-system
+    stderr: ""
+  - run: kubectl describe namespace dev
+    exit: 0
+    stdout: |
+      Name:         dev
+      Labels:       kubernetes.io/metadata.name=dev
+      Annotations:  <none>
+      Status:       Active
+
+      No resource quota.
+
+      No LimitRange resource.
+    stderr: ""
+  - run: kubectl get pods -n dev
+    exit: 0
+    stdout: |
+      NAME    READY   STATUS    RESTARTS   AGE
+      probe   1/1     Running   0          <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl get pods -A
+    exit: 0
+    stdout: |
+      NAMESPACE   NAME    READY   STATUS    RESTARTS   AGE
+      dev         probe   1/1     Running   0          <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl get pods --all-namespaces -o wide
+    exit: 0
+    stdout: |
+      NAMESPACE   NAME    READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      dev         probe   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl create namespace dev
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): namespaces "dev" already exists
+  - run: kubectl create namespace Dev
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Namespace "Dev" is invalid: metadata.name: Invalid value: "Dev": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')
+  - objects:
+      - ref: namespace/dev
+        object:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              kubernetes.io/metadata.name: dev
+            name: dev
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            finalizers:
+              - kubernetes
+          status:
+            phase: Active
+      - ref: namespace/default
+        object:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              kubernetes.io/metadata.name: default
+            name: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            finalizers:
+              - kubernetes
+          status:
+            phase: Active

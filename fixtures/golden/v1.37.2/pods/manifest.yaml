@@ -1,0 +1,205 @@
+# Captured from fixtures/golden/cases/pods/manifest.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: pods/manifest
+description: A Pod from a manifest with resources, a port, environment and a node selector; describe shows them.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pod api -o wide
+    exit: 0
+    stdout: |
+      NAME   READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      api    1/1     Running   0          <<age>>   <<ip>>   node01   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod api
+    exit: 0
+    stdout: |
+      Name:             api
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=api
+                        tier=backend
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        api:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           8080/TCP (http)
+          Host Port:      0/TCP (http)
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Limits:
+            cpu:     500m
+            memory:  128Mi
+          Requests:
+            cpu:     250m
+            memory:  64Mi
+          Environment:
+            MODE:  production
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/api to node01
+    stderr: ""
+    kwok: true
+  - objects:
+      - ref: pod/api
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            labels:
+              app: api
+              tier: backend
+            name: api
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            containers:
+              - env:
+                  - name: MODE
+                    value: production
+                image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: api
+                ports:
+                  - containerPort: 8080
+                    name: http
+                    protocol: TCP
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 128Mi
+                  requests:
+                    cpu: 250m
+                    memory: 64Mi
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeName: node01
+            nodeSelector:
+              kubernetes.io/hostname: node01
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Initialized
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Ready
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: ContainersReady
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: PodScheduled
+            containerStatuses:
+              - image: nginx:1.27
+                imageID: ""
+                lastState: {}
+                name: api
+                ready: true
+                restartCount: 0
+                state:
+                  running:
+                    startedAt: <<time>>
+            hostIP: 172.16.0.11
+            hostIPs:
+              - ip: 172.16.0.11
+            phase: Running
+            podIP: <<ip>>
+            podIPs:
+              - ip: <<ip>>
+            qosClass: Burstable
+            startTime: <<time>>
+  - run: kubectl create -f pod.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): error when creating "pod.yaml": pods "api" already exists

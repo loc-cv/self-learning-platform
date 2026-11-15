@@ -1,0 +1,19 @@
+description: A Pod pending on an unmatched node selector is scheduled once a node gets the label; the events before and after.
+setup:
+  - do: kubectl run picky --image=nginx:1.27 --overrides='{"spec":{"nodeSelector":{"disktype":"ssd"}}}'
+  - until: kubectl get events --field-selector involvedObject.name=picky,reason=FailedScheduling -o name
+    match: event
+steps:
+  - run: kubectl get pod picky
+  - run: kubectl label node node02 disktype=ssd
+  - do: kubectl wait --for=condition=Ready pod/picky --timeout=60s
+  - run: kubectl get pod picky -o wide
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=picky
+  - run: kubectl describe pod picky
+    kwok: true
+  - run: kubectl get nodes -l disktype=ssd
+    kwok: true
+  - run: kubectl label node node02 disktype=hdd
+  - run: kubectl label node node02 disktype=hdd --overwrite
+  - run: kubectl label node node02 disktype-

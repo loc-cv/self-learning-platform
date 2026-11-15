@@ -50,6 +50,26 @@ Later phases pass their own world to `runTranscript` (a topology instead of one 
 
 A transcript that shows a `[sim]` notice is never golden-verified: the real tool does something.
 
+## Tokens
+
+Expected output may contain normalization tokens, the vocabulary golden fixtures use
+(`packages/host/src/transcript/tokens.ts`; `docs/FIDELITY.md` §6.4; `docs/decisions.md` D-034):
+
+```
+$ kubectl get pod web -o jsonpath='{.metadata.uid}{"\n"}{.metadata.creationTimestamp}{"\n"}'
+<<uid:1>>
+<<time>>
+```
+
+- `<<kind>>` matches any value of the kind (`uid`, `time`, `rv`, `age`, `ip`, `hash`, `suffix`,
+  `hex`, `port`, `pid`, `cert`, `node`); everything else in the step's output must be equal.
+- `<<kind:N>>` binds: the same N must match the same value throughout the step, and two Ns of a
+  kind must match different values.
+- A step whose expected output has no token is compared exactly, as before. Matching is
+  positional and does not re-align tables: a transcript written from a re-aligned fixture
+  matches only if the simulator's values have the token's width, so prefer deterministic values
+  in transcripts and leave layout comparisons to the differential runner (phase 07a).
+
 ## Capturing ground truth
 
 ```bash

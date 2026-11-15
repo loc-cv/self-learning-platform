@@ -1,0 +1,303 @@
+# Captured from fixtures/golden/cases/objects/defaulted.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: objects/defaulted
+description: Minimal manifests and the objects the API server stores for them, with every default filled in.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl create -f minimal.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): error when creating "minimal.yaml": deployments.apps "minimal" already exists
+      Error from server (AlreadyExists): error when creating "minimal.yaml": services "minimal" already exists
+      Error from server (AlreadyExists): error when creating "minimal.yaml": configmaps "minimal" already exists
+      Error from server (AlreadyExists): error when creating "minimal.yaml": namespaces "minimal" already exists
+      Error from server (AlreadyExists): error when creating "minimal.yaml": pods "minimal" already exists
+  - objects:
+      - ref: deployment/minimal
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+            creationTimestamp: <<time>>
+            generation: 1
+            name: minimal
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 1
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: minimal
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: minimal
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: app
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 1
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "minimal-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 1
+            readyReplicas: 1
+            replicas: 1
+            terminatingReplicas: 0
+            updatedReplicas: 1
+      - ref: service/minimal
+        object:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            creationTimestamp: <<time>>
+            name: minimal
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            clusterIP: <<ip>>
+            clusterIPs:
+              - <<ip>>
+            internalTrafficPolicy: Cluster
+            ipFamilies:
+              - IPv4
+            ipFamilyPolicy: SingleStack
+            ports:
+              - port: 80
+                protocol: TCP
+                targetPort: 80
+            selector:
+              app: minimal
+            sessionAffinity: None
+            type: ClusterIP
+          status:
+            loadBalancer: {}
+      - ref: configmap/minimal
+        object:
+          apiVersion: v1
+          data:
+            key: value
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            name: minimal
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>
+      - ref: namespace/minimal
+        object:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              kubernetes.io/metadata.name: minimal
+            name: minimal
+            resourceVersion: <<rv>>
+            uid: <<uid:4>>
+          spec:
+            finalizers:
+              - kubernetes
+          status:
+            phase: Active
+      - ref: pod/minimal
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: minimal
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:5>>
+          spec:
+            containers:
+              - command:
+                  - sleep
+                  - "3600"
+                image: busybox:1.37
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeName: node02
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Initialized
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Ready
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: ContainersReady
+            containerStatuses:
+              - image: busybox:1.37
+                imageID: ""
+                lastState: {}
+                name: app
+                ready: true
+                restartCount: 0
+                state:
+                  running:
+                    startedAt: <<time>>
+            hostIP: 172.16.0.12
+            hostIPs:
+              - ip: 172.16.0.12
+            phase: Running
+            podIP: <<ip>>
+            podIPs:
+              - ip: <<ip>>
+            qosClass: BestEffort
+            startTime: <<time>>
+  - objects:
+      - ref: replicaset
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "1"
+                  deployment.kubernetes.io/max-replicas: "2"
+                  deployment.kubernetes.io/revision: "1"
+                creationTimestamp: <<time>>
+                generation: 1
+                labels:
+                  app: minimal
+                  pod-template-hash: 7958d9cf6
+                name: minimal-<<hash:1>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: minimal
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:6>>
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: minimal
+                    pod-template-hash: 7958d9cf6
+                template:
+                  metadata:
+                    labels:
+                      app: minimal
+                      pod-template-hash: 7958d9cf6
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: app
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                availableReplicas: 1
+                fullyLabeledReplicas: 1
+                observedGeneration: 1
+                readyReplicas: 1
+                replicas: 1
+                terminatingReplicas: 0
+          kind: List
+          metadata:
+            resourceVersion: ""

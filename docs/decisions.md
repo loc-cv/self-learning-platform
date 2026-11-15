@@ -295,3 +295,56 @@ gawk, and the alternatives come out as `awk`, `nawk` → `/usr/bin/gawk`; mawk s
   would make `awk` the one thing not taken from the cloud image.
 - gawk-only features (`gensub`, `strftime`, …) fail on a host whose `awk` is mawk; phase 22b
   registers that as a divergence note for learners.
+
+## Phase 04 (2026-11-16)
+
+**D-033 — The `kubeadm-1cp-2w` cluster's values are fixed in `tools/src/oracle/topology.ts`.**
+The oracle needs Node objects before phase 06a builds the topology, so their values are chosen
+here and phase 06a builds the simulated topology to match: controlplane 172.16.0.10, node01
+172.16.0.11, node02 172.16.0.12; Pod CIDRs 10.244.{0,1,2}.0/24 out of 10.244.0.0/16; services
+10.96.0.0/12 (kubeadm's default, `kubernetes` at 10.96.0.1); API server on 6443; 2 CPUs, 4 GiB
+and a 20 GiB disk per node, allocatable reduced by the kubelet's default hard eviction
+thresholds; Ubuntu 24.04.3 LTS, kernel 6.8.0-88-generic, containerd 1.7.28, kubelet v1.37.2.
+Labels, the attach-detach annotation and the control-plane taint follow the kubelet's and
+kubeadm's code (cited in the file). The values are the topology's choice, not a reference: phase
+06a may change them, and then recaptures every fixture (`npm run golden:capture`).
+- Rules out a simulated cluster whose addresses differ from the fixtures', which would make every
+  differential comparison need another mapping.
+
+**D-034 — Tokens are `<<kind>>` and `<<kind:N>>`, shared by fixtures and transcripts.**
+kubectl prints `<none>`, `<invalid>`, `<unset>` and `<pending>`, so single angle brackets cannot
+mark a placeholder, and `{{…}}` is the content format's parameter syntax. A lowercase kind name
+between `<<` and `>>` is not something kubectl prints (a here-document's `<<EOF` in `cat` output has
+no closing `>>`). The vocabulary lives in
+`packages/host/src/transcript/tokens.ts` (domain-agnostic: UIDs, times, addresses, ports,
+generated names); `uid` and `hash` are numbered so that "this owner reference is that object" stays
+visible, and every other kind is not, because numbering rows that a hidden suffix orders would
+make fixtures change between captures. A transcript's expected output may contain tokens; a
+token matches any value of its kind (`docs/TRANSCRIPTS.md`).
+
+**D-035 — Normalized tables are re-aligned with kubectl's own tab writer.** A token is not as wide
+as the value it replaces, and kubectl's column widths depend on every value in the column, so a
+fixture whose ages went from 9s to 10s would otherwise change. Normalization splits a table back
+into cells, replaces values per cell and renders the cells again with a port of the tab writer
+(`tools/src/golden/tabwriter.ts`). The split is checked: if rendering the captured cells does not
+reproduce the captured text exactly, capture fails rather than guessing. Rows of a `get` table
+holding a generated-name token are sorted by their normalized text, since their real order
+depended on the hidden suffix. Phase 07a normalizes simulator output with the same function before
+comparing.
+- Rules out comparing tables with collapsed whitespace, which would stop the fixtures from
+  verifying layout at all.
+
+**D-036 — KWOK plays the kubelets, with its own stages trimmed.** Without heartbeats the node
+lifecycle controller marks the fake Nodes NotReady and taints them within a minute, and without a
+kubelet no Pod ever runs. KWOK v0.8.0 renews Node leases and moves Pods to Running. Its
+`stage-fast` configuration is copied to `tools/src/oracle/kwok-stages.yaml` with two changes, so
+that it keeps the Node as registered: `nodeInfo` and `daemonEndpoints` are not filled with
+`kwok-v0.8.0` placeholders, and no Node `phase` is invented. What KWOK writes is never treated as
+kubelet output: fixtures list it under `kwokAuthored`, and steps and objects that show it carry
+`kwok: true` (`docs/FIDELITY.md` §6.5).
+
+**D-037 — Scheduling ties are a token, not a pinned node.** With two identical workers the
+scheduler picks among equal scores at random (upstream: `pkg/scheduler/schedule_one.go`
+`selectHost`). A case that needs `kubectl run` as typed, without a node selector, marks the steps
+whose output shows the placement `anyWorker: true`: `node01`/`node02` become `<<node>>` and their
+addresses `<<ip>>`. Cases where the node matters pin it with a node selector or `nodeName`.

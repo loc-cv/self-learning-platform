@@ -1,0 +1,85 @@
+description: kubectl apply prints created, configured and unchanged; the last-applied annotation; apply from stdin and a directory.
+files:
+  web.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+        spec:
+          nodeName: node01
+          containers:
+          - name: nginx
+            image: nginx:1.27
+  web-v2.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+        spec:
+          nodeName: node01
+          containers:
+          - name: nginx
+            image: nginx:1.27
+  dir/cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: from-dir
+    data:
+      a: "1"
+  dir/svc.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: from-dir
+    spec:
+      selector:
+        app: web
+      ports:
+      - port: 80
+steps:
+  - run: kubectl apply -f web.yaml
+  - run: kubectl apply -f web.yaml
+  - run: kubectl apply -f web-v2.yaml
+  - run: kubectl get deployment web -o yaml
+  - run: kubectl apply -f dir/
+  - run: kubectl apply -f dir/
+  - run: kubectl apply -f -
+    stdin: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: from-stdin
+      data:
+        k: v
+  - run: kubectl create configmap imperative --from-literal=a=b
+  - run: kubectl apply -f -
+    stdin: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: imperative
+      data:
+        a: c
+  - run: kubectl apply -f web.yaml --dry-run=server
+  - run: kubectl apply -f web.yaml --dry-run=client
+  - run: kubectl delete -f dir/
+  - objects: [deployment/web, configmap/imperative]

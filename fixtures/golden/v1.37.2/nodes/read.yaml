@@ -1,0 +1,381 @@
+# Captured from fixtures/golden/cases/nodes/read.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: nodes/read
+description: Read the three Nodes in each format and describe a worker and the control plane, before and after a Pod lands.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get nodes
+    exit: 0
+    stdout: |
+      NAME           STATUS   ROLES           AGE       VERSION
+      controlplane   Ready    control-plane   <<age>>   v1.37.2
+      node01         Ready    <none>          <<age>>   v1.37.2
+      node02         Ready    <none>          <<age>>   v1.37.2
+    stderr: ""
+    kwok: true
+  - run: kubectl get nodes -o wide
+    exit: 0
+    stdout: |
+      NAME           STATUS   ROLES           AGE       VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION             CONTAINER-RUNTIME
+      controlplane   Ready    control-plane   <<age>>   v1.37.2   172.16.0.10   <none>        Ubuntu 24.04.3 LTS   6.8.0-88-generic (amd64)   containerd://1.7.28
+      node01         Ready    <none>          <<age>>   v1.37.2   172.16.0.11   <none>        Ubuntu 24.04.3 LTS   6.8.0-88-generic (amd64)   containerd://1.7.28
+      node02         Ready    <none>          <<age>>   v1.37.2   172.16.0.12   <none>        Ubuntu 24.04.3 LTS   6.8.0-88-generic (amd64)   containerd://1.7.28
+    stderr: ""
+    kwok: true
+  - run: kubectl get nodes --show-labels
+    exit: 0
+    stdout: |
+      NAME           STATUS   ROLES           AGE       VERSION   LABELS
+      controlplane   Ready    control-plane   <<age>>   v1.37.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=controlplane,kubernetes.io/os=linux,node-role.kubernetes.io/control-plane=,node.kubernetes.io/exclude-from-external-load-balancers=
+      node01         Ready    <none>          <<age>>   v1.37.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=node01,kubernetes.io/os=linux
+      node02         Ready    <none>          <<age>>   v1.37.2   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=node02,kubernetes.io/os=linux
+    stderr: ""
+    kwok: true
+  - run: kubectl get node node01 -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Node
+      metadata:
+        annotations:
+          node.alpha.kubernetes.io/ttl: "0"
+          volumes.kubernetes.io/controller-managed-attach-detach: "true"
+        creationTimestamp: "<<time>>"
+        labels:
+          beta.kubernetes.io/arch: amd64
+          beta.kubernetes.io/os: linux
+          kubernetes.io/arch: amd64
+          kubernetes.io/hostname: node01
+          kubernetes.io/os: linux
+        name: node01
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        podCIDR: <<ip>>/24
+        podCIDRs:
+        - <<ip>>/24
+      status:
+        addresses:
+        - address: 172.16.0.11
+          type: InternalIP
+        - address: node01
+          type: Hostname
+        allocatable:
+          cpu: "2"
+          ephemeral-storage: "18556039957"
+          hugepages-1Gi: "0"
+          hugepages-2Mi: "0"
+          memory: 3907884Ki
+          pods: "110"
+        capacity:
+          cpu: "2"
+          ephemeral-storage: 20134592Ki
+          hugepages-1Gi: "0"
+          hugepages-2Mi: "0"
+          memory: 4010284Ki
+          pods: "110"
+        conditions:
+        - lastHeartbeatTime: "<<time>>"
+          lastTransitionTime: "<<time>>"
+          message: kubelet is posting ready status
+          reason: KubeletReady
+          status: "True"
+          type: Ready
+        - lastHeartbeatTime: "<<time>>"
+          lastTransitionTime: "<<time>>"
+          message: kubelet has sufficient memory available
+          reason: KubeletHasSufficientMemory
+          status: "False"
+          type: MemoryPressure
+        - lastHeartbeatTime: "<<time>>"
+          lastTransitionTime: "<<time>>"
+          message: kubelet has no disk pressure
+          reason: KubeletHasNoDiskPressure
+          status: "False"
+          type: DiskPressure
+        - lastHeartbeatTime: "<<time>>"
+          lastTransitionTime: "<<time>>"
+          message: kubelet has sufficient PID available
+          reason: KubeletHasSufficientPID
+          status: "False"
+          type: PIDPressure
+        - lastHeartbeatTime: "<<time>>"
+          lastTransitionTime: "<<time>>"
+          message: RouteController created a route
+          reason: RouteCreated
+          status: "False"
+          type: NetworkUnavailable
+        daemonEndpoints:
+          kubeletEndpoint:
+            Port: 10250
+        nodeInfo:
+          architecture: amd64
+          bootID: <<uid:2>>
+          containerRuntimeVersion: containerd://1.7.28
+          kernelVersion: 6.8.0-88-generic
+          kubeProxyVersion: ""
+          kubeletVersion: v1.37.2
+          machineID: 5b0d6c4ee0a94fa8b1c3e2d7f9a10c02
+          operatingSystem: linux
+          osImage: Ubuntu 24.04.3 LTS
+          systemUUID: <<uid:3>>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe node node01
+    exit: 0
+    stdout: |
+      Name:               node01
+      Roles:              <none>
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=node01
+                          kubernetes.io/os=linux
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             <none>
+      Unschedulable:      false
+      Lease:
+        HolderIdentity:  controlplane_<<uid:4>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.11
+        Hostname:    node01
+      Capacity:
+        cpu:                2
+        ephemeral-storage:  20134592Ki
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             4010284Ki
+        pods:               110
+      Allocatable:
+        cpu:                2
+        ephemeral-storage:  18556039957
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             3907884Ki
+        pods:               110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c02
+        System UUID:                <<uid:3>>
+        Boot ID:                    <<uid:2>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (1 in total)
+        Namespace                   Name     CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----     ------------  ----------  ---------------  -------------  ---
+        default                     sized    500m (25%)    1 (50%)     256Mi (6%)       512Mi (13%)    <<age>>
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource           Requests    Limits
+        --------           --------    ------
+        cpu                500m (25%)  1 (50%)
+        memory             256Mi (6%)  512Mi (13%)
+        ephemeral-storage  0 (0%)      0 (0%)
+        hugepages-1Gi      0 (0%)      0 (0%)
+        hugepages-2Mi      0 (0%)      0 (0%)
+      Events:
+        Type    Reason          Age      From             Message
+        ----    ------          ----     ----             -------
+        Normal  RegisteredNode  <<age>>  node-controller  Node node01 event: Registered Node node01 in Controller
+    stderr: ""
+    kwok: true
+  - run: kubectl describe node controlplane
+    exit: 0
+    stdout: |
+      Name:               controlplane
+      Roles:              control-plane
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=controlplane
+                          kubernetes.io/os=linux
+                          node-role.kubernetes.io/control-plane=
+                          node.kubernetes.io/exclude-from-external-load-balancers=
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             node-role.kubernetes.io/control-plane:NoSchedule
+      Unschedulable:      false
+      Lease:
+        HolderIdentity:  controlplane_<<uid:4>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.10
+        Hostname:    controlplane
+      Capacity:
+        cpu:                2
+        ephemeral-storage:  20134592Ki
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             4010284Ki
+        pods:               110
+      Allocatable:
+        cpu:                2
+        ephemeral-storage:  18556039957
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             3907884Ki
+        pods:               110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c01
+        System UUID:                <<uid:5>>
+        Boot ID:                    <<uid:6>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (0 in total)
+        Namespace                   Name    CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----    ------------  ----------  ---------------  -------------  ---
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource           Requests  Limits
+        --------           --------  ------
+        cpu                0 (0%)    0 (0%)
+        memory             0 (0%)    0 (0%)
+        ephemeral-storage  0 (0%)    0 (0%)
+        hugepages-1Gi      0 (0%)    0 (0%)
+        hugepages-2Mi      0 (0%)    0 (0%)
+      Events:
+        Type    Reason          Age      From             Message
+        ----    ------          ----     ----             -------
+        Normal  RegisteredNode  <<age>>  node-controller  Node controlplane event: Registered Node controlplane in Controller
+    stderr: ""
+    kwok: true
+  - run: kubectl get node nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): nodes "nope" not found
+  - objects:
+      - ref: node/controlplane
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Node
+          metadata:
+            annotations:
+              node.alpha.kubernetes.io/ttl: "0"
+              volumes.kubernetes.io/controller-managed-attach-detach: "true"
+            creationTimestamp: <<time>>
+            labels:
+              beta.kubernetes.io/arch: amd64
+              beta.kubernetes.io/os: linux
+              kubernetes.io/arch: amd64
+              kubernetes.io/hostname: controlplane
+              kubernetes.io/os: linux
+              node-role.kubernetes.io/control-plane: ""
+              node.kubernetes.io/exclude-from-external-load-balancers: ""
+            name: controlplane
+            resourceVersion: <<rv>>
+            uid: <<uid:7>>
+          spec:
+            podCIDR: <<ip>>/24
+            podCIDRs:
+              - <<ip>>/24
+            taints:
+              - effect: NoSchedule
+                key: node-role.kubernetes.io/control-plane
+          status:
+            addresses:
+              - address: 172.16.0.10
+                type: InternalIP
+              - address: controlplane
+                type: Hostname
+            allocatable:
+              cpu: "2"
+              ephemeral-storage: "18556039957"
+              hugepages-1Gi: "0"
+              hugepages-2Mi: "0"
+              memory: 3907884Ki
+              pods: "110"
+            capacity:
+              cpu: "2"
+              ephemeral-storage: 20134592Ki
+              hugepages-1Gi: "0"
+              hugepages-2Mi: "0"
+              memory: 4010284Ki
+              pods: "110"
+            conditions:
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet is posting ready status
+                reason: KubeletReady
+                status: "True"
+                type: Ready
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet has sufficient memory available
+                reason: KubeletHasSufficientMemory
+                status: "False"
+                type: MemoryPressure
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet has no disk pressure
+                reason: KubeletHasNoDiskPressure
+                status: "False"
+                type: DiskPressure
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet has sufficient PID available
+                reason: KubeletHasSufficientPID
+                status: "False"
+                type: PIDPressure
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: RouteController created a route
+                reason: RouteCreated
+                status: "False"
+                type: NetworkUnavailable
+            daemonEndpoints:
+              kubeletEndpoint:
+                Port: 10250
+            nodeInfo:
+              architecture: amd64
+              bootID: <<uid:6>>
+              containerRuntimeVersion: containerd://1.7.28
+              kernelVersion: 6.8.0-88-generic
+              kubeProxyVersion: ""
+              kubeletVersion: v1.37.2
+              machineID: 5b0d6c4ee0a94fa8b1c3e2d7f9a10c01
+              operatingSystem: linux
+              osImage: Ubuntu 24.04.3 LTS
+              systemUUID: <<uid:5>>

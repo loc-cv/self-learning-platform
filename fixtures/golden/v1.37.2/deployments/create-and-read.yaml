@@ -1,0 +1,338 @@
+# Captured from fixtures/golden/cases/deployments/create-and-read.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: deployments/create-and-read
+description: Create a Deployment imperatively; read the Deployment, its ReplicaSet and Pods in each format; describe it.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get deployments
+    exit: 0
+    stdout: |
+      NAME   READY   UP-TO-DATE   AVAILABLE   AGE
+      web    3/3     3            3           <<age>>
+    stderr: ""
+  - run: kubectl get deploy -o wide
+    exit: 0
+    stdout: |
+      NAME   READY   UP-TO-DATE   AVAILABLE   AGE       CONTAINERS   IMAGES       SELECTOR
+      web    3/3     3            3           <<age>>   nginx        nginx:1.27   app=web
+    stderr: ""
+  - run: kubectl get deployment web -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        annotations:
+          deployment.kubernetes.io/revision: "1"
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: web
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 3
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: web
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.27
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status:
+        availableReplicas: 3
+        conditions:
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: Deployment has minimum availability.
+          reason: MinimumReplicasAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+          reason: NewReplicaSetAvailable
+          status: "True"
+          type: Progressing
+        observedGeneration: 1
+        readyReplicas: 3
+        replicas: 3
+        terminatingReplicas: 0
+        updatedReplicas: 3
+    stderr: ""
+  - run: kubectl get rs
+    exit: 0
+    stdout: |
+      NAME             DESIRED   CURRENT   READY   AGE
+      web-<<hash:1>>   3         3         3       <<age>>
+    stderr: ""
+  - run: kubectl get rs -o wide
+    exit: 0
+    stdout: |
+      NAME             DESIRED   CURRENT   READY   AGE       CONTAINERS   IMAGES       SELECTOR
+      web-<<hash:1>>   3         3         3       <<age>>   nginx        nginx:1.27   app=web,pod-template-hash=<<hash:1>>
+    stderr: ""
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME                        READY   STATUS    RESTARTS   AGE       IP       NODE       NOMINATED NODE   READINESS GATES
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   <<node>>   <none>           <none>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   <<node>>   <none>           <none>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   <<node>>   <none>           <none>
+    stderr: ""
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pods --show-labels
+    exit: 0
+    stdout: |
+      NAME                        READY   STATUS    RESTARTS   AGE       LABELS
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   app=web,pod-template-hash=<<hash:1>>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   app=web,pod-template-hash=<<hash:1>>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   app=web,pod-template-hash=<<hash:1>>
+    stderr: ""
+    kwok: true
+  - run: kubectl get all
+    exit: 0
+    stdout: |
+      NAME                            READY   STATUS    RESTARTS   AGE
+      pod/web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>
+      pod/web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>
+      pod/web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>
+
+      NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+      service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   <<age>>
+
+      NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+      deployment.apps/web   3/3     3            3           <<age>>
+
+      NAME                             DESIRED   CURRENT   READY   AGE
+      replicaset.apps/web-<<hash:1>>   3         3         3       <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe deployment web
+    exit: 0
+    stdout: |
+      Name:                   web
+      Namespace:              default
+      CreationTimestamp:      <<time>>
+      Labels:                 app=web
+      Annotations:            deployment.kubernetes.io/revision: 1
+      Selector:               app=web
+      Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+      StrategyType:           RollingUpdate
+      MinReadySeconds:        0
+      RollingUpdateStrategy:  25% max unavailable, 25% max surge
+      Pod Template:
+        Labels:  app=web
+        Containers:
+         nginx:
+          Image:         nginx:1.27
+          Port:          <none>
+          Host Port:     <none>
+          Environment:   <none>
+          Mounts:        <none>
+        Volumes:         <none>
+        Node-Selectors:  <none>
+        Tolerations:     <none>
+      Conditions:
+        Type           Status  Reason
+        ----           ------  ------
+        Available      True    MinimumReplicasAvailable
+        Progressing    True    NewReplicaSetAvailable
+      OldReplicaSets:  <none>
+      NewReplicaSet:   web-<<hash:1>> (3/3 replicas created)
+      Events:
+        Type    Reason             Age      From                   Message
+        ----    ------             ----     ----                   -------
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled up replica set web-<<hash:1>> from 0 to 3
+    stderr: ""
+  - run: kubectl describe rs
+    exit: 0
+    stdout: |
+      Name:           web-<<hash:1>>
+      Namespace:      default
+      Selector:       app=web,pod-template-hash=<<hash:1>>
+      Labels:         app=web
+                      pod-template-hash=<<hash:1>>
+      Annotations:    deployment.kubernetes.io/desired-replicas: 3
+                      deployment.kubernetes.io/max-replicas: 4
+                      deployment.kubernetes.io/revision: 1
+      Controlled By:  Deployment/web
+      Replicas:       3 current / 3 desired
+      Pods Status:    3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+      Pod Template:
+        Labels:  app=web
+                 pod-template-hash=<<hash:1>>
+        Containers:
+         nginx:
+          Image:         nginx:1.27
+          Port:          <none>
+          Host Port:     <none>
+          Environment:   <none>
+          Mounts:        <none>
+        Volumes:         <none>
+        Node-Selectors:  <none>
+        Tolerations:     <none>
+      Events:
+        Type    Reason            Age      From                   Message
+        ----    ------            ----     ----                   -------
+        Normal  SuccessfulCreate  <<age>>  replicaset-controller  Created pod: web-<<hash:1>>-<<suffix>>
+        Normal  SuccessfulCreate  <<age>>  replicaset-controller  Created pod: web-<<hash:1>>-<<suffix>>
+        Normal  SuccessfulCreate  <<age>>  replicaset-controller  Created pod: web-<<hash:1>>-<<suffix>>
+    stderr: ""
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+            creationTimestamp: <<time>>
+            generation: 1
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 3
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 3
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 1
+            readyReplicas: 3
+            replicas: 3
+            terminatingReplicas: 0
+            updatedReplicas: 3
+      - ref: replicaset
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "3"
+                  deployment.kubernetes.io/max-replicas: "4"
+                  deployment.kubernetes.io/revision: "1"
+                creationTimestamp: <<time>>
+                generation: 1
+                labels:
+                  app: web
+                  pod-template-hash: 69c6f74b8b
+                name: web-<<hash:1>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              spec:
+                replicas: 3
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 69c6f74b8b
+                template:
+                  metadata:
+                    labels:
+                      app: web
+                      pod-template-hash: 69c6f74b8b
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                availableReplicas: 3
+                fullyLabeledReplicas: 3
+                observedGeneration: 1
+                readyReplicas: 3
+                replicas: 3
+                terminatingReplicas: 0
+          kind: List
+          metadata:
+            resourceVersion: ""

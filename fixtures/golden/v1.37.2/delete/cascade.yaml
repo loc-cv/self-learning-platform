@@ -1,0 +1,68 @@
+# Captured from fixtures/golden/cases/delete/cascade.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: delete/cascade
+description: Deleting objects with dependents (background and orphan cascades), forced deletion, a namespace, and by label.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl delete deployment web
+    exit: 0
+    stdout: |
+      deployment.apps "web" deleted from default namespace
+    stderr: ""
+  - run: kubectl get rs,pods -l app=web
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl delete deployment keep --cascade=orphan
+    exit: 0
+    stdout: |
+      deployment.apps "keep" deleted from default namespace
+    stderr: ""
+  - run: kubectl get rs -l app=keep
+    exit: 0
+    stdout: |
+      NAME              DESIRED   CURRENT   READY   AGE
+      keep-<<hash:1>>   1         1         1       <<age>>
+    stderr: ""
+  - run: kubectl get pods -l app=keep
+    exit: 0
+    stdout: |
+      NAME                         READY   STATUS    RESTARTS   AGE
+      keep-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl delete pod -l role=solo --grace-period=0 --force
+    exit: 0
+    stdout: |
+      pod "solo" force deleted from default namespace
+    stderr: |
+      Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+  - run: kubectl delete namespace scratch
+    exit: 0
+    stdout: |
+      namespace "scratch" deleted
+    stderr: ""
+  - run: kubectl get namespace scratch
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): namespaces "scratch" not found
+  - run: kubectl delete pods,deployments -l app=nothing
+    exit: 0
+    stdout: |
+      No resources found
+    stderr: ""
+  - run: kubectl delete rs -l app=keep --cascade=foreground
+    exit: 0
+    stdout: |
+      replicaset.apps "keep-<<hash:1>>" deleted from default namespace
+    stderr: ""

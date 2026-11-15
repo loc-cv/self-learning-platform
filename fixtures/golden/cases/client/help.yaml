@@ -1,0 +1,27 @@
+description: kubectl help and usage text as an 80-column terminal shows it.
+server: false
+steps:
+  - run: kubectl --help
+    tty: true
+    normalize: false
+  - run: kubectl get --help
+    tty: true
+    normalize: false
+  - run: kubectl run --help
+    tty: true
+    normalize: false
+  - run: kubectl create deployment --help
+    tty: true
+    normalize: false
+  - run: kubectl expose --help
+    tty: true
+    normalize: false
+  - run: kubectl options
+    tty: true
+    normalize: false
+  - run: kubectl nosuch
+    normalize: false
+  - run: kubectl get pods --nosuchflag
+    normalize: false
+  - run: kubectl create
+    normalize: false

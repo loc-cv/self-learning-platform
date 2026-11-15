@@ -1,0 +1,9 @@
+{
+  "etcd/v3.7.0/etcd-v3.7.0-linux-amd64.tar.gz": "b05cb07f5686dab8f9cdab89986b44f0dd24aaf5c627176aff325e21fa56f9f0",
+  "kubernetes/v1.37.2/linux-amd64/kube-apiserver": "b87e5a91107cf994bfa38c6c1b28eb39f01fc040734ec9942c22738bc8b8f34b",
+  "kubernetes/v1.37.2/linux-amd64/kube-controller-manager": "fb93284c0c8fe7f8ab87989ad6ee37eeb679a3595a36d8d0646d7cd52dc61b4e",
+  "kubernetes/v1.37.2/linux-amd64/kube-scheduler": "6c8b5c11846f58fd88b59ce19dd1cf13d3dd85364936c548c841946d87656a9b",
+  "kubernetes/v1.37.2/linux-amd64/kubeadm": "e621beed70d51a71d283d67c6a5fd6db93e641dfe2213883128200d9e52a937b",
+  "kubernetes/v1.37.2/linux-amd64/kubectl": "c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4",
+  "kwok/v0.8.0/kwok-linux-amd64": "f5a4385a2ae1b9dd7f8acae18e002a75c0ebba124ae9d7259aa8dadb50711f46"
+}

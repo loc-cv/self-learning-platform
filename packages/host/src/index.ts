@@ -16,6 +16,7 @@ export * from './vfs/types.ts';
 export * from './transcript/format.ts';
 export * from './transcript/runner.ts';
 export * from './transcript/session.ts';
+export * from './transcript/tokens.ts';
 export { openTerminal, type Terminal, type TerminalOptions } from './proc/terminal.ts';
 export * from './proc/program.ts';
 export * from './proc/types.ts';

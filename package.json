@@ -19,6 +19,9 @@
     "upstream:fetch": "node tools/src/upstream/fetch.ts",
     "bench:fork": "node tools/src/bench/fork.ts",
     "transcript:capture": "node tools/src/transcript/capture.ts",
+    "oracle": "node tools/src/oracle/cli.ts",
+    "golden:capture": "node tools/src/golden/capture.ts",
+    "golden:kubectl-manifest": "node tools/src/golden/kubectl_manifest.ts",
     "play": "node apps/cli/src/play.ts",
     "sim": "node apps/cli/src/sim.ts"
   },

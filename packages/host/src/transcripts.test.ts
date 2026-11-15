@@ -6,6 +6,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { formatOutput, parseTranscript } from './transcript/format.ts';
 import { runTranscript } from './transcript/runner.ts';
+import { hasTokens, matchTokens } from './transcript/tokens.ts';
 
 const root = join(import.meta.dirname, '..', 'transcripts');
 
@@ -30,7 +31,11 @@ describe('transcripts', () => {
           expect(r.status, `${where}: setup failed: ${r.output}`).toBe(0);
           continue;
         }
-        expect(formatOutput(r.output, r.status).join('\n'), where).toBe(formatOutput(r.step.output, r.step.status).join('\n'));
+        const got = formatOutput(r.output, r.status).join('\n');
+        const want = formatOutput(r.step.output, r.step.status).join('\n');
+        // Expected output may hold normalization tokens (docs/TRANSCRIPTS.md, Tokens).
+        if (hasTokens(want) && matchTokens(want, got)) continue;
+        expect(got, where).toBe(want);
       }
       expect(run.results.length, 'every step ran').toBe(t.steps.length);
       const internal = run.gaps.filter((g) => g.kind === 'internal');

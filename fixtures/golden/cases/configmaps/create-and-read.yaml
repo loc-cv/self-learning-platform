@@ -1,0 +1,18 @@
+description: Create ConfigMaps from literals, files and manifests; read them in each format.
+files:
+  app.properties: |
+    color=blue
+    size=large
+setup:
+  - do: kubectl create configmap app-config --from-literal=LOG_LEVEL=debug --from-literal=PORT=8080
+  - do: kubectl create configmap files --from-file=app.properties
+steps:
+  - run: kubectl get configmaps
+  - run: kubectl get cm app-config -o yaml
+  - run: kubectl get cm files -o json
+  - run: kubectl get cm -o wide
+  - run: kubectl describe configmap app-config
+  - run: kubectl get cm app-config -o jsonpath='{.data.LOG_LEVEL}'
+  - run: kubectl create configmap app-config --from-literal=a=b
+  - run: kubectl create configmap bad --from-literal=not_valid_key!=x
+  - objects: [configmap/app-config, configmap/kube-root-ca.crt]

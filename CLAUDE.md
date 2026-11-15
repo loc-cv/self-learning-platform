@@ -42,7 +42,9 @@ npm run sim -- --topology ubuntu-1 -c 'cmd1\ncmd2' # run commands without a huma
 npm run lab -- <item-id> [--seed N]               # (phase 09) play a content item in this terminal
 npm run content:check         # (phase 09) validate every content item (schema, unsolved fails, solutions pass)
 npm run content:i18n          # (phase 11) report missing or outdated Vietnamese text (never a gate)
-npm run golden:capture -- <case>   # (phase 04) capture real output with the local oracle (needs network once)
+npm run oracle -- up|down|status|fetch   # throwaway real control plane (v1.37.2 binaries + KWOK), no Docker
+npm run golden:capture -- [--check] [<case|dir>]  # run golden cases against fresh oracles, write fixtures
+npm run golden:kubectl-manifest   # every kubectl command and flag of the pin, from the real binary
 npm run fidelity:report       # (phase 07a) provenance of every output unit
 ```
 
@@ -64,7 +66,8 @@ tools/             upstream fetch, OpenAPI processing, oracle and golden capture
 docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against
 packages/*/transcripts/  transcript tests (docs/TRANSCRIPTS.md), run by each package's transcripts.test.ts
-fixtures/golden/   captured real output per Kubernetes version (committed)
+fixtures/golden/   golden cases (cases/, the inputs) and captured, normalized real output per Kubernetes
+                   version (v1.37.2/, committed); docs/FIDELITY.md §6
 fixtures/reference/ workstation captures (rank 3) with their capture scripts, e.g. linux/vfs-syscalls,
                    bash/readline (real readline output key by key, bind -p)
 ```

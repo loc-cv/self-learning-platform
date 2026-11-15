@@ -1,0 +1,220 @@
+# Captured from fixtures/golden/cases/deployments/rollout.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: deployments/rollout
+description: "Roll a Deployment to a new image, read rollout status (once finished: the progress lines depend on timing), history, the two ReplicaSets and the events; undo; scale."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl set image deployment/web nginx=nginx:1.28
+    exit: 0
+    stdout: |
+      deployment.apps/web image updated
+    stderr: ""
+  - run: kubectl rollout status deployment/web
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl rollout history deployment/web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      1         <none>
+      2         <none>
+
+    stderr: ""
+  - run: kubectl rollout history deployment/web --revision=2
+    exit: 0
+    stdout: |+
+      deployment.apps/web with revision #2
+      Pod Template:
+        Labels:	app=web
+      	pod-template-hash=<<hash:1>>
+        Containers:
+         nginx:
+          Image:	nginx:1.28
+          Port:	<none>
+          Host Port:	<none>
+          Environment:	<none>
+          Mounts:	<none>
+        Volumes:	<none>
+        Node-Selectors:	<none>
+        Tolerations:	<none>
+
+    stderr: ""
+  - run: kubectl get rs
+    exit: 0
+    stdout: |
+      NAME             DESIRED   CURRENT   READY   AGE
+      web-<<hash:2>>   0         0         0       <<age>>
+      web-<<hash:1>>   2         2         2       <<age>>
+    stderr: ""
+  - run: kubectl describe deployment web
+    exit: 0
+    stdout: |
+      Name:                   web
+      Namespace:              default
+      CreationTimestamp:      <<time>>
+      Labels:                 app=web
+      Annotations:            deployment.kubernetes.io/revision: 2
+      Selector:               app=web
+      Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
+      StrategyType:           RollingUpdate
+      MinReadySeconds:        0
+      RollingUpdateStrategy:  25% max unavailable, 25% max surge
+      Pod Template:
+        Labels:  app=web
+        Containers:
+         nginx:
+          Image:         nginx:1.28
+          Port:          <none>
+          Host Port:     <none>
+          Environment:   <none>
+          Mounts:        <none>
+        Volumes:         <none>
+        Node-Selectors:  <none>
+        Tolerations:     <none>
+      Conditions:
+        Type           Status  Reason
+        ----           ------  ------
+        Available      True    MinimumReplicasAvailable
+        Progressing    True    NewReplicaSetAvailable
+      OldReplicaSets:  web-<<hash:2>> (0/0 replicas created)
+      NewReplicaSet:   web-<<hash:1>> (2/2 replicas created)
+      Events:
+        Type    Reason             Age      From                   Message
+        ----    ------             ----     ----                   -------
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled up replica set web-<<hash:2>> from 0 to 2
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled up replica set web-<<hash:1>> from 0 to 1
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled down replica set web-<<hash:2>> from 2 to 1
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled up replica set web-<<hash:1>> from 1 to 2
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled down replica set web-<<hash:2>> from 1 to 0
+    stderr: ""
+  - run: kubectl get events --field-selector involvedObject.kind=Deployment
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE     REASON              OBJECT           MESSAGE
+      <<age>>     Normal   ScalingReplicaSet   deployment/web   Scaled up replica set web-<<hash:2>> from 0 to 2
+      <<age>>     Normal   ScalingReplicaSet   deployment/web   Scaled up replica set web-<<hash:1>> from 0 to 1
+      <<age>>     Normal   ScalingReplicaSet   deployment/web   Scaled down replica set web-<<hash:2>> from 2 to 1
+      <<age>>     Normal   ScalingReplicaSet   deployment/web   Scaled up replica set web-<<hash:1>> from 1 to 2
+      <<age>>     Normal   ScalingReplicaSet   deployment/web   Scaled down replica set web-<<hash:2>> from 1 to 0
+    stderr: ""
+  - run: kubectl rollout undo deployment/web
+    exit: 0
+    stdout: |
+      deployment.apps/web rolled back
+    stderr: ""
+  - run: kubectl rollout status deployment/web
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl rollout history deployment/web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      2         <none>
+      3         <none>
+
+    stderr: ""
+  - run: kubectl scale deployment web --replicas=4
+    exit: 0
+    stdout: |
+      deployment.apps/web scaled
+    stderr: ""
+  - run: kubectl rollout status deployment/web
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl get deployment web
+    exit: 0
+    stdout: |
+      NAME   READY   UP-TO-DATE   AVAILABLE   AGE
+      web    4/4     4            4           <<age>>
+    stderr: ""
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "3"
+            creationTimestamp: <<time>>
+            generation: 4
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 4
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 4
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:2>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+            observedGeneration: 4
+            readyReplicas: 4
+            replicas: 4
+            terminatingReplicas: 0
+            updatedReplicas: 4
+  - run: kubectl rollout undo deployment/web --to-revision=9
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to find specified revision 9 in history
+  - run: kubectl set image deployment/web nope=nginx:1.28
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to find container named "nope"

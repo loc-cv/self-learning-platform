@@ -1,0 +1,505 @@
+# Captured from fixtures/golden/cases/pods/run.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: pods/run
+description: Create a Pod with kubectl run and read it in each output format; describe it.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pods
+    exit: 0
+    stdout: |
+      NAME    READY   STATUS    RESTARTS   AGE
+      nginx   1/1     Running   0          <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME    READY   STATUS    RESTARTS   AGE       IP       NODE       NOMINATED NODE   READINESS GATES
+      nginx   1/1     Running   0          <<age>>   <<ip>>   <<node>>   <none>           <none>
+    stderr: ""
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pod nginx -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: web
+        name: nginx
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        containers:
+        - image: nginx:1.27
+          imagePullPolicy: IfNotPresent
+          name: nginx
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            name: kube-api-access-<<suffix>>
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: true
+        nodeName: <<node>>
+        preemptionPolicy: PreemptLowerPriority
+        priority: 0
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: default
+        serviceAccountName: default
+        terminationGracePeriodSeconds: 30
+        tolerations:
+        - effect: NoExecute
+          key: node.kubernetes.io/not-ready
+          operator: Exists
+          tolerationSeconds: 300
+        - effect: NoExecute
+          key: node.kubernetes.io/unreachable
+          operator: Exists
+          tolerationSeconds: 300
+        volumes:
+        - name: kube-api-access-<<suffix>>
+          projected:
+            defaultMode: 420
+            sources:
+            - serviceAccountToken:
+                expirationSeconds: 3607
+                path: token
+            - configMap:
+                items:
+                - key: ca.crt
+                  path: ca.crt
+                name: kube-root-ca.crt
+            - downwardAPI:
+                items:
+                - fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+                  path: namespace
+      status:
+        conditions:
+        - lastProbeTime: null
+          lastTransitionTime: "<<time>>"
+          status: "True"
+          type: Initialized
+        - lastProbeTime: null
+          lastTransitionTime: "<<time>>"
+          status: "True"
+          type: Ready
+        - lastProbeTime: null
+          lastTransitionTime: "<<time>>"
+          status: "True"
+          type: ContainersReady
+        - lastProbeTime: null
+          lastTransitionTime: "<<time>>"
+          status: "True"
+          type: PodScheduled
+        containerStatuses:
+        - image: nginx:1.27
+          imageID: ""
+          lastState: {}
+          name: nginx
+          ready: true
+          restartCount: 0
+          state:
+            running:
+              startedAt: "<<time>>"
+        hostIP: <<ip>>
+        hostIPs:
+        - ip: <<ip>>
+        phase: Running
+        podIP: <<ip>>
+        podIPs:
+        - ip: <<ip>>
+        qosClass: BestEffort
+        startTime: "<<time>>"
+    stderr: ""
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pod nginx -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "kind": "Pod",
+          "metadata": {
+              "creationTimestamp": "<<time>>",
+              "generation": 1,
+              "labels": {
+                  "app": "web"
+              },
+              "name": "nginx",
+              "namespace": "default",
+              "resourceVersion": "<<rv>>",
+              "uid": "<<uid:1>>"
+          },
+          "spec": {
+              "containers": [
+                  {
+                      "image": "nginx:1.27",
+                      "imagePullPolicy": "IfNotPresent",
+                      "name": "nginx",
+                      "resources": {},
+                      "terminationMessagePath": "/dev/termination-log",
+                      "terminationMessagePolicy": "File",
+                      "volumeMounts": [
+                          {
+                              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                              "name": "kube-api-access-<<suffix>>",
+                              "readOnly": true
+                          }
+                      ]
+                  }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "enableServiceLinks": true,
+              "nodeName": "<<node>>",
+              "preemptionPolicy": "PreemptLowerPriority",
+              "priority": 0,
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {},
+              "serviceAccount": "default",
+              "serviceAccountName": "default",
+              "terminationGracePeriodSeconds": 30,
+              "tolerations": [
+                  {
+                      "effect": "NoExecute",
+                      "key": "node.kubernetes.io/not-ready",
+                      "operator": "Exists",
+                      "tolerationSeconds": 300
+                  },
+                  {
+                      "effect": "NoExecute",
+                      "key": "node.kubernetes.io/unreachable",
+                      "operator": "Exists",
+                      "tolerationSeconds": 300
+                  }
+              ],
+              "volumes": [
+                  {
+                      "name": "kube-api-access-<<suffix>>",
+                      "projected": {
+                          "defaultMode": 420,
+                          "sources": [
+                              {
+                                  "serviceAccountToken": {
+                                      "expirationSeconds": 3607,
+                                      "path": "token"
+                                  }
+                              },
+                              {
+                                  "configMap": {
+                                      "items": [
+                                          {
+                                              "key": "ca.crt",
+                                              "path": "ca.crt"
+                                          }
+                                      ],
+                                      "name": "kube-root-ca.crt"
+                                  }
+                              },
+                              {
+                                  "downwardAPI": {
+                                      "items": [
+                                          {
+                                              "fieldRef": {
+                                                  "apiVersion": "v1",
+                                                  "fieldPath": "metadata.namespace"
+                                              },
+                                              "path": "namespace"
+                                          }
+                                      ]
+                                  }
+                              }
+                          ]
+                      }
+                  }
+              ]
+          },
+          "status": {
+              "conditions": [
+                  {
+                      "lastProbeTime": null,
+                      "lastTransitionTime": "<<time>>",
+                      "status": "True",
+                      "type": "Initialized"
+                  },
+                  {
+                      "lastProbeTime": null,
+                      "lastTransitionTime": "<<time>>",
+                      "status": "True",
+                      "type": "Ready"
+                  },
+                  {
+                      "lastProbeTime": null,
+                      "lastTransitionTime": "<<time>>",
+                      "status": "True",
+                      "type": "ContainersReady"
+                  },
+                  {
+                      "lastProbeTime": null,
+                      "lastTransitionTime": "<<time>>",
+                      "status": "True",
+                      "type": "PodScheduled"
+                  }
+              ],
+              "containerStatuses": [
+                  {
+                      "image": "nginx:1.27",
+                      "imageID": "",
+                      "lastState": {},
+                      "name": "nginx",
+                      "ready": true,
+                      "restartCount": 0,
+                      "state": {
+                          "running": {
+                              "startedAt": "<<time>>"
+                          }
+                      }
+                  }
+              ],
+              "hostIP": "<<ip>>",
+              "hostIPs": [
+                  {
+                      "ip": "<<ip>>"
+                  }
+              ],
+              "phase": "Running",
+              "podIP": "<<ip>>",
+              "podIPs": [
+                  {
+                      "ip": "<<ip>>"
+                  }
+              ],
+              "qosClass": "BestEffort",
+              "startTime": "<<time>>"
+          }
+      }
+    stderr: ""
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pods -o name
+    exit: 0
+    stdout: |
+      pod/nginx
+    stderr: ""
+  - run: kubectl get pods --show-labels
+    exit: 0
+    stdout: |
+      NAME    READY   STATUS    RESTARTS   AGE       LABELS
+      nginx   1/1     Running   0          <<age>>   app=web
+    stderr: ""
+    kwok: true
+  - run: kubectl get pod nginx -o jsonpath='{.spec.containers[0].image}{"\n"}'
+    exit: 0
+    stdout: |
+      nginx:1.27
+    stderr: ""
+  - run: kubectl get pods -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image
+    exit: 0
+    stdout: |
+      NAME    IMAGE
+      nginx   nginx:1.27
+    stderr: ""
+  - run: kubectl get pods -l app=web
+    exit: 0
+    stdout: |
+      NAME    READY   STATUS    RESTARTS   AGE
+      nginx   1/1     Running   0          <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl get pods -l app=nothing
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl get po nginx --no-headers
+    exit: 0
+    stdout: |
+      nginx   1/1   Running   0     <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod nginx
+    exit: 0
+    stdout: |
+      Name:             nginx
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <<node>>/<<ip>>
+      Start Time:       <<time>>
+      Labels:           app=web
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/nginx to <<node>>
+    stderr: ""
+    kwok: true
+    anyWorker: true
+  - objects:
+      - ref: pod/nginx
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            labels:
+              app: web
+            name: nginx
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: nginx
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeName: <<node>>
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Initialized
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Ready
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: ContainersReady
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: PodScheduled
+            containerStatuses:
+              - image: nginx:1.27
+                imageID: ""
+                lastState: {}
+                name: nginx
+                ready: true
+                restartCount: 0
+                state:
+                  running:
+                    startedAt: <<time>>
+            hostIP: <<ip>>
+            hostIPs:
+              - ip: <<ip>>
+            phase: Running
+            podIP: <<ip>>
+            podIPs:
+              - ip: <<ip>>
+            qosClass: BestEffort
+            startTime: <<time>>
+    anyWorker: true
+  - run: kubectl delete pod nginx
+    exit: 0
+    stdout: |
+      pod "nginx" deleted from default namespace
+    stderr: ""
+  - run: kubectl get pods
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.

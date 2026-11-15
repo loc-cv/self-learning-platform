@@ -1,0 +1,137 @@
+# Captured from fixtures/golden/cases/client/config.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: client/config
+description: kubectl config on a kubeconfig file, with no server.
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl config view
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: DATA+OMITTED
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      - cluster:
+          insecure-skip-tls-verify: true
+          server: https://10.0.0.5:6443
+        name: staging
+      contexts:
+      - context:
+          cluster: staging
+          namespace: team-a
+          user: dev
+        name: dev@staging
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: kubernetes-admin@kubernetes
+      kind: Config
+      users:
+      - name: dev
+        user:
+          token: REDACTED
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: DATA+OMITTED
+          client-key-data: DATA+OMITTED
+    stderr: ""
+  - run: kubectl config view --minify
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: DATA+OMITTED
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      contexts:
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: kubernetes-admin@kubernetes
+      kind: Config
+      users:
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: DATA+OMITTED
+          client-key-data: DATA+OMITTED
+    stderr: ""
+  - run: kubectl config view --raw -o jsonpath='{.users[1].user.token}'
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl config get-contexts
+    exit: 0
+    stdout: |
+      CURRENT   NAME                          CLUSTER      AUTHINFO           NAMESPACE
+                dev@staging                   staging      dev                team-a
+      *         kubernetes-admin@kubernetes   kubernetes   kubernetes-admin   
+    stderr: ""
+  - run: kubectl config current-context
+    exit: 0
+    stdout: |
+      kubernetes-admin@kubernetes
+    stderr: ""
+  - run: kubectl config get-clusters
+    exit: 0
+    stdout: |
+      NAME
+      kubernetes
+      staging
+    stderr: ""
+    unorderedLines: true
+  - run: kubectl config get-users
+    exit: 0
+    stdout: |
+      NAME
+      dev
+      kubernetes-admin
+    stderr: ""
+    unorderedLines: true
+  - run: kubectl config use-context dev@staging
+    exit: 0
+    stdout: |
+      Switched to context "dev@staging".
+    stderr: ""
+  - run: kubectl config current-context
+    exit: 0
+    stdout: |
+      dev@staging
+    stderr: ""
+  - run: kubectl config set-context --current --namespace=team-b
+    exit: 0
+    stdout: |
+      Context "dev@staging" modified.
+    stderr: ""
+  - run: kubectl config get-contexts
+    exit: 0
+    stdout: |
+      CURRENT   NAME                          CLUSTER      AUTHINFO           NAMESPACE
+      *         dev@staging                   staging      dev                team-b
+                kubernetes-admin@kubernetes   kubernetes   kubernetes-admin   
+    stderr: ""
+  - run: kubectl config use-context nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no context exists with the name: "nope"
+  - run: kubectl config set-context new --cluster=kubernetes --user=dev
+    exit: 0
+    stdout: |
+      Context "new" created.
+    stderr: ""
+  - run: kubectl config delete-context new
+    exit: 0
+    stdout: |
+      deleted context new from /home/student/.kube/config
+    stderr: ""
+  - run: kubectl config view -o jsonpath='{.contexts[*].name}'
+    exit: 0
+    stdout: dev@staging kubernetes-admin@kubernetes
+    stderr: ""

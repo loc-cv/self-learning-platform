@@ -1,0 +1,235 @@
+# Captured from fixtures/golden/cases/apply/created-configured-unchanged.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: apply/created-configured-unchanged
+description: kubectl apply prints created, configured and unchanged; the last-applied annotation; apply from stdin and a directory.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl apply -f web.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web created
+    stderr: ""
+  - run: kubectl apply -f web.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web unchanged
+    stderr: ""
+  - run: kubectl apply -f web-v2.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web configured
+    stderr: ""
+  - run: kubectl get deployment web -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        annotations:
+          deployment.kubernetes.io/revision: "1"
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"web","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"web"}},"template":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"image":"nginx:1.27","name":"nginx"}],"nodeName":"node01"}}}}
+        creationTimestamp: "<<time>>"
+        generation: 2
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 2
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: web
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.27
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            nodeName: node01
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status:
+        availableReplicas: 2
+        conditions:
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+          reason: NewReplicaSetAvailable
+          status: "True"
+          type: Progressing
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: Deployment has minimum availability.
+          reason: MinimumReplicasAvailable
+          status: "True"
+          type: Available
+        observedGeneration: 2
+        readyReplicas: 2
+        replicas: 2
+        terminatingReplicas: 0
+        updatedReplicas: 2
+    stderr: ""
+  - run: kubectl apply -f dir/
+    exit: 0
+    stdout: |
+      configmap/from-dir created
+      service/from-dir created
+    stderr: ""
+  - run: kubectl apply -f dir/
+    exit: 0
+    stdout: |
+      configmap/from-dir unchanged
+      service/from-dir unchanged
+    stderr: ""
+  - run: kubectl apply -f -
+    stdin: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: from-stdin
+      data:
+        k: v
+    exit: 0
+    stdout: |
+      configmap/from-stdin created
+    stderr: ""
+  - run: kubectl create configmap imperative --from-literal=a=b
+    exit: 0
+    stdout: |
+      configmap/imperative created
+    stderr: ""
+  - run: kubectl apply -f -
+    stdin: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: imperative
+      data:
+        a: c
+    exit: 0
+    stdout: |
+      configmap/imperative configured
+    stderr: |
+      Warning: resource configmaps/imperative is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+  - run: kubectl apply -f web.yaml --dry-run=server
+    exit: 0
+    stdout: |
+      deployment.apps/web configured (server dry run)
+    stderr: ""
+  - run: kubectl apply -f web.yaml --dry-run=client
+    exit: 0
+    stdout: |
+      deployment.apps/web configured (dry run)
+    stderr: ""
+  - run: kubectl delete -f dir/
+    exit: 0
+    stdout: |
+      configmap "from-dir" deleted from default namespace
+      service "from-dir" deleted from default namespace
+    stderr: ""
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"web","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"web"}},"template":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"image":"nginx:1.27","name":"nginx"}],"nodeName":"node01"}}}}
+            creationTimestamp: <<time>>
+            generation: 2
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 2
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                nodeName: node01
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 2
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+            observedGeneration: 2
+            readyReplicas: 2
+            replicas: 2
+            terminatingReplicas: 0
+            updatedReplicas: 2
+      - ref: configmap/imperative
+        object:
+          apiVersion: v1
+          data:
+            a: c
+          kind: ConfigMap
+          metadata:
+            annotations:
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"v1","data":{"a":"c"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"imperative","namespace":"default"}}
+            creationTimestamp: <<time>>
+            name: imperative
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>

@@ -1,0 +1,174 @@
+description: Validation errors from the API server and from kubectl for common manifest mistakes.
+files:
+  noimage.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: noimage
+    spec:
+      containers:
+      - name: app
+  badname.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: Bad_Name
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+  unknownfield.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: typo
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        imagePullPolice: Always
+  wrongtype.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: wrongtype
+    spec:
+      replicas: "three"
+      selector:
+        matchLabels:
+          app: x
+      template:
+        metadata:
+          labels:
+            app: x
+        spec:
+          containers:
+          - name: app
+            image: nginx:1.27
+  selectormismatch.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: mismatch
+    spec:
+      selector:
+        matchLabels:
+          app: one
+      template:
+        metadata:
+          labels:
+            app: two
+        spec:
+          containers:
+          - name: app
+            image: nginx:1.27
+  nokind.yaml: |
+    apiVersion: v1
+    metadata:
+      name: nokind
+  badapiversion.yaml: |
+    apiVersion: apps/v2
+    kind: Deployment
+    metadata:
+      name: x
+  badport.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: badport
+    spec:
+      ports:
+      - port: 70000
+  notyaml.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: x
+     spec: {}
+  duplicatecontainer.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: dup
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+      - name: app
+        image: nginx:1.27
+  noselector.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: noselector
+    spec:
+      template:
+        metadata:
+          labels:
+            app: x
+        spec:
+          containers:
+          - name: app
+            image: nginx:1.27
+  immutable-v1.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: immutable
+    spec:
+      selector:
+        matchLabels:
+          app: one
+      template:
+        metadata:
+          labels:
+            app: one
+        spec:
+          nodeName: node01
+          containers:
+          - name: app
+            image: nginx:1.27
+  immutable-v2.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: immutable
+    spec:
+      selector:
+        matchLabels:
+          app: two
+      template:
+        metadata:
+          labels:
+            app: two
+        spec:
+          nodeName: node01
+          containers:
+          - name: app
+            image: nginx:1.27
+steps:
+  - run: kubectl create -f noimage.yaml
+  - run: kubectl create -f badname.yaml
+  - run: kubectl create -f unknownfield.yaml
+  - run: kubectl apply -f unknownfield.yaml --validate=false
+  - run: kubectl create -f wrongtype.yaml
+  - run: kubectl create -f selectormismatch.yaml
+  - run: kubectl create -f nokind.yaml
+  - run: kubectl create -f badapiversion.yaml
+  - run: kubectl create -f badport.yaml
+  - run: kubectl create -f notyaml.yaml
+  - run: kubectl create -f duplicatecontainer.yaml
+  - run: kubectl create -f missing.yaml
+  - run: kubectl run Bad --image=nginx
+  - run: kubectl run x
+  - run: kubectl create deployment web
+  - run: kubectl create deployment web --image=nginx --replicas=-1
+  - run: kubectl scale deployment --replicas=2
+  - run: kubectl get pods -o yamll
+  - run: kubectl create -f noselector.yaml
+  - run: kubectl apply -f immutable-v1.yaml
+  - run: kubectl apply -f immutable-v2.yaml
+  - run: kubectl run fixed --image=nginx:1.27 --overrides='{"spec":{"nodeName":"node01"}}'
+  - run: kubectl patch pod fixed -p '{"spec":{"nodeName":"node02"}}'
+  - run: kubectl label pod fixed app=x
+  - run: kubectl label pod fixed app=y

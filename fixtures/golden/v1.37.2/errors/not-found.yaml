@@ -1,0 +1,114 @@
+# Captured from fixtures/golden/cases/errors/not-found.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: errors/not-found
+description: Not-found and wrong-name errors from get, describe, delete, edit-less verbs and unknown resource types.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pod missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "missing" not found
+  - run: kubectl get pods missing other
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "missing" not found
+      Error from server (NotFound): pods "other" not found
+  - run: kubectl describe pod missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "missing" not found
+  - run: kubectl delete pod missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "missing" not found
+  - run: kubectl delete deployment missing --ignore-not-found
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl get deployment missing -n dev
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "missing" not found
+  - run: kubectl get pods -n nowhere
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in nowhere namespace.
+  - run: kubectl get pod missing -n nowhere
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): namespaces "nowhere" not found
+  - run: kubectl get pdos
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the server doesn't have a resource type "pdos"
+  - run: kubectl get pods.v2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the server doesn't have a resource type "pods" in group "v2"
+  - run: kubectl describe nothing missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the server doesn't have a resource type "nothing"
+  - run: kubectl logs missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error from server (NotFound): pods "missing" not found in namespace "default"
+  - run: kubectl get svc missing -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): services "missing" not found
+  - run: kubectl get pods
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl get deployments -A
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found
+  - run: kubectl get ns missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): namespaces "missing" not found
+  - run: kubectl scale deployment missing --replicas=2
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "missing" not found
+  - run: kubectl expose deployment missing --port=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "missing" not found
+  - run: kubectl rollout status deployment/missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "missing" not found
+  - run: kubectl get pod -l 'app in (a,b'
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (BadRequest): Unable to find "/v1, Resource=pods" that match label selector "app in (a,b", field selector "": unable to parse requirement: found '', expected: ',' or ')'

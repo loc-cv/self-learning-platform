@@ -1,0 +1,28 @@
+description: >-
+  Roll a Deployment to a new image, read rollout status (once finished: the progress lines depend on
+  timing), history, the two ReplicaSets and the events; undo; scale.
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=2
+  - do: kubectl rollout status deployment/web --timeout=60s
+steps:
+  - run: kubectl set image deployment/web nginx=nginx:1.28
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout status deployment/web
+  - run: kubectl rollout history deployment/web
+    table: get
+  - run: kubectl rollout history deployment/web --revision=2
+  - run: kubectl get rs
+  - run: kubectl describe deployment web
+  - run: kubectl get events --field-selector involvedObject.kind=Deployment
+  - run: kubectl rollout undo deployment/web
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout status deployment/web
+  - run: kubectl rollout history deployment/web
+    table: get
+  - run: kubectl scale deployment web --replicas=4
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout status deployment/web
+  - run: kubectl get deployment web
+  - objects: [deployment/web]
+  - run: kubectl rollout undo deployment/web --to-revision=9
+  - run: kubectl set image deployment/web nope=nginx:1.28

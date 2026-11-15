@@ -1,0 +1,132 @@
+# Captured from fixtures/golden/cases/configmaps/create-and-read.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: configmaps/create-and-read
+description: Create ConfigMaps from literals, files and manifests; read them in each format.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get configmaps
+    exit: 0
+    stdout: |
+      NAME               DATA   AGE
+      app-config         2      <<age>>
+      files              1      <<age>>
+      kube-root-ca.crt   1      <<age>>
+    stderr: ""
+  - run: kubectl get cm app-config -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        LOG_LEVEL: debug
+        PORT: "8080"
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: app-config
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+    stderr: ""
+  - run: kubectl get cm files -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "data": {
+              "app.properties": "color=blue\nsize=large\n"
+          },
+          "kind": "ConfigMap",
+          "metadata": {
+              "creationTimestamp": "<<time>>",
+              "name": "files",
+              "namespace": "default",
+              "resourceVersion": "<<rv>>",
+              "uid": "<<uid:2>>"
+          }
+      }
+    stderr: ""
+  - run: kubectl get cm -o wide
+    exit: 0
+    stdout: |
+      NAME               DATA   AGE
+      app-config         2      <<age>>
+      files              1      <<age>>
+      kube-root-ca.crt   1      <<age>>
+    stderr: ""
+  - run: kubectl describe configmap app-config
+    exit: 0
+    stdout: |
+      Name:         app-config
+      Namespace:    default
+      Labels:       <none>
+      Annotations:  <none>
+
+      Data
+      ====
+      LOG_LEVEL:
+      ----
+      debug
+
+      PORT:
+      ----
+      8080
+
+
+      BinaryData
+      ====
+
+      Events:  <none>
+    stderr: ""
+  - run: kubectl get cm app-config -o jsonpath='{.data.LOG_LEVEL}'
+    exit: 0
+    stdout: debug
+    stderr: ""
+  - run: kubectl create configmap app-config --from-literal=a=b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create configmap: configmaps "app-config" already exists
+  - run: kubectl create configmap bad --from-literal=not_valid_key!=x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "not_valid_key!" is not a valid key name for a ConfigMap: a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')
+  - objects:
+      - ref: configmap/app-config
+        object:
+          apiVersion: v1
+          data:
+            LOG_LEVEL: debug
+            PORT: "8080"
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            name: app-config
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+      - ref: configmap/kube-root-ca.crt
+        object:
+          apiVersion: v1
+          data:
+            ca.crt: |
+              -----BEGIN CERTIFICATE-----
+              <<cert>>
+              -----END CERTIFICATE-----
+          kind: ConfigMap
+          metadata:
+            annotations:
+              kubernetes.io/description: Contains a CA bundle that can be used to verify the kube-apiserver when using internal endpoints such as the internal service IP or kubernetes.default.svc. No other usage is guaranteed across distributions of Kubernetes clusters.
+            creationTimestamp: <<time>>
+            name: kube-root-ca.crt
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>

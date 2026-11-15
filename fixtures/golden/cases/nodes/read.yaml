@@ -1,0 +1,19 @@
+description: Read the three Nodes in each format and describe a worker and the control plane, before and after a Pod lands.
+setup:
+  - do: kubectl run sized --image=nginx:1.27 --overrides='{"spec":{"nodeSelector":{"kubernetes.io/hostname":"node01"},"containers":[{"name":"sized","image":"nginx:1.27","resources":{"requests":{"cpu":"500m","memory":"256Mi"},"limits":{"cpu":"1","memory":"512Mi"}}}]}}'
+  - do: kubectl wait --for=condition=Ready pod/sized --timeout=60s
+steps:
+  - run: kubectl get nodes
+    kwok: true
+  - run: kubectl get nodes -o wide
+    kwok: true
+  - run: kubectl get nodes --show-labels
+    kwok: true
+  - run: kubectl get node node01 -o yaml
+    kwok: true
+  - run: kubectl describe node node01
+    kwok: true
+  - run: kubectl describe node controlplane
+    kwok: true
+  - run: kubectl get node nope
+  - objects: [node/controlplane]

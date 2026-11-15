@@ -1,0 +1,48 @@
+description: kubectl kustomize builds a directory with no server.
+server: false
+files:
+  base/kustomization.yaml: |
+    resources:
+    - deployment.yaml
+    - service.yaml
+    commonLabels:
+      app: web
+  base/deployment.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+    spec:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - name: nginx
+            image: nginx:1.27
+  base/service.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: web
+    spec:
+      ports:
+      - port: 80
+  prod/kustomization.yaml: |
+    resources:
+    - ../base
+    namePrefix: prod-
+    namespace: prod
+    images:
+    - name: nginx
+      newTag: "1.28"
+    replicas:
+    - name: web
+      count: 3
+    configMapGenerator:
+    - name: settings
+      literals:
+      - MODE=production
+steps:
+  - run: kubectl kustomize base
+  - run: kubectl kustomize prod
+  - run: kubectl kustomize missing

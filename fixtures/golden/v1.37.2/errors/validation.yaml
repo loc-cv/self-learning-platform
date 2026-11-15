@@ -1,0 +1,156 @@
+# Captured from fixtures/golden/cases/errors/validation.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: errors/validation
+description: Validation errors from the API server and from kubectl for common manifest mistakes.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl create -f noimage.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Pod "noimage" is invalid: spec.containers[0].image: Required value
+  - run: kubectl create -f badname.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Pod "Bad_Name" is invalid: metadata.name: Invalid value: "Bad_Name": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+  - run: kubectl create -f unknownfield.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (BadRequest): error when creating "unknownfield.yaml": Pod in version "v1" cannot be handled as a Pod: strict decoding error: unknown field "spec.containers[0].imagePullPolice"
+  - run: kubectl apply -f unknownfield.yaml --validate=false
+    exit: 0
+    stdout: |
+      pod/typo created
+    stderr: ""
+  - run: kubectl create -f wrongtype.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (BadRequest): error when creating "wrongtype.yaml": Deployment in version "v1" cannot be handled as a Deployment: json: cannot unmarshal string into Go struct field DeploymentSpec.spec.replicas of type int32
+  - run: kubectl create -f selectormismatch.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Deployment "mismatch" is invalid: spec.template.metadata.labels: Invalid value: {"app":"two"}: `selector` does not match template `labels`
+  - run: kubectl create -f nokind.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "nokind.yaml": error validating data: kind not set; if you choose to ignore these errors, turn validation off with --validate=false
+  - run: kubectl create -f badapiversion.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource mapping not found for name: "x" namespace: "" from "badapiversion.yaml": no matches for kind "Deployment" in version "apps/v2"
+      ensure CRDs are installed first
+  - run: kubectl create -f badport.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Service "badport" is invalid: 
+      * spec.ports[0].port: Invalid value: 70000: must be between 1 and 65535, inclusive
+      * spec.ports[0].targetPort: Invalid value: 70000: must be between 1 and 65535, inclusive
+  - run: kubectl create -f notyaml.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing notyaml.yaml: error converting YAML to JSON: yaml: line 4: did not find expected key
+  - run: kubectl create -f duplicatecontainer.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Pod "dup" is invalid: spec.containers[1].name: Duplicate value: "app"
+  - run: kubectl create -f missing.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the path "missing.yaml" does not exist
+  - run: kubectl run Bad --image=nginx
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Pod "Bad" is invalid: 
+      * metadata.name: Invalid value: "Bad": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+      * spec.containers[0].name: Invalid value: "Bad": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')
+  - run: kubectl run x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required flag(s) "image" not set
+  - run: kubectl create deployment web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required flag(s) "image" not set
+  - run: kubectl create deployment web --image=nginx --replicas=-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: Deployment.apps "web" is invalid: spec.replicas: Invalid value: -1: must be greater than or equal to 0
+  - run: kubectl scale deployment --replicas=2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource(s) were provided, but no name was specified
+  - run: kubectl get pods -o yamll
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "yamll", allowed formats are: custom-columns,custom-columns-file,go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,wide,yaml
+  - run: kubectl create -f noselector.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Deployment "noselector" is invalid: 
+      * spec.selector: Required value
+      * spec.template.metadata.labels: Invalid value: {"app":"x"}: `selector` does not match template `labels`
+  - run: kubectl apply -f immutable-v1.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/immutable created
+    stderr: ""
+  - run: kubectl apply -f immutable-v2.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Deployment "immutable" is invalid: spec.selector: Invalid value: {"matchLabels":{"app":"two"}}: field is immutable
+  - run: kubectl run fixed --image=nginx:1.27 --overrides='{"spec":{"nodeName":"node01"}}'
+    exit: 0
+    stdout: |
+      pod/fixed created
+    stderr: ""
+  - run: kubectl patch pod fixed -p '{"spec":{"nodeName":"node02"}}'
+    exit: 1
+    stdout: ""
+    stderr: |+
+      The Pod "fixed" is invalid: spec: Forbidden: pod updates may not change fields other than `spec.containers[*].image`,`spec.initContainers[*].image`,`spec.activeDeadlineSeconds`,`spec.tolerations` (only additions to existing tolerations),`spec.terminationGracePeriodSeconds` (allow it to be set to 1 if it was previously negative)
+      @@ -146,7 +146,7 @@
+        "ServiceAccountName": "default",
+        "DeprecatedServiceAccount": "default",
+        "AutomountServiceAccountToken": null,
+      - "NodeName": "node01",
+      + "NodeName": "node02",
+        "HostNetwork": false,
+        "HostPID": false,
+        "HostIPC": false,
+
+  - run: kubectl label pod fixed app=x
+    exit: 0
+    stdout: |
+      pod/fixed labeled
+    stderr: ""
+  - run: kubectl label pod fixed app=y
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'app' already has a value (x), and --overwrite is false

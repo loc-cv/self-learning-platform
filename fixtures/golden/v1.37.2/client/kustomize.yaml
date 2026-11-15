@@ -1,0 +1,95 @@
+# Captured from fixtures/golden/cases/client/kustomize.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: client/kustomize
+description: kubectl kustomize builds a directory with no server.
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl kustomize base
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - port: 80
+        selector:
+          app: web
+      ---
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.27
+              name: nginx
+    stderr: |
+      # Warning: 'commonLabels' is deprecated. Please use 'labels' instead. Run 'kustomize edit fix' to update your Kustomization automatically.
+  - run: kubectl kustomize prod
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        MODE: production
+      kind: ConfigMap
+      metadata:
+        name: prod-settings-tmk75tcf47
+        namespace: prod
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: prod-web
+        namespace: prod
+      spec:
+        ports:
+        - port: 80
+        selector:
+          app: web
+      ---
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: web
+        name: prod-web
+        namespace: prod
+      spec:
+        replicas: 3
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.28
+              name: nginx
+    stderr: |
+      # Warning: 'commonLabels' is deprecated. Please use 'labels' instead. Run 'kustomize edit fix' to update your Kustomization automatically.
+  - run: kubectl kustomize missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: must build at directory: not a valid directory: evalsymlink failure on 'missing' : lstat /home/student/missing: no such file or directory

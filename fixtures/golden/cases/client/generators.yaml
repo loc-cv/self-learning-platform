@@ -1,0 +1,16 @@
+description: Manifests kubectl generates without a server (--dry-run=client -o yaml).
+server: false
+steps:
+  - run: kubectl run nginx --image=nginx:1.27 --dry-run=client -o yaml
+  - run: kubectl run busy --image=busybox:1.37 --restart=Never --labels=app=busy,tier=x --env=A=1 --port=8080 --dry-run=client -o yaml -- sleep 3600
+  - run: kubectl create deployment web --image=nginx:1.27 --replicas=3 --dry-run=client -o yaml
+  - run: kubectl create deployment web --image=nginx:1.27 --port=80 --dry-run=client -o json
+  - run: kubectl create service clusterip web --tcp=80:8080 --dry-run=client -o yaml
+  - run: kubectl create service nodeport web --tcp=80:8080 --node-port=30080 --dry-run=client -o yaml
+  - run: kubectl create configmap app --from-literal=a=1 --from-literal=b=2 --dry-run=client -o yaml
+  - run: kubectl create secret generic creds --from-literal=user=admin --dry-run=client -o yaml
+  - run: kubectl create namespace dev --dry-run=client -o yaml
+  - run: kubectl create job once --image=busybox:1.37 --dry-run=client -o yaml -- date
+  - run: kubectl create cronjob tick --image=busybox:1.37 --schedule='*/5 * * * *' --dry-run=client -o yaml -- date
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=client
+  - run: kubectl run nginx --image=nginx:1.27 --dry-run=client -o name

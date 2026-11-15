@@ -2,7 +2,7 @@
 
 How Simlab stays honest about what it simulates. This document holds the version pin, the order
 in which sources are trusted, the provenance tags, the contract for `[sim]` notices and the gap
-log, and the register of known divergences. `PLAN.md` §9 is the policy; this is the contract code
+log, the register of known divergences, and the oracle that produces golden fixtures (§6). `PLAN.md` §9 is the policy; this is the contract code
 is written against.
 
 ## 1. Version pin
@@ -157,8 +157,7 @@ interface ProvenanceEntry {
 - A unit moves up, never silently down: `source-derived` becomes `golden-verified` when its
   differential test lands. A unit found wrong becomes `approximate` with a register entry until fixed.
 - Normalization replaces volatile fields with tokens before comparison (ages, UIDs, IPs,
-  timestamps, resource versions, generated name suffixes). The token set is defined in phase 04
-  with the first fixtures and documented here.
+  timestamps, resource versions, generated name suffixes). The tokens and rules are in §6.4.
 
 ## 4. The `[sim]` notice and the gap log
 
@@ -296,3 +295,188 @@ Entry format:
 The non-goals in `PLAN.md` §4.3 (no packets, no real cryptography, a bash subset,
 an editor overlay instead of a terminal vi, a curated image catalog) become entries when the phase
 that builds each area lands, worded for what was actually built.
+
+## 6. The oracle and golden fixtures
+
+The real binaries of the pinned version run on this workstation as a throwaway control plane. Their
+output, normalized, is committed as golden fixtures: rank 1 ground truth (§2) for everything the
+API server, controllers, scheduler and kubectl print or store. A development tool only: the
+platform never runs it, and `npm run check` reads committed fixtures and nothing else.
+
+### 6.1 Running it
+
+```bash
+npm run oracle -- fetch     # download and verify the binaries into .upstream/bin/v1.37.2/
+npm run oracle -- up        # start a control plane; prints `export KUBECONFIG=…`
+npm run oracle -- status
+npm run oracle -- down      # stop it; exits 1 if any process or port is left
+npm run golden:capture -- [--check] [--jobs N] [case file or directory]
+npm run golden:kubectl-manifest -- [--check]
+```
+
+- **Binaries** (`tools/src/oracle/binaries.ts`): `kube-apiserver`, `kube-controller-manager`,
+  `kube-scheduler`, `kubectl` and `kubeadm` from `dl.k8s.io/release/<tag>/bin/linux/amd64/`
+  with their `.sha256` files; etcd from its GitHub release with `SHA256SUMS`, at the version
+  kubeadm deploys for the pin (`DefaultEtcdVersion` in the upstream checkout: **v3.7.0** for
+  v1.37.2); KWOK **v0.8.0** with the digest from GitHub's release metadata (it publishes no
+  checksum file). Digests are pinned in `tools/src/oracle/checksums.json` on first download; a
+  later download that differs fails. About 480 MB, git-ignored.
+- **Control plane** (`controlplane.ts`): certificates and kubeconfigs from `openssl` (`pki.ts`,
+  kubeadm's names: `kubernetes-admin` in group `kubeadm:cluster-admins`, bound to
+  `cluster-admin` as `kubeadm init` does); etcd, then the API server with kubeadm's flags, then the
+  three Nodes of §6.6, then KWOK, the controller manager and the scheduler, all on 127.0.0.1 and
+  ports from 20000–29999 (below the ephemeral and NodePort ranges), as detached process groups
+  in a temporary directory. `up` returns once the Nodes are Ready, `default/default` and
+  `kube-root-ca.crt` exist and both leader leases are held: about 12 seconds. `down` stops every
+  group (SIGTERM, then SIGKILL after 10 s), checks with `kill -0`, `ss` and `pgrep` that no process
+  or listener is left, and only then deletes the directory and the state file
+  (`.upstream/oracle/state.json`). Verified on this workstation 2026-11-16: every component runs
+  without Docker or root.
+- **Capture** starts a fresh control plane for every server case (four at a time by default) and
+  tears it down after, so no case sees another's objects or events. The 20 initial cases (15
+  server, 5 client) take about two minutes.
+
+### 6.2 What each tier can verify
+
+| Tier | Runs | Verifies | Cannot verify |
+|---|---|---|---|
+| Server oracle | etcd, API server, controller manager, scheduler, kubectl; KWOK as kubelets | Tables, `describe`, `-o yaml/json`, defaulting, validation and admission errors, apply results, controller behavior and events (Deployment, ReplicaSet, node lifecycle, endpoints, service accounts, namespaces), scheduler decisions and `FailedScheduling` messages, kubectl's client errors | Anything a kubelet, container runtime, CNI, kube-proxy or CoreDNS produces: container states and their reasons, Pod events after `Scheduled` (Pulling, Created, Started, BackOff), logs, exec, probes, real Pod IPs. KWOK's stand-ins are marked (§6.5). No kube-system workloads exist (no CoreDNS, kube-proxy or static Pods); a case that needs them creates them |
+| Client-only oracle | `kubectl` alone, no kubeconfig unless a case writes one | Help and usage text, `--dry-run=client -o yaml` generators, `kubectl config`, `kubectl kustomize`, the no-server errors, the command and flag manifest | Nothing that needs a server |
+| Tier 2 (phase 32) | A kind cluster on a machine with Docker | What the server oracle cannot | — |
+
+### 6.3 Cases
+
+A case is a YAML file under `fixtures/golden/cases/<area>/<name>.yaml`; its fixture is written to
+`fixtures/golden/v1.37.2/<area>/<name>.yaml`. The format is checked by `tools/src/golden/case.ts`
+(unknown keys fail).
+
+```yaml
+description: What the case shows.        # required
+server: true                             # false: client-only oracle (default true)
+kwok: true                               # default: same as server
+files:                                   # written into the working directory = $HOME
+  pod.yaml: |
+    apiVersion: v1
+    ...
+setup:                                   # not recorded; each must succeed
+  - do: kubectl create -f pod.yaml
+  - until: kubectl get events -o name     # poll every 0.5 s until stdout matches
+    match: event                          #   (regex), at most `timeout` seconds (default 60)
+  - sleep: 1                              # seconds; avoid: prefer until
+steps:
+  - run: kubectl get pods                # recorded: exit, stdout, stderr
+    stdin: "…"                           # optional standard input
+    table: get                           # get | describe | none; default from the command
+    tty: true                            # run on an 80-column pty (cols: N); records `output`
+    kwok: true                           # the output shows fields KWOK wrote (§6.5)
+    anyWorker: true                      # placement was a scheduling tie (D-037)
+    unorderedLines: true                 # the real tool prints lines in random order
+    ageColumns: [4]                      # age columns of a table printed with --no-headers
+    normalize: false                     # keep values as captured (help text)
+  - do: kubectl wait --for=condition=Ready pod/x   # do, until and sleep may appear among steps
+  - objects: [pod/api, -n kube-system lease]       # kubectl get <ref> -o json, normalized
+```
+
+Commands run in `/bin/bash --noprofile --norc -c` with `PATH` holding the pinned binaries first,
+`HOME` the working directory (with `~/.kube/config` = the admin kubeconfig for a server case),
+`LANG=C.UTF-8`, `TZ=UTC`. The fixture holds the case name and description, the versions, the
+list of KWOK-authored fields when KWOK ran, and per step what was run with its normalized
+results. It has no capture date, so a capture that changed nothing rewrites nothing.
+
+**Adding a case.** Write the file; run `npm run golden:capture -- <file>`; read the fixture
+(every volatile value must have become a token, and nothing of the workstation may show:
+`golden.test.ts` checks for temporary paths); run `npm run golden:capture -- --check <file>` at
+least twice. A difference means the case depends on timing or on a random choice: wait for a
+settled state before recording (`do: kubectl rollout status …`, then record), pin placement, or
+mark the step. Commit the case and the fixture together.
+
+**What cases must avoid.** Progress output that depends on timing (`kubectl rollout status`
+while the rollout runs: record it after `do: kubectl rollout status`); `kubectl diff` (it prints
+temporary paths and times); `--watch`; two unschedulable Pods whose retries interleave
+(a FailedScheduling count can change); names whose last segment is five letters without vowels
+(`-https`), which the suffix rule would take for a generated suffix.
+
+### 6.4 Normalization
+
+`tools/src/golden/normalize.ts`. The token vocabulary is shared with transcripts
+(`packages/host/src/transcript/tokens.ts`, `docs/TRANSCRIPTS.md`; D-034):
+
+| Token | Replaces | Rule |
+|---|---|---|
+| `<<uid:N>>` | Object UIDs | Any RFC 4122 UUID; numbered by first appearance in the fixture |
+| `<<time>>` | Timestamps | RFC 3339, RFC 1123 with numeric zone (`describe`), klog headers |
+| `<<rv>>` | resourceVersion | The value of a `resourceVersion` key in YAML or JSON |
+| `<<age>>` | Ages | Cells of a table column headed AGE, LAST SEEN, FIRST SEEN, DURATION, LAST SCHEDULE or Age (describe's events), `(5s ago)` in RESTARTS, and `ageColumns` |
+| `<<ip>>` | Allocated addresses | IPv4 in 10.96.0.0/12 except 10.96.0.1, or in 10.244.0.0/16; worker addresses under `anyWorker`. Node addresses stay |
+| `<<hash:N>>` | pod-template-hash, controller-revision-hash | 6–10 characters of `[456789bcdf]` (SafeEncodeString of a decimal uint32) with a letter, after `-` in a name or as a `hash` label's value |
+| `<<suffix>>` | generateName's suffix | Five characters of `bcdfghjklmnpqrstvwxz2456789` ending a name after `-` |
+| `<<hex>>` | Event name suffixes | `.` and 15–17 hex digits after a name |
+| `<<port>>` | Allocated NodePorts | `:3xxxx/TCP`, a `nodePort` value; not when the case file names the number |
+| `<<pid>>` | klog's thread id | In a klog header |
+| `<<cert>>` | PEM bodies | Between `-----BEGIN …-----` and `-----END` (the cluster CA in `kube-root-ca.crt`) |
+| `<<node>>` | A worker chosen by a tie | `node01`/`node02` in steps marked `anyWorker` |
+
+Mappings, applied even with `normalize: false`, so that no workstation detail reaches a fixture:
+the working directory becomes `/home/student`; the workstation's host name (in leader election
+identities and the scheduler's `reportingInstance`) becomes `controlplane`; `127.0.0.1:<port>` of
+the oracle's API server becomes `172.16.0.10:6443` and its port elsewhere `6443`.
+
+Tables (`table: get` or `describe`, by default `kubectl get` without `-o` or with `-o wide` or
+custom columns, and `kubectl describe`) are split into cells, normalized per cell and rendered
+again with kubectl's tab writer (`tabwriter.ts`, D-035): `get` with minimum width 6 and padding 3
+(cells cut at the header's column positions), `describe` with padding 2 (cells split at runs of two
+or more spaces; continuation lines and trailing spaces inside a cell are recovered from the
+layout). Capture fails when the split does not render back to the captured text. Rows of a `get`
+table that hold a `<<suffix>>` or event `<<hex>>` are sorted by their normalized text; in
+`describe`, consecutive rows whose suffix-bearing cell is equal are. Objects are normalized as JSON
+(the same string rules, plus `resourceVersion` and `nodePort` by key); the items of a list are
+sorted by their normalized JSON.
+
+### 6.5 KWOK: not a kubelet
+
+KWOK (`tools/src/oracle/kwok-stages.yaml`, D-036) renews Node leases, writes Node conditions and
+moves Pods to Running. It writes what no real kubelet would: a Ready Pod with no `containerID`,
+`imageID` or `started`, no `PodReadyToStartContainers` condition, Pod IPs counted from the Node's
+CIDR, Node conditions copied from kubelet wording (and `NetworkUnavailable` with reason
+`RouteCreated`), a node lease held by KWOK's own identity, and no kubelet events. So:
+
+- every fixture of a case with KWOK lists the fields under `kwokAuthored`;
+- a step whose output shows any of them carries `kwok: true` (set in the case), and an object of
+  kind Pod, Node or Lease gets `kwok: true` automatically;
+- a differential test must not assert those fields, or the text rendered from them, as real
+  kubelet output. The layout around them (which lines `describe` prints, in which order, the
+  columns of `get pods`) is still kubectl's and stays rank 1.
+
+### 6.6 The cluster
+
+Three Nodes as `kubeadm-1cp-2w` defines them (`tools/src/oracle/topology.ts`, D-033), registered
+before any controller starts. The API server advertises 172.16.0.10, so the `kubernetes` Service's
+endpoint is the control plane's address. kube-system holds no workloads: no add-on and no
+static Pod runs, only what the control plane components create themselves.
+
+### 6.7 Client-only oracle and the command manifest
+
+Client cases (`server: false`) run `kubectl` with no kubeconfig unless the case writes one.
+Help is captured on an 80-column pseudo-terminal (`tty: true`), because kubectl wraps help text
+only when standard output is a terminal (upstream:
+`staging/src/k8s.io/kubectl/pkg/util/term/term_writer.go` `GetWordWrapperLimit`).
+
+`npm run golden:kubectl-manifest` walks `kubectl <command> --help` for every command and
+subcommand (piped, so unwrapped) and writes `fixtures/golden/v1.37.2/kubectl-commands.json`: for
+each command its path, aliases, short description, usage line, subcommands and flags (name,
+shorthand, default, a type inferred from how help prints the default, usage, deprecation), plus
+`kubectl options`' global flags. 109 commands and 30 global flags for v1.37.2. Hidden and plugin
+commands are not in help and not in the manifest.
+
+### 6.8 Known limits
+
+- The workstation resolves `localhost` to `::1` first, so the no-server error reads
+  `dial tcp [::1]:8080`. Whether a simulated server prints `[::1]` or `127.0.0.1` depends on its
+  `/etc/hosts` (phase 17); not verified against a stock Ubuntu server.
+- kubectl's progress lines (`Waiting for deployment … rollout to finish`) and `--watch` output
+  are not captured: they depend on timing. Phases that print them take the strings from upstream
+  source (rank 2).
+- Event aggregation (`(x3 over 5m)`) is captured only where a case makes it deterministic.
+- The controller manager runs without a cloud provider and without the kubelets' volume
+  plugins; attach-detach, PV provisioning and anything that needs a node agent is out of reach
+  until tier 2.

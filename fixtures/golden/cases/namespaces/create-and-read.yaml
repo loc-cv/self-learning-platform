@@ -1,0 +1,20 @@
+description: Create, read and delete Namespaces; objects in a namespace and across all of them.
+setup:
+  - do: kubectl create namespace dev
+  - do: kubectl run probe --image=busybox:1.37 -n dev --overrides='{"spec":{"nodeSelector":{"kubernetes.io/hostname":"node02"}}}' -- sleep 3600
+  - do: kubectl wait --for=condition=Ready pod/probe -n dev --timeout=60s
+steps:
+  - run: kubectl get namespaces
+  - run: kubectl get ns dev -o yaml
+  - run: kubectl get ns -o name
+  - run: kubectl get ns --show-labels
+  - run: kubectl describe namespace dev
+  - run: kubectl get pods -n dev
+    kwok: true
+  - run: kubectl get pods -A
+    kwok: true
+  - run: kubectl get pods --all-namespaces -o wide
+    kwok: true
+  - run: kubectl create namespace dev
+  - run: kubectl create namespace Dev
+  - objects: [namespace/dev, namespace/default]

@@ -1,0 +1,34 @@
+description: Create a Pod with kubectl run and read it in each output format; describe it.
+setup:
+  - do: kubectl run nginx --image=nginx:1.27 --labels=app=web
+  - do: kubectl wait --for=condition=Ready pod/nginx --timeout=60s
+steps:
+  - run: kubectl get pods
+    kwok: true
+  - run: kubectl get pods -o wide
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pod nginx -o yaml
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pod nginx -o json
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pods -o name
+  - run: kubectl get pods --show-labels
+    kwok: true
+  - run: kubectl get pod nginx -o jsonpath='{.spec.containers[0].image}{"\n"}'
+  - run: kubectl get pods -o custom-columns=NAME:.metadata.name,IMAGE:.spec.containers[0].image
+  - run: kubectl get pods -l app=web
+    kwok: true
+  - run: kubectl get pods -l app=nothing
+  - run: kubectl get po nginx --no-headers
+    kwok: true
+    ageColumns: [4]
+  - run: kubectl describe pod nginx
+    kwok: true
+    anyWorker: true
+  - objects: [pod/nginx]
+    anyWorker: true
+  - run: kubectl delete pod nginx
+  - run: kubectl get pods

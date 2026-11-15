@@ -1,0 +1,20 @@
+description: Create a Deployment imperatively; read the Deployment, its ReplicaSet and Pods in each format; describe it.
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=3
+  - do: kubectl rollout status deployment/web --timeout=60s
+steps:
+  - run: kubectl get deployments
+  - run: kubectl get deploy -o wide
+  - run: kubectl get deployment web -o yaml
+  - run: kubectl get rs
+  - run: kubectl get rs -o wide
+  - run: kubectl get pods -o wide
+    kwok: true
+    anyWorker: true
+  - run: kubectl get pods --show-labels
+    kwok: true
+  - run: kubectl get all
+    kwok: true
+  - run: kubectl describe deployment web
+  - run: kubectl describe rs
+  - objects: [deployment/web, replicaset]

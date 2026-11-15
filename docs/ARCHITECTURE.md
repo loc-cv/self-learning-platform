@@ -1488,7 +1488,8 @@ Each item is decided by the phase named, and recorded here when decided.
 | Process slice budget: **1000 syscalls, decided in 02** (§3.4) | 02 |
 | Supported shell grammar and the list of builtins: **phase 02's in `docs/COVERAGE.md`** | 02, 22a |
 | Line editor key bindings (bash 5.2.21's `bind -p`, D-027); SGR style of the `[sim]` notice (yellow, D-026): **decided in 03** | 03 |
-| Normalization tokens; provenance registry implementation | 04 |
+| Normalization tokens (`<<kind>>`, `packages/host/src/transcript/tokens.ts`; D-034, D-035): **decided in 04** | 04 |
+| Provenance registry implementation (`prompts/07a-kubectl-framework-and-get.md`) | 07a |
 | Processed OpenAPI format; exact pipeline stage order verified against upstream | 05a |
 | Work queue backoff parameters, controller latencies with their sources | 05b |
 | Declarative behavior model fields beyond `docs/SCENARIO_FORMAT.md` §5.4; image catalog format | 06b |

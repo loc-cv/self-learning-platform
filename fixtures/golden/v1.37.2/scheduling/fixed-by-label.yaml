@@ -1,0 +1,114 @@
+# Captured from fixtures/golden/cases/scheduling/fixed-by-label.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: scheduling/fixed-by-label
+description: A Pod pending on an unmatched node selector is scheduled once a node gets the label; the events before and after.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pod picky
+    exit: 0
+    stdout: |
+      NAME    READY   STATUS    RESTARTS   AGE
+      picky   0/1     Pending   0          <<age>>
+    stderr: ""
+  - run: kubectl label node node02 disktype=ssd
+    exit: 0
+    stdout: |
+      node/node02 labeled
+    stderr: ""
+  - run: kubectl get pod picky -o wide
+    exit: 0
+    stdout: |
+      NAME    READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      picky   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=picky
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT      MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/picky   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Normal    Scheduled          pod/picky   Successfully assigned default/picky to node02
+    stderr: ""
+  - run: kubectl describe pod picky
+    exit: 0
+    stdout: |
+      Name:             picky
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node02/172.16.0.12
+      Start Time:       <<time>>
+      Labels:           run=picky
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        picky:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              disktype=ssd
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+        Normal   Scheduled         <<age>>  default-scheduler  Successfully assigned default/picky to node02
+    stderr: ""
+    kwok: true
+  - run: kubectl get nodes -l disktype=ssd
+    exit: 0
+    stdout: |
+      NAME     STATUS   ROLES    AGE       VERSION
+      node02   Ready    <none>   <<age>>   v1.37.2
+    stderr: ""
+    kwok: true
+  - run: kubectl label node node02 disktype=hdd
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'disktype' already has a value (ssd), and --overwrite is false
+  - run: kubectl label node node02 disktype=hdd --overwrite
+    exit: 0
+    stdout: |
+      node/node02 labeled
+    stderr: ""
+  - run: kubectl label node node02 disktype-
+    exit: 0
+    stdout: |
+      node/node02 unlabeled
+    stderr: ""

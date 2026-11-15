@@ -1,0 +1,299 @@
+# Captured from fixtures/golden/cases/services/clusterip-and-nodeport.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: services/clusterip-and-nodeport
+description: Expose a Deployment as ClusterIP and NodePort Services; read them in each format; describe them; endpoints.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl expose deployment web --port=80 --target-port=80
+    exit: 0
+    stdout: |
+      service/web exposed
+    stderr: ""
+  - run: kubectl create -f nodeport.yaml
+    exit: 0
+    stdout: |
+      service/web-np created
+    stderr: ""
+  - run: kubectl create service nodeport auto --tcp=8080:80
+    exit: 0
+    stdout: |
+      service/auto created
+    stderr: ""
+  - run: kubectl get services
+    exit: 0
+    stdout: |
+      NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)             AGE
+      auto         NodePort    <<ip>>       <none>        8080:<<port>>/TCP   <<age>>
+      kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP             <<age>>
+      web          ClusterIP   <<ip>>       <none>        80/TCP              <<age>>
+      web-np       NodePort    <<ip>>       <none>        80:30080/TCP        <<age>>
+    stderr: ""
+  - run: kubectl get svc -o wide
+    exit: 0
+    stdout: |
+      NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)             AGE       SELECTOR
+      auto         NodePort    <<ip>>       <none>        8080:<<port>>/TCP   <<age>>   app=auto
+      kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP             <<age>>   <none>
+      web          ClusterIP   <<ip>>       <none>        80/TCP              <<age>>   app=web
+      web-np       NodePort    <<ip>>       <none>        80:30080/TCP        <<age>>   app=web
+    stderr: ""
+  - run: kubectl get svc web -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: web
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+        sessionAffinity: None
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl get svc web-np -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "kind": "Service",
+          "metadata": {
+              "creationTimestamp": "<<time>>",
+              "name": "web-np",
+              "namespace": "default",
+              "resourceVersion": "<<rv>>",
+              "uid": "<<uid:2>>"
+          },
+          "spec": {
+              "clusterIP": "<<ip>>",
+              "clusterIPs": [
+                  "<<ip>>"
+              ],
+              "externalTrafficPolicy": "Cluster",
+              "internalTrafficPolicy": "Cluster",
+              "ipFamilies": [
+                  "IPv4"
+              ],
+              "ipFamilyPolicy": "SingleStack",
+              "ports": [
+                  {
+                      "nodePort": 30080,
+                      "port": 80,
+                      "protocol": "TCP",
+                      "targetPort": 80
+                  }
+              ],
+              "selector": {
+                  "app": "web"
+              },
+              "sessionAffinity": "None",
+              "type": "NodePort"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl describe service web
+    exit: 0
+    stdout: |
+      Name:                     web
+      Namespace:                default
+      Labels:                   app=web
+      Annotations:              <none>
+      Selector:                 app=web
+      Type:                     ClusterIP
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       <<ip>>
+      IPs:                      <<ip>>
+      Port:                     <unset>  80/TCP
+      TargetPort:               80/TCP
+      Endpoints:                <<ip>>:80,<<ip>>:80
+      Session Affinity:         None
+      Internal Traffic Policy:  Cluster
+      Events:                   <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe svc web-np
+    exit: 0
+    stdout: |
+      Name:                     web-np
+      Namespace:                default
+      Labels:                   <none>
+      Annotations:              <none>
+      Selector:                 app=web
+      Type:                     NodePort
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       <<ip>>
+      IPs:                      <<ip>>
+      Port:                     <unset>  80/TCP
+      TargetPort:               80/TCP
+      NodePort:                 <unset>  30080/TCP
+      Endpoints:                <<ip>>:80,<<ip>>:80
+      Session Affinity:         None
+      External Traffic Policy:  Cluster
+      Internal Traffic Policy:  Cluster
+      Events:                   <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe svc kubernetes
+    exit: 0
+    stdout: |
+      Name:                     kubernetes
+      Namespace:                default
+      Labels:                   component=apiserver
+                                provider=kubernetes
+      Annotations:              <none>
+      Selector:                 <none>
+      Type:                     ClusterIP
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       10.96.0.1
+      IPs:                      10.96.0.1
+      Port:                     https  443/TCP
+      TargetPort:               6443/TCP
+      Endpoints:                172.16.0.10:6443
+      Session Affinity:         None
+      Internal Traffic Policy:  Cluster
+      Events:                   <none>
+    stderr: ""
+  - run: kubectl get endpoints
+    exit: 0
+    stdout: |
+      NAME         ENDPOINTS             AGE
+      auto         <none>                <<age>>
+      kubernetes   172.16.0.10:6443      <<age>>
+      web          <<ip>>:80,<<ip>>:80   <<age>>
+      web-np       <<ip>>:80,<<ip>>:80   <<age>>
+    stderr: |
+      Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+    kwok: true
+  - run: kubectl get endpointslices
+    exit: 0
+    stdout: |
+      NAME                ADDRESSTYPE   PORTS     ENDPOINTS       AGE
+      auto-<<suffix>>     IPv4          <unset>   <unset>         <<age>>
+      kubernetes          IPv4          6443      172.16.0.10     <<age>>
+      web-<<suffix>>      IPv4          80        <<ip>>,<<ip>>   <<age>>
+      web-np-<<suffix>>   IPv4          80        <<ip>>,<<ip>>   <<age>>
+    stderr: ""
+    kwok: true
+  - objects:
+      - ref: service/web
+        object:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            clusterIP: <<ip>>
+            clusterIPs:
+              - <<ip>>
+            internalTrafficPolicy: Cluster
+            ipFamilies:
+              - IPv4
+            ipFamilyPolicy: SingleStack
+            ports:
+              - port: 80
+                protocol: TCP
+                targetPort: 80
+            selector:
+              app: web
+            sessionAffinity: None
+            type: ClusterIP
+          status:
+            loadBalancer: {}
+      - ref: service/web-np
+        object:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            creationTimestamp: <<time>>
+            name: web-np
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            clusterIP: <<ip>>
+            clusterIPs:
+              - <<ip>>
+            externalTrafficPolicy: Cluster
+            internalTrafficPolicy: Cluster
+            ipFamilies:
+              - IPv4
+            ipFamilyPolicy: SingleStack
+            ports:
+              - nodePort: 30080
+                port: 80
+                protocol: TCP
+                targetPort: 80
+            selector:
+              app: web
+            sessionAffinity: None
+            type: NodePort
+          status:
+            loadBalancer: {}
+      - ref: service/kubernetes
+        object:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              component: apiserver
+              provider: kubernetes
+            name: kubernetes
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>
+          spec:
+            clusterIP: 10.96.0.1
+            clusterIPs:
+              - 10.96.0.1
+            internalTrafficPolicy: Cluster
+            ipFamilies:
+              - IPv4
+            ipFamilyPolicy: SingleStack
+            ports:
+              - name: https
+                port: 443
+                protocol: TCP
+                targetPort: 6443
+            sessionAffinity: None
+            type: ClusterIP
+          status:
+            loadBalancer: {}

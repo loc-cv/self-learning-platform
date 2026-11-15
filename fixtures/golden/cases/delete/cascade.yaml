@@ -1,0 +1,24 @@
+description: Deleting objects with dependents (background and orphan cascades), forced deletion, a namespace, and by label.
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=2
+  - do: kubectl create deployment keep --image=nginx:1.27 --replicas=1
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/keep --timeout=60s
+  - do: kubectl create namespace scratch
+  - do: kubectl create configmap a --from-literal=x=1 -n scratch
+  - do: kubectl run solo --image=nginx:1.27 --labels=role=solo --overrides='{"spec":{"nodeName":"node02"}}'
+  - do: kubectl wait --for=condition=Ready pod/solo --timeout=60s
+steps:
+  - run: kubectl delete deployment web
+  - do: kubectl wait --for=delete pod -l app=web --timeout=60s
+  - run: kubectl get rs,pods -l app=web
+  - run: kubectl delete deployment keep --cascade=orphan
+  - run: kubectl get rs -l app=keep
+  - run: kubectl get pods -l app=keep
+    kwok: true
+  - run: kubectl delete pod -l role=solo --grace-period=0 --force
+  - run: kubectl delete namespace scratch
+  - do: kubectl wait --for=delete namespace/scratch --timeout=60s
+  - run: kubectl get namespace scratch
+  - run: kubectl delete pods,deployments -l app=nothing
+  - run: kubectl delete rs -l app=keep --cascade=foreground

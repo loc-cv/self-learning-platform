@@ -5,23 +5,44 @@
 
 import type { Contribution, Ctx, GapKind, Json, Millis, Random, TraceInput } from '@simlab/kernel';
 import type { Fs } from '../vfs/fs.ts';
+import type { CompletionResult } from '../tty/complete.ts';
+import type { EditorRequest, EditorResult } from './editor.ts';
 import type { Cred } from '../vfs/types.ts';
-import type { ExitStatus, Fd, Proc } from './types.ts';
+import type { EditRequest, ExitStatus, Fd, Proc } from './types.ts';
 
 /** Registry kind of programs. */
 export const PROGRAM = 'program';
 
 export type Syscall =
-  | { op: 'read'; fd: number; max?: number; line?: boolean }
+  | { op: 'read'; fd: number; max?: number; line?: boolean; edit?: EditRequest }
   | { op: 'write'; fd: number; data: string }
   | { op: 'sleep'; ms: Millis }
   | { op: 'wait'; topic: string; timeout?: Millis }
-  | { op: 'waitpid'; pid: string };
+  | { op: 'waitpid'; pid: string }
+  | { op: 'edit'; request: EditorRequest };
 
 export type Op<T> = Generator<Syscall, T, unknown>;
 
+/** What a program's completer gets: the words of the command line up to the cursor. */
+export interface ProgramCompletion {
+  ctx: Ctx;
+  machine: string;
+  /** The shell reading the line: its credentials, working directory and environment apply. */
+  pid: string;
+  /** The command's words without quoting; the last is the word being completed (`cur`). */
+  words: string[];
+  /** Index of `cur` in `words`. */
+  cword: number;
+  cur: string;
+}
+
 export interface ProgramSpec extends Contribution {
   main(p: ProcApi): Generator<Syscall, number, unknown>;
+  /**
+   * Tab completion of this program's arguments, as a bash-completion function would give it.
+   * Undefined means file names (bash's default).
+   */
+  complete?(c: ProgramCompletion): CompletionResult | undefined;
   /** Recreates the program from `Proc.resume` at its restart point (§3.4). */
   restart?(p: ProcApi, resume: Json): Generator<Syscall, number, unknown>;
 }
@@ -86,10 +107,17 @@ export interface ProcApi {
   trace(record: TraceInput): void;
 
   read(fd: number, opts?: { max?: number; line?: boolean }): Op<string | null>;
+  /**
+   * Reads a line from a terminal with line editing (readline): the terminal draws `req.prompt`,
+   * edits with history and completion, and returns the line with its newline, or null at end of file.
+   */
+  readLine(fd: number, req: EditRequest): Op<string | null>;
   write(fd: number, data: string): Op<void>;
   sleep(ms: Millis): Op<void>;
   wait(topic: string, timeout?: Millis): Op<'published' | 'timeout'>;
   waitpid(pid: string): Op<ExitStatus>;
+  /** Asks the front end to edit a file (docs/ARCHITECTURE.md §3.8); returns when it closes. */
+  openEditor(req: EditorRequest): Op<EditorResult>;
   /** Prints the `[sim]` notice, records the gap and ends the program with status 250. */
   unsupported(gap: GapRequest): Op<never>;
 

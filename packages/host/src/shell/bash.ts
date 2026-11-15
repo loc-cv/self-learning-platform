@@ -1,14 +1,18 @@
 // The `bash` program: invocation, startup state and the read–parse–execute loop.
-//   docs: bash(1) 5.2 INVOCATION, Shell Variables, PROMPTING (phase 03 draws the prompt)
+//   docs: bash(1) 5.2 INVOCATION, Shell Variables, PROMPTING, READLINE
 //   reference: bash 5.2.21 invocation errors, initial variables and `$-`, captured 2026-11-16
 //
 // Not read yet: /etc/profile, ~/.profile, ~/.bashrc. They need `if` and `for` (phase 22a); until
-// then a login shell starts as `bash --noprofile --norc` would (STATUS.md, temporary shortcuts).
+// then a login shell starts as `bash --noprofile --norc` would, except for the prompt, which is set
+// the way Ubuntu's ~/.bashrc sets it (startup.ts; STATUS.md, temporary shortcuts).
 
 import type { Json } from '@simlab/kernel';
 import type { Command, List } from './ast.ts';
 import { BUILTINS } from './builtins/index.ts';
 import { parseCommandLine } from './parse.ts';
+import { expandPrompt } from './prompt.ts';
+import { startupPrompt } from './startup.ts';
+import { completionData } from './complete.ts';
 import { AbortLine, createShell, ShellExit, type Shell, type SubshellData } from './shell.ts';
 import { cloneState, exportVar, getVar, setVar, stateToJson, type ShellState } from './state.ts';
 import { getMachine } from '../machine.ts';
@@ -32,6 +36,8 @@ interface Invocation {
   command?: string;
   rest: string[];
   stdinFlag: boolean;
+  /** --noediting: no readline; the shell prints its prompt and reads lines from the terminal. */
+  noediting?: boolean;
 }
 
 function* parseInvocation(p: ProcApi): Op<Invocation | number> {
@@ -51,7 +57,8 @@ function* parseInvocation(p: ProcApi): Op<Invocation | number> {
     }
     if (a.startsWith('--')) {
       if (a === '--login') inv.login = true;
-      else if (a === '--noprofile' || a === '--norc' || a === '--noediting') continue;
+      else if (a === '--noediting') inv.noediting = true;
+      else if (a === '--noprofile' || a === '--norc') continue;
       else if (['--debug', '--debugger', '--dump-po-strings', '--dump-strings', '--help', '--init-file', '--posix', '--pretty-print', '--rcfile', '--restricted', '--verbose', '--version'].includes(a)) {
         return yield* p.unsupported({ kind: 'flag', what: `the option ${a}` });
       } else return yield* invalid(a);
@@ -129,6 +136,11 @@ function initialState(p: ProcApi, inv: Invocation, interactive: boolean, source:
     own.push(['PS1', '\\s-\\v\\$ '], ['HISTFILE', `${getVar(state, 'HOME') ?? ''}/.bash_history`], ['HISTSIZE', '500'], ['HISTFILESIZE', '500']);
   }
   for (const [k, v] of own) if (getVar(state, k) === undefined || k === 'PPID' || k === 'UID' || k === 'EUID') setVar(state, k, v);
+  if (interactive && inv.login) {
+    const ps1 = startupPrompt(p, getVar(state, 'HOME') ?? '', getVar(state, 'TERM') ?? '');
+    if (ps1 !== undefined) setVar(state, 'PS1', ps1);
+  }
+  if (inv.noediting) state.noediting = true;
   return state;
 }
 
@@ -204,18 +216,31 @@ function* readLoop(sh: Shell): Op<number> {
   const { p, state } = sh;
   let line = 1;
   for (;;) {
-    if (state.interactive) p.setResume(stateToJson(state));
     let buf = '';
     let eof = false;
     let result: ReturnType<typeof parseCommandLine> | undefined;
     for (;;) {
       let chunk: string | null;
+      const editing = state.interactive && !state.noediting && p.isatty(0);
       try {
-        chunk = yield* p.read(0, { line: true });
+        if (state.interactive) {
+          const ps = getVar(state, buf === '' ? 'PS1' : 'PS2') ?? '';
+          const prompt = yield* expandPrompt(sh, ps, editing);
+          if (buf === '') p.setResume(stateToJson(state));
+          if (editing) chunk = yield* p.readLine(0, { prompt, history: [...state.history], completer: { name: 'bash', data: completionData(state) } });
+          else {
+            // Without line editing bash writes the prompt to standard error itself.
+            yield* p.write(2, prompt);
+            chunk = yield* p.read(0, { line: true });
+          }
+        } else chunk = yield* p.read(0, { line: true });
       } catch (e) {
-        // Ctrl-C at the prompt discards the line (phase 03 redraws the prompt).
+        // Ctrl-C at the prompt discards the line; the editor has shown ^C and a newline. bash sets
+        // $? to 130 (reference: fixtures/reference/bash/readline.json `ctrl-c-mid-line-status`).
         if (e instanceof Error && e.name === 'Interrupted') {
           buf = '';
+          state.status = 130;
+          if (!editing) yield* p.write(2, '\n');
           continue;
         }
         throw e;
@@ -239,7 +264,9 @@ function* readLoop(sh: Shell): Op<number> {
       return state.status;
     }
     if (!result || result.kind === 'incomplete') continue;
-    if (state.interactive && buf.trim() !== '') state.history.push(buf.replace(/\n$/, ''));
+    // A command with a here-document keeps its final newline in the history (reference: bash
+    // 5.2.21, readline.json `multiline-heredoc`: Up shows the entry ending on a new line).
+    if (state.interactive && buf.trim() !== '') state.history.push(result.kind === 'ok' && result.list && hasHeredoc(result.list) ? buf : buf.replace(/\n$/, ''));
     const lines = buf.split('\n').length - (buf.endsWith('\n') ? 1 : 0);
     try {
       if (result.kind === 'ok') {
@@ -267,6 +294,11 @@ function* readLoop(sh: Shell): Op<number> {
     line += lines;
     if (eof) return state.status;
   }
+}
+
+function hasHeredoc(list: List): boolean {
+  const inCommand = (c: Command): boolean => c.redirs.some((r) => r.heredoc !== undefined) || (c.t !== 'simple' && hasHeredoc(c.body));
+  return list.items.some((ao) => [ao.first, ...ao.rest.map((r) => r.pipeline)].some((pl) => pl.cmds.some(inCommand)));
 }
 
 function* restart(p: ProcApi, resume: Json): Generator<Syscall, number, unknown> {

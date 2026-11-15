@@ -12,12 +12,14 @@ import { put, remove, type Ctx, type Json, type World } from '@simlab/kernel';
 import { getMachine, hostSlice, type Machine } from '../machine.ts';
 import { FsError, UnsupportedError } from '../vfs/errno.ts';
 import { readInode, writeInode } from '../vfs/fs.ts';
-import { createOpenFile, getStream, release, retain, storeStream, streamTopic, ttyTopic } from './descriptors.ts';
-import { simNotice } from './notice.ts';
+import { createOpenFile, getStream, release, retain, storeStream, streamTopic } from './descriptors.ts';
+import { simNotice, styleNotice } from './notice.ts';
 import { PROGRAM, type ProcApi, type ProgramSpec, type SpawnRequest, type Syscall } from './program.ts';
 import { createProcApi } from './api.ts';
 import { SIGKILL, SIGPIPE } from './signals.ts';
-import type { ExitStatus, Fd, Proc, Tty } from './types.ts';
+import type { ExitStatus, Fd, Proc } from './types.ts';
+import { ttyRead, ttyWrite } from '../tty/discipline.ts';
+import { editorTopic, openEditorSession, takeEditorResult } from './editor.ts';
 
 /**
  * Syscalls a process may execute in one run slice before it is preempted and resumed 1 ms later
@@ -78,7 +80,7 @@ interface Frame {
   next: Outcome;
 }
 
-type PendingSyscall = Syscall & { deadline?: number; written?: number };
+type PendingSyscall = Syscall & { deadline?: number; written?: number; session?: string };
 
 type Outcome = { value: unknown } | { error: unknown };
 
@@ -360,7 +362,7 @@ function crashed(ctx: Ctx, machine: Machine, pid: string, e: unknown): void {
 
 function writeNow(ctx: Ctx, machine: Machine, fd: Fd, text: string): void {
   try {
-    if (fd.kind === 'tty') ttyWrite(ctx, fd.tty, text);
+    if (fd.kind === 'tty') ttyWrite(ctx, fd.tty, styleNotice(text));
     else if (fd.kind === 'file') fileWrite(ctx, machine, fd.file, text);
     else {
       const s = getStream(ctx, fd.stream);
@@ -403,7 +405,7 @@ function execute(ctx: Ctx, machine: Machine, pid: string, sc: PendingSyscall): S
       } catch (e) {
         return fail(e);
       }
-      return readFd(ctx, machine, fd, sc.max, sc.line ?? false);
+      return readFd(ctx, machine, pid, fd, sc);
     }
     case 'write': {
       let fd: Fd;
@@ -425,6 +427,14 @@ function execute(ctx: Ctx, machine: Machine, pid: string, sc: PendingSyscall): S
       }
       return ok(sc.deadline !== -1 && ctx.now >= sc.deadline ? 'timeout' : 'published');
     }
+    case 'edit': {
+      if (sc.session === undefined) {
+        sc.session = openEditorSession(ctx, machine.id, pid, sc.request);
+        return { done: false, topic: editorTopic(sc.session) };
+      }
+      const r = takeEditorResult(ctx, sc.session);
+      return r ? ok(r) : { done: false, topic: editorTopic(sc.session) };
+    }
     case 'waitpid': {
       const child = machine.procs[sc.pid];
       if (!child) return fail(new Error(`waitpid: no child ${sc.pid}`));
@@ -434,7 +444,9 @@ function execute(ctx: Ctx, machine: Machine, pid: string, sc: PendingSyscall): S
   }
 }
 
-function readFd(ctx: Ctx, machine: Machine, fd: Fd, max: number | undefined, line: boolean): Step {
+function readFd(ctx: Ctx, machine: Machine, pid: string, fd: Fd, sc: PendingSyscall & { op: 'read' }): Step {
+  const max = sc.max;
+  const line = sc.line ?? false;
   switch (fd.kind) {
     case 'stream': {
       if (fd.end !== 'read') return fail(new FsError('EBADF', 'read', ''));
@@ -452,8 +464,10 @@ function readFd(ctx: Ctx, machine: Machine, fd: Fd, max: number | undefined, lin
       ctx.publish(streamTopic(s.id));
       return ok(out);
     }
-    case 'tty':
-      return ttyRead(ctx, fd.tty, max);
+    case 'tty': {
+      const r = ttyRead(ctx, fd.tty, pid, max, sc.edit);
+      return 'block' in r ? { done: false, topic: r.block } : ok(r.value);
+    }
     case 'file': {
       const f = machine.files[fd.file];
       if (!f) return fail(new FsError('EBADF', 'read', ''));
@@ -510,74 +524,6 @@ function fileWrite(ctx: Ctx, machine: Machine, fileId: string, data: string): vo
   if (!f || !f.write) throw new FsError('EBADF', 'write', '');
   const offset = writeInode(ctx, machine, f.inode, data, f.append ? 'append' : f.offset);
   put(machine.files, f.id, { ...f, offset: f.append ? f.offset : offset });
-}
-
-// ---- terminals --------------------------------------------------------------------------------
-
-function getTty(ctx: Ctx, id: string): Tty {
-  const t = hostSlice(ctx).ttys[id];
-  if (!t) throw new Error(`no tty ${id}`);
-  return t;
-}
-
-/** Output post-processing `onlcr` (termios(3)): a newline reaches the terminal as CR LF. */
-export function ttyWrite(ctx: Ctx, id: string, data: string): void {
-  getTty(ctx, id);
-  ctx.output({ kind: 'tty', tty: id, data: data.replace(/\n/g, '\r\n') });
-}
-
-/**
- * A canonical-mode read (termios(3)): returns one line, or what precedes an end-of-file mark
- * (Ctrl-D), which is end of file when nothing precedes it.
- */
-function ttyRead(ctx: Ctx, id: string, max: number | undefined): Step {
-  const t = getTty(ctx, id);
-  const nl = t.input.indexOf('\n');
-  const eof = t.eof[0];
-  let n: number;
-  let consumeEof = false;
-  if (eof !== undefined && (nl < 0 || eof <= nl)) {
-    n = eof;
-    consumeEof = true;
-  } else if (nl >= 0) {
-    n = nl + 1;
-  } else {
-    return { done: false, topic: ttyTopic(id) };
-  }
-  if (max !== undefined && max < n) {
-    n = max;
-    consumeEof = false;
-  }
-  const out = t.input.slice(0, n);
-  const rest = consumeEof ? t.eof.slice(1) : t.eof;
-  put(hostSlice(ctx).ttys, id, { ...t, input: t.input.slice(n), eof: rest.map((e) => e - n) });
-  return ok(consumeEof && out === '' ? null : out);
-}
-
-/** Bytes typed at a terminal: Ctrl-C signals the foreground group, Ctrl-D marks end of file. */
-export function ttyInput(ctx: Ctx, id: string, data: string): void {
-  let t = getTty(ctx, id);
-  let input = t.input;
-  const eof = [...t.eof];
-  for (const ch of data) {
-    if (ch === '\x03') {
-      // ISIG: VINTR discards pending input and sends SIGINT to the foreground process group.
-      input = '';
-      eof.length = 0;
-      put(hostSlice(ctx).ttys, id, { ...t, input, eof: [] });
-      signalGroup(ctx, t.machine, t.foreground, 2);
-      t = getTty(ctx, id);
-      continue;
-    }
-    if (ch === '\x04') eof.push(input.length);
-    else input += ch === '\r' ? '\n' : ch;
-  }
-  put(hostSlice(ctx).ttys, id, { ...getTty(ctx, id), input, eof });
-  ctx.publish(ttyTopic(id));
-}
-
-export function setForeground(ctx: Ctx, ttyId: string, pgid: string): void {
-  put(hostSlice(ctx).ttys, ttyId, { ...getTty(ctx, ttyId), foreground: pgid });
 }
 
 // ---- descriptors from programs ---------------------------------------------------------------

@@ -63,6 +63,38 @@ Notice instead (`packages/host/transcripts/shell/notices.t`): `if`, `case`, `for
 Every other bash builtin (`read`, `set`, `shopt`, `kill`, `wait`, `exec`, `eval`, `declare`,
 `local`, `umask`, `jobs`, …) prints `[sim] bash: the builtin "<name>" is not simulated yet`.
 
+## Terminal (readline 8.2 in bash 5.2.21, Linux n_tty)
+
+Built by phase 03 (`packages/host/src/tty/`). Verification: **golden** means the screen after each
+key matches a capture of real bash (`fixtures/reference/bash/readline.json`,
+`tty/editor.reference.test.ts`); **source** means written from readline(3), termios(3) or
+bash-completion and tested in `tty/terminal.test.ts`.
+
+| Feature | Status | Notes |
+|---|---|---|
+| Prompt: PS1 and PS2 decoding (`\u \h \H \w \W \s \v \V \$ \d \t \T \@ \A \D{} \n \e \a \[ \] \nnn \!`) and expansion | source | `\j` is 0 and `\#` equals `\!` (DIV-013); the login prompt is Ubuntu .bashrc's (temporary shortcut, D-031) |
+| Insert, Left/Right, Home/End (`\e[H \e[F \eOH \eOF`), C-a C-e C-b C-f, M-b M-f | golden | `\e[1~` and `\e[4~` are unbound without an inputrc, as in real bash |
+| Backspace, Delete, C-d, C-h, C-u, C-k, C-w, M-d, M-DEL, C-y, C-t, M-. | golden | consecutive kills join in the kill ring, which holds one entry (no M-y) |
+| C-l, C-c (status 130), C-d on an empty line (`logout`) | golden | |
+| History: Up/Down, C-p C-n, M-< M->, PageUp/PageDown (history-search) | golden | edits to recalled lines are kept while the line is edited (DIV-013) |
+| C-r incremental search: extend, repeat, backspace, failed search, C-g, accept, leave with any other key | golden | the match is shown in reverse video |
+| Multi-line commands: open quotes and here-documents continue with PS2; recalled from history with their newlines | golden | |
+| Wrapping at the terminal width, including a line that ends exactly at the margin; resize | golden (wrapping), source (resize) | |
+| Tab: commands (aliases, keywords, builtins, PATH), files, `$VAR`, `${VAR}`, `~user`; quoting of special characters; inside quotes | golden | double Tab lists; 100 or more matches ask `Display all N possibilities? (y or n)`; long lists page with `--More--` |
+| Completers: a program's own (`ProgramSpec.complete`); `cd` and `pushd` complete directories | source | bash-completion's other functions are not reproduced yet |
+| Canonical input of programs (`cat` reading the terminal): echo, Backspace, C-u, C-w, C-d, C-c | golden | |
+| Typeahead during a command | golden | echoed, then run when the prompt returns |
+| Ctrl-Z, Ctrl-\\ during a command | — | notice: no job control, no core dumps; at the prompt they do nothing, as in bash |
+| Any other bound readline command (undo, M-u, keyboard macros, …) | — | notice under the line; the line is kept |
+| Bracketed paste | — | not turned on (DIV-012) |
+
+### Editors
+
+| Program | Status | Notes |
+|---|---|---|
+| `vim`, `vi`, `view`, `vim.basic`, `vim.tiny`, `nano`, `rnano` on one file | source | through the editor protocol (DIV-014): web overlay, the player's `$EDITOR`, or supplied content; `view` and unwritable files are read-only; a failed save reports vim's `E212` |
+| `ex`, `rvim`, `rview`, `vimdiff`, options, several files, no file, a directory | — | notice |
+
 ## Programs
 
 Each program's table lists the options it supports; every other real option prints the notice.

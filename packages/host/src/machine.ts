@@ -4,6 +4,7 @@
 // (docs/decisions.md D-019).
 
 import { put, type Ctx, type Millis, type Table } from '@simlab/kernel';
+import type { EditorSession } from './proc/editor.ts';
 import type { OpenFile, Proc, Stream, Tty } from './proc/types.ts';
 import type { DirInode, Vfs } from './vfs/types.ts';
 
@@ -26,6 +27,8 @@ export interface HostSlice {
   streams: Table<Stream>;
   /** Terminals, by id. */
   ttys: Table<Tty>;
+  /** Open editor sessions (proc/editor.ts), by id. */
+  editors: Table<EditorSession>;
 }
 
 export function hostSlice(ctx: Ctx): HostSlice {

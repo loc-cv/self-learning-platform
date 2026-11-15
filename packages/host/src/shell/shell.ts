@@ -15,7 +15,7 @@ import { parseCommandLine } from './parse.ts';
 import { exportOrder, getVar, setVar, stateToJson, unsetVar, type ShellState } from './state.ts';
 import type { Op, ProcApi } from '../proc/program.ts';
 import { resolveExec } from '../proc/exec.ts';
-import { simNotice, SIM_STATUS } from '../proc/notice.ts';
+import { simNotice, SIM_STATUS, styleNotice } from '../proc/notice.ts';
 import { SIGINT, SIGPIPE, strsignal } from '../proc/signals.ts';
 import type { ExitStatus } from '../proc/types.ts';
 import { userByName } from '../users.ts';
@@ -528,7 +528,7 @@ export function createShell(p: ProcApi, state: ShellState, builtins: Record<stri
     },
     *notice(what, kind, commandLine) {
       p.ctx.gap({ kind, program: 'bash', what, commandLine, machine: p.machine });
-      yield* p.write(2, simNotice('bash', what));
+      yield* p.write(2, p.isatty(2) ? styleNotice(simNotice('bash', what)) : simNotice('bash', what));
       return SIM_STATUS;
     },
     expandEnv,

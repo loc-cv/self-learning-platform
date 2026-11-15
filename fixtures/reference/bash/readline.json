@@ -1,0 +1,968 @@
+{
+  "captured": "2026-11-16",
+  "bash": "GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)",
+  "setupPrefix": "mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm",
+  "cases": [
+    {
+      "name": "insert-and-move",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo hello world",
+        "\u001b[D",
+        "\u001b[D",
+        "\u001b[D",
+        "\u001b[D",
+        "\u001b[D",
+        "X",
+        "\u0001",
+        "#",
+        "\u0005",
+        "!",
+        "\u0002",
+        "\u0006"
+      ],
+      "outputs": [
+        "echo hello world",
+        "\b",
+        "\b",
+        "\b",
+        "\b",
+        "\b",
+        "Xworld\b\b\b\b\b",
+        "\b\b\b\b\b\b\b\b\b\b\b\b",
+        "\u001b[1@#",
+        "\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C",
+        "!",
+        "\b",
+        "\u001b[C"
+      ]
+    },
+    {
+      "name": "kill-and-yank",
+      "note": "Second part (from 'abc def ghi') is on the same line: Ctrl-U before it left the line empty.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo one two three",
+        "\u0017",
+        "\u0017",
+        "\u0019",
+        "\u0001",
+        "\u000b",
+        "\u0019",
+        "\u0015",
+        "abc def ghi",
+        "\u001b[D",
+        "\u001b[D",
+        "\u001b[D",
+        "\u001b[D",
+        "\u0015",
+        "\u0005",
+        "\u000b"
+      ],
+      "outputs": [
+        "echo one two three",
+        "\b\b\b\b\b\u001b[K",
+        "\b\b\b\b\u001b[K",
+        "two three",
+        "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+        "\u001b[K",
+        "echo one two three",
+        "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\u001b[K",
+        "abc def ghi",
+        "\b",
+        "\b",
+        "\b",
+        "\b",
+        "\b\b\b\b\b\b\b\u001b[7P ghi\b\b\b\b",
+        "\u001b[C\u001b[C\u001b[C\u001b[C",
+        ""
+      ]
+    },
+    {
+      "name": "word-moves",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "alpha beta gamma",
+        "\u001bb",
+        "\u001bb",
+        "\u001bf",
+        "\u001bd",
+        "\u001b\u007f"
+      ],
+      "outputs": [
+        "alpha beta gamma",
+        "\b\b\b\b\b",
+        "\b\b\b\b\b",
+        "\u001b[C\u001b[C\u001b[C\u001b[C",
+        "\u001b[K",
+        "\b\b\b\b\u001b[K"
+      ]
+    },
+    {
+      "name": "delete-keys",
+      "note": "Without an inputrc, \\e[1~ and \\e[4~ are unbound (bind-p.txt): each rings the bell; after \\e[4~ the ~ is inserted, after \\e[1~ it is not.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "abcdef",
+        "\u007f",
+        "\u0001",
+        "\u001b[3~",
+        "\u0004",
+        "\b",
+        "\u001b[F",
+        "\u001b[H",
+        "\u001bOF",
+        "\u001bOH",
+        "\u001b[4~",
+        "\u001b[1~"
+      ],
+      "outputs": [
+        "abcdef",
+        "\b\u001b[K",
+        "\b\b\b\b\b",
+        "\u001b[1Pbcde\b\b\b\b",
+        "\u001b[1Pcde\b\b\b",
+        "\u0007",
+        "\u001b[C\u001b[C\u001b[C",
+        "\b\b\b",
+        "\u001b[C\u001b[C\u001b[C",
+        "\b\b\b",
+        "\u0007~cde\b\b\b",
+        "\u0007"
+      ]
+    },
+    {
+      "name": "clear-screen",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo hi",
+        "\r",
+        "ls",
+        "\f"
+      ],
+      "outputs": [
+        "echo hi",
+        "\r\n\u001b[?2004l\rhi\r\n\u001b[?2004hstudent@node01:~$ ",
+        "ls",
+        "\u001b[H\u001b[2Jstudent@node01:~$ ls"
+      ]
+    },
+    {
+      "name": "ctrl-c-at-prompt",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo abc",
+        "\u0003",
+        "echo ok",
+        "\r"
+      ],
+      "outputs": [
+        "echo abc",
+        "^C\u001b[?2004l\r\u001b[?2004h\u001b[?2004l\r\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo ok",
+        "\r\n\u001b[?2004l\rok\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "ctrl-c-mid-line-status",
+      "note": "Ctrl-C with the cursor inside the line: ^C is echoed where the cursor is; $? is 130 afterwards.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo abc",
+        "\u001b[D",
+        "\u001b[D",
+        "\u0003",
+        "echo $?",
+        "\r"
+      ],
+      "outputs": [
+        "echo abc",
+        "\b",
+        "\b",
+        "^C\u001b[?2004l\r\u001b[?2004h\u001b[?2004l\r\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo $?",
+        "\r\n\u001b[?2004l\r130\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "ctrl-c-blocking",
+      "note": "Ctrl-C is sent at least 0.5 s after Enter (the Enter chunk's output is collected for 0.5 s). The setup links sleep into $HOME/bin so it runs.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/sleep bin/sleep; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/sleep bin/sleep; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "sleep 5",
+        "\r",
+        "\u0003",
+        "echo $?",
+        "\r"
+      ],
+      "outputs": [
+        "sleep 5",
+        "\r\n\u001b[?2004l\r",
+        "^C\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo $?",
+        "\r\n\u001b[?2004l\r130\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "ctrl-d-logout",
+      "note": "Ctrl-D on an empty line: the login shell prints logout and exits; read to EOF.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "\u0004"
+      ],
+      "outputs": [
+        "\u001b[?2004l\r\r\nlogout\r\n"
+      ],
+      "exited": true
+    },
+    {
+      "name": "ctrl-d-cat",
+      "note": "While cat reads, the tty driver (canonical mode) echoes the input. The setup links cat into $HOME/bin.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat",
+        "\r",
+        "abc",
+        "\r",
+        "\u0004",
+        "echo $?",
+        "\r"
+      ],
+      "outputs": [
+        "cat",
+        "\r\n\u001b[?2004l\r",
+        "abc",
+        "\r\nabc\r\n",
+        "\u001b[?2004hstudent@node01:~$ ",
+        "echo $?",
+        "\r\n\u001b[?2004l\r0\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "ctrl-c-cat",
+      "note": "The setup links cat into $HOME/bin.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat",
+        "\r",
+        "abc",
+        "\u0003",
+        "\r"
+      ],
+      "outputs": [
+        "cat",
+        "\r\n\u001b[?2004l\r",
+        "abc",
+        "^C\r\n\u001b[?2004hstudent@node01:~$ ",
+        "\r\n\u001b[?2004l\r\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "history-up-down",
+      "note": "The third Up recalls history entry 1, the setup line (it wraps over three rows).",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo one",
+        "\r",
+        "echo two",
+        "\r",
+        "\u001b[A",
+        "\u001b[A",
+        "\u001b[A",
+        "\u001b[B",
+        "\u001b[B",
+        "\u001b[B",
+        "\u0010",
+        "\u000e",
+        "\u001b[A",
+        "\r"
+      ],
+      "outputs": [
+        "echo one",
+        "\r\n\u001b[?2004l\rone\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo two",
+        "\r\n\u001b[?2004l\rtwo\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo two",
+        "\b\b\bone",
+        "\b\b\b\b\b\b\b\bPS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+        "\u001b[A\u001b[A\r\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[Cecho one\u001b[K\r\n\r\u001b[K\r\n\r\u001b[K\u001b[A\u001b[A\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C",
+        "\b\b\btwo",
+        "\b\b\b\b\b\b\b\b\u001b[K",
+        "echo two",
+        "\b\b\b\b\b\b\b\b\u001b[K",
+        "echo two",
+        "\r\n\u001b[?2004l\rtwo\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "history-edit-then-move",
+      "note": "Whether an edit to a recalled line survives moving away and back.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo one",
+        "\r",
+        "echo two",
+        "\r",
+        "\u001b[A",
+        "X",
+        "\u001b[A",
+        "\u001b[B",
+        "\u001b[B",
+        "\u001b[A",
+        "\r"
+      ],
+      "outputs": [
+        "echo one",
+        "\r\n\u001b[?2004l\rone\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo two",
+        "\r\n\u001b[?2004l\rtwo\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo two",
+        "X",
+        "\b\b\b\b\u001b[1Pone",
+        "\b\b\btwoX",
+        "\b\b\b\b\b\b\b\b\b\u001b[K",
+        "echo twoX",
+        "\r\n\u001b[?2004l\rtwoX\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "reverse-search",
+      "note": "`ls` is not found: PATH is $HOME/bin; it only serves as a history entry. The second Ctrl-R finds 'al' in history entry 1, the setup line (its last occurrence in that line first), and Enter runs it again.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo alpha",
+        "\r",
+        "echo beta",
+        "\r",
+        "ls",
+        "\r",
+        "\u0012",
+        "a",
+        "l",
+        "\u0012",
+        "\r"
+      ],
+      "outputs": [
+        "echo alpha",
+        "\r\n\u001b[?2004l\ralpha\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo beta",
+        "\r\n\u001b[?2004l\rbeta\r\n\u001b[?2004hstudent@node01:~$ ",
+        "ls",
+        "\r\n\u001b[?2004l\r-bash: ls: command not found\r\n\u001b[?2004hstudent@node01:~$ ",
+        "\r(reverse-i-search)`': ",
+        "\b\b\ba': echo bet\u001b[7ma\u001b[27m\b",
+        "\b\b\b\b\b\b\b\b\b\b\bl': echo \u001b[7mal\u001b[27mpha\b\b\b\b\b",
+        "\b\b\b\b\bPS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 \u001b[7mal\u001b[27mpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\u001b[A\u001b[A\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C",
+        "\u001b[A\rstudent@node01:~$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubect\u001b[1Pl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\r\u001b[K\u001b[A\u001b[A\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\r\n\r\r\n\u001b[?2004l\r-bash: mkdir: command not found\r\n-bash: clear: command not found\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "reverse-search-again",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo abc1",
+        "\r",
+        "echo abc2",
+        "\r",
+        "\u0012",
+        "abc",
+        "\u0012",
+        "\u0012",
+        "\u0007"
+      ],
+      "outputs": [
+        "echo abc1",
+        "\r\n\u001b[?2004l\rabc1\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo abc2",
+        "\r\n\u001b[?2004l\rabc2\r\n\u001b[?2004hstudent@node01:~$ ",
+        "\r(reverse-i-search)`': ",
+        "\b\b\ba': echo \u001b[7ma\u001b[27mbc2\b\b\b\b\b\b\b\b\b\b\b\bb': echo \u001b[7mab\u001b[27mc2\b\b\b\b\b\b\b\b\b\b\b\bc': echo \u001b[7mabc\u001b[27m2\b\b\b\b",
+        "\u001b[C\u001b[C\u001b[C1\b\b\b\b",
+        "\u0007\r\u001b[Cfailed reverse-i-search)`abc': echo abc1\b\b\b\b",
+        "\r\u001b[23Pstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "reverse-search-failed",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo alpha",
+        "\r",
+        "\u0012",
+        "z",
+        "z",
+        "\u007f",
+        "\u007f",
+        "a",
+        "\u001b[C",
+        "X"
+      ],
+      "outputs": [
+        "echo alpha",
+        "\r\n\u001b[?2004l\ralpha\r\n\u001b[?2004hstudent@node01:~$ ",
+        "\r(reverse-i-search)`': ",
+        "\u0007\r\u001b[C\u001b[8@failed reverse-i-search)`z\u001b[C\u001b[C\u001b[C",
+        "\u0007\b\b\b\u001b[1@z\u001b[C\u001b[C\u001b[C",
+        "\u0007\b\b\b\b\u001b[1P\u001b[C\u001b[C\u001b[C",
+        "\u0007\u0007\r(failed reverse-i-search)`': \u001b[K",
+        "\r\u001b[Creverse-i-search)`a': echo alph\u001b[7ma\u001b[27m\b",
+        "\r\u001b[5Pstudent@node01:~$ echo alpha\b\u001b[C",
+        "X"
+      ]
+    },
+    {
+      "name": "reverse-search-ctrl-c",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo alpha",
+        "\r",
+        "\u0012",
+        "al",
+        "\u0003"
+      ],
+      "outputs": [
+        "echo alpha",
+        "\r\n\u001b[?2004l\ralpha\r\n\u001b[?2004hstudent@node01:~$ ",
+        "\r(reverse-i-search)`': ",
+        "\b\b\ba': echo alph\u001b[7ma\u001b[27m\b\b\b\b\b\b\b\b\b\b\b\b\bl': echo \u001b[7mal\u001b[27mpha\b\b\b\b\b",
+        "^C\u001b[?2004l\r\u001b[?2004h\u001b[?2004l\r\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "reverse-search-ctrl-e",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo alpha",
+        "\r",
+        "\u0012",
+        "ph",
+        "\u0005",
+        "Z",
+        "\r"
+      ],
+      "outputs": [
+        "echo alpha",
+        "\r\n\u001b[?2004l\ralpha\r\n\u001b[?2004hstudent@node01:~$ ",
+        "\r(reverse-i-search)`': ",
+        "\b\b\bp': echo al\u001b[7mp\u001b[27mha\b\b\b\b\b\b\b\b\b\b\b\b\bh': echo al\u001b[7mph\u001b[27ma\b\b\b",
+        "\r\u001b[6Pstudent@node01:~$ echo alpha\b\b\b\u001b[C\u001b[C\u001b[C",
+        "Z",
+        "\r\n\u001b[?2004l\ralphaZ\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "multiline-quote",
+      "note": "The last key shows how a recalled multi-line entry is displayed.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo 'a",
+        "\r",
+        "b'",
+        "\r",
+        "\u001b[A"
+      ],
+      "outputs": [
+        "echo 'a",
+        "\r\n\u001b[?2004l\r\u001b[?2004h> ",
+        "b'",
+        "\r\n\u001b[?2004l\ra\r\nb\r\n\u001b[?2004hstudent@node01:~$ ",
+        "echo 'a\r\n\rb'"
+      ]
+    },
+    {
+      "name": "multiline-heredoc",
+      "note": "The setup links cat into $HOME/bin.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat <<EOF",
+        "\r",
+        "x",
+        "\r",
+        "EOF",
+        "\r",
+        "\u001b[A"
+      ],
+      "outputs": [
+        "cat <<EOF",
+        "\r\n\u001b[?2004l\r\u001b[?2004h> ",
+        "x",
+        "\r\n\u001b[?2004l\r\u001b[?2004h> ",
+        "EOF",
+        "\r\n\u001b[?2004l\rx\r\n\u001b[?2004hstudent@node01:~$ ",
+        "cat <<EOF\r\n\rx\r\n\rEOF\r\n\r"
+      ]
+    },
+    {
+      "name": "wrap-long-line",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "\u0001",
+        "ZZ",
+        "\u0005",
+        "\u007f",
+        "\u007f",
+        "\u007f",
+        "\u007f",
+        "\u0015"
+      ],
+      "outputs": [
+        "echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "\u001b[A\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+        "ZZecho aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[Caa\u001b[A\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+        "\r\n\r\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C",
+        "\b\u001b[K",
+        "\b\u001b[K",
+        "\b\u001b[K",
+        "\b\u001b[K",
+        "\u001b[A\b\b\b\b\b\b\b\b\b\b\b\b\b\u001b[K\r\n\r\u001b[K\u001b[A\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C"
+      ]
+    },
+    {
+      "name": "wrap-exact",
+      "note": "Prompt (18) + 'echo ' (5) + 57 b's fills the 80-column row exactly.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "c",
+        "\u007f",
+        "\u007f",
+        "\u0001",
+        "\u0005"
+      ],
+      "outputs": [
+        "echo bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \r",
+        "c",
+        "\r\u001b[K",
+        "\u001b[A\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[K\r\n\r\u001b[K\u001b[A\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C",
+        "\r\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C",
+        "\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C"
+      ]
+    },
+    {
+      "name": "complete-unique-file",
+      "note": "The setup links cat into $HOME/bin so the accepted line runs (file.txt is empty).",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/cat bin/cat; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat fi",
+        "\t",
+        "\r"
+      ],
+      "outputs": [
+        "cat fi",
+        "le.txt ",
+        "\r\n\u001b[?2004l\r\u001b[?2004hstudent@node01:~$ "
+      ]
+    },
+    {
+      "name": "complete-dir",
+      "note": "dir1/dir2 are ambiguous: the first Tab inserts the common prefix with a bell; because that Tab changed the line, the second Tab only rings the bell again and the third lists.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cd di",
+        "\t",
+        "\t",
+        "\t",
+        "1",
+        "\t"
+      ],
+      "outputs": [
+        "cd di",
+        "\u0007r",
+        "\u0007",
+        "\r\ndir1/ dir2/ \r\nstudent@node01:~$ cd dir",
+        "1",
+        "/"
+      ]
+    },
+    {
+      "name": "complete-ambiguous-list",
+      "note": "The first Tab inserts the common prefix 'pha' with a bell; the second only rings the bell (no list, because the first Tab changed the line).",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat al",
+        "\t",
+        "\t",
+        "1",
+        "\t"
+      ],
+      "outputs": [
+        "cat al",
+        "\u0007pha",
+        "\u0007",
+        "1",
+        " "
+      ]
+    },
+    {
+      "name": "complete-none",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat zz",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "cat zz",
+        "\u0007",
+        "\u0007"
+      ]
+    },
+    {
+      "name": "complete-space-in-name",
+      "note": "The first Tab inserts the common prefix of 'my dir' and 'my file', a quoted space, so the typed backslash-space makes the word 'my  f' (two spaces) and the last Tab finds nothing.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat my",
+        "\t",
+        "\t",
+        "\\ f",
+        "\t"
+      ],
+      "outputs": [
+        "cat my",
+        "\u0007\\ ",
+        "\u0007",
+        "\\ f",
+        "\u0007"
+      ]
+    },
+    {
+      "name": "complete-variable",
+      "note": "$HO is ambiguous (HOME, HOSTNAME, HOSTTYPE) and HO is already their common prefix: only a bell.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo $HO",
+        "\t",
+        " $LO",
+        "\t"
+      ],
+      "outputs": [
+        "echo $HO",
+        "\u0007",
+        " $LO",
+        "GNAME "
+      ]
+    },
+    {
+      "name": "complete-command",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "kubec",
+        "\t",
+        "\u0015",
+        "kube",
+        "\t",
+        "\t",
+        "\u0015",
+        "un",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubec",
+        "tl ",
+        "\b\b\b\b\b\b\b\b\u001b[K",
+        "kube",
+        "\u0007",
+        "\r\nkubeadm  kubectl  \r\nstudent@node01:~$ kube",
+        "\b\b\b\b\u001b[K",
+        "un",
+        "\u0007",
+        "\r\nunalias  unset    until    \r\nstudent@node01:~$ un"
+      ]
+    },
+    {
+      "name": "complete-mid-line",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "cat fi foo",
+        "\u001b[D",
+        "\u001b[D",
+        "\u001b[D",
+        "\u001b[D",
+        "\t"
+      ],
+      "outputs": [
+        "cat fi foo",
+        "\b",
+        "\b",
+        "\b",
+        "\b",
+        "le.txt foo\b\b\b\b"
+      ]
+    },
+    {
+      "name": "complete-tilde",
+      "note": "As in complete-dir: the first Tab inserts 'r' with a bell, the second only rings the bell.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "ls ~/di",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "ls ~/di",
+        "\u0007r",
+        "\u0007"
+      ]
+    },
+    {
+      "name": "complete-many",
+      "note": "f is already the common prefix: the first Tab rings the bell, the second asks. After 'n' the next Tab asks again at once, the Tab after it is an invalid answer (bell), 'y' lists. The 12-row listing fits the 24-row screen, so there is no --More-- and the space and q are inserted into the line (complete-many-paged shows the pager).",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && mkdir many && cd many && touch $(seq -f 'f%03g' 1 150) && cd ..; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && mkdir many && cd many && touch $(seq -f 'f%03g' 1 150) && cd ..; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "ls many/f",
+        "\t",
+        "\t",
+        "n",
+        "\t",
+        "\t",
+        "y",
+        " ",
+        "q"
+      ],
+      "outputs": [
+        "ls many/f",
+        "\u0007",
+        "\r\nDisplay all 150 possibilities? (y or n)",
+        "\r\nstudent@node01:~$ ls many/f",
+        "\r\nDisplay all 150 possibilities? (y or n)",
+        "\u0007",
+        "\r\nf001  f013  f025  f037  f049  f061  f073  f085  f097  f109  f121  f133  f145\r\nf002  f014  f026  f038  f050  f062  f074  f086  f098  f110  f122  f134  f146\r\nf003  f015  f027  f039  f051  f063  f075  f087  f099  f111  f123  f135  f147\r\nf004  f016  f028  f040  f052  f064  f076  f088  f100  f112  f124  f136  f148\r\nf005  f017  f029  f041  f053  f065  f077  f089  f101  f113  f125  f137  f149\r\nf006  f018  f030  f042  f054  f066  f078  f090  f102  f114  f126  f138  f150\r\nf007  f019  f031  f043  f055  f067  f079  f091  f103  f115  f127  f139  \r\nf008  f020  f032  f044  f056  f068  f080  f092  f104  f116  f128  f140  \r\nf009  f021  f033  f045  f057  f069  f081  f093  f105  f117  f129  f141  \r\nf010  f022  f034  f046  f058  f070  f082  f094  f106  f118  f130  f142  \r\nf011  f023  f035  f047  f059  f071  f083  f095  f107  f119  f131  f143  \r\nf012  f024  f036  f048  f060  f072  f084  f096  f108  f120  f132  f144  \r\nstudent@node01:~$ ls many/f",
+        " ",
+        "q"
+      ]
+    },
+    {
+      "name": "complete-many-paged",
+      "note": "Added to complete-many: a 10-row screen, so the 12-row listing goes through the --More-- pager. Enter shows one more line, space a page, q quits.",
+      "cols": 80,
+      "rows": 10,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && mkdir many && cd many && touch $(seq -f 'f%03g' 1 150) && cd ..; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && mkdir many && cd many && touch $(seq -f 'f%03g' 1 150) && cd ..; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "ls many/f",
+        "\t",
+        "\t",
+        "y",
+        "\r",
+        " "
+      ],
+      "outputs": [
+        "ls many/f",
+        "\u0007",
+        "\r\nDisplay all 150 possibilities? (y or n)",
+        "\r\nf001  f013  f025  f037  f049  f061  f073  f085  f097  f109  f121  f133  f145\r\nf002  f014  f026  f038  f050  f062  f074  f086  f098  f110  f122  f134  f146\r\nf003  f015  f027  f039  f051  f063  f075  f087  f099  f111  f123  f135  f147\r\nf004  f016  f028  f040  f052  f064  f076  f088  f100  f112  f124  f136  f148\r\nf005  f017  f029  f041  f053  f065  f077  f089  f101  f113  f125  f137  f149\r\nf006  f018  f030  f042  f054  f066  f078  f090  f102  f114  f126  f138  f150\r\nf007  f019  f031  f043  f055  f067  f079  f091  f103  f115  f127  f139  \r\nf008  f020  f032  f044  f056  f068  f080  f092  f104  f116  f128  f140  \r\nf009  f021  f033  f045  f057  f069  f081  f093  f105  f117  f129  f141  \r\n--More--",
+        "\r\u001b[K\rf010  f022  f034  f046  f058  f070  f082  f094  f106  f118  f130  f142  \r\n--More--",
+        "\r\u001b[K\rf011  f023  f035  f047  f059  f071  f083  f095  f107  f119  f131  f143  \r\nf012  f024  f036  f048  f060  f072  f084  f096  f108  f120  f132  f144  \r\nstudent@node01:~$ ls many/f"
+      ]
+    },
+    {
+      "name": "complete-many-paged-quit",
+      "note": "Added to complete-many: q at the first --More--.",
+      "cols": 80,
+      "rows": 10,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && mkdir many && cd many && touch $(seq -f 'f%03g' 1 150) && cd ..; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && mkdir many && cd many && touch $(seq -f 'f%03g' 1 150) && cd ..; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "ls many/f",
+        "\t",
+        "\t",
+        "y",
+        "q"
+      ],
+      "outputs": [
+        "ls many/f",
+        "\u0007",
+        "\r\nDisplay all 150 possibilities? (y or n)",
+        "\r\nf001  f013  f025  f037  f049  f061  f073  f085  f097  f109  f121  f133  f145\r\nf002  f014  f026  f038  f050  f062  f074  f086  f098  f110  f122  f134  f146\r\nf003  f015  f027  f039  f051  f063  f075  f087  f099  f111  f123  f135  f147\r\nf004  f016  f028  f040  f052  f064  f076  f088  f100  f112  f124  f136  f148\r\nf005  f017  f029  f041  f053  f065  f077  f089  f101  f113  f125  f137  f149\r\nf006  f018  f030  f042  f054  f066  f078  f090  f102  f114  f126  f138  f150\r\nf007  f019  f031  f043  f055  f067  f079  f091  f103  f115  f127  f139  \r\nf008  f020  f032  f044  f056  f068  f080  f092  f104  f116  f128  f140  \r\nf009  f021  f033  f045  f057  f069  f081  f093  f105  f117  f129  f141  \r\n--More--",
+        "\r\u001b[K\rstudent@node01:~$ ls many/f"
+      ]
+    },
+    {
+      "name": "complete-narrow",
+      "note": "The first Tab rings the bell (nothing to insert), the second lists in a 40-column screen.",
+      "cols": 40,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "ls ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "ls ",
+        "\u0007",
+        "\r\nalpha1    bin/      file.txt\r\nalpha2    dir1/     my dir/\r\nbeta      dir2/     my file\r\nstudent@node01:~$ ls "
+      ]
+    },
+    {
+      "name": "complete-empty-command",
+      "note": "85 candidates (builtins, keywords, kubeadm, kubectl, ./) are fewer than completion-query-items (100): the second Tab lists without asking and the 'n' is inserted into the line.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "\t",
+        "\t",
+        "n"
+      ],
+      "outputs": [
+        "\u0007",
+        "\r\n!          cd         elif       function   logout     shopt      unalias\r\n./         command    else       getopts    mapfile    source     unset\r\n:          compgen    enable     hash       popd       suspend    until\r\n[          complete   esac       help       printf     test       wait\r\n[[         compopt    eval       history    pushd      then       while\r\n]]         continue   exec       if         pwd        time       {\r\nalias      coproc     exit       in         read       times      }\r\nbg         declare    export     jobs       readarray  trap       \r\nbind       dirs       false      kill       readonly   true       \r\nbreak      disown     fc         kubeadm    return     type       \r\nbuiltin    do         fg         kubectl    select     typeset    \r\ncaller     done       fi         let        set        ulimit     \r\ncase       echo       for        local      shift      umask      \r\nstudent@node01:~$ ",
+        "n"
+      ]
+    },
+    {
+      "name": "unbound-and-unsupported-keys",
+      "note": "Reference only. Alt-. (yank-last-arg), Ctrl-T (transpose-chars) after typing 'ab'. PageUp is history-search-backward (no entry starts with 'ba': bell) and Insert is overwrite-mode (toggles, prints nothing) in readline's defaults (bind-p.txt).",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "echo a b",
+        "\r",
+        "x",
+        "\u001b.",
+        "\u0015",
+        "ab",
+        "\u0014",
+        "\u001b[5~",
+        "\u001b[2~"
+      ],
+      "outputs": [
+        "echo a b",
+        "\r\n\u001b[?2004l\ra b\r\n\u001b[?2004hstudent@node01:~$ ",
+        "x",
+        "b",
+        "\b\b\u001b[K",
+        "ab",
+        "\b\bba",
+        "\u0007",
+        ""
+      ]
+    },
+    {
+      "name": "ctrl-c-pending-input-blocking",
+      "note": "Typeahead during a blocking command: the line is typed while sleep 2 runs; the final empty chunk sends nothing and collects output for 2.5 s. The setup links sleep into $HOME/bin.",
+      "cols": 80,
+      "rows": 24,
+      "setup": "PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/sleep bin/sleep; clear; PATH=$HOME/bin",
+      "setupOutput": "\u001b[?2004h-bash-5.2$ PS1='student@node01:\\w\\$ '; mkdir -p bin dir1 dir2 'my dir' && touch file.txt alpha1 alpha2 'my file' beta && printf '#!/bin/sh\\n' > bin/kubectl && chmod +x bin/kubectl && cp bin/kubectl bin/kubeadm && ln -s /usr/bin/sleep bin/sleep; clear; PATH=$HOME/bin\r\n\u001b[?2004l\r\u001b[H\u001b[2J\u001b[3J\u001b[?2004hstudent@node01:~$ ",
+      "keys": [
+        "sleep 2",
+        "\r",
+        "echo typed-ahead",
+        "\r",
+        ""
+      ],
+      "outputs": [
+        "sleep 2",
+        "\r\n\u001b[?2004l\r",
+        "echo typed-ahead",
+        "\r\n",
+        "\u001b[?2004hstudent@node01:~$ echo typed-ahead\r\n\u001b[?2004l\rtyped-ahead\r\n\u001b[?2004hstudent@node01:~$ "
+      ]
+    }
+  ]
+}

@@ -32,8 +32,13 @@ npm run transcript:capture -- <file|dir>  # write real bash/coreutils output int
 npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
 npm run dev                   # (phase 10) web app with hot reload
 npm start                     # (phase 10) build, then serve the app and the persistence API locally
-npm run play -- --topology <name> [--seed N]      # (phase 03) sit in a simulated machine from this terminal
-npm run sim -- --topology <name> -c "<commands>"  # (phase 03) run commands non-interactively (how you verify behavior)
+npm run play -- --topology ubuntu-1 [--seed N]    # sit in a simulated machine from this terminal (Ctrl-] leaves);
+                                                  # records to data/play/, $EDITOR answers vim/nano
+npm run play -- --replay <file>                   # replay a recording; checks it reaches the same world hash
+npm run sim -- --topology ubuntu-1 -c 'cmd1\ncmd2' # run commands without a human and print the screen (how you
+                                                  # verify behavior); also a script file or -, --transcript, --raw,
+                                                  # --step 1s; directives @advance 30s, @keys \x03, @resize CxR,
+                                                  # @editor <<EOF … EOF (see apps/cli/src/script.ts, --help)
 npm run lab -- <item-id> [--seed N]               # (phase 09) play a content item in this terminal
 npm run content:check         # (phase 09) validate every content item (schema, unsolved fails, solutions pass)
 npm run content:i18n          # (phase 11) report missing or outdated Vietnamese text (never a gate)
@@ -60,7 +65,8 @@ docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against
 packages/*/transcripts/  transcript tests (docs/TRANSCRIPTS.md), run by each package's transcripts.test.ts
 fixtures/golden/   captured real output per Kubernetes version (committed)
-fixtures/reference/ workstation captures (rank 3) with their capture scripts, e.g. linux/vfs-syscalls
+fixtures/reference/ workstation captures (rank 3) with their capture scripts, e.g. linux/vfs-syscalls,
+                   bash/readline (real readline output key by key, bind -p)
 ```
 
 Dependencies point one way: `kernel` ← `host` ← domain plugins. `learn` imports `kernel` only, never

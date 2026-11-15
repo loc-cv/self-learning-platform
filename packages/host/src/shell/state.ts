@@ -35,6 +35,8 @@ export interface ShellState {
   ppid: string;
   /** Virtual time the shell started, for SECONDS. */
   startedAt: number;
+  /** Started with --noediting: an interactive shell reads lines without readline. */
+  noediting?: boolean;
 }
 
 /**
@@ -64,7 +66,17 @@ export function exportOrder(state: ShellState): string[] {
   });
 }
 
+/**
+ * Changing PATH empties the command hash table (bash 5.2 variables.c sv_path → phash_flush).
+ * reference: bash 5.2.21: after `clear; PATH=$HOME/bin`, `clear` is "command not found"
+ * (fixtures/reference/bash/readline.json `reverse-search`, the setup line run again).
+ */
+function pathChanged(state: ShellState, name: string): void {
+  if (name === 'PATH') state.hash = {};
+}
+
 export function setVar(state: ShellState, name: string, value: string, opts: { export?: boolean } = {}): void {
+  pathChanged(state, name);
   const cur = state.vars[name];
   if (cur) {
     cur.value = value;
@@ -81,6 +93,7 @@ export function getVar(state: ShellState, name: string): string | undefined {
 }
 
 export function unsetVar(state: ShellState, name: string): void {
+  pathChanged(state, name);
   delete state.vars[name];
 }
 

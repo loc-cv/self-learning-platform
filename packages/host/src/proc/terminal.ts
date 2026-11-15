@@ -1,12 +1,12 @@
 // Opening a terminal: a tty plus a login shell as its session leader, with descriptors 0, 1 and 2
-// on the terminal. Phase 03 wraps this in the line editor and the `tty.open` input's full form.
+// on the terminal. The `tty.open` input and test sessions both come here.
 
 import { put, type Ctx } from '@simlab/kernel';
 import { getMachine, hostSlice } from '../machine.ts';
 import { credFor, userByName } from '../users.ts';
 import { loginEnvironment } from './environment.ts';
 import { spawnProcess } from './runtime.ts';
-import type { Tty } from './types.ts';
+import type { Tty, TtyMode } from './types.ts';
 
 export interface TerminalOptions {
   /** Terminal id; default `tty<n>` from a world counter. */
@@ -20,6 +20,8 @@ export interface TerminalOptions {
   argv?: string[];
   /** Working directory; default the user's home. */
   cwd?: string;
+  /** Terminal settings other than `stty sane`'s (a transcript session turns echo off). */
+  mode?: Partial<TtyMode>;
 }
 
 export interface Terminal {
@@ -34,7 +36,20 @@ export function openTerminal(ctx: Ctx, opts: TerminalOptions): Terminal {
   if (!user) throw new Error(`machine ${machine.id}: no user ${opts.user}`);
   const id = opts.id ?? `tty${ctx.nextId('host.tty')}`;
   if (hostSlice(ctx).ttys[id]) throw new Error(`tty ${id} already exists`);
-  const tty: Tty = { id, machine: machine.id, cols: opts.cols ?? 80, rows: opts.rows ?? 24, session: '', foreground: '', input: '', eof: [] };
+  const tty: Tty = {
+    id,
+    machine: machine.id,
+    cols: opts.cols ?? 80,
+    rows: opts.rows ?? 24,
+    session: '',
+    foreground: '',
+    mode: { icanon: true, echo: true, isig: true, ...opts.mode },
+    input: '',
+    eof: [],
+    line: '',
+    typeahead: '',
+    readline: { kill: '', lastSearch: '' },
+  };
   put(hostSlice(ctx).ttys, id, tty);
   const fd = { kind: 'tty' as const, tty: id };
   const pid = spawnProcess(ctx, machine.id, undefined, {

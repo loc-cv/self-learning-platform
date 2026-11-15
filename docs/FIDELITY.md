@@ -202,14 +202,16 @@ the shape (the wording of `<what>` is fixed by the program that prints it):
 
 - The prefix `[sim] ` appears at the start of every line of a notice and nowhere in simulated
   output. No real tool prints it, which is the point.
-- When standard error is a terminal the line is written in a distinct style, with SGR sequences
-  that the web UI and the terminal player render the same way. When it is a pipe or a file the
-  line is plain.
+- When standard error is a terminal each line is written in yellow (`ESC[33m` … `ESC[0m`,
+  `styleNotice`, `docs/decisions.md` D-026), which the web UI and the terminal player render the
+  same way. When it is a pipe or a file the line is plain. Notices from the line editor (a
+  readline command that is not simulated) and the terminal (Ctrl-Z during a command) use the same
+  style.
 - The exit status is **250**. The value is the simulator's own and is reserved: no simulated
   program returns it for any other reason.
 - All notices are printed through one function in the host package (`simNotice` in
   `packages/host/src/proc/notice.ts`, reached through `ProcApi.unsupported` and the shell's own
-  `notice`). Programs never format the prefix themselves. The terminal style is phase 03's.
+  `notice`). Programs never format the prefix themselves.
 
 ### 4.3 Consequences for content
 
@@ -281,13 +283,15 @@ Entry format:
 | DIV-002 | Streams and files | Contents are bytes; binary and invalid UTF-8 data pass through untouched | Contents are Unicode text stored as UTF-8; byte escapes (`printf '\xc3\xa9'`) are decoded, and a byte sequence that is not valid UTF-8 becomes U+FFFD | World state is JSON strings; binary data has no use in the scenarios | Do not use the simulator to learn about binary pipelines (`gzip -c`, `base64 -d` of binary) | 02 |
 | DIV-003 | bash startup | A login shell reads `/etc/profile` and `~/.profile`, which reads `~/.bashrc`: Ubuntu's defines `ll`, `la`, `l` and `--color=auto` aliases for `ls` and `grep` | No startup file is read yet | They need `if`, `case` and `for` (phase 22a) | `ll` is "command not found"; `ls` and `grep` print no colors | 02 |
 | DIV-004 | Commands and time | Every command takes some wall-clock time | A command takes no virtual time unless it waits (`sleep`); files written by successive commands can have the same mtime | Virtual time is deterministic | `ls -t` and `-nt` cannot order files written in the same instant | 02 |
-| DIV-005 | Terminal | The line discipline echoes input and the shell (readline) edits lines and draws the prompt | Phase 02's terminal does not echo, edit or draw a prompt | Phase 03 builds the line editor | Only visible before phase 03 | 02 |
 | DIV-006 | Directory order | `readdir` returns entries in the file system's order (hash order on ext4); `ls -U`, `rm -r`, `cp -r`, `chmod -R` and `grep -r` follow it | Name order, `.` and `..` first | The real order is not reproducible | Output of recursive commands lists files in sorted order; golden transcripts avoid depending on it | 02 |
 | DIV-007 | Allocated blocks | ext4 allocates in 4 KiB blocks; `ls -s` and the `total` line count them | ceil(size/4096)×8 sectors for a file, 8 for a directory, 0 for a symlink shorter than 60 bytes, 8 otherwise (checked on the workstation) | The VFS has no block allocator | None for ordinary files; sparse files do not exist | 02 |
 | DIV-008 | Access and birth times | Files have atime and birth time | Only mtime and ctime | Nothing in the curriculum depends on them | `ls -u`, `touch -a`, `test -N` print a notice | 02 |
 | DIV-009 | `grep` matching | glibc's regex engine and Unicode tables | Patterns translated to JavaScript regular expressions; classes and case folding from the JavaScript engine's Unicode tables; a back-reference to a group that did not take part matches empty; `-NUM` given in separate arguments is decided by a heuristic | No regex engine of glibc's in the engine | Exotic Unicode classes and back-references in alternations can differ | 02 |
 | DIV-010 | `tail -f` | inotify wakes immediately; tail exits as soon as the reader of its pipe goes away | With one file it wakes on each write; with several files or `-F` it also polls every second; it notices a gone reader at its next write | `ProcApi.wait` takes one topic | Output can lag up to a second with `-F`; `tail -f log \| grep -q x` ends at tail's next write | 02 |
 | DIV-011 | Program name in messages | GNU tools name themselves by `argv[0]` as typed (`/usr/bin/sleep: invalid time interval`) | Most programs use the base name (`sleep:`); echo, printf, test and `[` use argv[0] | The helpers in `programs/lib/io.ts` use the base name | Only visible when a command is typed with a path (carry-over in STATUS.md) | 02 |
+| DIV-012 | Terminal: paste | bash 5.2 turns on bracketed paste (`ESC[?2004h` before each prompt, readline's enable-bracketed-paste on, `bind -v`): a pasted block lands in the line as one edit and runs only when Enter is pressed | Bracketed paste is not turned on: the terminal sends a paste as typed keys, so each pasted newline runs its line at once, as bash does with enable-bracketed-paste off | The line editor would have to edit and display multi-line pasted buffers; the screens after Enter are the same | A pasted multi-line block runs line by line without waiting for Enter; a pasted line with a mistake runs before it can be fixed | 03 |
+| DIV-013 | Line editor | readline implements about 120 bound commands, a kill ring with M-y, undo, keyboard macros and numeric arguments; an edit to a recalled history line stays in the history after Enter (revert-all-at-newline off); `\j` and `\#` in PS1 count jobs and commands | The common commands are implemented (`docs/COVERAGE.md`, Terminal); every other bound command prints a notice; the kill ring holds one entry; edits to recalled history lines are kept only while the line is being edited; `\j` is 0 (no job control) and `\#` equals `\!` | Behavior beyond the common editing keys is rarely used under exam conditions | A rarely used key prints a notice instead of acting | 03 |
+| DIV-014 | `vim`, `vi`, `nano` | They draw a full-screen editor on the terminal (alternate screen) | They ask the front end to edit the file: an editor overlay in the web UI (phase 10), the user's own `$EDITOR` in the terminal player; one named file only, no options | A terminal-native vi is out of scope (`PLAN.md` §6.2) | Key bindings come from the overlay or the user's editor, not the real vim; `:!cmd`, `:r !cmd` and multiple buffers do not exist | 03 |
 
 The non-goals in `PLAN.md` §4.3 (no packets, no real cryptography, a bash subset,
 an editor overlay instead of a terminal vi, a curated image catalog) become entries when the phase

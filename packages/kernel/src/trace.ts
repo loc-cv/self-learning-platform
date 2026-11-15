@@ -61,15 +61,33 @@ export interface GapEvent {
 }
 
 /**
- * Bytes for a terminal (docs/ARCHITECTURE.md §2.10). The engine keeps no screen: the UI's terminal
- * emulator does. Phase 03 adds editor requests to this union.
+ * What leaves the engine for a front end (docs/ARCHITECTURE.md §2.10): bytes for a terminal (the
+ * engine keeps no screen: the UI's terminal emulator does), and the editor protocol's messages
+ * (§3.8): a program asks the front end to edit a file, and hears whether a save worked.
  */
-export interface OutputRecord {
-  kind: 'tty';
-  /** Terminal id. */
-  tty: string;
-  data: string;
-}
+export type OutputRecord =
+  | {
+      kind: 'tty';
+      /** Terminal id. */
+      tty: string;
+      data: string;
+    }
+  | {
+      kind: 'editor.open';
+      /** Editor session id, named again by the `editor.save` and `editor.close` inputs. */
+      session: string;
+      /** The terminal of the program that asked, if it has one. */
+      tty?: string;
+      /** What to edit; the host defines its fields (flavor, path, content, readOnly, language). */
+      request: Json;
+    }
+  | {
+      kind: 'editor.status';
+      session: string;
+      /** False when the last save could not be written; `message` says why, as the editor would. */
+      ok: boolean;
+      message?: string;
+    };
 
 export interface Ports {
   trace?: (record: TraceRecord) => void;

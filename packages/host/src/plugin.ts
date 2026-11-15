@@ -1,19 +1,25 @@
 // The host plugin: the `host` slice and the file providers machines need from the start.
 
-import { put, type Plugin, type SliceSpec } from '@simlab/kernel';
+import { put, TOPOLOGY, type Plugin, type SliceSpec } from '@simlab/kernel';
 import type { HostSlice } from './machine.ts';
 import { PROGRAM } from './proc/program.ts';
-import { attachProcesses, RUN, runHandler, ttyInput } from './proc/runtime.ts';
+import { attachProcesses, RUN, runHandler } from './proc/runtime.ts';
+import { ttyClose, ttyInput, ttyResize } from './tty/discipline.ts';
 import { openTerminal } from './proc/terminal.ts';
+import { editorClose, editorSave } from './proc/editor.ts';
 import { PROGRAMS } from './programs/index.ts';
+import { bashCompleter } from './shell/complete.ts';
+import { COMPLETION } from './tty/complete.ts';
+import { ubuntu1Topology } from './topology.ts';
 import { FILE_PROVIDER, type FileProviderSpec } from './vfs/provider.ts';
 
-export const HOST_SLICE_VERSION = 1;
+/** 2: terminals gained modes and the line editor; editor sessions (phase 03). */
+export const HOST_SLICE_VERSION = 2;
 
 const hostSliceSpec: SliceSpec<HostSlice> = {
   name: 'host',
   version: HOST_SLICE_VERSION,
-  init: () => ({ machines: {}, streams: {}, ttys: {} }),
+  init: () => ({ machines: {}, streams: {}, ttys: {}, editors: {} }),
   adopt(slice) {
     const refreeze = <V>(table: Record<string, V>): void => {
       for (const k of Object.keys(table)) put(table, k, table[k] as V);
@@ -27,6 +33,7 @@ const hostSliceSpec: SliceSpec<HostSlice> = {
     }
     refreeze(slice.streams);
     refreeze(slice.ttys);
+    refreeze(slice.editors);
   },
   attach: attachProcesses,
 };
@@ -60,6 +67,32 @@ export const hostPlugin: Plugin = {
         ttyInput(ctx, tty, data);
       },
     },
+    {
+      kind: 'tty.resize',
+      handle(ctx, input) {
+        const { tty, cols, rows } = input as unknown as { tty: string; cols: number; rows: number };
+        ttyResize(ctx, tty, cols, rows);
+      },
+    },
+    {
+      kind: 'editor.save',
+      handle(ctx, input) {
+        const { session, content } = input as unknown as { session: string; content: string };
+        editorSave(ctx, session, content);
+      },
+    },
+    {
+      kind: 'editor.close',
+      handle(ctx, input) {
+        editorClose(ctx, (input as unknown as { session: string }).session);
+      },
+    },
+    {
+      kind: 'tty.close',
+      handle(ctx, input) {
+        ttyClose(ctx, (input as unknown as { tty: string }).tty);
+      },
+    },
   ],
-  contributions: { [FILE_PROVIDER]: [nullDevice], [PROGRAM]: PROGRAMS },
+  contributions: { [FILE_PROVIDER]: [nullDevice], [PROGRAM]: PROGRAMS, [COMPLETION]: [bashCompleter], [TOPOLOGY]: [ubuntu1Topology] },
 };

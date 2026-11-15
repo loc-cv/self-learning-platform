@@ -5,7 +5,7 @@ import type { Ctx } from '@simlab/kernel';
 import { getMachine, hostSlice } from '../machine.ts';
 import { FsError } from '../vfs/errno.ts';
 import { createFs } from '../vfs/fs.ts';
-import { simNotice, SIM_STATUS } from './notice.ts';
+import { simNotice, SIM_STATUS, styleNotice } from './notice.ts';
 import type { OpenRequest, ProcApi, Syscall } from './program.ts';
 import {
   ExecImage,
@@ -13,14 +13,15 @@ import {
   installFd,
   openFileFd,
   ProgramExit,
-  setForeground,
   signalGroup,
   signalProcess,
   spawnProcess,
   updateProc,
 } from './runtime.ts';
 import { createFilledStream, createStream } from './descriptors.ts';
+import { setForeground } from '../tty/discipline.ts';
 import type { ExitStatus, Fd } from './types.ts';
+import type { EditorResult } from './editor.ts';
 
 export function createProcApi(ctx: Ctx, machineId: string, pid: string): ProcApi {
   const proc = () => getProc(getMachine(ctx, machineId), pid);
@@ -85,6 +86,9 @@ export function createProcApi(ctx: Ctx, machineId: string, pid: string): ProcApi
       if (opts.line) sc.line = true;
       return (yield sc) as string | null;
     },
+    *readLine(fd, req) {
+      return (yield { op: 'read', fd, edit: req }) as string | null;
+    },
     *write(fd, data) {
       if (data === '') return;
       yield { op: 'write', fd, data };
@@ -96,13 +100,19 @@ export function createProcApi(ctx: Ctx, machineId: string, pid: string): ProcApi
       const sc: Syscall = timeout === undefined ? { op: 'wait', topic } : { op: 'wait', topic, timeout };
       return (yield sc) as 'published' | 'timeout';
     },
+    *openEditor(req) {
+      return (yield { op: 'edit', request: req }) as EditorResult;
+    },
     *waitpid(child) {
       return (yield { op: 'waitpid', pid: child }) as ExitStatus;
     },
     *unsupported(gap) {
       const program = gap.program ?? api.name;
       ctx.gap({ kind: gap.kind, program, what: gap.what, commandLine: proc().argv.join(' '), machine: machineId });
-      if (api.fd(2)) yield* api.write(2, simNotice(program, gap.what, gap.hints ?? []));
+      if (api.fd(2)) {
+        const text = simNotice(program, gap.what, gap.hints ?? []);
+        yield* api.write(2, api.isatty(2) ? styleNotice(text) : text);
+      }
       throw new ProgramExit(SIM_STATUS);
     },
 

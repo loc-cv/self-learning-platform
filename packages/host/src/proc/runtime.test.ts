@@ -209,7 +209,8 @@ describe('fork, snapshot and replay', () => {
     rec.deliver({ kind: 'tty.bytes', tty: 't1', data: 'cat out\n' });
     k.advance(10);
     rec.checkpoint();
-    expect(cap.take('t1')).toBe('     1\ttick 1\n     2\ttick 2 even\n');
+    // A `tty.open` terminal is a learner's: prompt, echo, then the output.
+    expect(cap.take('t1')).toContain('$ cat out\n     1\ttick 1\n     2\ttick 2 even\n');
     const result = replay(rec.log(), () => world({}).kernel);
     expect(result.diverged).toBeUndefined();
     expect(result.kernel.hash()).toBe(k.hash());

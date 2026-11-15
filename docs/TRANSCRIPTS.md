@@ -35,6 +35,10 @@ x (no-eol)                                       ← output that does not end in
 
 Source: `packages/host/src/transcript/format.ts` (parser and writer), `runner.ts` (fresh world,
 one session), `session.ts` (typing a line, running until the prompt returns, collecting output).
+The session is set up the way the capture below sets up real bash: the shell runs as
+`-bash --noediting`, the terminal's echo is off, and `PS1=; PS2=` is typed first, so the output
+is exactly what the commands print (`docs/decisions.md` D-028). `npm run sim -- --transcript`
+prints a run in this format.
 Later phases pass their own world to `runTranscript` (a topology instead of one machine).
 
 ## Tags

@@ -46,6 +46,12 @@ export interface StepSpec extends Contribution {
   run(ctx: StepCtx, args: Json): void;
 }
 
+/** Registry kinds of the contracts below. */
+export const CHECK = 'check';
+export const FAULT = 'fault';
+export const STEP = 'step';
+export const TOPOLOGY = 'topology';
+
 export interface TopologyInfo {
   /** Where a learner's terminal opens by default. */
   entry: { machine: string; user: string };

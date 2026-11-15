@@ -16,5 +16,15 @@
   "exclude": [
     "src/**/*.test.ts"
   ],
-  "references": []
+  "references": [
+    {
+      "path": "../../packages/kernel"
+    },
+    {
+      "path": "../../packages/host"
+    },
+    {
+      "path": "../../packages/k8s"
+    }
+  ]
 }

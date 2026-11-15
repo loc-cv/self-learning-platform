@@ -212,6 +212,73 @@ found`), exactly what a learner sees. Format and procedure: `docs/TRANSCRIPTS.md
   and `for` (phase 22a). A login shell starts as `bash --noprofile --norc`, so `ll`, `la` and the
   `--color=auto` aliases of Ubuntu's `.bashrc` do not exist yet (STATUS.md, temporary shortcuts).
 - The terminal is minimal: canonical input, Ctrl-C and Ctrl-D, `onlcr`. No echo, no line editing,
-  no prompt drawing; the shell passes its prompt and phase 03's line editor draws it.
+  no prompt drawing; the shell passes its prompt and phase 03's line editor draws it. (Done in
+  phase 03: D-027.)
 - `debianutils`' `which` is a `/bin/sh` script; it is simulated as a program (DIV-001), because
   `/bin/sh` is dash, which is not simulated.
+
+## Phase 03 (2026-11-16)
+
+**D-026 — The terminal style of a `[sim]` notice is yellow.** On a terminal each notice line is
+written as `ESC[33m` … `ESC[0m` (`styleNotice` in `packages/host/src/proc/notice.ts`); to a pipe
+or a file it is plain. Yellow reads on dark and light backgrounds and is not a color the
+simulated tools use for errors. Plain transcript sessions strip the style (`unstyleNotices`), so
+transcripts keep showing notices as text.
+- Rules out dim text (unreadable on some themes) and a style on the `[sim]` prefix alone (easy to
+  miss in a long notice).
+
+**D-027 — The line editor is readline's emacs mode, run by the terminal actor.** Specified in
+`docs/ARCHITECTURE.md` §3.6 (as built).
+- Key bindings are bash 5.2.21's compiled-in defaults without an inputrc, copied from `bind -p`
+  (`fixtures/reference/bash/bind-p.txt` → `packages/host/src/tty/bindings.ts`; a test keeps the
+  two in step). A bound command the editor implements runs; a bound command it does not prints a
+  notice under the line and redraws it; an unbound sequence rings the bell and reads the rest of
+  the sequence as new keys, as readline does (`ESC [4~` inserts `~`).
+- Ground truth for behavior is a capture of real bash on a pty, key by key
+  (`fixtures/reference/bash/readline.{py,json}`, 38 cases). The test compares screens and cursor
+  positions after every key, not bytes: readline's choice of cursor sequences is not reproduced.
+- Completion is split as in bash: readline's half (word boundaries, quoting, common prefix,
+  double Tab, `Display all N possibilities?`, `--More--`) is `tty/complete.ts` and `tty/editor.ts`;
+  bash's half (what the word can become) is a `completion` contribution (`shell/complete.ts`,
+  named in the shell's edit request with the variable and alias names it needs). A program
+  completes its own arguments with `ProgramSpec.complete`, the stand-in for a bash-completion
+  function; builtins `cd` and `pushd` complete directories as bash-completion 2.11 does.
+- The kill ring, last search string and line editor state are world data on the `Tty`; a shell
+  at its prompt with a half-typed line stays quiescent and survives snapshot and restore.
+- Bracketed paste is not enabled (DIV-012).
+
+**D-028 — Two kinds of headless session.** A plain session (transcripts, most unit tests) is set
+up as the transcript capture sets up real bash: `-bash --noediting`, echo off, `PS1=; PS2=` typed
+first. A terminal session (key-level tests, `npm run sim`) is a learner's terminal: line editing,
+echo, the real prompt. Both wait until the shell itself waits for terminal input again (at PS1
+or PS2), answering editor requests on the way.
+
+**D-029 — The editor protocol as built.** `ProcApi.openEditor` yields an `edit` syscall; the host
+records an editor session (`HostSlice.editors`), sends `{ kind: 'editor.open', session, tty,
+request }` through the output port and blocks the program until `editor.close`. Each
+`editor.save` writes the file with the program's credentials, working directory and umask, in
+place (owner and mode kept), and answers `{ kind: 'editor.status', ok, message }`; the failure
+message is vim's `"NAME" E212: Can't open file for writing`. The request carries `flavor`
+(`vim` or `nano`), `path`, `name` (as typed), `content`, `readOnly` and a `language` hint.
+`kubectl edit` (phase 08) reuses it on a temporary file. The terminal player answers with the
+user's `$VISUAL`, `$EDITOR` or `vi` on a temporary copy (saved only if the file changed);
+headless runs answer with supplied content.
+- The packages `vim`, `vim-tiny`, `nano` and `sensible-utils` joined the base system with the
+  alternatives their maintainer scripts set (`editor` → nano, `vi`/`vim`/`view` → vim.basic),
+  from the Ubuntu 24.04 cloud image manifest's versions (`tools/src/base/capture_binaries.py`).
+
+**D-030 — Command-line tools.** `npm run play` and `npm run sim` live in `apps/cli`.
+- The player is a core (`player.ts`: world, interactive driver, recorder, editor answers; tested
+  with a fake clock) and a terminal layer (`play.ts`: raw mode, resize, `Ctrl-]` to leave, gap
+  records appended to `data/gaps.jsonl`). Sessions are recorded by default to
+  `data/play/<time>-<topology>-seed<N>.json`; `--replay` checks the final world hash.
+- Script mode types each line and runs virtual time until the shell waits for input again; `@`
+  directives advance time, type raw keys, resize, and supply editor content. It prints the screen
+  (a small terminal model with scrollback, `tty/screen.ts`), the raw bytes, or transcript format.
+- The first topology is `ubuntu-1`: one Ubuntu machine `node01` with the user `student`, registered
+  by the host plugin under the kernel's `topology` kind.
+
+**D-031 — The prompt before startup files are read.** A login shell sets PS1 to what Ubuntu's
+`~/.bashrc` would leave when `~/.profile` and `~/.bashrc` are the files the system installed
+(the colored `\u@\h:\w\$ ` with the xterm title for a user on an `*-256color` terminal, plain
+for root), and bash's default otherwise. A temporary shortcut until phase 22a runs the files.

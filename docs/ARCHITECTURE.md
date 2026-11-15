@@ -505,9 +505,10 @@ The engine does no I/O. Three write-only ports carry what must leave it; the app
 | `gap` | `GapRecord` without wall time (`docs/FIDELITY.md` §4.4) | `data/gaps.jsonl` through the server; failure in content tests |
 
 Write-only is what allows these to live outside world state: nothing the engine does can depend
-on them. Phase 02 added `output` to `Ports` and `Ctx.output(record)`; a record is
-`{ kind: 'tty', tty, data }`, with newlines already turned into CR LF by the terminal's `onlcr`.
-Phase 03 adds editor requests.
+on them. Phase 02 added `output` to `Ports` and `Ctx.output(record)`; phase 03 made
+`OutputRecord` a union: `{ kind: 'tty', tty, data }` (newlines already turned into CR LF by the
+terminal's `onlcr`, or written as CR LF by the line editor), `{ kind: 'editor.open', session,
+tty?, request }` and `{ kind: 'editor.status', session, ok, message? }` (§3.8).
 
 ### 2.11 Plugin registry and extension contracts
 
@@ -990,11 +991,33 @@ interface LineEditorState {
   terminal output back.
 - The UI moves bytes and nothing else: keystrokes in, output bytes out, plus resize.
 
-Phase 02 built only what the shell needs (`Tty` in `proc/types.ts`): input queued as text with
-end-of-file marks from Ctrl-D, a canonical read returning one line, Ctrl-C discarding pending input
-and sending SIGINT to the foreground process group, and `onlcr` output. `tty.open` and `tty.bytes`
-inputs drive it. There is no echo, mode or line editor yet; the shell passes its prompt, which
-phase 03's editor will draw.
+**As built in phase 03** (`packages/host/src/tty/`, `docs/decisions.md` D-027):
+
+- `Tty` (`proc/types.ts`) holds `mode` (`icanon`, `echo`, `isig`; a new terminal is `stty sane`),
+  `input` and `eof` (completed canonical input), `line` (the canonical line being typed),
+  `typeahead` (bytes that arrived without echo after the editor finished its line), `editor`,
+  and `readline` (kill ring and last search string, which outlive one line). Inputs `tty.open`,
+  `tty.bytes`, `tty.resize` (redraws a line being edited) and `tty.close` (SIGHUP to the session,
+  reads see end of file) drive it.
+- `discipline.ts` is n_tty: ICRNL, echo with ECHOCTL (`^C`), ECHOE/ECHOKE erasure, VEOF, VERASE,
+  VKILL, VWERASE, VREPRINT. Signal characters act when they arrive. Ctrl-C flushes input and sends
+  SIGINT; Ctrl-\ and Ctrl-Z do nothing at the prompt (bash ignores SIGQUIT and SIGTSTP) and print
+  a notice during a command (no core dumps or job control). What was typed while no editor read
+  (echoed by the discipline) becomes the next editor's input, as with readline.
+- A program reads a line with editing through `ProcApi.readLine(fd, { prompt, history,
+  completer })`: a `read` syscall with an edit request. The prompt carries readline's \x01…\x02
+  markers around non-printing text. `editor.ts` is the state machine (one key at a time, bindings
+  from `bindings.ts`); `display.ts` lays out prompt and line with xterm's wrapping and writes the
+  redraws; `keys.ts` splits input into key sequences. The read completes when the line is
+  accepted (with its newline) or at Ctrl-D on an empty line (null).
+- Completion: readline's half in `complete.ts` and the editor, the program's half through the
+  `completion` contribution the request names (`shell/complete.ts` for bash) and
+  `ProgramSpec.complete` for a program's arguments.
+- The bash shell uses `readLine` when it is interactive, its input is a terminal and it was not
+  started with `--noediting`; otherwise it writes the prompt to standard error and reads lines.
+  PS1 and PS2 are decoded and expanded in `shell/prompt.ts`.
+- `screen.ts` is a small terminal model (not part of engine behavior) that tests and script mode
+  use to turn output bytes into what a screen shows.
 
 ### 3.7 Shell
 
@@ -1060,7 +1083,17 @@ sequenceDiagram
 - Headless runs answer the request without a UI: a scenario step supplies the new content or a
   list of replacements (`docs/SCENARIO_FORMAT.md` §6.3), and the runner turns it into the same two
   inputs.
-- That the editor is an overlay and not a terminal vi is a divergence; phase 10 registers it.
+- That the editor is an overlay and not a terminal vi is a divergence: `docs/FIDELITY.md`
+  DIV-014.
+
+**As built in phase 03** (`packages/host/src/proc/editor.ts`, `programs/editors/`, D-029): the
+request also carries `name`, the file name as typed, which vim calls the buffer. Sessions are
+world data (`HostSlice.editors`). `ProcApi.openEditor` returns `{ saved }` when the front end
+closes the session; each `editor.save` writes in place with the program's credentials and answers
+with `editor.status`. `vim` (also run as `vi`, `view`, `vim.basic`, `vim.tiny`) and `nano` (also
+`rnano`) edit one named file; options, several files, no file, a directory, an unreadable file
+and no terminal print notices. Headless sessions answer with `Session.onEditor`; script mode with
+`@editor`; the terminal player with the user's editor.
 
 ### 3.9 Units, behavior models and the network
 
@@ -1454,7 +1487,7 @@ Each item is decided by the phase named, and recorded here when decided.
 | PRNG algorithm (xoshiro128**, §2.6), hash function (cyrb53 core, Merkle, §2.7), heap (binary min-heap in an array, `heap.ts`), zero-time event limit (100 000, §2.5): **decided in 01** | 01 |
 | Process slice budget: **1000 syscalls, decided in 02** (§3.4) | 02 |
 | Supported shell grammar and the list of builtins: **phase 02's in `docs/COVERAGE.md`** | 02, 22a |
-| Line editor key bindings; SGR style of the `[sim]` notice | 03 |
+| Line editor key bindings (bash 5.2.21's `bind -p`, D-027); SGR style of the `[sim]` notice (yellow, D-026): **decided in 03** | 03 |
 | Normalization tokens; provenance registry implementation | 04 |
 | Processed OpenAPI format; exact pipeline stage order verified against upstream | 05a |
 | Work queue backoff parameters, controller latencies with their sources | 05b |

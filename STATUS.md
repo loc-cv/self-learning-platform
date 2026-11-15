@@ -16,7 +16,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 **M1 — Thin vertical slice**
 - [x] 01 `prompts/01-kernel-and-vfs.md`
 - [x] 02 `prompts/02-shell-and-coreutils.md`
-- [ ] 03 `prompts/03-tty-and-terminal-player.md`
+- [x] 03 `prompts/03-tty-and-terminal-player.md`
 - [ ] 04 `prompts/04-oracle-and-golden-fixtures.md` (needs only 00; can run earlier)
 - [ ] 05a `prompts/05a-k8s-api-store-and-pipeline.md`
 - [ ] 05b `prompts/05b-k8s-controllers.md`
@@ -95,15 +95,19 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   them from the machine's sysctl table.
 - **`/proc` and `/sys` are empty directories, and `/dev` holds only `null`.** `ls /proc` prints
   nothing, which no real machine does. Phase 25a makes `/proc` a provider mount with processes;
-  `/dev` entries come with the phases that need them (the tty devices with phase 03; `/dev/zero`
-  and `/dev/urandom` produce binary data, DIV-002, and wait for a consumer).
+  `/dev` entries come with the phases that need them (`/dev/tty` and `/dev/pts/N` with the first
+  consumer, at the latest phase 25a's `tty` and `ps` TTY column; phase 03 did not need them;
+  `/dev/zero` and `/dev/urandom` produce binary data, DIV-002, and wait for a consumer).
 - **No `/etc/shadow`, `/etc/gshadow` or `/etc/hosts`** (D-020). Shadow files come in phase 25a
   with passwords, `su` and `sudo`; `/etc/hosts` in phase 17.
 - **Startup files are not read** (D-025, DIV-003): a login shell starts as `bash --noprofile
   --norc`, so Ubuntu's `ll`/`la` and `--color=auto` aliases do not exist. Phase 22a (control flow)
-  sources `/etc/profile`, `~/.profile` and `~/.bashrc`.
-- **The terminal is minimal** (D-025, DIV-005): no echo (also no `^C` echo), no line editing, no
-  prompt drawing. Phase 03 builds the line discipline and editor.
+  sources `/etc/profile`, `~/.profile` and `~/.bashrc`, and then removes two stand-ins:
+  - the login prompt is set by `packages/host/src/shell/startup.ts` to what Ubuntu's `~/.bashrc`
+    would leave (D-031);
+  - bash-completion (which Ubuntu's `.bashrc` loads) is reproduced by completers: builtin ones in
+    `shell/complete.ts` (`cd`, `pushd`) and `ProgramSpec.complete`. These stay after 22a, since our
+    bash will not run bash-completion's scripts; 22a only stops pretending the files ran.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
@@ -124,6 +128,57 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 03 done.** Terminal, line editor, completion, editor protocol, `play` and `sim`.
+  - Built: the line discipline and readline's emacs mode in the engine (`packages/host/src/tty/`:
+    `discipline.ts`, `editor.ts`, `display.ts`, `keys.ts`, `bindings.ts`, `complete.ts`; `screen.ts`
+    is a terminal model for tests and script mode). bash reads with `ProcApi.readLine`, decodes and
+    expands PS1/PS2 (`shell/prompt.ts`), completes through `shell/complete.ts`, honors
+    `--noediting`, and sets `$?` to 130 after Ctrl-C at the prompt. The editor protocol
+    (`proc/editor.ts`, inputs `editor.save`/`editor.close`, output records `editor.open`/
+    `editor.status`) and the programs `vim` and `nano` (`programs/editors/`). The base system gained
+    vim, vim-tiny, nano and sensible-utils with their alternatives (`editor`, `vi`, `vim`, `view`,
+    `ex`, `pico`, plus `pager`, `rmt`, `nawk` that the old hand-written table missed), read from the
+    packages' maintainer scripts. `apps/cli`: `play.ts` (raw-mode player, `$EDITOR`, recording,
+    `--replay`), `sim.ts` (script mode), `player.ts`/`script.ts` (their testable cores), the
+    topology `ubuntu-1` (`packages/host/src/topology.ts`). Kernel: `OutputRecord` is a union,
+    registry kind constants (`TOPOLOGY`, …), `ENGINE_VERSION` 0.2.0, host slice version 2.
+  - Exit criteria. Key-level tests: `tty/editor.reference.test.ts` replays 38 cases captured from
+    real bash 5.2.21 on a pty (`fixtures/reference/bash/readline.{py,json}`) and requires the same
+    screen and cursor after every key: editing, kill and yank, history, Ctrl-R (incl. failed,
+    repeated, aborted), Ctrl-C at the prompt and during `sleep` and `cat`, Ctrl-D, wrapping at and
+    across the margin, multi-line quotes and here-documents, completion with zero, one and many
+    matches (common prefix, double Tab, `Display all 150 possibilities?`, `--More--`), typeahead.
+    `tty/terminal.test.ts` covers program completers, `cd`, `~user`, notices, Ctrl-Z, resize,
+    hang-up and a half-typed line across snapshot/restore. The player was run for real on a
+    pseudo-terminal (a Python pty driver, since this session has no interactive terminal): pipes
+    and redirects, `vim notes.txt` opening a real `$EDITOR` command that appended a line which
+    `cat` then showed, Ctrl-C, `exit`; `--replay` of that recording printed "world hash
+    fe172bb8974ba82a matches the recording". `apps/cli/src/player.test.ts` checks record → replay →
+    same hash in the gate. Script mode works (`npm run sim -- --topology ubuntu-1 -c …`) and
+    `CLAUDE.md` documents both commands. Not done by a human yet: the owner sitting in
+    `npm run play` with their own editor; worth five minutes before phase 04.
+  - Decisions D-026 (notice style: yellow), D-027 (line editor), D-028 (plain vs terminal
+    sessions), D-029 (editor protocol), D-030 (CLI, `ubuntu-1`), D-031 (prompt shortcut).
+    Divergences: DIV-005 removed; DIV-012 (no bracketed paste), DIV-013 (readline subset),
+    DIV-014 (editors are overlays). `docs/COVERAGE.md` has a Terminal section.
+  - Surprises. The reference exposed a phase 02 bug: assigning PATH did not empty bash's command
+    hash table (fixed in `shell/state.ts`). bash keeps a here-document command's trailing newline in
+    its history. When a Tab changed the line, the next Tab only rings the bell and the third lists.
+    Command completion marks matches that are directories, so the builtin `.` lists as `./`.
+    readline's `\e[4~` (End without an inputrc) rings the bell and inserts `~`, `\e[1~` only rings.
+    Ctrl-C at the prompt echoes `^C` where the cursor is. Real bash 5.2 turns on bracketed paste.
+  - For later phases. Phase 08's kubectl completer plugs into `ProgramSpec.complete`; through
+    `alias k=kubectl` it needs the alias's value, but `completionData` hands the completer alias
+    names only (or phase 08 models `complete -F … k`, which is what the real setup asks for).
+    Phase 10's web terminal drives the same `tty.*` and `editor.*` inputs and renders the
+    `editor.open` record as the overlay; it should decide on bracketed paste (DIV-012). Raw-mode
+    readers (a pager, phase 22b) set `Tty.mode` through `setTtyMode` (`tty/discipline.ts`), which
+    has no `ProcApi` method yet. The cloud image manifest lists gawk, whose postinst makes `awk`
+    → gawk (priority 10 over mawk's 5); FIDELITY §2.1 and phase 22b assume a server's `awk` is
+    mawk: phase 22b should check which install the simulated host stands for.
+  - Workflow: two parallel agents captured the readline reference and regenerated the base
+    binaries while the engine was written.
 
 - 2026-11-16 — **Phase 02 done.** Shell, process runtime, 40 programs, the transcript format.
   - Built: processes as world data (`packages/host/src/proc/`): pipes with capacity and SIGPIPE,

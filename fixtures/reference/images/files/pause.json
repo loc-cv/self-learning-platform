@@ -1,0 +1,54 @@
+{
+  "family": "pause",
+  "reference": "registry.k8s.io/pause:3.10.1",
+  "configDigest": "sha256:cd073f4c5f6a8e9dc6f3125ba00cf60819cae95c1ec84a1f146ee4a9cf9e803f",
+  "layers": [
+    "sha256:19e4906e80f6945d2222896120e909003ebf8028c30ebc8c99c3c42a35fb6b7f"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin"
+    ],
+    "allExecutables": true
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "missing"
+    },
+    {
+      "path": "/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/bin",
+      "type": "missing"
+    }
+  ],
+  "files": [
+    {
+      "path": "/pause",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    }
+  ],
+  "scripts": []
+}

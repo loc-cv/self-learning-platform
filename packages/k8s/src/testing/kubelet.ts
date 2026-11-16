@@ -6,8 +6,8 @@
 // grace period 0, as the kubelet's status manager does.
 //
 // Behavior per Pod: the annotation `simlab.test/kubelet` (`ready`, `not-ready`, `fail`), else the
-// configured default. Status shapes follow the kubelet's generateAPIPodStatus loosely; phase 06b
-// builds the real kubelet. Nothing here is user-visible.
+// configured default. Status shapes follow the kubelet's generateAPIPodStatus loosely; the real
+// kubelet is src/kubelet/, and topologies run it. Nothing here is user-visible.
 
 import type { Contribution, Ctx, Millis, Plugin } from '@simlab/kernel';
 import type { Json, JsonObject } from '../apimachinery/json.ts';

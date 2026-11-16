@@ -1,0 +1,106 @@
+{
+  "family": "etcd",
+  "reference": "registry.k8s.io/etcd:3.7.0-0",
+  "configDigest": "sha256:270fbeb69717150d82de2f31e6d6a93a6a60f8843d63df68cebe33c4b59c5f78",
+  "layers": [
+    "sha256:875ea9878944f3daf508d0e1b87b39ebc1ecce3ccaf3ed11a3cc59f1852a540a",
+    "sha256:bfb59b82a9b65e47d485e53b3e815bca3b3e21a095bd0cb88ced9ac0b48062bf",
+    "sha256:39dc083afc39bd8dc43d456fe7ff7d39292e593bb2769972c11bb2e5f9119386",
+    "sha256:bf7a4185f01524837d19abde915ffde84e64368b250f5b5e9f6f75aea62a11d4",
+    "sha256:b6824ed73363f94b3b2b44084c51c31bc32af77a96861d49e16f91e3ab6bed71",
+    "sha256:7c12895b777bcaa8ccae0605b4de635b68fc32d60fa08f421dc3818bf55ee212",
+    "sha256:3214acf345c0cc6bbdb56b698a41ccdefc624a09d6beb0d38b5de0b2303ecaf4",
+    "sha256:52630fc75a18675c530ed9eba5f55eca09b03e91bd5bc15307918bbc1a7e7296",
+    "sha256:dd64bf2dd177757451a98fcdc999a339c35dee5d9872d8f4dc69c8f3c4dd0112",
+    "sha256:b839dfae01f66e15c6a8b63520557ed315bdfe036342fa7a0c537259f10d7a9a",
+    "sha256:dcaa5a89b0ccda4b283e16d0b4d0891cd93d5fe05c6798f7806781a6a2d84354",
+    "sha256:069d1e267530c2e681fbd4d481553b4d05f98082b18fafac86e7f12996dddd0b",
+    "sha256:127b996dd5971bc6ff9c3324157efece08ce15af2fe4b14682e63fbefc57d251",
+    "sha256:4c557850794757a6b856a732741da52dea6c1c2ab7cc2b2e7782a24b76c5aa99",
+    "sha256:3288a117248abccbd2588be777cc65a68fd64d3a72a9539caabce79b9af56aeb",
+    "sha256:dd8944595dfb226bf07cecc61298dfa55ecb4a8141b86eade3220a435a563c79",
+    "sha256:cef6d7de07c02da86c297c3257e2acf96123bfeeafff8a106f43beb332dccac6"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin"
+    ],
+    "allExecutables": true
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/bin",
+      "type": "dir"
+    }
+  ],
+  "files": [
+    {
+      "path": "/etc/ssl/certs/ca-certificates.crt",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    },
+    {
+      "path": "/etc/update-motd.d/10-uname",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/lib/os-release",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/etcd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/etcdctl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/etcdutl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/share/doc/ca-certificates/copyright",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    }
+  ],
+  "scripts": []
+}

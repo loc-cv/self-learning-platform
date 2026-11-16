@@ -1,0 +1,2284 @@
+{
+  "family": "httpd",
+  "reference": "docker.io/library/httpd:latest",
+  "configDigest": "sha256:caeb353ae2292529c3988402ec4da0faf6392323b2383f0985a895a0f47912ad",
+  "layers": [
+    "sha256:37fb86c2a767b88d500c6872195f88078f64765fe0d2f9cc375cc2efbd4c0a41",
+    "sha256:5095e9eeb5b34fda6b6f79d29956466bfcecdeadbe5180ae9b43e1ce74a78e64",
+    "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+    "sha256:4a9c4d665867085c18c65c5ff005995d2e8e448fc2bcc54cec8eb9cb91d5260f",
+    "sha256:f66a634827fcf700a8dec5d87d7076d9d941daf29bd5090ac3f65796cd5da9ba",
+    "sha256:36f27ea25a129a54510ed2f2a330fab7a5dcaf941c0ef11ce7923bb92c3003b0"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin",
+      "/usr/local/apache2/bin"
+    ],
+    "allExecutables": false
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/sbin",
+      "type": "symlink",
+      "target": "usr/sbin",
+      "resolved": "/usr/sbin"
+    },
+    {
+      "path": "/bin",
+      "type": "symlink",
+      "target": "usr/bin",
+      "resolved": "/usr/bin"
+    },
+    {
+      "path": "/usr/local/apache2/bin",
+      "type": "dir"
+    }
+  ],
+  "files": [
+    {
+      "path": "/usr/bin/[",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/apt",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/apt-cache",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/apt-cdrom",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/apt-config",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/apt-get",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/apt-mark",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/arch",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/awk",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/etc/alternatives/awk",
+      "resolved": "/usr/bin/mawk",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/b2sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/base32",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/base64",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/basename",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/basenc",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/bash",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/bashbug",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/c_rehash",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/captoinfo",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "tic",
+      "resolved": "/usr/bin/tic",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cat",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chage",
+      "type": "file",
+      "mode": "2755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chcon",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chfn",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chgrp",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chmod",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/choom",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chown",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chrt",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chsh",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cksum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/clear",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/clear_console",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cmp",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/comm",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cp",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/csplit",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cut",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dash",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/date",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/deb-systemd-helper",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/deb-systemd-invoke",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/debconf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/debconf-apt-progress",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/debconf-communicate",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/debconf-copydb",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/debconf-escape",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/debconf-set-selections",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/debconf-show",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/df",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/diff",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/diff3",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dir",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dircolors",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dirname",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dmesg",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dnsdomainname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "hostname",
+      "resolved": "/usr/bin/hostname",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/domainname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "hostname",
+      "resolved": "/usr/bin/hostname",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-deb",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-divert",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-maintscript-helper",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-query",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-realpath",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-split",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-statoverride",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dpkg-trigger",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/du",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/echo",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/egrep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/env",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/expand",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/expiry",
+      "type": "file",
+      "mode": "2755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/expr",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/factor",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/fallocate",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/false",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/fgrep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/find",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/findmnt",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/flock",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/fmt",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/fold",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/getconf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/getent",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/getopt",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/gpasswd",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/grep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/groups",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/gunzip",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/gzexe",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/gzip",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/hardlink",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/head",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/hostid",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/hostname",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/i386",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "setarch",
+      "resolved": "/usr/bin/setarch",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/iconv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/id",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/infocmp",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/infotocap",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "tic",
+      "resolved": "/usr/bin/tic",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/install",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ionice",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ipcmk",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ipcrm",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ipcs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ischroot",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/join",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ld.so",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "../lib64/ld-linux-x86-64.so.2",
+      "resolved": "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ldd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/link",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/linux32",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "setarch",
+      "resolved": "/usr/bin/setarch",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/linux64",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "setarch",
+      "resolved": "/usr/bin/setarch",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ln",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/locale",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/localedef",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/logger",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/login",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/logname",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ls",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lsblk",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lscpu",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lsipc",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lslocks",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lslogins",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lsmem",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lsns",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mawk",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mcookie",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/md5sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mkdir",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mkfifo",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mknod",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mktemp",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/more",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mount",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mountpoint",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/namei",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nawk",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/etc/alternatives/nawk",
+      "resolved": "/usr/bin/mawk",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/newgrp",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nice",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nisdomainname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "hostname",
+      "resolved": "/usr/bin/hostname",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nohup",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nproc",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nsenter",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/numfmt",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/od",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/openssl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pager",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/etc/alternatives/pager",
+      "resolved": "/usr/bin/more",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/partx",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/passwd",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/paste",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pathchk",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/perl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/perl5.40.1",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/usr/bin/perl",
+      "resolved": "/usr/bin/perl",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pidof",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "../sbin/killall5",
+      "resolved": "/usr/sbin/killall5",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pinky",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pldd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pr",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/printenv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/printf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/prlimit",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ptx",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pwd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/rbash",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "bash",
+      "resolved": "/usr/bin/bash",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/realpath",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/rename.ul",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/renice",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/reset",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "tset",
+      "resolved": "/usr/bin/tset",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/rev",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/rgrep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/rm",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/rmdir",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/run-parts",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/runcon",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/savelog",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/script",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/scriptlive",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/scriptreplay",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sdiff",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sed",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/seq",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/setarch",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/setpriv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/setsid",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/setterm",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sg",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "newgrp",
+      "resolved": "/usr/bin/newgrp",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sh",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "dash",
+      "resolved": "/usr/bin/dash",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha1sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha224sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha256sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha384sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha512sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/shred",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/shuf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sleep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sort",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/split",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sqv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/stat",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/stdbuf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/stty",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/su",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sum",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sync",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tabs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tac",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tail",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tar",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/taskset",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tee",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tempfile",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/test",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tic",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/timeout",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/toe",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/touch",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tput",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tr",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/true",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/truncate",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tset",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tsort",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tty",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tzselect",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uclampset",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/umount",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uname",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uncompress",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "gunzip",
+      "resolved": "/usr/bin/gunzip",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unexpand",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uniq",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unlink",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unshare",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/update-alternatives",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/users",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/vdir",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/wall",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/wc",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/wdctl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/whereis",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/which",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/etc/alternatives/which",
+      "resolved": "/usr/bin/which.debianutils",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/which.debianutils",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/who",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/whoami",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/x86_64",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "setarch",
+      "resolved": "/usr/bin/setarch",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/xargs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/yes",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ypdomainname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "hostname",
+      "resolved": "/usr/bin/hostname",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zcat",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zcmp",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zdiff",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zdump",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zegrep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zfgrep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zforce",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zgrep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zless",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/zmore",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/znew",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/ab",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/apachectl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/apxs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/checkgid",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/dbmmanage",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/envvars",
+      "type": "file",
+      "mode": "0644",
+      "executable": false
+    },
+    {
+      "path": "/usr/local/apache2/bin/envvars-std",
+      "type": "file",
+      "mode": "0644",
+      "executable": false
+    },
+    {
+      "path": "/usr/local/apache2/bin/fcgistarter",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/htcacheclean",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/htdbm",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/htdigest",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/htpasswd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/httpd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/httxt2dbm",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/logresolve",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/rotatelogs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/apache2/bin/suexec",
+      "type": "file",
+      "mode": "4755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/httpd-foreground",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/add-shell",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/addgroup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "adduser",
+      "resolved": "/usr/sbin/adduser",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/adduser",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/agetty",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/blkdiscard",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/blkid",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/blkzone",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/blockdev",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/chcpu",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/chgpasswd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/chmem",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/chpasswd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/chroot",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/delgroup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "deluser",
+      "resolved": "/usr/sbin/deluser",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/deluser",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/dpkg-preconfigure",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/dpkg-reconfigure",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/faillock",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/findfs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/fsck",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/fsfreeze",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/fstab-decode",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/fstrim",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/getty",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "agetty",
+      "resolved": "/usr/sbin/agetty",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/groupadd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/groupdel",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/groupmod",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/grpck",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/grpconv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/grpunconv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iconvconfig",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/installkernel",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/invoke-rc.d",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/isosize",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/killall5",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ldattach",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ldconfig",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/losetup",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/mkfs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/mkhomedir_helper",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/mkswap",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/newusers",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/nologin",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pam-auth-update",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pam_getenv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pam_namespace_helper",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pam_timestamp_check",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pivot_root",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/policy-rc.d",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pwck",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pwconv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pwhistory_helper",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/pwunconv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/readprofile",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/remove-shell",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/rmt",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/etc/alternatives/rmt",
+      "resolved": "/usr/sbin/rmt-tar",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/rmt-tar",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/rtcwake",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/runuser",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/service",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/shadowconfig",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/start-stop-daemon",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/sulogin",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/swaplabel",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/swapoff",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/swapon",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/switch_root",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/tarcat",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/unix_chkpwd",
+      "type": "file",
+      "mode": "2755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/unix_update",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/update-ca-certificates",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/update-passwd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/update-rc.d",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/update-shells",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/useradd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/userdel",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/usermod",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/vigr",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "vipw",
+      "resolved": "/usr/sbin/vipw",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/vipw",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/wipefs",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/zic",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/zramctl",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    }
+  ],
+  "scripts": [
+    "/usr/local/bin/httpd-foreground"
+  ]
+}

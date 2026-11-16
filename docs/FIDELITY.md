@@ -44,13 +44,48 @@ Rules:
   none; the previous one had 1.36.3). The reference `kubectl` is the v1.37.2 release binary that
   phase 04 downloads.
 
+### Node runtime: containerd, runc and Go
+
+The simulated nodes run containerd. Its version is written once, as `containerRuntimeVersion` in
+`packages/k8s/src/topology/nodes.ts`; the upstream fetch derives the containerd tag from it.
+
+| Source | Tag → commit | Why this version |
+|---|---|---|
+| `containerd/containerd` | `v1.7.28` → `b98a3aace656320842a23f4a392a33f46af97866` (2025-07-25) | The nodes' `containerd://1.7.28`, chosen with the rest of the node software in D-033. In 1.7 the kubelet talks to the CRI plugin in `pkg/cri/server` (`pkg/cri/sbserver` only with `ENABLE_CRI_SANDBOXES`) |
+| `opencontainers/runc` | `v1.3.0` → `4ca628d1d4c974f92d24daccb901aa078aad748e` (2025-04-29) | The runc containerd v1.7.28 pins in `script/setup/runc-version`; the fetch fails if the two drift apart |
+| `golang/go` | `go1.23.11` → `0a75dd7c2dcf7057ef200290d8f5c4c1514dba80` (2025-07-08) | `GO_VERSION` of containerd v1.7.28's release build (`.github/workflows/release.yml`); runc v1.3.0 builds with Go 1.23 too. Standard-library error texts that reach a learner (`exec.LookPath` in the container, DNS and dial errors of the registry client, errno strings) come from here |
+
+Date checked: 2026-11-16, from the tags of the three repositories. A distribution's package of
+the same containerd version may bundle another runc or build with another Go; the simulator
+follows these upstream pins.
+
+### Programs of the catalog images
+
+The behavior models of the official images' programs (`docs/BEHAVIOR_MODELS.md` §3.2) print what
+the program's source prints at the version the captured image ships (`NGINX_VERSION`,
+`HTTPD_VERSION`, `REDIS_VERSION` of its config, `npm run images:capture`). Build facts no source
+holds (the `built by gcc` line, `nginx.conf`'s `error_log`, the redis binaries' dirty flag) were
+read from the images' layers in phase 06b and are cited next to the code.
+
+| Source | Tag → commit | For |
+|---|---|---|
+| `nginx/nginx` | `release-1.31.8` → `140aa942711868a8daeb95810bc9a81f272ada72` | nginx:latest/mainline and nginx:alpine (1.31.8); older tags reuse these notices with their own version |
+| `apache/httpd` | `2.4.71` → `4554c7436049b6a68bfee7fbae32fc5ced666355` | httpd:2.4.71 and httpd:alpine |
+| `redis/redis` | `8.10.3` → `1a2574ce`, `7.4.12` → `f9bc2f89`, `7.2.17` → `83937c51`, `6.2.24` → `bfb69472` | each redis tag in the catalog |
+| `kubernetes/kubernetes` `build/pause` | the Kubernetes pin | the pause container |
+
+Date checked: 2026-11-16. When the catalog is recaptured and a tag moves to a new version, these
+pins move with it (and the models' version tables).
+
 ### Upstream checkout
 
-`npm run upstream:fetch` makes a sparse, blob-less, depth-1 clone of the pinned tag in
-`.upstream/kubernetes/` (git-ignored, about 190 MB) and writes `.upstream/kubernetes.json` with
-the tag, commit and directory list. The directories are listed, with the phases that read them,
-in `tools/src/upstream/paths.ts`. A phase that needs another directory adds it there and reruns
-the command; it is incremental.
+`npm run upstream:fetch` makes a sparse, blob-less, depth-1 clone of each pinned tag under
+`.upstream/` (git-ignored): `kubernetes/` (about 200 MB), `containerd/` (about 9 MB), `runc/`
+(about 2 MB) and `go/` (part of the standard library, about 17 MB). Each writes
+`.upstream/<name>.json` with the repository, tag, commit and directory list. The repositories
+and their directories are listed, with what reads each directory, in
+`tools/src/upstream/paths.ts`. A phase that needs another directory or another repository (a
+workload's source, CoreDNS) adds it there and reruns the command; it is incremental.
 
 ## 2. Source hierarchy
 
@@ -297,6 +332,16 @@ Entry format:
 | DIV-018 | API server: Event lifetime | Events expire after `--event-ttl` (1 h) | Events stay until deleted | No expiry in etcd yet | `kubectl get events` keeps showing old events in long sessions | 05a |
 | DIV-019 | Static Pods: config hash | The kubelet names a static Pod's UID and its `kubernetes.io/config.hash`/`config.mirror` annotations with an FNV-128a of the decoded Pod's Go struct dump plus host and file (`pkg/kubelet/config/common.go` applyDefaults) | An FNV-128a of the manifest's JSON with the same host and file | The struct dump needs the internal Pod layout after the kubelet's defaulting (phase 27 builds static Pods for real) | The hash differs from a real node's for the same manifest; it is opaque, and changes when the manifest changes, as the real one does | 06a |
 | DIV-020 | Scheduler: scoring | The default profile also scores PodTopologySpread (system default constraints spread a ReplicaSet's or Service's Pods) and InterPodAffinity | Not scored; every other default score plugin is | Topology spread and inter-Pod affinity are phase 20b | Replicas still alternate between workers (least-allocated scoring with the non-zero default requests), but a tie the real scheduler breaks by spread can go another way | 06a |
+| DIV-021 | Kubelet: init containers | Init containers run to completion, in order, before the app containers (`PodInitializing`, `Init:0/1`) | A Pod with init containers stays Pending; a gap is recorded | Init containers are phase 16a | Such Pods never start; the gap log says why | 06b |
+| DIV-022 | Kubelet: environment | `valueFrom` (ConfigMap, Secret, field and resource references) and `envFrom` resolve into the container's environment | Left out of the environment, with a gap | ConfigMap and Secret projection is phase 16a | A container that reads such a variable sees it unset | 06b |
+| DIV-023 | Kubelet: readiness | Probes decide `started` and `ready` (startup, readiness, liveness) | A running container is started and ready at once; probes are not run | Probes are phase 16b | CoreDNS and any Pod with a readiness probe is Ready as soon as it runs | 06b |
+| DIV-024 | Kubelet: service variables | The kubelet adds the Services' `*_SERVICE_HOST`/`*_PORT` variables by iterating Go maps, so their order changes between container starts | Sorted by name, after the container's own variables | Deterministic engine (hard rule 4) | `env` lists them in a stable order a real node would not keep | 06b |
+| DIV-025 | Runtime: images | Any image a registry serves can be pulled | Only images in the captured catalog (`npm run images:capture`); a tag the registry lacks, an unknown official repository and a reserved domain fail with containerd's real errors; anything else fails with `[sim] image … is not in the simulator's image catalog` and a gap | Nothing really runs: every image needs a file table and behavior models | Learners can use the common images; others say plainly that they are not simulated | 06b |
+| DIV-026 | Node health | After 50 s without a Lease renewal the node also gets `node.kubernetes.io/unreachable:NoExecute`, and Pods without a toleration are evicted 300 s later (DefaultTolerationSeconds) | Conditions go Unknown, Pods are marked not ready and the NoSchedule taint is added; no NoExecute taint and no eviction | Evicting without DefaultTolerationSeconds would delete every Pod at once (phase 20b adds both) | Pods on a dead node stay bound to it instead of being replaced after five minutes | 06b |
+| DIV-027 | Container logs | The kubelet rotates a container's log at 10 MiB, keeping 5 files (gzip-compressing older ones) | No rotation | No model writes that much | None expected | 06b |
+| DIV-028 | Control-plane containers | etcd, kube-apiserver, kube-controller-manager, kube-scheduler, kube-proxy and CoreDNS write their startup and runtime logs | Their containers run a stand-in model with no output | Their real models come with phase 27 (static Pods as processes) and phases 17/30 (kube-proxy, CoreDNS) | `/var/log/pods` files of kube-system Pods are empty | 06b |
+| DIV-029 | Containers: filesystem | A container has its image's filesystem plus its volumes; programs read and write files there | Executables are known from the captured file tables; a shell redirection to a file is discarded with a gap; `cat` of a file outside the model is a gap | Container filesystems are phase 16a/17 (volumes, exec) | Scripts that write files (`date >> /log/x`) lose that output | 06b |
+| DIV-030 | Container shell | `sh` is the image's real shell with its whole language | dash, BusyBox ash and bash share one interpreter of the common subset (simple commands, `;` `&&` `\|\|` `!`, `{ }` `( )`, while/until/for/if, quoting, `$VAR`, `$(( ))`, `$( )`, traps on signals, `set -e`) checked against the real shells; pipelines, `case`, functions, here-documents and background jobs are gaps, and the container then runs without output | A full shell per container is not needed for the curriculum | Most container commands in CKA/CKAD tasks run; unusual scripts say they are not simulated | 06b |
 
 The non-goals in `PLAN.md` §4.3 (no packets, no real cryptography, a bash subset,
 an editor overlay instead of a terminal vi, a curated image catalog) become entries when the phase

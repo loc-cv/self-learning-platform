@@ -165,7 +165,8 @@ world having reached a state.
 
 ### 5.4 Images
 
-Container images come from the curated catalog (`PLAN.md` §4.3). An item may declare more, as
+Container images come from the curated catalog (`PLAN.md` §4.3; its format and the images in it are in
+`docs/BEHAVIOR_MODELS.md` §5). An item may declare more, as
 declarative behavior models. A declared image exists in the simulated registry for this item only.
 
 ```yaml
@@ -1246,5 +1247,5 @@ debrief: |
 | `lesson`, `card` and `exam` items; prediction prompts; `pack.yaml`; skill definitions | 11 |
 | Authoring style guide and content tooling | 14 |
 | Topology parameters (none exist yet; the templates are in §5.1) | the first phase whose content needs a variant |
-| Image catalog format; any behavior model field beyond §5.4 | 06b |
+| Behavior model fields beyond §5.4 (the catalog format is decided: `docs/BEHAVIOR_MODELS.md` §5) | 09, with the first item that declares an image |
 | Exam task weights and per-domain scoring | 31 |

@@ -1,0 +1,1139 @@
+{
+ "env": {
+  "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+  "TZ": "UTC",
+  "LC_ALL": "C",
+  "HOSTNAME": "web"
+ },
+ "versions": {
+  "dash": "0.5.12-6ubuntu5",
+  "busybox": "BusyBox v1.36.1 (Ubuntu 1:1.36.1-6ubuntu3.1) multi-call binary.",
+  "bash": "GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)"
+ },
+ "cases": [
+  {
+   "script": "echo hello world",
+   "args": [],
+   "dash": {
+    "stdout": "hello world\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "hello world\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "hello world\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo \"a  b\"   c",
+   "args": [],
+   "dash": {
+    "stdout": "a  b c\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "a  b c\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "a  b c\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo 'single $HOME' \"double $HOSTNAME\"",
+   "args": [],
+   "dash": {
+    "stdout": "single $HOME double web\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "single $HOME double web\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "single $HOME double web\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "foo",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: foo: not found\n",
+    "status": 127
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: foo: not found\n",
+    "status": 127
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: line 1: foo: command not found\n",
+    "status": 127
+   }
+  },
+  {
+   "script": "echo a\nfoo bar",
+   "args": [],
+   "dash": {
+    "stdout": "a\n",
+    "stderr": "sh: 2: foo: not found\n",
+    "status": 127
+   },
+   "busybox": {
+    "stdout": "a\n",
+    "stderr": "sh: foo: not found\n",
+    "status": 127
+   },
+   "bash": {
+    "stdout": "a\n",
+    "stderr": "bash: line 2: foo: command not found\n",
+    "status": 127
+   }
+  },
+  {
+   "script": "/x/y",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: /x/y: not found\n",
+    "status": 127
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: /x/y: not found\n",
+    "status": 127
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: line 1: /x/y: No such file or directory\n",
+    "status": 127
+   }
+  },
+  {
+   "script": "exit 3",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "",
+    "status": 3
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "",
+    "status": 3
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "",
+    "status": 3
+   }
+  },
+  {
+   "script": "exit 300",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "",
+    "status": 44
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "",
+    "status": 44
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "",
+    "status": 44
+   }
+  },
+  {
+   "script": "exit x",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: exit: Illegal number: x\n",
+    "status": 2
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: exit: line 0: Illegal number: x\n",
+    "status": 2
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: line 1: exit: x: numeric argument required\n",
+    "status": 2
+   }
+  },
+  {
+   "script": "false; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "true && echo yes || echo no",
+   "args": [],
+   "dash": {
+    "stdout": "yes\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "yes\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "yes\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "false && echo yes || echo no",
+   "args": [],
+   "dash": {
+    "stdout": "no\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "no\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "no\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "false || false && echo x; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "! false; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "i=0; while [ $i -lt 3 ]; do echo $i; i=$((i+1)); done",
+   "args": [],
+   "dash": {
+    "stdout": "0\n1\n2\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "0\n1\n2\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "0\n1\n2\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "i=5; until [ $i -le 2 ]; do echo $i; i=$((i - 1)); done",
+   "args": [],
+   "dash": {
+    "stdout": "5\n4\n3\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "5\n4\n3\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "5\n4\n3\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "for x in a b \"c d\"; do echo \"<$x>\"; done",
+   "args": [],
+   "dash": {
+    "stdout": "<a>\n<b>\n<c d>\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "<a>\n<b>\n<c d>\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "<a>\n<b>\n<c d>\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "for x in; do echo never; done; echo after",
+   "args": [],
+   "dash": {
+    "stdout": "after\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "after\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "after\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "if [ 1 -eq 1 ]; then echo one; elif true; then echo two; else echo three; fi",
+   "args": [],
+   "dash": {
+    "stdout": "one\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "one\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "one\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "if false; then echo a; elif [ x = y ]; then echo b; else echo c; fi",
+   "args": [],
+   "dash": {
+    "stdout": "c\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "c\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "c\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "if false; then echo a; fi; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "[ 1 -lt x ]; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "2\n",
+    "stderr": "sh: 1: [: Illegal number: x\n",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "2\n",
+    "stderr": "sh: x: bad number\n",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "2\n",
+    "stderr": "bash: line 1: [: x: integer expression expected\n",
+    "status": 0
+   }
+  },
+  {
+   "script": "[ 1 -lt 2; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "2\n",
+    "stderr": "sh: 1: [: missing ]\n",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "2\n",
+    "stderr": "sh: missing ]\n",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "2\n",
+    "stderr": "bash: line 1: [: missing `]'\n",
+    "status": 0
+   }
+  },
+  {
+   "script": "[ -z \"\" ] && [ -n x ] && echo ok",
+   "args": [],
+   "dash": {
+    "stdout": "ok\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "ok\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "ok\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "test a != b -a 3 -ge 3; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "0\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo $((7/2)) $((7%3)) $((2*3+4)) $((1<2)) $((-5+2))",
+   "args": [],
+   "dash": {
+    "stdout": "3 1 10 1 -3\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "3 1 10 1 -3\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "3 1 10 1 -3\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "x=abc; echo ${x}def $x",
+   "args": [],
+   "dash": {
+    "stdout": "abcdef abc\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "abcdef abc\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "abcdef abc\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo $0 $1 $2 $#",
+   "args": [
+    "a1",
+    "a2"
+   ],
+   "dash": {
+    "stdout": "a1 a2 1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "a1 a2 1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "a1 a2 1\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "printf \"%s-%d\\n\" a 5 b 6",
+   "args": [],
+   "dash": {
+    "stdout": "a-5\nb-6\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "a-5\nb-6\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "a-5\nb-6\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "printf \"%5s|%-5s|%03d\\n\" ab cd 7",
+   "args": [],
+   "dash": {
+    "stdout": "   ab|cd   |007\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "   ab|cd   |007\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "   ab|cd   |007\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "printf \"%x %X %o\\n\" 255 255 8",
+   "args": [],
+   "dash": {
+    "stdout": "ff FF 10\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "ff FF 10\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "ff FF 10\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo -n x; echo y",
+   "args": [],
+   "dash": {
+    "stdout": "xy\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "xy\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "xy\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo -e \"a\\tb\"",
+   "args": [],
+   "dash": {
+    "stdout": "-e a\tb\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "a\tb\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "a\tb\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo \"a\\tb\"",
+   "args": [],
+   "dash": {
+    "stdout": "a\tb\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "a\\tb\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "a\\tb\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo out; echo err >&2",
+   "args": [],
+   "dash": {
+    "stdout": "out\n",
+    "stderr": "err\n",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "out\n",
+    "stderr": "err\n",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "out\n",
+    "stderr": "err\n",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo hidden >/dev/null; echo shown",
+   "args": [],
+   "dash": {
+    "stdout": "shown\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "shown\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "shown\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "foo 2>/dev/null; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "127\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "127\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "127\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo $(echo inner) \"$(printf \"%s\" q)\"",
+   "args": [],
+   "dash": {
+    "stdout": "inner q\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "inner q\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "inner q\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "v=$(echo hi); echo \"[$v]\"",
+   "args": [],
+   "dash": {
+    "stdout": "[hi]\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "[hi]\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "[hi]\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "exec foo",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: exec: foo: not found\n",
+    "status": 127
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: exec: line 0: foo: not found\n",
+    "status": 127
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: line 1: exec: foo: not found\n",
+    "status": 127
+   }
+  },
+  {
+   "script": "set -e; echo a; false; echo b",
+   "args": [],
+   "dash": {
+    "stdout": "a\n",
+    "stderr": "",
+    "status": 1
+   },
+   "busybox": {
+    "stdout": "a\n",
+    "stderr": "",
+    "status": 1
+   },
+   "bash": {
+    "stdout": "a\n",
+    "stderr": "",
+    "status": 1
+   }
+  },
+  {
+   "script": "set -e; false || echo handled; echo end",
+   "args": [],
+   "dash": {
+    "stdout": "handled\nend\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "handled\nend\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "handled\nend\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "sleep 0; echo slept",
+   "args": [],
+   "dash": {
+    "stdout": "slept\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "slept\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "slept\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "sleep x; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "1\n",
+    "stderr": "sleep: invalid time interval 'x'\nTry 'sleep --help' for more information.\n",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: invalid number 'x'\n",
+    "status": 1
+   },
+   "bash": {
+    "stdout": "1\n",
+    "stderr": "sleep: invalid time interval 'x'\nTry 'sleep --help' for more information.\n",
+    "status": 0
+   }
+  },
+  {
+   "script": "sleep; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "1\n",
+    "stderr": "sleep: missing operand\nTry 'sleep --help' for more information.\n",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "1\n",
+    "stderr": "sh: sleep: missing operand\n",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "1\n",
+    "stderr": "sleep: missing operand\nTry 'sleep --help' for more information.\n",
+    "status": 0
+   }
+  },
+  {
+   "script": "printenv HOSTNAME; printenv NOPE; echo $?",
+   "args": [],
+   "dash": {
+    "stdout": "web\n1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "web\n1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "web\n1\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "unset HOSTNAME; echo \"[$HOSTNAME]\"",
+   "args": [],
+   "dash": {
+    "stdout": "[]\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "[]\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "[]\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "export A=1; printenv A",
+   "args": [],
+   "dash": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "1\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "(x=1); echo \"[$x]\"",
+   "args": [],
+   "dash": {
+    "stdout": "[]\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "[]\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "[]\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "{ echo g1; echo g2; }",
+   "args": [],
+   "dash": {
+    "stdout": "g1\ng2\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "g1\ng2\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "g1\ng2\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "while true; do echo",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: Syntax error: end of file unexpected (expecting \"done\")\n",
+    "status": 2
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: syntax error: unexpected end of file (expecting \"done\")\n",
+    "status": 2
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: -c: line 2: syntax error: unexpected end of file\n",
+    "status": 2
+   }
+  },
+  {
+   "script": "if true; then echo",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: Syntax error: end of file unexpected (expecting \"fi\")\n",
+    "status": 2
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: syntax error: unexpected end of file (expecting \"fi\")\n",
+    "status": 2
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: -c: line 2: syntax error: unexpected end of file\n",
+    "status": 2
+   }
+  },
+  {
+   "script": "echo \"abc",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: Syntax error: Unterminated quoted string\n",
+    "status": 2
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: syntax error: unterminated quoted string\n",
+    "status": 2
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: -c: line 1: unexpected EOF while looking for matching `\"'\n",
+    "status": 2
+   }
+  },
+  {
+   "script": "fi",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: Syntax error: \"fi\" unexpected\n",
+    "status": 2
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: syntax error: unexpected \"fi\"\n",
+    "status": 2
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: -c: line 1: syntax error near unexpected token `fi'\nbash: -c: line 1: `fi'\n",
+    "status": 2
+   }
+  },
+  {
+   "script": "echo (a)",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: Syntax error: word unexpected (expecting \")\")\n",
+    "status": 2
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: syntax error: unexpected word (expecting \")\")\n",
+    "status": 2
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: -c: line 1: syntax error near unexpected token `a'\nbash: -c: line 1: `echo (a)'\n",
+    "status": 2
+   }
+  },
+  {
+   "script": "echo $((1+))",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "sh: 1: arithmetic expression: expecting primary: \"1+\"\n",
+    "status": 2
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "sh: arithmetic syntax error\n",
+    "status": 2
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "bash: line 1: 1+: syntax error: operand expected (error token is \"+\")\n",
+    "status": 1
+   }
+  },
+  {
+   "script": "# only a comment",
+   "args": [],
+   "dash": {
+    "stdout": "",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo a # trailing comment",
+   "args": [],
+   "dash": {
+    "stdout": "a\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "a\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "a\n",
+    "stderr": "",
+    "status": 0
+   }
+  },
+  {
+   "script": "echo a\\\nb",
+   "args": [],
+   "dash": {
+    "stdout": "ab\n",
+    "stderr": "",
+    "status": 0
+   },
+   "busybox": {
+    "stdout": "ab\n",
+    "stderr": "",
+    "status": 0
+   },
+   "bash": {
+    "stdout": "ab\n",
+    "stderr": "",
+    "status": 0
+   }
+  }
+ ]
+}

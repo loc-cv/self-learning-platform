@@ -561,3 +561,87 @@ and kube-proxy's Pods the way the DaemonSet controller does, both seeded as runn
 CoreDNS is created by the controllers and bound by the scheduler, and stays Pending until the
 kubelet (06b). There is no CNI agent, so Nodes have no NetworkUnavailable condition; phase 29a
 installs the modeled plugins.
+
+## Phase 06b (2026-11-16)
+
+**D-058 — The kubelet is a controller-runtime instance per node with suspended pod workers.**
+`packages/k8s/src/kubelet/`: instance = node name, identity `system:node:<node>`, keys
+`<namespace>/<name>/<uid>`. A Pod key syncs as upstream's pod worker: status first, then
+computePodActions, the sandbox before any pull, containers in spec order. A CRI call that takes
+time (RunPodSandbox, PullImage through the serial puller, CreateContainer, StartContainer,
+StopContainer) suspends the SyncPod in the worker's data (`PodOp`) and the key comes back when it
+returns; any other trigger meanwhile sets the pending flag, which re-syncs right after, as
+pod_workers.go does. Sync triggers are upstream's: watch events that change spec, labels,
+annotations or deletion fields (status-only updates are reconciles, `podsDifferSemantically`),
+PLEG events on the 1 s relist grid from the kubelet's start, the on-demand relist after a sync
+that did something, and completeWork's requeues (10 s · Jitter 0.5 after an error, the back-off
+expiry clamped to 1 min). The reason cache makes ErrImagePull, ImagePullBackOff and
+CrashLoopBackOff reach the API one sync after their event, which is why they alternate in
+`kubectl get pods -w`. Modeled choices: the one-minute success resync is not scheduled (it changes
+nothing, and would keep `settle` from ever being quiet); status writes are a read and an update of
+`/status` with the same result as the strategic merge patch; containers of a Pod are stopped in
+spec order (upstream: parallel goroutines); a deleted Pod's containers, sandboxes and log
+directory go at the next one-minute container GC tick.
+
+**D-059 — The container runtime is node-owned world data, not part of the kubelet.**
+`k8sSlice.runtimes[node]` (slice version 4): the image store, sandboxes, containers and their
+processes. Containers keep running, exiting and logging while the kubelet is stopped; a started
+kubelet adopts them (restart counts survive, back-offs do not). Pod IPs come from host-local IPAM
+in the node's Pod CIDR (the next free address after the last one handed out, .1 excluded), since
+the clusters have no CNI agent yet (phase 29a). Logs are CRI-format files under `/var/log/pods`
+with `/var/log/containers` symlinks, written as output happens (`F` lines, a `P` remainder when
+the stream closes); sub-millisecond digits of their timestamps come from the stream
+`k8s.runtime.log-time`. Container ids are 64 hex digits from `k8s.runtime.id`.
+
+**D-060 — Behavior models are pure step machines, contributed per program, in `packages/host`.**
+`packages/host/src/models/types.ts` (registry kind `host.behavior-model`): `start`, `resume` and
+`signal` return output with offsets, the next wake-up, a wait, an exit or an exec. This refines
+docs/ARCHITECTURE.md §3.9's `evaluate` sketch: a model's state is resumable data, so loops and
+sleeps cost one event per wake-up. Models are per program, not per image: an image's file table
+(captured) says which executables exist and which model each runs, so `command: ["sleep", "1d"]`
+on any image, a missing executable and BusyBox applets behave naturally. The host owns the
+contract because systemd units (phase 25a) and later domains use it; the Kubernetes runtime
+drives it. PID 1 without a handler ignores a default-action signal, so `sleep` and `sh` as a
+container's command wait out the grace period and die by SIGKILL (137), as on a real node. The
+declarative form of `docs/SCENARIO_FORMAT.md` §5.4 compiles into such a model when phase 09 adds
+content images.
+
+**D-061 — Images come from a catalog captured from the real registries.** `npm run images:capture`
+(`tools/src/images/`) records, for a fixed list of tags, the repo digest, the linux/amd64
+manifest, the config (the image ID; Entrypoint, Cmd, Env, StopSignal) and layer sizes; the full tag
+list of each captured repository; Docker Hub's official image names; and the executables of one
+image per family, read from the layers (others borrow their family's table, `filesFrom`). A pull
+fails with containerd's real error only when the simulator knows the image does not exist (a tag
+missing from the repository's list, an official-looking name outside the official set, a domain
+reserved by RFC 2606/6761); anything else it cannot answer for fails with a `[sim]` message and a
+gap rather than an invented error (DIV-025). The DNS failure's `on 127.0.0.53:53` assumes Go's own
+resolver on the node, which `/etc/nsswitch.conf` `hosts: files dns` on the Ubuntu server image
+selects; not verified on a real cloud image (containerd-notes in the phase handoff).
+
+**D-062 — The kubelet's node side.** Lease renewal every 10–10.4 s and node status every
+10–10.4 s run as idle kernel events (`k8s.kubelet.heartbeat`), so a healthy cluster lets `settle`
+return. Status is patched only on change or after 5 min plus a delay drawn from
+`k8s.kubelet.report-delay` in [−2.5 min, 2.5 min); the image list is refreshed every 30 s. Start
+events are Starting, the three pressure events and NodeAllocatableEnforced; the commonly seen
+`InvalidDiskCapacity` is a race between image GC and cAdvisor and is left out.
+
+**D-063 — Node health monitoring without NoExecute.** The node lifecycle controller tracks each
+node's probe timestamp from Lease renewals and Ready heartbeats; the deadline (first 5 s tick after
+50 s) is an idle kernel event that each renewal moves, so nothing polls. On expiry: Unknown
+conditions, NodeNotReady, MarkPodsNotReady and, through the NoSchedule pass, the unreachable
+taint; RegisteredNode for every node at start. NoExecute taints and taint-based eviction come with
+DefaultTolerationSeconds in phase 20b (DIV-026).
+
+**D-064 — The topology seeds running containers, not running statuses.** The control plane's
+mirror Pods and kube-proxy's Pods get sandboxes and running containers in their node's runtime at
+build time (`kubelet/seed.ts`), and the images kubeadm pulled are in the stores (all of kubeadm's
+on the control plane, including its `pause:3.10.2`; kube-proxy's and containerd's sandbox image
+`pause:3.8` everywhere). The kubelets then write those Pods' statuses as a restarted kubelet would.
+CoreDNS is pulled and started by the worker kubelets about two seconds after the build.
+
+**D-065 — Step latencies are one tunable table.** `kubelet/latency.ts`: sandbox creation, registry
+resolution, download bandwidth and unpack rate (so pull time follows the image's size), container
+create and start, sandbox stop — uniform draws, each step from its own stream
+`k8s.kubelet.latency.<step>`. They are the simulator's figures for a small cloud VM, not
+measurements; upstream's own constants (relist, back-offs, resyncs, grace periods) are not in the
+table.

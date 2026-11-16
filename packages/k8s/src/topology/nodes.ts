@@ -1,7 +1,6 @@
 // The Node object of each cluster node and its Lease, as a healthy kubeadm v1.37.2 node has them
-// a few minutes after joining. Until the kubelet exists (phase 06b) they are written once at build
-// time; the conditions, heartbeat times and Lease renewals do not move (STATUS.md, temporary
-// shortcuts).
+// a few minutes after joining: the registration. From then on the node's kubelet renews the Lease
+// and posts the status (kubelet/node.ts).
 //
 // Who writes what in a real cluster (traced from source, v1.37.2):
 // - kubelet initialNode (pkg/kubelet/kubelet_node_status.go): name, the five os/arch/hostname

@@ -16,3 +16,6 @@ export { CLUSTERS, KUBEADM_1CP_2W, KUBEADM_1N, controlPlaneNode, type ClusterDef
 export { NODE_ALLOCATABLE, NODE_CAPACITY, NODE_INFO, nodeLabels, nodeObject } from './topology/nodes.ts';
 export { apiServerConfig, buildCluster, TOPOLOGIES } from './topology/build.ts';
 export { isSchedulerRunning, startScheduler, stopScheduler } from './scheduler/scheduler.ts';
+export { isKubeletRunning, startKubelet, stopKubelet, type KubeletNode } from './kubelet/kubelet.ts';
+export { runtimeOf } from './runtime/runtime.ts';
+export type { NodeRuntime, RuntimeContainer, Sandbox, RuntimeImage } from './runtime/types.ts';

@@ -25,3 +25,8 @@ export { createScreen, type Screen } from './tty/screen.ts';
 export { COMPLETION, type CompleterSpec, type CompletionRequest, type CompletionResult } from './tty/complete.ts';
 export type { EditorRequest, EditorResult } from './proc/editor.ts';
 export { ubuntu1Topology } from './topology.ts';
+export * from './models/types.ts';
+export { GENERIC_MODELS } from './models/programs.ts';
+export { IMAGE_MODELS } from './models/images/index.ts';
+export { evaluateArith } from './models/sh/arith.ts';
+export { UTILITIES, runUtility } from './models/utilities.ts';

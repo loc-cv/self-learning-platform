@@ -7,6 +7,7 @@
 // order, byte-wise); staging/src/k8s.io/apiserver/pkg/storage/cacher (a watcher whose selector
 // stops matching an object sees DELETED, one that starts matching sees ADDED).
 
+import type { NodeRuntime } from '../runtime/types.ts';
 import type { ApiServerConfig } from './config.ts';
 import { compareCodeUnits, keys, put, remove, type Ctx, type Table } from '@simlab/kernel';
 import type { Json, JsonObject } from '../apimachinery/json.ts';
@@ -96,6 +97,8 @@ export interface K8sSlice {
    * Pod's process and its flags.
    */
   apiServers: Table<ApiServerConfig>;
+  /** The container runtime of each node, by node name (runtime/types.ts). */
+  runtimes: Table<NodeRuntime>;
 }
 
 export function emptyEtcd(): EtcdData {

@@ -1,0 +1,3300 @@
+{
+  "family": "busybox-musl",
+  "reference": "docker.io/library/busybox:musl",
+  "configDigest": "sha256:cf45b89a82faa51019b265765895a5d6c064b568a90c9a7ddd33ce704458da24",
+  "layers": [
+    "sha256:2013d9003084f2b08cdcfc2acfdee4905f1bdf086ba87b5e16637e92443bbc4d"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin"
+    ],
+    "allExecutables": false
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/bin",
+      "type": "dir"
+    }
+  ],
+  "files": [
+    {
+      "path": "/bin/[",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/[[",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/acpid",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/add-shell",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/addgroup",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/adduser",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/adjtimex",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ar",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/arch",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/arp",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/arping",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ascii",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ash",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/awk",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/base32",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/base64",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/basename",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/bc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/beep",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/blkdiscard",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/blkid",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/blockdev",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/bootchartd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/brctl",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/bunzip2",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/busybox",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/bzcat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/bzip2",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cal",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chattr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chgrp",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chmod",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chown",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chpasswd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chpst",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chroot",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chrt",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/chvt",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cksum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/clear",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cmp",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/comm",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/conspy",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cp",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cpio",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/crc32",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/crond",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/crontab",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cryptpw",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cttyhack",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/cut",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/date",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/deallocvt",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/delgroup",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/deluser",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/depmod",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/devmem",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/df",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dhcprelay",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/diff",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dirname",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dmesg",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dnsd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dnsdomainname",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dos2unix",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dpkg",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dpkg-deb",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/du",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dumpkmap",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/dumpleases",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/echo",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ed",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/egrep",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/eject",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/env",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/envdir",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/envuidgid",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ether-wake",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/expand",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/expr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/factor",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fakeidentd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fallocate",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/false",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fatattr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fbset",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fbsplash",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fdflush",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fdformat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fdisk",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fgconsole",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fgrep",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/find",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/findfs",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/flock",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fold",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/free",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/freeramdisk",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fsck",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fsck.minix",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fsfreeze",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fstrim",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fsync",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ftpd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ftpget",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ftpput",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/fuser",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/getconf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/getfattr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/getopt",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/getty",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/grep",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/groups",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/gunzip",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/gzip",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/halt",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hdparm",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/head",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hexdump",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hexedit",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hostid",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hostname",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/httpd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hush",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/hwclock",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/i2cdetect",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/i2cdump",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/i2cget",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/i2cset",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/i2ctransfer",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/id",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ifconfig",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ifdown",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ifenslave",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ifplugd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ifup",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/inetd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/init",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/inotifyd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/insmod",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/install",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ionice",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/iostat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ip",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ipaddr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ipcalc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ipcrm",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ipcs",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/iplink",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ipneigh",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/iproute",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/iprule",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/iptunnel",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/kbd_mode",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/kill",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/killall",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/killall5",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/klogd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/less",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/link",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/linux32",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/linux64",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/linuxrc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ln",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/loadfont",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/loadkmap",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/logger",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/login",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/logname",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/logread",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/losetup",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lpd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lpq",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lpr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ls",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsattr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsblk",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsmod",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsof",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lspci",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsscsi",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsusb",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lzcat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lzma",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/lzop",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/makedevs",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/makemime",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/man",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/md5sum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mdev",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mesg",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/microcom",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mim",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkdir",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkdosfs",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mke2fs",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkfifo",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkfs.ext2",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkfs.minix",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkfs.vfat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mknod",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkpasswd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkswap",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mktemp",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/modinfo",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/modprobe",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/more",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mount",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mountpoint",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mpstat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mt",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/mv",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nameif",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nanddump",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nandwrite",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nbd-client",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/netstat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nice",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nl",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nmeter",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nohup",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nologin",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nproc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nsenter",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/nslookup",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ntpd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/od",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/openvt",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/partprobe",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/passwd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/paste",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/patch",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pgrep",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pidof",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ping",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ping6",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pipe_progress",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pivot_root",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pkill",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pmap",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/popmaildir",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/poweroff",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/powertop",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/printenv",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/printf",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ps",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pscan",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pstree",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pwd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/pwdx",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/raidautorun",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rdate",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rdev",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/readahead",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/readlink",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/readprofile",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/realpath",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/reboot",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/reformime",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/remove-shell",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/renice",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/reset",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/resize",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/resume",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rev",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rm",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rmdir",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rmmod",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/route",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rpm",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rpm2cpio",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rtcwake",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/run-init",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/run-parts",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/runsv",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/runsvdir",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/rx",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/script",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/scriptreplay",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sed",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/seedrng",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sendmail",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/seq",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setarch",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setconsole",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setfattr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setfont",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setkeycodes",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setlogcons",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setpriv",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setserial",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setsid",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/setuidgid",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sh",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sha1sum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sha256sum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sha384sum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sha3sum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sha512sum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/showkey",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/shred",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/shuf",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/slattach",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sleep",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/smemcap",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/softlimit",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sort",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/split",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ssl_client",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ssl_server",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/start-stop-daemon",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/stat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/strings",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/stty",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/su",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sulogin",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sum",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sv",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/svc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/svlogd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/svok",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/swapoff",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/swapon",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/switch_root",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sync",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/sysctl",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/syslogd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tac",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tail",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tar",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/taskset",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tcpsvd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tee",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/telnet",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/telnetd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/test",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tftp",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tftpd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/time",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/timeout",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/top",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/touch",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tr",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/traceroute",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/traceroute6",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tree",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/true",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/truncate",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ts",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tsort",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tty",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ttysize",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/tunctl",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ubiattach",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ubidetach",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ubimkvol",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ubirename",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ubirmvol",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ubirsvol",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/ubiupdatevol",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/udhcpc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/udhcpc6",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/udhcpd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/udpsvd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/uevent",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/umount",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/uname",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/unexpand",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/uniq",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/unix2dos",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/unlink",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/unlzma",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/unshare",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/unxz",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/unzip",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/uptime",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/usleep",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/uudecode",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/uuencode",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/uuidgen",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/vconfig",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/vi",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/vlock",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/vmstat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/volname",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/watch",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/watchdog",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/wc",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/wget",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/which",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/whoami",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/whois",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/xargs",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/xxd",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/xz",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/xzcat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/yes",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/zcat",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/bin/zcip",
+      "type": "hardlink",
+      "mode": "0755",
+      "target": "/bin/[",
+      "resolved": "/bin/[",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/env",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "../../bin/env",
+      "resolved": "/bin/env",
+      "executable": true
+    }
+  ],
+  "scripts": []
+}

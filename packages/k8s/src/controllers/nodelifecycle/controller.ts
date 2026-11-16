@@ -1,8 +1,8 @@
-// The node lifecycle controller, as far as this phase needs it: the NoSchedule tainting pass
-// (TaintNodesByCondition). A cordoned node gets node.kubernetes.io/unschedulable:NoSchedule, and a
-// node whose conditions report pressure, unavailability or not-ready gets the matching taint; the
-// taints go away when the cause does. Health monitoring through Leases, NoExecute taints and
-// evictions come with the kubelet's heartbeat (phases 06b and 26a).
+// The node lifecycle controller: the NoSchedule tainting pass (TaintNodesByCondition) and node
+// health monitoring (health.ts). A cordoned node gets node.kubernetes.io/unschedulable:NoSchedule,
+// and a node whose conditions report pressure, unavailability or not-ready gets the matching
+// taint; the taints go away when the cause does. NoExecute taints and evictions wait for the
+// DefaultTolerationSeconds admission plugin (phase 20b).
 //
 // upstream: pkg/controller/nodelifecycle/node_lifecycle_controller.go doNoScheduleTaintingPass,
 // nodeConditionToTaintKeyStatusMap, taintKeyToNodeConditionMap; pkg/controller/util/node/
@@ -21,6 +21,7 @@ import { isObject } from '../../apimachinery/json.ts';
 import { timeOf } from '../../apimachinery/time.ts';
 import type { ControllerSpec, SyncCtx, SyncResult } from '../types.ts';
 import { metaOf, nameOf, specOf, statusOf } from '../objects.ts';
+import { observeNode, syncHealth, syncLease } from './health.ts';
 
 export const NODE_LIFECYCLE = 'node-lifecycle';
 
@@ -45,9 +46,13 @@ const CONTROLLED = new Set([TAINT_NODE_NOT_READY, TAINT_NODE_UNREACHABLE, TAINT_
 
 const arr = (v: Json | undefined): JsonObject[] => (Array.isArray(v) ? (v.filter((x) => isObject(x)) as JsonObject[]) : []);
 
-function sync(c: SyncCtx, name: string): SyncResult {
+function sync(c: SyncCtx, key: string): SyncResult {
+  if (key.startsWith('lease/')) return syncLease(c, key.slice('lease/'.length));
+  if (key.startsWith('health/')) return syncHealth(c, key.slice('health/'.length));
+  const name = key;
   const node = c.get('v1/nodes', undefined, name);
   if (!node) return { done: true };
+  observeNode(c, node);
   const want: string[] = [];
   for (const cond of arr(statusOf(node).conditions)) {
     const key = CONDITION_TO_TAINT[String(cond.type)]?.[String(cond.status)];
@@ -73,7 +78,10 @@ export const nodeLifecycleController: ControllerSpec = {
   component: 'kube-controller-manager',
   serviceAccount: 'node-controller',
   eventSource: 'node-controller',
-  watches: [{ resource: 'v1/nodes', keys: (ev) => (ev.type === 'DELETED' ? [] : [nameOf(ev.object)]) }],
+  watches: [
+    { resource: 'v1/nodes', keys: (ev) => (ev.type === 'DELETED' ? [] : [nameOf(ev.object)]) },
+    { resource: 'coordination.k8s.io/v1/leases', keys: (ev) => (ev.type !== 'DELETED' && metaOf(ev.object).namespace === 'kube-node-lease' ? [`lease/${nameOf(ev.object)}`] : []) },
+  ],
   sync,
   latency: 20,
 };

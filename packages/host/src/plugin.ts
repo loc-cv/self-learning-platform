@@ -8,6 +8,9 @@ import { ttyClose, ttyInput, ttyResize } from './tty/discipline.ts';
 import { openTerminal } from './proc/terminal.ts';
 import { editorClose, editorSave } from './proc/editor.ts';
 import { PROGRAMS } from './programs/index.ts';
+import { GENERIC_MODELS } from './models/programs.ts';
+import { IMAGE_MODELS } from './models/images/index.ts';
+import { BEHAVIOR_MODEL } from './models/types.ts';
 import { bashCompleter } from './shell/complete.ts';
 import { COMPLETION } from './tty/complete.ts';
 import { ubuntu1Topology } from './topology.ts';
@@ -94,5 +97,5 @@ export const hostPlugin: Plugin = {
       },
     },
   ],
-  contributions: { [FILE_PROVIDER]: [nullDevice], [PROGRAM]: PROGRAMS, [COMPLETION]: [bashCompleter], [TOPOLOGY]: [ubuntu1Topology] },
+  contributions: { [FILE_PROVIDER]: [nullDevice], [PROGRAM]: PROGRAMS, [BEHAVIOR_MODEL]: [...GENERIC_MODELS, ...IMAGE_MODELS], [COMPLETION]: [bashCompleter], [TOPOLOGY]: [ubuntu1Topology] },
 };

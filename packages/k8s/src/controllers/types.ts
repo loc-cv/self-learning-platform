@@ -71,7 +71,7 @@ export interface ControllerSpec {
   /** Upstream controller name, as `--controllers` names it: `deployment`, `replicaset`. */
   name: string;
   /** The component that runs it. */
-  component: 'kube-controller-manager' | 'kube-scheduler';
+  component: 'kube-controller-manager' | 'kube-scheduler' | 'kubelet';
   /**
    * Service account the controller acts as (kubeadm runs the controller manager with
    * --use-service-account-credentials=true): `deployment-controller`.
@@ -82,6 +82,8 @@ export interface ControllerSpec {
    * kubeconfig's client certificate as `system:kube-scheduler`.
    */
   user?: { username: string; groups: string[] };
+  /** The identity when it depends on the instance: each kubelet is `system:node:<node>`. */
+  userOf?(instance: string): { username: string; groups: string[] };
   /** EventSource.Component of its event recorder, when it records events. */
   eventSource?: string;
   watches: WatchSpec[];

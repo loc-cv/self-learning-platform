@@ -1,0 +1,110 @@
+{
+  "family": "kube-controller-manager",
+  "reference": "registry.k8s.io/kube-controller-manager:v1.37.2",
+  "configDigest": "sha256:2db038c9db5097c8fd95b9fa1152b5d87642f987fe53612af5e93c2392f010b4",
+  "layers": [
+    "sha256:a5789fc40e828c4e7467626e3f69ec5dea8e5da22fe660db8ae6d16f777b0bbf",
+    "sha256:990a9c434e5e0f11549a8d4a41a1991e621b04e30cd63269adbc97b1dc38fd7e",
+    "sha256:39dc083afc39bd8dc43d456fe7ff7d39292e593bb2769972c11bb2e5f9119386",
+    "sha256:bf7a4185f01524837d19abde915ffde84e64368b250f5b5e9f6f75aea62a11d4",
+    "sha256:2780920e5dbfbe103d03a583ed75345306e572ec5a48cb10361f046767d9f29a",
+    "sha256:7c12895b777bcaa8ccae0605b4de635b68fc32d60fa08f421dc3818bf55ee212",
+    "sha256:3214acf345c0cc6bbdb56b698a41ccdefc624a09d6beb0d38b5de0b2303ecaf4",
+    "sha256:52630fc75a18675c530ed9eba5f55eca09b03e91bd5bc15307918bbc1a7e7296",
+    "sha256:dd64bf2dd177757451a98fcdc999a339c35dee5d9872d8f4dc69c8f3c4dd0112",
+    "sha256:b839dfae01f66e15c6a8b63520557ed315bdfe036342fa7a0c537259f10d7a9a",
+    "sha256:dcaa5a89b0ccda4b283e16d0b4d0891cd93d5fe05c6798f7806781a6a2d84354",
+    "sha256:96ed2737ae312e0bc637b40783f7c2f23416cb72ca957aa01855f1614278e64b",
+    "sha256:f941dad0a8dec2bae36901f953ec8db3cb18098bc2a606de8732f43542f4f5b0",
+    "sha256:2aac90560b0e007efbe5b0f3ed9d61162d40f5b07a9034088712fd65435c8050",
+    "sha256:a16e5055a129c044fc08fb3f57971521a25c21f95e66a47cf6f546ee7b6ca6a9"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin"
+    ],
+    "allExecutables": true
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/bin",
+      "type": "dir"
+    }
+  ],
+  "files": [
+    {
+      "path": "/etc/ssl/certs/ca-certificates.crt",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    },
+    {
+      "path": "/etc/update-motd.d/10-uname",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/go-runner",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/lib/os-release",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/build.log",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/kube-controller-manager",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/kube-log-runner",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/share/doc/ca-certificates/copyright",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    }
+  ],
+  "scripts": []
+}

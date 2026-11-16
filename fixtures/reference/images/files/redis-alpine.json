@@ -1,0 +1,2588 @@
+{
+  "family": "redis-alpine",
+  "reference": "docker.io/library/redis:alpine",
+  "configDigest": "sha256:d8642290c6a46f22d8ba0de16c5006b66a63b13412e5b8624912aaeecbc7f525",
+  "layers": [
+    "sha256:74c614fb2c68574f50c582dcc9c18c46618bd6ff2019768190aacfb861ce51d2",
+    "sha256:c8ea569334dd976656f55f664b67b4451b1f5427718b5933ae92c5e8108c0099",
+    "sha256:6de6a661124c1f18d23b339fff9186fc211f1ea38c6063cac0dfe31d3e1a329b",
+    "sha256:ab7525b6cc9ea0913899d37b98eb2c52b3ac86c2655c3a937548e91c2c60a36e",
+    "sha256:efd1ae24e8b5e6f1631aa81532205338c760b47e5ac93f490325d5d28af2e761",
+    "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+    "sha256:a5986f71dff390c84115522886aa9fd0ab3e9803100f9e6dd2c773d5080a8ae0"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin"
+    ],
+    "allExecutables": false
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/bin",
+      "type": "dir"
+    }
+  ],
+  "files": [
+    {
+      "path": "/bin/arch",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ash",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/base64",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/bbconfig",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/busybox",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/cat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/chattr",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/chgrp",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/chmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/chown",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/cp",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/date",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/dd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/df",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/dmesg",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/dnsdomainname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/dumpkmap",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/echo",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/egrep",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/false",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/fatattr",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/fdflush",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/fgrep",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/fsync",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/getopt",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/grep",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/gunzip",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/gzip",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/hostname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ionice",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/iostat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ipcalc",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/kbd_mode",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/kill",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/link",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/linux32",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/linux64",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ln",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/login",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ls",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsattr",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/lzop",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/makemime",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/mkdir",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/mknod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/mktemp",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/more",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/mount",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/mountpoint",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/mpstat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/mv",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/netstat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/nice",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/pidof",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ping",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ping6",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/pipe_progress",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/printenv",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/ps",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/pwd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/reformime",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/rev",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/rm",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/rmdir",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/run-parts",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/sed",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/setpriv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/setserial",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/sh",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/sleep",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/stat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/stty",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/su",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/sync",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/tar",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/touch",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/true",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/umount",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/uname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/usleep",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/watch",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/bin/zcat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/acpid",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/adjtimex",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/apk",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/sbin/arp",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/blkdiscard",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/blkid",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/blockdev",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/depmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/fbsplash",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/fdisk",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/findfs",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/fsck",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/fstrim",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/getty",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/halt",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/hwclock",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ifconfig",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ifdown",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ifenslave",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ifup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/init",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/inotifyd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/insmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ip",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ipaddr",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/iplink",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ipneigh",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/iproute",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/iprule",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/iptunnel",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/klogd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/ldconfig",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/sbin/loadkmap",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/logread",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/losetup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/lsmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/mdev",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/mkdosfs",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/mkfs.vfat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/mkswap",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/modinfo",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/modprobe",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/nameif",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/nologin",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/pivot_root",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/poweroff",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/raidautorun",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/reboot",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/rmmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/route",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/setconsole",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/slattach",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/swapoff",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/swapon",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/switch_root",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/sysctl",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/syslogd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/tunctl",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/udhcpc",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/vconfig",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/watchdog",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/sbin/zcip",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/[",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/[[",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/awk",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/basename",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/bc",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/beep",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/bunzip2",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/bzcat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/bzip2",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cal",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/chvt",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cksum",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/clear",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cmp",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/comm",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cpio",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/crontab",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cryptpw",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/cut",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dc",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/deallocvt",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/diff",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dirname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/dos2unix",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/du",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/eject",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/env",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/expand",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/expr",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/factor",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/fallocate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/find",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/flock",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/fold",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/free",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/fuser",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/getconf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/getent",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/groups",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/hd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/head",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/hexdump",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/hostid",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/iconv",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/id",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/install",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ipcrm",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ipcs",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/killall",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/last",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ldd",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/less",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/logger",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lsof",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lsusb",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lzcat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lzma",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/lzopcat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/md5sum",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mesg",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/microcom",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mkfifo",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/mkpasswd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nc",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nl",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nmeter",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nohup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nproc",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nsenter",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/nslookup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/od",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/openvt",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/passwd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/paste",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pgrep",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pkill",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pmap",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/printf",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pscan",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pstree",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/pwdx",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/realpath",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/renice",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/reset",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/resize",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/scanelf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/seq",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/setkeycodes",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/setsid",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha1sum",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha256sum",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha3sum",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sha512sum",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/showkey",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/shred",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/shuf",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sort",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/split",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ssl_client",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/strings",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/sum",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tac",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tail",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tee",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/test",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/time",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/timeout",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/top",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tr",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/traceroute",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/traceroute6",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tree",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/truncate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/tty",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/ttysize",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/udhcpc6",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unexpand",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uniq",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unix2dos",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unlink",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unlzma",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unlzop",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unshare",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unxz",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/unzip",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uptime",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uudecode",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/uuencode",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/vi",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/vlock",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/volname",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/wc",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/wget",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/which",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/who",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/whoami",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/whois",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/xargs",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/xxd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/xzcat",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/yes",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/docker-entrypoint.sh",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/redis-benchmark",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/redis-check-aof",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "redis-server",
+      "resolved": "/usr/local/bin/redis-server",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/redis-check-rdb",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "redis-server",
+      "resolved": "/usr/local/bin/redis-server",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/redis-cli",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/redis-sentinel",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "redis-server",
+      "resolved": "/usr/local/bin/redis-server",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/redis-server",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/add-shell",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/addgroup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/adduser",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/arping",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/brctl",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/chpasswd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/chroot",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/crond",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/delgroup",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/deluser",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ether-wake",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/fbset",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/killall5",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/loadfont",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/nanddump",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/nandwrite",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/nbd-client",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ntpd",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/partprobe",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/rdate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/rdev",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/readahead",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/remove-shell",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/rfkill",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/sendmail",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/setfont",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/setlogcons",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/busybox",
+      "resolved": "/bin/busybox",
+      "executable": true
+    }
+  ],
+  "scripts": [
+    "/usr/local/bin/docker-entrypoint.sh"
+  ]
+}

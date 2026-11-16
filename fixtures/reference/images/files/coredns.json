@@ -1,0 +1,90 @@
+{
+  "family": "coredns",
+  "reference": "registry.k8s.io/coredns/coredns:v1.14.6",
+  "configDigest": "sha256:520212b8b0fcd9309d7362d592f513b72880fa5a4e9e8b91442e7ee3b622c6a9",
+  "layers": [
+    "sha256:3f53d10a360b3144d3f4e0e6e61dd6e8a4b8334af1ee16d47709e675a53a7ee5",
+    "sha256:2e4cf50eeb92ac3a7afe75e15d96a26dee99449f86b46c75b5d95f4418a5bca0",
+    "sha256:c36c4b61cfbac73652d6a28923cd773657fa593c6ba5634672941f33bd8b3656",
+    "sha256:e1089d61b200106053b1717881bf0c1c47551478f01569d9224d33cccf3e4692",
+    "sha256:0f8b424aa0b96c1c388a5fd4d90735604459256336853082afb61733438872b5",
+    "sha256:d557676654e572af3e3173c90e7874644207fda32cd87e9d3d66b5d7b98a7b21",
+    "sha256:d82bc7a76a838c9a4a6025192429c2fed58f73742ef1fb9c8bb7b995fc3b7213",
+    "sha256:68e4cd60e60fed4486d5b4b40b079e57781e828d93d80a7411e8760dcccfbbf7",
+    "sha256:0783a66ae7492bb16937c7723c534e431404aa3ebbdcaaed65d264a95a266b9e",
+    "sha256:efae86a3fb38e05e6e2584bc2f48534a0d82f8d9e9a4163d04885d5c65423105",
+    "sha256:6b72b81ed96620b324f40ade069bbd3fcee69d62182bb03681c3976b6909eec4",
+    "sha256:6cdd517ba90571b01009637268b5fddb4e3eea409bb6dae0bf40ed8ad9e33ef4",
+    "sha256:c26e0ce0146d8ce9552e9c7490c53761f23e896d580fa6edd51da33665192e9b"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin"
+    ],
+    "allExecutables": true
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/bin",
+      "type": "dir"
+    }
+  ],
+  "files": [
+    {
+      "path": "/coredns",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/etc/ssl/certs/ca-certificates.crt",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    },
+    {
+      "path": "/etc/update-motd.d/10-uname",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/lib/os-release",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    },
+    {
+      "path": "/usr/share/doc/ca-certificates/copyright",
+      "type": "file",
+      "mode": "0555",
+      "executable": true
+    }
+  ],
+  "scripts": []
+}

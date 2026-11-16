@@ -152,7 +152,9 @@ function nodeOf(env: Env, pod: string): string {
 }
 
 function sameCondition(sim: Obj | undefined, real: Obj | undefined): void {
-  const pick = (c: Obj | undefined) => (c ? { status: c.status, reason: c.reason, message: c.message, observedGeneration: c.observedGeneration } : undefined);
+  // Once bound, the node's kubelet rewrites PodScheduled=True with observedGeneration
+  // (pkg/kubelet/kubelet_pods.go generateAPIPodStatus); the oracle's KWOK nodes run no kubelet.
+  const pick = (c: Obj | undefined) => (c ? { status: c.status, reason: c.reason, message: c.message, observedGeneration: c.status === 'True' ? undefined : c.observedGeneration } : undefined);
   expect(pick(sim)).toEqual(pick(real));
 }
 

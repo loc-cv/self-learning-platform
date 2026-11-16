@@ -6,7 +6,8 @@
 // - conditions: KWOK writes Ready first and a NetworkUnavailable condition from a route
 //   controller; a kubelet writes MemoryPressure, DiskPressure, PIDPressure, Ready, and nothing sets
 //   NetworkUnavailable on a cluster without a cloud provider or CNI agent;
-// - declaredFeatures and nodeInfo.runningInUserNamespace: set by a kubelet, not by KWOK.
+// - declaredFeatures and nodeInfo.runningInUserNamespace: set by a kubelet, not by KWOK;
+// - images: the kubelet lists its runtime's images (KWOK nodes have no runtime).
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -46,6 +47,7 @@ function comparable(node: Obj, tokens: Obj): Obj {
   n.status.nodeInfo.systemUUID = tokens.systemUUID;
   delete n.status.conditions;
   delete n.status.declaredFeatures;
+  delete n.status.images;
   delete n.status.nodeInfo.runningInUserNamespace;
   return n;
 }

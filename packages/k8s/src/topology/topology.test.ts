@@ -61,9 +61,9 @@ describe('kubeadm-1cp-2w', () => {
     expect(proxies.every((p) => phase(p) === 'Running')).toBe(true);
     const dns = pods.filter((p) => name(p).startsWith('coredns-'));
     expect(dns.length).toBe(2);
-    // Bound by the scheduler; Pending until the kubelet exists (phase 06b).
+    // Bound by the scheduler to the workers, whose kubelets pull the image and start it.
     expect(dns.map(node).sort()).toEqual(['node01', 'node02']);
-    expect(dns.every((p) => phase(p) === 'Pending')).toBe(true);
+    expect(dns.map(phase)).toEqual(['Running', 'Running']);
     const svc = list(k, 'v1/services', 'kube-system').find((s) => name(s) === 'kube-dns') as JsonObject;
     expect((svc.spec as JsonObject).clusterIP).toBe('10.96.0.10');
     const ds = list(k, 'apps/v1/daemonsets', 'kube-system')[0] as JsonObject;

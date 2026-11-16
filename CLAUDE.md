@@ -26,7 +26,7 @@ npm run lint                  # eslint, including simlab/package-boundaries and 
 npm test                      # all unit tests
 npm test -w packages/k8s      # one package
 npx vitest run <file> -t "<name>"   # one test
-npm run upstream:fetch        # fetch pinned upstream Kubernetes sources into .upstream/
+npm run upstream:fetch        # fetch pinned upstream sources (Kubernetes, containerd, runc, Go) into .upstream/
 npm run bench:fork            # time fork, hash, snapshot and restore of a three-machine world
 npm run bench:schema          # size and load time of the vendored API schema and resource registry
 npm run api:vendor [-- --check]   # regenerate the vendored schema (OpenAPI v3 + Go types) and registry (discovery fixture)
@@ -50,6 +50,8 @@ npm run golden:capture -- [--check] [<case|dir>]  # run golden cases against fre
 npm run golden:kubectl-manifest   # every kubectl command and flag of the pin, from the real binary
 npm run kubeadm:capture [-- --check]   # what the real kubeadm init writes and creates (dry run, unprivileged),
                                       # into fixtures/reference/kubeadm/ and packages/k8s/src/topology/kubeadm/reference.ts
+npm run images:capture [-- --check]    # what Docker Hub and registry.k8s.io answer for the listed images (digests, configs,
+                                      # files, errors), into fixtures/reference/images/ and packages/k8s/src/runtime/images/catalog.data.ts
 npm run fidelity:report       # (phase 07a) provenance of every output unit
 ```
 
@@ -61,13 +63,16 @@ tools run as `node tools/src/<tool>.ts`. The Kubernetes pin is `KUBERNETES_VERSI
 
 ```
 packages/kernel    virtual clock, event queue, world state, snapshot/replay, PRNG, plugin registry, trace
-packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd, processes
+packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd, processes;
+                   src/models behavior models (the contract, the container shell, utilities, image programs)
 packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kubelet, network, kubectl, kubeadm, …
                    (src/apiserver pipeline and store, src/registry strategies, src/apis defaulting and
                    validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data,
                    src/controllers runtime, event recorders and one directory per controller,
                    src/scheduler kube-scheduler (cycle, plugins, queueing hints), src/topology cluster
-                   topologies (ClusterDef data, builder, kubeadm files and objects),
+                   topologies (ClusterDef data, builder, kubeadm files and objects), src/kubelet the
+                   kubelet (pod workers, status, node heartbeat), src/runtime the container runtime
+                   (sandboxes, containers, CRI logs) and src/runtime/images the captured image catalog,
                    src/testing helpers for tests only: the fake kubelet, workload requests)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
 packages/content   content packs (YAML + Markdown), topology templates

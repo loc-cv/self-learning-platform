@@ -93,7 +93,8 @@ function save(ctx: Ctx, st: ControllerState): void {
 }
 
 /** The user a controller acts as: its service account in kube-system. */
-export function controllerUser(spec: ControllerSpec): UserInfo {
+export function controllerUser(spec: ControllerSpec, instance?: string): UserInfo {
+  if (spec.userOf && instance !== undefined) return spec.userOf(instance);
   if (spec.user) return spec.user;
   return {
     username: `system:serviceaccount:kube-system:${spec.serviceAccount}`,
@@ -277,7 +278,7 @@ function describeRequest(verb: string, resource: string, namespace: string | und
 function syncCtx(ctx: Ctx, spec: ControllerSpec, st: ControllerState, syncId: number): SyncCtx {
   const source = traceSource(spec);
   const reader = storeReader(ctx, st.server);
-  const client = createClient(ctx, st.server, controllerUser(spec), (req, res) => {
+  const client = createClient(ctx, st.server, controllerUser(spec, st.instance), (req, res) => {
     if (req.verb === 'get' || req.verb === 'list' || req.verb === 'watch') return;
     const body = req.body as { metadata?: { name?: string; generateName?: string } } | undefined;
     const name = req.name ?? (res.ok ? ((res.object as { metadata?: { name?: string } }).metadata?.name ?? undefined) : body?.metadata?.name ?? body?.metadata?.generateName);

@@ -131,14 +131,18 @@ export function nextNano(st: { lastNano: string }, now: Millis): bigint {
   return n;
 }
 
-/** EventRecorder.Event: builds the event, correlates it and writes it (create or patch). */
-export function recordEvent(ctx: Ctx, rec: RecorderRef, obj: ApiObject, type: EventType, reason: string, message: string): void {
+/**
+ * EventRecorder.Event: builds the event, correlates it and writes it (create or patch). `involved`
+ * replaces the reference made from `obj`: the kubelet's container events name a field
+ * (`spec.containers{web}`) and its Node events may carry no UID.
+ */
+export function recordEvent(ctx: Ctx, rec: RecorderRef, obj: ApiObject, type: EventType, reason: string, message: string, involved?: JsonObject): void {
   const slice = k8sSlice(ctx);
   // A working copy; written back frozen at the end.
   const st: RecorderState = structuredCopy(slice.recorders[rec.recorder] ?? emptyState());
   const now = ctx.now;
   const t = timeOf(now);
-  const ref = objectReference(obj);
+  const ref = involved ?? objectReference(obj);
   const namespace = s(ref.namespace) || 'default';
   const source: JsonObject = { component: rec.component, ...(rec.host ? { host: rec.host } : {}) };
   // makeEvent + generateEvent

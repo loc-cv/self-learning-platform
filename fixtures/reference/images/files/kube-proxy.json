@@ -1,0 +1,504 @@
+{
+  "family": "kube-proxy",
+  "reference": "registry.k8s.io/kube-proxy:v1.37.2",
+  "configDigest": "sha256:55b428162aa8c6cdde556e76ddc0b24cf733398fe215a833cbd0bf38738494e8",
+  "layers": [
+    "sha256:6373a93d64487b39d5f39be8927c3099a9523444334f2bd42b2664a503d49039",
+    "sha256:f05a9f9f9c3204e68dccd188e1d624fe8deb0efe75a463acf2d76755fab60338",
+    "sha256:a16e5055a129c044fc08fb3f57971521a25c21f95e66a47cf6f546ee7b6ca6a9"
+  ],
+  "listing": {
+    "dirs": [
+      "/usr/local/sbin",
+      "/usr/local/bin",
+      "/usr/sbin",
+      "/usr/bin",
+      "/sbin",
+      "/bin"
+    ],
+    "allExecutables": false
+  },
+  "dirs": [
+    {
+      "path": "/usr/local/sbin",
+      "type": "missing"
+    },
+    {
+      "path": "/usr/local/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/usr/bin",
+      "type": "dir"
+    },
+    {
+      "path": "/sbin",
+      "type": "dir"
+    },
+    {
+      "path": "/bin",
+      "type": "dir"
+    }
+  ],
+  "files": [
+    {
+      "path": "/bin/cat",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/chmod",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/dash",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/grep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/kmod",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/ln",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/lsmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "kmod",
+      "resolved": "/bin/kmod",
+      "executable": true
+    },
+    {
+      "path": "/bin/rm",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/bin/sh",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/dash",
+      "resolved": "/bin/dash",
+      "executable": true
+    },
+    {
+      "path": "/bin/sleep",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/go-runner",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/sbin/depmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/kmod",
+      "resolved": "/bin/kmod",
+      "executable": true
+    },
+    {
+      "path": "/sbin/insmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/kmod",
+      "resolved": "/bin/kmod",
+      "executable": true
+    },
+    {
+      "path": "/sbin/lsmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/kmod",
+      "resolved": "/bin/kmod",
+      "executable": true
+    },
+    {
+      "path": "/sbin/modinfo",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/kmod",
+      "resolved": "/bin/kmod",
+      "executable": true
+    },
+    {
+      "path": "/sbin/modprobe",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/kmod",
+      "resolved": "/bin/kmod",
+      "executable": true
+    },
+    {
+      "path": "/sbin/rmmod",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/bin/kmod",
+      "resolved": "/bin/kmod",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/iptables-xml",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "../sbin/xtables-legacy-multi",
+      "resolved": "/usr/sbin/xtables-legacy-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/kmod",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/bin/wc",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/build.log",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/kube-log-runner",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/local/bin/kube-proxy",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/arptables-nft",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/arptables-nft-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/arptables-nft-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ebtables-nft",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ebtables-nft-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ebtables-nft-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ebtables-translate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/usr/sbin/iptables-wrapper",
+      "resolved": "/usr/sbin/iptables-wrapper",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-apply",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "iptables-apply",
+      "resolved": "/usr/sbin/iptables-apply",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-legacy",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-legacy-multi",
+      "resolved": "/usr/sbin/xtables-legacy-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-legacy-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-legacy-multi",
+      "resolved": "/usr/sbin/xtables-legacy-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-legacy-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-legacy-multi",
+      "resolved": "/usr/sbin/xtables-legacy-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-nft",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-nft-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-nft-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/usr/sbin/iptables-wrapper",
+      "resolved": "/usr/sbin/iptables-wrapper",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-restore-translate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/usr/sbin/iptables-wrapper",
+      "resolved": "/usr/sbin/iptables-wrapper",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ip6tables-translate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ipset",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/ipset-translate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "ipset",
+      "resolved": "/usr/sbin/ipset",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/usr/sbin/iptables-wrapper",
+      "resolved": "/usr/sbin/iptables-wrapper",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-apply",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-legacy",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-legacy-multi",
+      "resolved": "/usr/sbin/xtables-legacy-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-legacy-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-legacy-multi",
+      "resolved": "/usr/sbin/xtables-legacy-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-legacy-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-legacy-multi",
+      "resolved": "/usr/sbin/xtables-legacy-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-nft",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-nft-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-nft-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-restore",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/usr/sbin/iptables-wrapper",
+      "resolved": "/usr/sbin/iptables-wrapper",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-restore-translate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-save",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "/usr/sbin/iptables-wrapper",
+      "resolved": "/usr/sbin/iptables-wrapper",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-translate",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/iptables-wrapper",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/nfnl_osf",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/nft",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/xtables-legacy-multi",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/xtables-monitor",
+      "type": "symlink",
+      "mode": "0777",
+      "target": "xtables-nft-multi",
+      "resolved": "/usr/sbin/xtables-nft-multi",
+      "executable": true
+    },
+    {
+      "path": "/usr/sbin/xtables-nft-multi",
+      "type": "file",
+      "mode": "0755",
+      "executable": true
+    }
+  ],
+  "scripts": []
+}

@@ -101,10 +101,14 @@ function rollWithinBounds(replicas: number, maxSurge: number | string, maxUnavai
   expect(active(env).every((p) => (meta(p).labels as JsonObject)['pod-template-hash'] === hashOf(cur))).toBe(true);
 }
 
+// These check the bounds at every virtual millisecond of a rollout: seconds of CPU, more when the
+// whole suite runs in parallel, hence the explicit timeout.
+const ROLLOUT_TIMEOUT_MS = 30_000;
+
 describe('rolling update', () => {
-  test('2 replicas, 25%/25%: surge 1, unavailable 0', () => rollWithinBounds(2, '25%', '25%', 1, 0));
-  test('10 replicas, maxSurge 3, maxUnavailable 2', () => rollWithinBounds(10, 3, 2, 3, 2));
-  test('4 replicas, maxSurge 0, maxUnavailable 1', () => rollWithinBounds(4, 0, 1, 0, 1));
+  test('2 replicas, 25%/25%: surge 1, unavailable 0', () => rollWithinBounds(2, '25%', '25%', 1, 0), ROLLOUT_TIMEOUT_MS);
+  test('10 replicas, maxSurge 3, maxUnavailable 2', () => rollWithinBounds(10, 3, 2, 3, 2), ROLLOUT_TIMEOUT_MS);
+  test('4 replicas, maxSurge 0, maxUnavailable 1', () => rollWithinBounds(4, 0, 1, 0, 1), ROLLOUT_TIMEOUT_MS);
 
   test('rollout undo restores the template, reuses the old ReplicaSet and gives it the next revision', () => {
     const env = bootWorkloads();

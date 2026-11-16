@@ -8,10 +8,13 @@
 //   certificate data (the certificate format is phase 25b's; PKI checks phase 28).
 // - RBAC objects (Roles, ClusterRoles and their bindings) are not stored: the API server serves no
 //   rbac.authorization.k8s.io kinds yet (phase 20a).
-// - The control plane's mirror Pods and kube-proxy's Pods are created as running objects; phase 27
-//   (static Pods through the kubelet) and 18a (the DaemonSet controller) create them for real.
-//   CoreDNS is created by the Deployment and ReplicaSet controllers and bound by the scheduler; it
-//   stays Pending until the kubelet exists (phase 06b).
+// - The control plane's mirror Pods and kube-proxy's Pods are created as objects with running
+//   containers in the node's runtime (kubelet/seed.ts), whose status the kubelet then writes; phase
+//   27 (static Pods through the kubelet) and 18a (the DaemonSet controller) create them for real.
+//   CoreDNS is created by the Deployment and ReplicaSet controllers, bound by the scheduler and
+//   started by the kubelet, which pulls its image on the node it lands on.
+// - The images kubeadm pulled (`kubeadm config images pull` in init's preflight) are in the control
+//   plane's image store, kube-proxy's on every node, and containerd's sandbox image everywhere.
 
 import type { Ctx } from '@simlab/kernel';
 import { createFs, ROOT_CRED } from '@simlab/host';
@@ -24,6 +27,7 @@ import { encodeBase64, utf8Bytes } from '../apimachinery/base64.ts';
 import { fnv128aHex } from '../controllers/endpointslice/hash.ts';
 import { computeHash } from '../controllers/hash/podtemplate.ts';
 import { controlPlaneNode, type ClusterDef, type ClusterNodeDef } from './cluster.ts';
+import { preloadImage, seedRunningPod } from '../kubelet/seed.ts';
 import { KUBEADM_FILES, KUBEADM_OBJECT_ORDER, KUBEADM_OBJECTS, KUBELET_CONF_FINALIZED, STATIC_POD_MANIFESTS } from './kubeadm/reference.ts';
 
 /** The reference's control-plane address; the topology's own replaces it (both are 172.16.0.10 today). */
@@ -198,36 +202,6 @@ function createKubeadmObjects(ctx: Ctx, def: ClusterDef, client: Client): void {
 
 // ---- seeded running Pods ----
 
-function containerId(ctx: Ctx): string {
-  return `containerd://${ctx.random('k8s.seed.container-id').chars(64, '0123456789abcdef')}`;
-}
-
-/** A running Pod's status as a kubelet reports it (phase 06b's kubelet replaces this). */
-function runningStatus(ctx: Ctx, pod: JsonObject, hostIP: string, podIP: string, now: string): JsonObject {
-  const spec = isObject(pod.spec) ? pod.spec : {};
-  const containers = (Array.isArray(spec.containers) ? spec.containers : []) as JsonObject[];
-  const cond = (type: string): JsonObject => ({ type, status: 'True', lastProbeTime: null, lastTransitionTime: now });
-  return {
-    phase: 'Running',
-    conditions: [cond('PodReadyToStartContainers'), cond('Initialized'), cond('Ready'), cond('ContainersReady'), cond('PodScheduled')],
-    hostIP,
-    hostIPs: [{ ip: hostIP }],
-    podIP,
-    podIPs: [{ ip: podIP }],
-    startTime: now,
-    containerStatuses: containers.map((c) => ({
-      name: c.name as string,
-      image: c.image as string,
-      imageID: '',
-      containerID: containerId(ctx),
-      ready: true,
-      restartCount: 0,
-      started: true,
-      state: { running: { startedAt: now } },
-    })),
-  };
-}
-
 /** The kubelet's mirror Pod of a static Pod manifest on `node` (pkg/kubelet/config/common.go applyDefaults, pod/mirror_client.go). */
 function mirrorPod(manifest: JsonObject, path: string, node: ClusterNodeDef, nodeUID: string, seen: string): JsonObject {
   const pod = cloneJson(manifest as Json) as JsonObject;
@@ -262,14 +236,12 @@ function seenTime(ms: number): string {
 function seedStaticPods(ctx: Ctx, def: ClusterDef, server: ApiServerConfig, nodeUIDs: Record<string, string>): void {
   const cp = controlPlaneNode(def);
   const client = createClient(ctx, server, { username: `system:node:${cp.name}`, groups: ['system:nodes', 'system:authenticated'] });
-  const now = timeOf(ctx.now);
   const names = ['etcd', 'kube-apiserver', 'kube-controller-manager', 'kube-scheduler'];
   (STATIC_POD_MANIFESTS as unknown as JsonObject[]).forEach((manifest, i) => {
     const path = `/etc/kubernetes/manifests/${names[i] ?? 'pod'}.yaml`;
     const body = JSON.parse(forNode(JSON.stringify(manifest), def)) as JsonObject;
     const created = must(client.resource('v1/pods').create('kube-system', mirrorPod(body, path, cp, nodeUIDs[cp.name] ?? '', seenTime(ctx.now))), `mirror Pod ${path}`);
-    // hostNetwork: the Pod's IP is the node's.
-    must(client.resource('v1/pods').updateStatus('kube-system', { ...created, status: runningStatus(ctx, created, cp.ip, cp.ip, now) }), `mirror Pod status ${path}`);
+    seedRunningPod(ctx, cp, created, services(client));
   });
 }
 
@@ -287,7 +259,6 @@ function seedDaemonSetPods(ctx: Ctx, def: ClusterDef, client: Client): void {
   const dsSpec = ds.spec as JsonObject;
   const template = dsSpec.template as JsonObject;
   const hash = computeHash(template);
-  const now = timeOf(ctx.now);
   const rnd = ctx.random('k8s.seed.daemonset-suffix');
   const podClient = client.resource('v1/pods');
   for (const n of def.nodes) {
@@ -321,7 +292,7 @@ function seedDaemonSetPods(ctx: Ctx, def: ClusterDef, client: Client): void {
       spec: tspec,
     };
     const created = must(podClient.create('kube-system', body), `kube-proxy Pod on ${n.name}`);
-    must(podClient.updateStatus('kube-system', { ...created, status: runningStatus(ctx, created, n.ip, n.ip, now) }), `kube-proxy Pod status on ${n.name}`);
+    seedRunningPod(ctx, n, created, services(client));
   }
   const count = def.nodes.length;
   must(
@@ -333,10 +304,55 @@ function seedDaemonSetPods(ctx: Ctx, def: ClusterDef, client: Client): void {
   );
 }
 
+function services(client: Client): JsonObject[] {
+  const r = client.resource('v1/services').list(undefined);
+  return r.ok ? ((r.object as JsonObject).items as JsonObject[]) : [];
+}
+
+/** Every `image:` the reference's static Pod manifests and kube-system workloads name. */
+function referenceImages(): { controlPlane: string[]; everyNode: string[] } {
+  const cp = new Set<string>();
+  const all = new Set<string>();
+  const scan = (o: Json, into: Set<string>): void => {
+    if (Array.isArray(o)) for (const x of o) scan(x, into);
+    else if (isObject(o)) {
+      for (const [k, v] of Object.entries(o)) {
+        if (k === 'image' && typeof v === 'string') into.add(v);
+        else scan(v, into);
+      }
+    }
+  };
+  scan(STATIC_POD_MANIFESTS as unknown as Json, cp);
+  scan((KUBEADM_OBJECTS.Deployment ?? []) as unknown as Json, cp);
+  scan((KUBEADM_OBJECTS.DaemonSet ?? []) as unknown as Json, all);
+  return { controlPlane: [...cp].sort(), everyNode: [...all].sort() };
+}
+
+/**
+ * kubeadm's PauseVersion (cmd/kubeadm/app/constants/constants.go), pulled with the other images;
+ * containerd 1.7.28 runs sandboxes with its own default, pause:3.8 (pkg/cri/config/config_unix.go).
+ */
+const KUBEADM_PAUSE = 'registry.k8s.io/pause:3.10.2';
+const CONTAINERD_SANDBOX_IMAGE = 'registry.k8s.io/pause:3.8';
+
+function preloadImages(ctx: Ctx, def: ClusterDef): void {
+  const refs = referenceImages();
+  const load = (node: string, image: string): void => {
+    const i = image.lastIndexOf(':');
+    preloadImage(ctx, node, image.slice(0, i), image.slice(i + 1));
+  };
+  for (const n of def.nodes) {
+    load(n.name, CONTAINERD_SANDBOX_IMAGE);
+    for (const img of refs.everyNode) load(n.name, img);
+    if (n.controlPlane) for (const img of [...refs.controlPlane, KUBEADM_PAUSE]) load(n.name, img);
+  }
+}
+
 /** Everything kubeadm and the seeded components create in the API. */
 export function seedKubeSystem(ctx: Ctx, def: ClusterDef, server: ApiServerConfig, nodeUIDs: Record<string, string>): void {
   // kubeadm acts with admin.conf (group kubeadm:cluster-admins); no authorization exists yet.
   const client = createClient(ctx, server, { username: 'kubernetes-admin', groups: ['kubeadm:cluster-admins', 'system:authenticated'] });
+  preloadImages(ctx, def);
   createKubeadmObjects(ctx, def, client);
   seedStaticPods(ctx, def, server, nodeUIDs);
   seedDaemonSetPods(ctx, def, client);

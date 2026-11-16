@@ -21,7 +21,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 05a `prompts/05a-k8s-api-store-and-pipeline.md`
 - [x] 05b `prompts/05b-k8s-controllers.md`
 - [x] 06a `prompts/06a-topology-and-scheduler.md`
-- [ ] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
+- [x] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
 - [ ] 07a `prompts/07a-kubectl-framework-and-get.md`
 - [ ] 07b `prompts/07b-kubectl-describe-apply-delete.md`
 - [ ] 08 `prompts/08-kubectl-2.md`
@@ -126,17 +126,29 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 - **kube-controller-manager and kube-scheduler are started by the topology** (`startControllerManager`,
   every registered controller, no flags; `startScheduler`, the default profile). Phase 27 starts and
   stops them with their static Pods' processes and reads `--controllers` and the scheduler's flags.
-- **Nodes and their Leases are written once by the topology** (`topology/nodes.ts`): conditions,
-  heartbeat times and Lease renewals never move, `status.images` is empty, and no registration
-  events (`Starting`, `NodeHasSufficientMemory`, `NodeReady`, `RegisteredNode`, …) exist. Phase 06b's
-  kubelet takes over the status, heartbeat, Lease and events; node health monitoring (NotReady,
-  NoExecute taints, evictions) comes with it and phase 26a. The node lifecycle controller has only
-  its NoSchedule tainting pass (`controllers/nodelifecycle/`).
-- **The control plane's mirror Pods are seeded as running** (`topology/kubeadm.ts` seedStaticPods,
-  from the manifests on disk, with a stand-in config hash, DIV-019). Phase 27 creates them through
-  the kubelet from `/etc/kubernetes/manifests`.
+- **Node health monitoring stops at NotReady** (D-063, DIV-026): no NoExecute taints and no
+  taint-based eviction, because DefaultTolerationSeconds is missing. Phase 20b adds the admission
+  plugin, the NoExecute pass and the taint-eviction controller together.
+- **The control plane's mirror Pods are created by the topology with running containers in the
+  runtime** (`topology/kubeadm.ts` seedStaticPods, `kubelet/seed.ts`, a stand-in config hash,
+  DIV-019). Phase 27 creates them through the kubelet from `/etc/kubernetes/manifests`.
 - **kube-proxy's DaemonSet Pods and the DaemonSet's status are seeded** (seedDaemonSetPods, as the
-  DaemonSet controller would create them). Phase 18a's DaemonSet controller creates and updates them.
+  DaemonSet controller would create them, with running containers). Phase 18a's DaemonSet
+  controller creates and updates them.
+- **The kubelets are started directly by the topology** (`startKubelet` in `topology/build.ts`),
+  not by `kubelet.service`; their configuration is not read from `/var/lib/kubelet/config.yaml`.
+  Phase 26a ties them to the unit and its flags and config.
+- **Control-plane, kube-proxy and CoreDNS containers run the stand-in model `component`**: no
+  output, exit 0 on SIGTERM (DIV-028). Phase 27 (static Pods as processes) and phases 17/30
+  (kube-proxy, CoreDNS) give them real models.
+- **Pods with init containers stay Pending** (DIV-021) and **`valueFrom`/`envFrom` variables are
+  left out** (DIV-022): phase 16a. **Probes are not run** (ready when running, DIV-023): phase 16b.
+- **Containers have no filesystem** beyond the captured executable tables (DIV-029): writes are
+  discarded with a gap, `cat` of a file is a gap. Phase 16a (volumes) or 17 (exec).
+- **Pod IPs come from host-local IPAM in the node's Pod CIDR** with no CNI agent (D-059). Phase
+  29a installs the modeled CNI plugins.
+- **The sandbox (pause) image is never pulled**: it is preloaded on every node. Phase 26a/29a, if
+  a scenario removes it.
 - **No certificates** (D-057): `/etc/kubernetes/pki` is not written, kubeconfigs and the
   `cluster-info` ConfigMap have no `*-data` lines (`users[].user` is empty), and the bootstrap
   token is never used. Phase 25b fixes the certificate format and fills them in; phase 28 checks them.
@@ -145,7 +157,6 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   `KUBEADM_OBJECTS` (the reference has them) when it adds the kinds.
 - **No CNI agent**: Pod networking is assumed, Nodes have no NetworkUnavailable condition and
   `/etc/cni/net.d` is absent. Phase 29a installs the modeled plugins (and 30 breaks them).
-- **CoreDNS Pods stay Pending**, bound by the scheduler, until the kubelet runs them (phase 06b).
 - **No student workstation** in `kubeadm-1cp-2w` (D-055): added by phase 19a or 25a, whichever
   comes first.
 - **Scheduler**: no preemption (phase 20b; with all priorities 0 there is never a victim, and a
@@ -170,6 +181,19 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 
 Unfinished work from a phase, precise enough for the next session to continue.
 
+- **Phase 06b, image facts read by hand.** The image models cite facts read from the image layers
+  during the phase (nginx.conf's `error_log` level and `worker_processes`, the `built by gcc`
+  strings of nginx 1.31.8 Debian/Alpine and 1.14.2, httpd.conf, the redis modules directory and the
+  binaries' dirty flag) and the redis 6.2/7.x entrypoint script, which differs from the captured
+  8.x one. Make `npm run images:capture` record them under `fixtures/reference/images/` (configs,
+  `strings` of the binaries, the older entrypoint) and point the citations at the fixtures. Owner:
+  the next phase that touches images (09, 16a), or R3.
+- **Phase 06b, model inputs the runtime does not give yet.** `ProcessInput` has no kernel release
+  or file-descriptor limit, so `packages/host/src/models/images/common.ts` holds them as constants
+  (`NODE_KERNEL_RELEASE` = the topology's 6.8.0-88-generic, `CONTAINER_NOFILE`); and `file()`
+  returns nothing, so httpd's AH00558 (needs `/etc/hosts`) is a gap. Add the fields when containers
+  get files (16a/17).
+
 - **Phase 05a, API warnings (DIV-017).** `pkg/api/pod/warnings.go` (GetWarningsForPod,
   GetWarningsForPodTemplate) was not in the checkout; it is now. Port it into the Pod, Deployment
   and ReplicaSet strategies' `warningsOnCreate`/`warningsOnUpdate`, and check the Service
@@ -191,6 +215,79 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 06b done.** Kubelet, container runtime, behavior models.
+  - Built: `packages/k8s/src/kubelet/` — the kubelet as a controller-runtime instance per node
+    (`kubelet.ts`), pod workers that suspend on CRI calls (`pods.ts`: sandbox, the serial image
+    puller, create, start, back-offs, the reason cache, termination, deletion, GC), Pod status
+    (`status.ts`: generateAPIPodStatus, getPhase, conditions), the container process (`env.ts`:
+    command/args against Entrypoint/Cmd, env with `$(VAR)` and service variables, containerd's and
+    runc's merge), node side (`node.ts`: start events, Lease, status with images, idle heartbeats),
+    PLEG (`pleg.ts`), latencies (`latency.ts`), `backoff.ts`, `seed.ts`.
+    `packages/k8s/src/runtime/` — the node's containerd as world data (`k8sSlice.runtimes`, slice
+    version 4): sandboxes with host-local IPs, containers driven by behavior models, CRI log files
+    and `/var/log/containers` links (`logs.ts`), images (`images/`: distribution/reference parser,
+    pull outcomes and containerd's error texts, file tables, the captured catalog).
+    `packages/host/src/models/` — the behavior model contract, the container shell (dash, ash,
+    bash variants, resumable), utilities, and the image programs (nginx, its entrypoint, httpd,
+    redis, pause, the `component` stand-in). Node health monitoring in the node lifecycle
+    controller (`controllers/nodelifecycle/health.ts`). Tools: `npm run images:capture`
+    (`tools/src/images/`), and `npm run upstream:fetch` now checks out several repositories
+    (containerd v1.7.28, runc v1.3.0, Go 1.23.11, nginx, httpd, four redis tags).
+  - Exit criteria, each a test in `packages/k8s/src/kubelet/kubelet.test.ts`: a three-replica
+    Deployment Running and Ready on both workers 1.5–15 s after creation (nginx pulled, events
+    Pulling/Pulled/Created/Started, repo tag and digest, containerd ids, Pod IPs from each node's
+    CIDR); a wrong tag alternates ErrImagePull/ImagePullBackOff with the exact messages and pulls
+    spaced by 10/20/40/80 s plus at most the jittered requeue; a crashing container restarts at
+    once, then after ≥10/20/40/80 s, with rising restart counts, CrashLoopBackOff and the BackOff
+    event text; exit 0 under Never ends Completed/Succeeded with PodCompleted conditions; a missing
+    executable gives runc's full error, StartError 128 and RunContainerError; deleting a Pod shows
+    Killing, `sleep` waits out the 30 s grace and dies with 137, nginx stops on SIGQUIT in under a
+    second, the ReplicaSet replaces the Pod at once; with a kubelet stopped Pods and the Lease stop
+    changing while containers keep logging, and a restart adopts running containers; a silent node
+    goes Unknown 40–60 s after the stop with NodeNotReady, Pods marked not ready and the
+    unreachable taint, and recovers; logs are CRI lines with increasing stamps and the world hash
+    is the same on reruns. The container shell replays 59 scripts captured from the real dash,
+    BusyBox and bash (`fixtures/reference/container-shell/`). Exercised in `npm run sim`: the node
+    filesystems show `/var/log/pods` and `/var/log/containers` with the real modes; scenario runs
+    through a scratch script showed CoreDNS pulled and Running two seconds after the build. No
+    kubectl yet, so nothing was tried in `npm run play` beyond the files.
+  - Decisions D-058 (kubelet, pod workers, sync triggers, modeled choices), D-059 (runtime as node
+    data, IPAM, logs), D-060 (behavior model contract in host, per program), D-061 (captured
+    catalog, the `[sim]` rule for images), D-062 (node side), D-063 (health without NoExecute),
+    D-064 (seeded running containers), D-065 (latency table). Divergences DIV-021…DIV-030.
+    `docs/BEHAVIOR_MODELS.md` (new), `docs/ARCHITECTURE.md` §3.9 and §4.8 (new),
+    `docs/FIDELITY.md` §1 (containerd, runc, Go and the image programs' pins),
+    `docs/SCENARIO_FORMAT.md` §5.4/§14.
+  - Fixed on the way: the scheduling replay and the scheduler test compared fields the kubelet now
+    writes (PodScheduled's observedGeneration, Node events in `default`); the topology golden test
+    drops `status.images` as a kubelet-only field; the rollout bound tests got an explicit timeout
+    (they took over 5 s with the larger suite in parallel); stale comments in `topology/nodes.ts`,
+    `topology/build.ts`, `topology/kubeadm.ts` and `testing/kubelet.ts`.
+  - Surprises. The waiting reasons reach the API one sync after their events (the reason cache), so
+    ErrImagePull and ImagePullBackOff alternate, and CrashLoopBackOff shows only once the worker
+    wakes for an expired or long back-off; the kubelet must not sync on its own status writes
+    (status-only updates are reconciles). containerd 1.7 reports no `user`; ErrImagePull's message
+    keeps `rpc error: code = NotFound desc =` only for NotFound (the CRI client strips Unknown).
+    The kubelet's Image back-off BackOff event is Normal, the crash-loop one Warning. Docker Hub
+    answers 401 insufficient_scope, not 404, for a missing repository. BusyBox's NOFORK `sleep`
+    with a bad operand ends the whole shell. kubeadm 1.37 pulls pause:3.10.2 while containerd 1.7
+    runs sandboxes with pause:3.8. Tags moved during the session: nginx latest is 1.31.8, alpine
+    3.24, redis 8.10.3, so `images:capture -- --check` will report drift over time.
+  - For later phases. 07a: `kubectl logs` reads `/var/log/pods/<ns>_<pod>_<uid>/<c>/<n>.log`
+    (strip the CRI prefix; `--previous` is n−1, kept because the kubelet keeps one dead container);
+    `describe pod` has everything in status and events (fieldPath on container events). 09: the
+    declarative image model of SCENARIO_FORMAT §5.4 compiles to a ProgramModel
+    (`docs/BEHAVIOR_MODELS.md` §6). 16a: init containers (pods.ts skips them with a gap),
+    `valueFrom`/`envFrom` (env.ts), container files (`ProcessInput.file`). 16b: probes set
+    `started`/`ready` in `status.ts`; OOMKilled. 17: `exec` into a container uses the same models
+    and the `sh` model. 18a: the DaemonSet controller replaces `seedDaemonSetPods`. 20b:
+    DefaultTolerationSeconds, NoExecute taints and taint eviction (D-063). 26a: tie
+    `startKubelet`/`stopKubelet` to kubelet.service, read `/var/lib/kubelet/config.yaml`. 27: real
+    models for the control-plane binaries instead of `component`.
+  - Workflow: five agents — kubelet Pod lifecycle research, node/lease/health research, the
+    multi-repository upstream fetch with containerd/runc error research, the image catalog capture,
+    and the image program models — ran while the shell, runtime and kubelet were written.
 
 - 2026-11-16 — **Phase 06a done.** Cluster topologies and kube-scheduler.
   - Built: `packages/k8s/src/topology/` — `ClusterDef` data (`cluster.ts`: `kubeadm-1cp-2w`,

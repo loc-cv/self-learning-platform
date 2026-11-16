@@ -53,7 +53,8 @@ describe('kube-scheduler', () => {
     const p = api(k, 'v1/pods').get('waits');
     expect(nodeOf(p)).toBe('');
     expect((p?.status as JsonObject).conditions).toBeUndefined();
-    expect(api(k, 'events.k8s.io/v1/events').list('default')).toEqual([]);
+    // The kubelets' Node events live in `default` too; none is about the Pod.
+    expect(api(k, 'events.k8s.io/v1/events').list('default').filter((e) => JSON.stringify(e.regarding).includes('"waits"'))).toEqual([]);
     k.act('start', (ctx) => startScheduler(ctx, DEFAULT_APISERVER));
     k.advance(1_000);
     expect(['node01', 'node02']).toContain(nodeOf(api(k, 'v1/pods').get('waits')));

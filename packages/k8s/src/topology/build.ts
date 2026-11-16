@@ -6,8 +6,9 @@
 // What runs, and what is a stand-in until its phase (STATUS.md, temporary shortcuts): the API
 // server is bootstrapped by the builder and recorded as serving (phase 27 starts it from its static
 // Pod); kube-controller-manager and kube-scheduler are started directly (phase 27); the control
-// plane's mirror Pods and the DaemonSet's Pods are written as running (phases 27 and 18a); the
-// kubelet does not exist yet (phase 06b), so Pods the scheduler binds stay Pending.
+// plane's mirror Pods and the DaemonSet's Pods are created with containers already running in the
+// node's runtime (phases 27 and 18a); each node's kubelet is started directly (phase 26a ties it to
+// kubelet.service) and takes over the Node's status, its Lease and every Pod bound to the node.
 
 import { put, type Ctx, type TopologyInfo, type TopologySpec } from '@simlab/kernel';
 import { buildUbuntuBase, createMachine } from '@simlab/host';
@@ -16,6 +17,7 @@ import { bootstrapApiServer } from '../apiserver/bootstrap.ts';
 import { k8sSlice } from '../apiserver/store.ts';
 import { startControllerManager } from '../controllers/manager.ts';
 import { startScheduler } from '../scheduler/scheduler.ts';
+import { startKubelet } from '../kubelet/kubelet.ts';
 import { CLUSTERS, controlPlaneNode, type ClusterDef } from './cluster.ts';
 import { installKubeadmFiles, seedKubeSystem } from './kubeadm.ts';
 import { registerNode } from './nodes.ts';
@@ -57,6 +59,7 @@ export function buildCluster(ctx: Ctx, def: ClusterDef): TopologyInfo {
   const cp = controlPlaneNode(def);
   startControllerManager(ctx, server);
   startScheduler(ctx, server, { host: cp.name });
+  for (const n of def.nodes) startKubelet(ctx, server, { name: n.name, ip: n.ip, podCIDR: n.podCIDR });
   return { entry: { ...def.entry }, machines: def.nodes.map((n) => n.name) };
 }
 

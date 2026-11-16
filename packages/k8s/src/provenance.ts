@@ -19,6 +19,7 @@ import { EXPLAIN_PROVENANCE } from './kubectl/cmd/explain/index.ts';
 import { INFO_PROVENANCE } from './kubectl/cmd/info/index.ts';
 import { CONFIG_PROVENANCE } from './kubectl/cmd/config/index.ts';
 import { COMPLETION_PROVENANCE } from './kubectl/completion/index.ts';
+import { VIEW_PROVENANCE } from './view/provider.ts';
 
 export const K8S_PROVENANCE: readonly ProvenanceSpec[] = [...KUBECTL_PROVENANCE, ...HELP_PROVENANCE, ...TABLE_PROVENANCE, ...YAML_JSON_PROVENANCE, ...APISERVER_PROVENANCE, ...STRATEGIC_PATCH_PROVENANCE,
   ...DESCRIBE_PROVENANCE,
@@ -32,4 +33,5 @@ export const K8S_PROVENANCE: readonly ProvenanceSpec[] = [...KUBECTL_PROVENANCE,
   ...INFO_PROVENANCE,
   ...CONFIG_PROVENANCE,
   ...COMPLETION_PROVENANCE,
+  ...VIEW_PROVENANCE,
 ];

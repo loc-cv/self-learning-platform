@@ -563,7 +563,7 @@ ones that concern machines.
 | `fault` | kernel | host, domains | `learn` runner |
 | `step` | kernel | host, domains | `learn` runner (setup and solution steps) |
 | `topology` | kernel | domains | `learn` runner, CLI |
-| `visualizer` | kernel | domains | web X-ray. A placeholder: phase 10b replaces it with the `view` contract (`PLAN.md` §6.5), registered by the host and by domains and consumed by the X-ray, figures in content and the debrief's replay |
+| `view` | kernel | host, domains | the web app's X-ray (phase 10b); figures in content (10c) and the debrief's replay (13). §2.13 |
 | `program` | host | host, domains | shell, systemd |
 | `completion` | host | host, domains | TTY line editor |
 | `fileProvider` | host | host, domains | VFS generated files |
@@ -640,6 +640,42 @@ and so that an editor can offer completion for item files (`docs/decisions.md` D
 
 Anything else is world state. The test for a new piece of state: if forking the world and running
 both copies could give different results because of it, it belongs in the world.
+
+### 2.13 Views
+
+The view contract (`packages/kernel/src/view.ts`, `PLAN.md` §6.5, `docs/DESIGN.md` §6). A view
+provider is a pure function from a world to a part of a view model; `buildView(registry, world)`
+merges every registered provider's part and orders it (kinds by kind, entities by id, relations by
+source, type and target), dropping relations whose ends are missing. Because it takes a `World`,
+the same call serves the session world, a fork and a world rebuilt by replay.
+
+```ts
+interface ViewProviderSpec extends Contribution { view(world: World): ViewPart }
+interface ViewPart { kinds: ViewKind[]; entities: ViewEntity[]; relations: ViewRelation[] }
+interface ViewKind { kind: string; shape: Shape; label: string; plural: string; placedIn?: string; unplaced?: string }
+interface ViewEntity {
+  id: string; kind: string; label: string;
+  container?: string;            // the entity that contains it
+  scope?: string;                // a scope entity it belongs to when that is not its container
+  state: ViewState;              // healthy | progressing | degraded | failed | unknown
+  status?: string;               // the state in the domain's words, from the code that prints it
+  facts: { label: string; value: string }[];
+  muted?: boolean; system?: boolean;
+}
+interface ViewRelation { type: RelationType; from: string; to: string }  // owns, selects, routesTo, runsOn, mounts, uses
+```
+
+`Shape` is one of `host`, `scope`, `workload`, `process`, `endpoint`, `store`, `rule`; the
+reasoning is in `docs/DESIGN.md` §6.1. `validateView` reports duplicate ids, undescribed kinds,
+unknown shapes, states and relation types, missing containers, scopes that are not scope entities,
+and containment cycles. Providers as built in 10b: `host` (`packages/host/src/view/provider.ts`:
+machines with their role) and `k8s` (`packages/k8s/src/view/provider.ts`: namespaces, Nodes on
+their machines, Pods, Deployments, ReplicaSets, Services, with owns, selects and routesTo). The k8s
+provider reads the store of the first serving API server directly, as the checks' reader does, and
+sends no request, so building a view changes nothing.
+
+The web worker builds the view of the session world while the X-ray is open, at most every 200 ms
+of real time and only sends it when it changed (`apps/web/src/engine/session.ts`, D-119).
 
 ## 3. Host substrate
 

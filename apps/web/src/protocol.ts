@@ -2,7 +2,7 @@
 // terminal bytes both ways, control of the lab and of time, and the editor protocol. Every message
 // is plain data (structured clone).
 
-import type { Checkpoint, GapEvent, LoggedInput, Millis, SessionLog } from '@simlab/kernel';
+import type { Checkpoint, GapEvent, LoggedInput, Millis, SessionLog, ViewModel } from '@simlab/kernel';
 import type { EditorRequest } from '@simlab/host';
 import type { GradeReport } from '@simlab/learn';
 
@@ -38,6 +38,8 @@ export type ToWorker =
   | { type: 'advance'; ms?: number }
   /** Asks for the stored attempt now (the page is being hidden). */
   | { type: 'flush' }
+  /** The X-ray opened or closed: while it is open the worker sends view models (`view`). */
+  | { type: 'view'; open: boolean }
   /** Something the editor overlay does not simulate; the worker completes it into a gap record. */
   | { type: 'gap'; session: string; gap: { kind: 'command' | 'behavior'; program: string; what: string; commandLine: string } };
 
@@ -110,6 +112,8 @@ export type FromWorker =
    * the page should already have; a page that has another count asks for a `flush`.
    */
   | { type: 'attempt.delta'; from: number; inputs: LoggedInput[]; checkpoints: Checkpoint[]; end: Millis }
+  /** The world's view model: when the X-ray opens, then at most every VIEW_EVERY ms while it changes. */
+  | { type: 'view'; model: ViewModel }
   | { type: 'error'; message: string };
 
 export interface Clock {

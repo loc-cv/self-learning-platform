@@ -26,34 +26,44 @@ const pct = (xs: number[], p: number): number => {
   return s[Math.min(s.length - 1, Math.ceil((p / 100) * s.length) - 1)] as number;
 };
 
-test('read commands answer in under 50 ms at p95; keystrokes echo at once', async ({ page }) => {
-  await openLab(page, 'k8s.troubleshooting.broken-rollout-01', 3);
-  await run(page, 'clear');
-  const samples = new Map<string, { parsed: number[]; painted: number[] }>(COMMANDS.map((c) => [c, { parsed: [], painted: [] }]));
-  const keys: number[] = [];
-  for (let round = 0; round <= ROUNDS; round++) {
-    for (const command of COMMANDS) {
-      keys.push(...(await page.evaluate((c) => window.__simlab.type(c), command)));
-      const t = await page.evaluate(() => window.__simlab.enter());
-      // The first round warms the JIT; it is not counted.
-      if (round === 0) continue;
-      const s = samples.get(command) as { parsed: number[]; painted: number[] };
-      s.parsed.push(t.parsed);
-      s.painted.push(t.painted);
+for (const xray of [false, true]) {
+  test(`read commands answer in under 50 ms at p95; keystrokes echo at once${xray ? ' (X-ray open)' : ''}`, async ({ page }) => {
+    await openLab(page, 'k8s.troubleshooting.broken-rollout-01', 3);
+    if (xray) {
+      // Phase 10b: the numbers must hold while the X-ray redraws the world after every command.
+      await page.keyboard.press('Control+Shift+Y');
+      await expect(page.locator('.vcanvas .vbox').first()).toBeVisible();
+      // The lab panel goes, so the terminal keeps its width: the probe reads the cursor's row, and
+      // a command that wraps would never appear on it.
+      await page.keyboard.press('Control+Shift+L');
     }
     await run(page, 'clear');
-  }
-  const rows = COMMANDS.map((command) => {
-    const s = samples.get(command) as { parsed: number[]; painted: number[] };
-    return { command, p50: pct(s.parsed, 50), p95: pct(s.parsed, 95), painted95: pct(s.painted, 95) };
+    const samples = new Map<string, { parsed: number[]; painted: number[] }>(COMMANDS.map((c) => [c, { parsed: [], painted: [] }]));
+    const keys: number[] = [];
+    for (let round = 0; round <= ROUNDS; round++) {
+      for (const command of COMMANDS) {
+        keys.push(...(await page.evaluate((c) => window.__simlab.type(c), command)));
+        const t = await page.evaluate(() => window.__simlab.enter());
+        // The first round warms the JIT; it is not counted.
+        if (round === 0) continue;
+        const s = samples.get(command) as { parsed: number[]; painted: number[] };
+        s.parsed.push(t.parsed);
+        s.painted.push(t.painted);
+      }
+      await run(page, 'clear');
+    }
+    const rows = COMMANDS.map((command) => {
+      const s = samples.get(command) as { parsed: number[]; painted: number[] };
+      return { command, p50: pct(s.parsed, 50), p95: pct(s.parsed, 95), painted95: pct(s.painted, 95) };
+    });
+    const all = [...samples.values()].flatMap((s) => s.parsed);
+    const allPainted = [...samples.values()].flatMap((s) => s.painted);
+    const summary = { rounds: ROUNDS, samples: all.length, p50: pct(all, 50), p95: pct(all, 95), painted95: pct(allPainted, 95), keystroke: { p50: pct(keys, 50), p95: pct(keys, 95), samples: keys.length } };
+    const ms = (x: number): string => `${x.toFixed(1).padStart(6)} ms`;
+    const table = rows.map((r) => `${r.command.padEnd(52)} p50 ${ms(r.p50)}   p95 ${ms(r.p95)}   painted p95 ${ms(r.painted95)}`).join('\n');
+    console.log(`${xray ? 'X-ray open\n' : ''}${table}\n\nall read commands: p50 ${summary.p50.toFixed(1)} ms, p95 ${summary.p95.toFixed(1)} ms, painted p95 ${summary.painted95.toFixed(1)} ms (${summary.samples} samples)\nkeystroke echo: p50 ${summary.keystroke.p50.toFixed(1)} ms, p95 ${summary.keystroke.p95.toFixed(1)} ms (${summary.keystroke.samples} keys)`);
+    writeFileSync(`../../.tsbuild/playwright/latency${xray ? '-xray' : ''}.json`, `${JSON.stringify({ summary, rows }, null, 2)}\n`);
+    expect(summary.p95).toBeLessThan(50);
+    expect(summary.keystroke.p95).toBeLessThan(16);
   });
-  const all = [...samples.values()].flatMap((s) => s.parsed);
-  const allPainted = [...samples.values()].flatMap((s) => s.painted);
-  const summary = { rounds: ROUNDS, samples: all.length, p50: pct(all, 50), p95: pct(all, 95), painted95: pct(allPainted, 95), keystroke: { p50: pct(keys, 50), p95: pct(keys, 95), samples: keys.length } };
-  const ms = (x: number): string => `${x.toFixed(1).padStart(6)} ms`;
-  const table = rows.map((r) => `${r.command.padEnd(52)} p50 ${ms(r.p50)}   p95 ${ms(r.p95)}   painted p95 ${ms(r.painted95)}`).join('\n');
-  console.log(`${table}\n\nall read commands: p50 ${summary.p50.toFixed(1)} ms, p95 ${summary.p95.toFixed(1)} ms, painted p95 ${summary.painted95.toFixed(1)} ms (${summary.samples} samples)\nkeystroke echo: p50 ${summary.keystroke.p50.toFixed(1)} ms, p95 ${summary.keystroke.p95.toFixed(1)} ms (${summary.keystroke.samples} keys)`);
-  writeFileSync('../../.tsbuild/playwright/latency.json', `${JSON.stringify({ summary, rows }, null, 2)}\n`);
-  expect(summary.p95).toBeLessThan(50);
-  expect(summary.keystroke.p95).toBeLessThan(16);
-});
+}

@@ -12,9 +12,13 @@ export interface Settings {
   panelWidth: number;
   panelOpen: boolean;
   fontSize: number;
+  /** Width of the X-ray in CSS pixels. Whether it is open is not stored: every attempt starts without it. */
+  xrayWidth: number;
+  /** Animation of change in views: as the system asks (prefers-reduced-motion), or reduced. */
+  motion: 'system' | 'reduced';
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14 };
+export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, motion: 'system' };
 
 const SETTINGS = 'simlab.settings.v1';
 const ACTIVE = 'simlab.active.v1';

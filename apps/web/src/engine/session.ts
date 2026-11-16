@@ -6,7 +6,7 @@
 // for one terminal in one message. A resumed attempt is replayed first; its terminal output goes
 // to the page so the terminals show what they showed before the reload.
 
-import { createInteractiveDriver, createRecorder, createRegistry, ENGINE_VERSION, hashNode, replay, type GapEvent, type InteractiveDriver, type Input, type Json, type LoggedInput, type Millis, type OutputRecord, type Ports, type SessionHeader, type SessionLog, type SessionRecorder } from '@simlab/kernel';
+import { buildView, createInteractiveDriver, createRecorder, createRegistry, ENGINE_VERSION, hashNode, replay, type GapEvent, type InteractiveDriver, type Input, type Json, type LoggedInput, type Millis, type OutputRecord, type Ports, type SessionHeader, type SessionLog, type SessionRecorder } from '@simlab/kernel';
 import { hostPlugin, type EditorRequest, type HostSlice } from '@simlab/host';
 import { k8sPlugin, KUBERNETES_TAG } from '@simlab/k8s';
 import { buildBaseline, openLab, showSolution, variantOf, type Baseline, type GradeReport, type Item, type Lab } from '@simlab/learn';
@@ -20,6 +20,8 @@ export const SAVE_IDLE = 5_000;
 export const CHECKPOINT_EVERY = 120_000;
 /** How often the clock is reported (real ms). */
 export const CLOCK_EVERY = 1_000;
+/** The X-ray's view model is sent at most this often (real ms), and only when it changed. */
+export const VIEW_EVERY = 200;
 
 export interface Engine {
   receive(msg: ToWorker): void;
@@ -79,6 +81,10 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
   let lastClock = last;
   /** How much of the current log the page has: inputs and checkpoints. */
   let sent = { inputs: 0, checkpoints: 0 };
+  /** The X-ray is open: view models go to the page. The last one sent, without its time. */
+  let viewOpen = false;
+  let lastView = '';
+  let lastViewAt = -Infinity;
 
   const push = (m: FromWorker): void => {
     const prev = queue[queue.length - 1];
@@ -197,8 +203,20 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
         lastClock = now;
         push({ type: 'clock', clock: clockOf(a) });
       }
+      if (viewOpen && now - lastViewAt >= VIEW_EVERY) sendView(a, now);
     }
     flush();
+  };
+
+  /** Sends the world's view model if it differs from the last one sent. */
+  const sendView = (a: Active, now: number): void => {
+    lastViewAt = now;
+    const model = buildView(registry, a.lab.kernel.world);
+    const { t: _t, ...rest } = model;
+    const key = JSON.stringify(rest);
+    if (key === lastView) return;
+    lastView = key;
+    push({ type: 'view', model });
   };
 
   const fail = (problem: 'changed' | 'diverged' | 'unknown-item' | 'error', message: string): void => {
@@ -208,6 +226,9 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
 
   const start = (msg: Extract<ToWorker, { type: 'start' }>): void => {
     active = undefined;
+    // The page opens the X-ray of the new attempt again if it is open (an event of this attempt).
+    viewOpen = false;
+    lastView = '';
     const item = items.find((i) => i.id === msg.item);
     if (!item) return fail('unknown-item', `There is no content item ${msg.item}.`);
     const resume = msg.resume;
@@ -249,6 +270,7 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
       const hints = acts.filter((x) => x.action === 'hint' && x.data !== null && x.data !== undefined).length;
       for (let k = 0; k < hints; k++) lab.nextHint();
       if (acts.some((x) => x.action === 'solution')) lab.solutions();
+      for (const x of acts) if (x.action === 'view') lab.view((x.data as { open?: boolean } | undefined)?.open === true);
       a.solved = acts.some((x) => x.action === 'check' && (x.data as { passed?: boolean } | undefined)?.passed === true);
       a.debriefSeen = acts.some((x) => x.action === 'debrief');
       a.inputsAtCheckpoint = log.checkpoints[log.checkpoints.length - 1]?.inputs ?? 0;
@@ -325,6 +347,7 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
         delete a.report;
         a.inputsAtCheckpoint = 0;
         a.checkpointAt = a.lab.kernel.now;
+        lastViewAt = -Infinity;
         result = { action };
         break;
       }
@@ -396,6 +419,17 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
       case 'flush':
         a.driver.tick(real);
         save(a);
+        return;
+      case 'view':
+        if (msg.open === viewOpen) return;
+        viewOpen = msg.open;
+        // Opening the X-ray is help: logged as a lab action, so it survives a reload.
+        deliver(a, { kind: 'learn.action', action: 'view', data: { open: msg.open } }, real);
+        a.lab.view(msg.open);
+        if (msg.open) {
+          lastView = '';
+          sendView(a, clock());
+        }
         return;
       case 'gap': {
         // Completed as the kernel completes an engine gap (kernel.ts Ctx.gap); not world state.

@@ -1149,3 +1149,45 @@ each on an idle machine; during this run another project's jobs held every core 
 and one lab test timed out, failing the gate with nothing wrong. The engine is deterministic and
 runs in virtual time, so a slow test means a busy workstation, not a hang; a real hang still fails,
 after 30 s.
+
+## Phase 10b (2026-11-17)
+
+**D-117 — The interface's font is bundled: IBM Plex Sans.** The owner chose the Instrument look
+from two directions shown as screenshots (`docs/DESIGN.md` §1). Its font comes from
+`@fontsource/ibm-plex-sans` 5.3.0 (weights 400, 500, 600), imported by `apps/web/src/app/fonts.ts`
+and bundled by Vite: the woff2 files ship with the build, every subset is declared with its unicode
+range (Vietnamese included), and nothing is fetched at runtime. Before, the stack named Inter first,
+which the owner's Windows machine does not have, so the page fell back to Segoe UI; part of "dull
+type" was that. The Studio direction's Inter package was removed with the direction.
+
+**D-118 — A fixed vocabulary of seven shapes and six relation types.** The view contract describes
+each kind by `host`, `scope`, `workload`, `process`, `endpoint`, `store` or `rule`, and relations as
+`owns`, `selects`, `routesTo`, `runsOn`, `mounts` or `uses` (`docs/DESIGN.md` §6.1 has the mapping
+for Kubernetes, a Linux host, a load balancer and a network path). Two containment shapes, because a
+boundary things run in and a grouping things are declared in are drawn and filtered differently: a
+Pod's container is its Node, its `scope` its Namespace. A kind whose instances normally sit in a
+container names that container's kind (`placedIn`); one without a container is drawn in a lane
+captioned by the kind (`unplaced`), which is how Pending Pods with no node appear. The renderer has
+one drawing per shape and per relation type and nothing per kind.
+
+**D-119 — The X-ray's data path.** While the X-ray is open the worker calls `buildView` on the
+session world after messages and ticks, at most every 200 ms of real time, and sends the model only
+when it differs from the last one sent (compared without its time). Facts that change every second
+(ages) are left out of view models so an idle world sends nothing. The page diffs consecutive models
+by entity id. The X-ray is closed at the start of every attempt, including after a reload; its
+width is a setting. Opening and closing it are logged as `learn.action` inputs (`view`, `{ open }`)
+and recorded as `LabEvent`s of kind `view`, so they survive a reload and phase 11 can rate them.
+Chord: Ctrl+Shift+Y, claimed like the others (D-112): the page prevents the default every time, as `e2e/xray.spec.ts` asserts. Whether a Windows browser acts on the chord before the page is not verified from here (Edge has used it for Collections); the toggle in the top bar is the way in either way.
+
+**D-120 — Who judges a state.** The provider, in its domain's terms, with the reasoning next to the
+code. For Kubernetes (`packages/k8s/src/view/provider.ts`): a Pod being deleted is progressing; a
+container waiting for any reason but ContainerCreating or PodInitializing, or terminated with a
+non-zero code, is failed; a Pending Pod the scheduler could not place (PodScheduled False) is
+degraded, because it waits for something that will not change by itself; a Running Pod that is not
+Ready is degraded. A Node follows its Ready condition (Unknown is unknown) and is degraded when
+cordoned. A Deployment past its progress deadline is failed, mid-rollout progressing, short of
+available replicas degraded. A Service with no ready endpoint is failed. The status word shown next
+to the state is always the printer's (`printPod` STATUS, `printNode` STATUS, `printDeployment`
+READY), so the X-ray never contradicts `kubectl get`. The namespaces Kubernetes creates for itself
+(`kube-system`, `kube-public`, `kube-node-lease`) and everything in them are `system`: the X-ray's
+default filter hides them.

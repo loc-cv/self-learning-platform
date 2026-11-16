@@ -16,6 +16,8 @@ export interface Probe {
   enter(prompt?: RegExp): Promise<{ parsed: number; painted: number }>;
   /** Moves virtual time on (tests wait for Pods without waiting in real time). */
   advance(ms: number): void;
+  /** How fast virtual time runs against real time (the protocol's speed control, phase 13's UI). */
+  speed(n: number): void;
 }
 
 export function installProbe(client: EngineClient, handles: Map<number, TerminalHandle>, state: () => { tabs: Tab[]; activeTab?: number }): void {
@@ -71,6 +73,7 @@ export function installProbe(client: EngineClient, handles: Map<number, Terminal
       return { parsed: p, painted: p + (performance.now() - t1) };
     },
     advance: (ms) => client.send({ type: 'advance', ms }),
+    speed: (n) => client.send({ type: 'speed', speed: n }),
   };
   (window as unknown as { __simlab: Probe }).__simlab = probe;
 }

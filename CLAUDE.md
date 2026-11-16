@@ -7,6 +7,7 @@ practice with spaced repetition.
 
 - `PLAN.md` — goals, principles, architecture decisions, roadmap. The source of truth.
 - `STATUS.md` — which phase is done, carry-over work, handoff notes. Read it at the start of every session.
+- `docs/DESIGN.md` — the design language: tokens, motion rules, state colors, the views' shapes.
 - `prompts/` — one prompt per phase, plus repeatable prompts (`R1`–`R5`).
 - `docs/` — detailed specs, written and kept current by the phases that build each subsystem.
   `docs/feedback-log.md` records what each R3 run did with the owner's feedback.
@@ -41,7 +42,7 @@ npm start                     # build apps/web, then serve it and the API (gap l
                               # on http://127.0.0.1:4317/; server options --port N, --data DIR
 npm run e2e                   # Playwright: build, serve, smoke test and exit-criteria tests in Chromium
                               # (not part of the gate, D-110); `npm run e2e -- <file|-g name>` for one
-npm run bench:web             # in-browser latency of read commands and keystrokes (p50/p95)
+npm run bench:web             # in-browser latency of read commands and keystrokes (p50/p95), X-ray closed and open
 npm run play -- --topology kubeadm-1cp-2w [--seed N]  # sit in a simulated machine from this terminal (Ctrl-] leaves);
                                                   # records to data/play/, $EDITOR answers vim/nano
 npm run play -- --replay <file>                   # replay a recording; checks it reaches the same world hash
@@ -84,10 +85,12 @@ tools run as `node tools/src/<tool>.ts`. The Kubernetes pin is `KUBERNETES_VERSI
 ## Layout
 
 ```
-packages/kernel    virtual clock, event queue, world state, snapshot/replay, PRNG, plugin registry, trace
+packages/kernel    virtual clock, event queue, world state, snapshot/replay, PRNG, plugin registry, trace,
+                   the view contract (view.ts)
 packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd, processes;
                    src/models behavior models (the contract, the container shell, utilities, image programs);
-                   src/scenario the `run` and `write` steps, the `shell.exec` and `host.file` checks
+                   src/scenario the `run` and `write` steps, the `shell.exec` and `host.file` checks,
+                   src/view the host's view provider (machines)
 packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kubelet, network, kubectl, kubeadm, …
                    (src/apiserver pipeline and store, src/registry strategies, src/apis defaulting and
                    validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data,
@@ -103,7 +106,7 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
                    one directory per group under cmd/: generate/, change/, rollout/, logs/, explain/,
                    info/, config/, with cmd/typed.ts their typed printer; completion/ cobra's
                    __complete and the bash script's presentation),
-                   src/checks the k8s.* checks, src/scenario the `apply` step,
+                   src/checks the k8s.* checks, src/scenario the `apply` step, src/view the view provider,
                    src/printers the API server's Table printers, src/apimachinery/yaml go-yaml and
                    sigs.k8s.io/yaml (kubectl's YAML/JSON output and manifest parsing),
                    src/apimachinery/strategicpatch strategic merge patch (server and three-way),
@@ -115,7 +118,9 @@ packages/learn     content model, scenario runner, checks, grader, skills, FSRS,
 packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml
 apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side, tested in
                    Node), src/app (App, Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
-                   LabPanel, TopBar, ItemPicker, storage, shortcuts and fullscreen, the probe for tests),
+                   LabPanel, TopBar, ItemPicker, XRay, storage, shortcuts and fullscreen, the probe for tests,
+                   styles.css with the design tokens of docs/DESIGN.md, fonts.ts the bundled font),
+                   src/view (the renderer: layout.ts, filter.ts, ViewCanvas.tsx; no domain names),
                    src/protocol.ts (page ↔ worker messages), vite.config.ts (bundles the content packs,
                    D-103), public/ (web app manifest and icons, D-113), e2e/ (Playwright)
 apps/server        the local server: built app or Vite middleware, POST /api/gaps → data/gaps.jsonl

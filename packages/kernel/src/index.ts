@@ -18,4 +18,5 @@ export * from './snapshot.ts';
 export * from './table.ts';
 export * from './trace.ts';
 export * from './version.ts';
+export * from './view.ts';
 export * from './world.ts';

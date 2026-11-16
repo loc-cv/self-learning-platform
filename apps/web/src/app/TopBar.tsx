@@ -22,6 +22,9 @@ interface Props {
   setSettings(s: Settings): void;
   togglePause(): void;
   togglePanel(): void;
+  /** Undefined when there is no lab to look at. */
+  xrayOpen?: boolean;
+  toggleXray(): void;
   openLabs(): void;
   fullscreen: boolean;
   toggleFullscreen(): void;
@@ -104,6 +107,12 @@ export function TopBar(p: Props) {
           <span className="sim-tag">[sim]</span>
           <span className="gap-count">{p.gaps.length}</span>
         </Button>
+        {p.xrayOpen !== undefined ? (
+          <Button variant="ghost" small className="topbar-trigger xray-trigger" shortcut="Ctrl+Shift+Y" title={p.xrayOpen ? 'Close the X-ray' : 'X-ray: see the simulated world (counts as help)'} aria-pressed={p.xrayOpen} onClick={p.toggleXray}>
+            <Icon name="xray" />
+            X-ray
+          </Button>
+        ) : null}
         <Button variant="ghost" small shortcut="Ctrl+Shift+F" title={p.fullscreen ? 'Leave full screen' : 'Full screen: Ctrl+W, Ctrl+T and Ctrl+N reach the shell'} aria-pressed={p.fullscreen} onClick={p.toggleFullscreen}>
           <Icon name={p.fullscreen ? 'shrink' : 'expand'} />
         </Button>
@@ -149,6 +158,13 @@ export function TopBar(p: Props) {
               <small>for vim, vi and kubectl edit</small>
             </span>
             <Segmented value={p.settings.editorKeys} options={[{ value: 'vim', label: 'Vim' }, { value: 'plain', label: 'Plain' }]} onChange={(editorKeys) => p.setSettings({ ...p.settings, editorKeys })} />
+          </div>
+          <div className="setting">
+            <span>
+              Motion
+              <small>how views show change</small>
+            </span>
+            <Segmented value={p.settings.motion} options={[{ value: 'system', label: 'As the system' }, { value: 'reduced', label: 'Reduced' }]} onChange={(motion) => p.setSettings({ ...p.settings, motion })} />
           </div>
           <div className="setting">
             <span>Terminal text</span>

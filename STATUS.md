@@ -30,7 +30,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] **Checkpoint A** — played 2026-11-16; R3 run 2026-11-17 (`docs/feedback-log.md`). Verdict: the
   terminal feels real; the product is all text and looks bland. The visual layer therefore comes
   next (`PLAN.md` §15)
-- [ ] 10b `prompts/10b-visual-foundation.md`
+- [x] 10b `prompts/10b-visual-foundation.md`
 - [ ] 10c `prompts/10c-figures-and-scenes.md`
 - [ ] **Checkpoint A2** — play the three labs again with the X-ray and the figures, write
   `FEEDBACK.md`; run R3 if it has entries
@@ -226,9 +226,6 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 Entries of `FEEDBACK.md` and the gap log that a triage run assigned to a planned phase. The phase
 that takes one removes it here. Details and evidence: `docs/feedback-log.md`.
 
-- **10b** — the look: dull type and spacing, flat with no depth, nothing shows the system (not
-  color). Two directions as screenshots for the owner to choose from. Also the view contract and
-  the live X-ray.
 - **10c** — figures in tickets and debriefs, scenes, the three labs rewritten with at most half
   their prose.
 - **13** — the debrief replays the attempt with its causes.
@@ -312,6 +309,58 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-17 — **Phase 10b done.** Design language, view contract, providers, renderer, live X-ray.
+  - The look. Two directions shown as screenshots of the real workspace running the scheduling lab
+    with the X-ray open, both themes: Instrument (IBM Plex Sans, compact, panes edge to edge as
+    tonal layers) and Studio (Inter, roomier, rounded island panes). The owner chose
+    **Instrument**; Studio was removed. `docs/DESIGN.md` records the tokens (type scale, weights,
+    spacing, radii, surface levels and elevation, motion with what may and may not move, the state
+    colors and glyphs in both themes) and the views' shape vocabulary. `styles.css` now takes every
+    size, weight, radius and duration from a token; the font is bundled (`@fontsource/ibm-plex-sans`
+    5.3.0, `apps/web/src/app/fonts.ts`, D-117). Every existing screen (workspace, lab list, editor
+    overlay, popovers) uses it.
+  - View contract (`packages/kernel/src/view.ts`, registry kind `view`, ARCHITECTURE §2.13):
+    entities, relations, kinds described by seven shapes (D-118), `buildView`, `validateView`.
+    Providers: host (machines, `packages/host/src/view/`) and k8s (namespaces, Nodes on their
+    machines, Pods with or without a node, Deployments, ReplicaSets, Services with selects and
+    routesTo; `packages/k8s/src/view/provider.ts`). Status words and fact labels come from the
+    printers; who judges each state is D-120. Provenance unit `view.k8s.words`.
+  - Renderer (`apps/web/src/view/`): our own layout (bands: scopes, the unplaced lane, hosts; slots
+    remembered so an entity keeps its place) and SVG drawing with CSS transitions, fade in and out,
+    zoom, fit, focus, keyboard selection, reduced motion. No domain word: `nodomain.test.ts`.
+  - X-ray (`apps/web/src/app/XRay.tsx`): third pane, top bar toggle and Ctrl+Shift+Y, filter by
+    scope (system namespaces hidden by default), facts and relations of the selection, legend.
+    The worker sends view models at most every 200 ms and only when changed (D-119). Opening and
+    closing are logged as `learn.action` `view` and recorded as `LabEvent` `view`.
+  - Exit criteria. (1) Look chosen from two directions; DESIGN.md has tokens and motion rules.
+    (2) `e2e/xray.spec.ts`: the scheduling lab (seed 1) shows three Pending Pods in the "Pods with
+    no node" lane, outside every node; after `kubectl edit` in the terminal the three new Pods are
+    Running inside node01 without a reload, and the names match `kubectl get pods -o wide`.
+    (3) `packages/k8s/src/view/provider.test.ts` compares the view with `kubectl get pods -A -o
+    wide` and `kubectl get nodes` on the same world (bad-image Pods and a cordoned node included);
+    a rollout of 6 Pods is followed as a sequence of 121 views. (4) `nodomain.test.ts`. (5) A 30-Pod
+    rollout at 10× speed with the X-ray open: keystroke echo p95 0.2–0.3 ms, no long task; reduced
+    motion from the system and from the setting both make change instant. (6) `npm run e2e`: 22
+    browser tests; latency with the X-ray closed p95 8.6–9.1 ms, open p95 8.3–8.6 ms (painted p95 under 23 ms),
+    keystroke p95 0.2 ms; `unshare -rn npm run build -w apps/web` builds with no network and the
+    offline test passes. Screenshots of the workspace with the X-ray open and closed, both themes,
+    are written by `e2e/xray.spec.ts` to `.tsbuild/playwright/`.
+  - Surprises. Playwright empties `.tsbuild/playwright/` at the start of every run, screenshots
+    included: copy them out before running another spec. With three panes at 1440 px the terminal
+    is about 50 columns wide, and the probe (which reads the cursor's row) loses a command that
+    wraps; the latency run with the X-ray hides the lab panel. A test listener for a workspace
+    chord must use the capture phase: the workspace's own capture listener stops propagation.
+    `pkill -f` with a pattern that appears in the same shell command kills that shell.
+  - Known gaps. Text widths in the renderer are estimated from the font size (no measuring), so a
+    narrow host's header may shorten a name more than needed. The X-ray shows no "why" (phase 13)
+    and no conditions; the scope filter is the only filter. Not verified on Windows: whether Chrome
+    or Edge acts on Ctrl+Shift+Y before the page (Edge has used it for Collections); the top bar
+    button works regardless.
+  - For 10c. Figures render through `ViewCanvas` with a `ViewModel` from `buildView` on any world
+    (a baseline, a fork, a scene step). A figure will want a fixed viewBox and no interaction:
+    add a `static` prop rather than a second renderer. The `scope` filter and `system` flag decide
+    what a figure shows by default.
 
 - 2026-11-17 — **R3 after Checkpoint A.** Feedback and gap triage; the plan changed.
   - The owner's verdict: typing and the supported commands feel real. The content is too much

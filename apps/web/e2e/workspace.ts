@@ -11,6 +11,7 @@ declare global {
       type(text: string): Promise<number[]>;
       enter(prompt?: RegExp): Promise<{ parsed: number; painted: number }>;
       advance(ms: number): void;
+      speed(n: number): void;
     };
   }
 }

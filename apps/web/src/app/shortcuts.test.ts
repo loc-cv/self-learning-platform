@@ -21,6 +21,9 @@ test('previous and next terminal, full screen, and copy whatever is selected', (
   expect(matchShortcut(key('PageUp'))).toEqual({ id: 'prevTab' });
   expect(matchShortcut(key('PageDown'))).toEqual({ id: 'nextTab' });
   expect(matchShortcut(key('KeyF'))).toEqual({ id: 'fullscreen' });
+  expect(matchShortcut(key('KeyY'))).toEqual({ id: 'xray' });
+  // Ctrl+Y is readline's yank: the X-ray takes only the shifted chord.
+  expect(matchShortcut(key('KeyY', { ctrlKey: true }))).toBeUndefined();
   // Ctrl+Shift+C is a shortcut with or without a selection: unclaimed, Chrome opens DevTools.
   expect(matchShortcut(key('KeyC'))).toEqual({ id: 'copy' });
   // Shift+PageUp scrolls the terminal and Ctrl+F is forward-char: neither is taken.
@@ -40,7 +43,7 @@ test('the chords the browser keeps in a tab', () => {
 });
 
 test('every shortcut the help lists is one the matcher knows', () => {
-  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash'];
+  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'KeyY', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash'];
   const matched = new Set(codes.map((c) => matchShortcut(key(c))?.id));
   // PageDown is listed on PageUp's line.
   for (const s of SHORTCUTS) expect(matched.has(s.id), s.id).toBe(true);

@@ -43,6 +43,16 @@ const PATHS: Record<string, ReactNode> = {
   pause: <path d="M7 4.5v11M13 4.5v11" />,
   play: <path d="M6.5 4.5l9 5.5-9 5.5z" />,
   plus: <path d="M10 4.5v11M4.5 10h11" />,
+  minus: <path d="M4.5 10h11" />,
+  fit: <path d="M3.5 7v-3.5H7M13 3.5h3.5V7M16.5 13v3.5H13M7 16.5H3.5V13M7.5 7.5h5v5h-5z" />,
+  xray: (
+    <>
+      <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
+      <rect x="5.5" y="6.5" width="4" height="3" rx="0.8" />
+      <rect x="10.5" y="10.5" width="4" height="3" rx="0.8" />
+      <path d="M9.5 8h2.5v2.5" />
+    </>
+  ),
   close: <path d="M5.5 5.5l9 9M14.5 5.5l-9 9" />,
   list: <path d="M7 5.5h9M7 10h9M7 14.5h9M3.8 5.5h.4M3.8 10h.4M3.8 14.5h.4" />,
   gear: (

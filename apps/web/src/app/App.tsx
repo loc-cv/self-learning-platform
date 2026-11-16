@@ -2,6 +2,7 @@
 // the terminal that asked for it. State lives here; the engine lives in the worker.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ViewModel } from '@simlab/kernel';
 import type { Item } from '@simlab/learn';
 import type { Clock, LabAction, LabInfo, LabState, OpenEditor, ResumeProblem } from '../protocol.ts';
 import { itemById } from '../content.ts';
@@ -18,6 +19,8 @@ import { TopBar, type Popover } from './TopBar.tsx';
 import { Button, Icon } from './ui.tsx';
 import { installProbe } from './probe.ts';
 import { createAttemptKeeper } from './attempts.ts';
+import { XRay } from './XRay.tsx';
+import { usePrefersReducedMotion } from './motion.ts';
 
 type Phase = { kind: 'picker' } | { kind: 'loading'; title: string; resuming: boolean } | { kind: 'ready' } | { kind: 'failed'; problem: ResumeProblem; message: string; item: string };
 
@@ -53,6 +56,11 @@ export function App() {
   useEffect(() => watchFullscreen(setFullscreen), []);
   const [storageWarning, setStorageWarning] = useState(false);
   const [engineError, setEngineError] = useState<string>();
+  /** The X-ray is open, and the last view model the worker sent. */
+  const [xray, setXray] = useState(false);
+  const [viewModel, setViewModel] = useState<ViewModel>();
+  const systemReduced = usePrefersReducedMotion();
+  const reducedMotion = settings.motion === 'reduced' || systemReduced;
   const handles = useRef(new Map<number, TerminalHandle>());
   /** The item being started, for a failure that comes before its lab is known. */
   const starting = useRef<string | undefined>(undefined);
@@ -108,6 +116,9 @@ export function App() {
       setLab(undefined);
       setLabState(undefined);
       setClock(undefined);
+      // Every attempt starts with the X-ray closed: it is help, opened on purpose.
+      setXray(false);
+      setViewModel(undefined);
       // An interactive session starts at the real current time (docs/SCENARIO_FORMAT.md §5.2).
       client.send({ type: 'start', item: item.id, seed: seed ?? randomSeed(), startTime: Math.floor(Date.now() / 1000) * 1000, ...(stored ? { resume: stored } : {}) });
     },
@@ -164,6 +175,9 @@ export function App() {
           }
           case 'clock':
             setClock(m.clock);
+            return;
+          case 'view':
+            setViewModel(m.model);
             return;
           case 'attempt':
             keeper.full(m.attempt);
@@ -271,6 +285,17 @@ export function App() {
     focusTerminal();
   }, [client, clock, focusTerminal]);
 
+  const xrayOpen = useRef(false);
+  xrayOpen.current = xray;
+  const toggleXray = useCallback(() => {
+    if (current.current.lab === undefined) return;
+    const open = !xrayOpen.current;
+    client.send({ type: 'view', open });
+    setXray(open);
+    if (!open) setViewModel(undefined);
+    focusTerminal();
+  }, [client, focusTerminal]);
+
   const togglePanel = useCallback(() => {
     setSettings({ ...settings, panelOpen: !settings.panelOpen });
     focusTerminal();
@@ -317,6 +342,7 @@ export function App() {
           const t = ts[neighbourTab(Math.max(at, 0), ts.length, m.id === 'prevTab' ? -1 : 1)];
           if (t) setActiveTab(t.key);
         } else if (m.id === 'panel') togglePanel();
+        else if (m.id === 'xray' && ready) toggleXray();
         else if (m.id === 'pause' && ready) togglePause();
         else if (m.id === 'labs') setPicker((v) => !v);
         else if (m.id === 'help') setPopover((v) => (v === 'help' ? undefined : 'help'));
@@ -338,7 +364,7 @@ export function App() {
     };
     window.addEventListener('keydown', down, true);
     return () => window.removeEventListener('keydown', down, true);
-  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, togglePause, focusTerminal]);
+  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, toggleXray, togglePause, focusTerminal]);
 
   // In full screen or an installed app window the browser hands over Ctrl+W, Ctrl+T and Ctrl+N.
   // The terminal and vim's insert mode use them; where nothing does (vim's normal mode, no
@@ -381,6 +407,35 @@ export function App() {
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
+  const startXrayDrag = (e: React.PointerEvent<HTMLDivElement>): void => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = settings.xrayWidth;
+    let w = startW;
+    const move = (ev: PointerEvent): void => {
+      w = Math.round(Math.min(Math.max(320, startW - (ev.clientX - startX)), window.innerWidth * 0.6));
+      document.documentElement.style.setProperty('--xray-width', `${w}px`);
+    };
+    const up = (): void => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.classList.remove('is-dragging');
+      setSettings({ ...settings, xrayWidth: w });
+      focusTerminal();
+    };
+    document.body.classList.add('is-dragging');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const nudgeXray = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    const d = e.key === 'ArrowLeft' ? 24 : e.key === 'ArrowRight' ? -24 : 0;
+    if (d === 0) return;
+    e.preventDefault();
+    setSettings({ ...settings, xrayWidth: Math.min(Math.max(320, settings.xrayWidth + d), window.innerWidth * 0.6) });
+  };
+  useEffect(() => {
+    document.documentElement.style.setProperty('--xray-width', `${settings.xrayWidth}px`);
+  }, [settings.xrayWidth]);
   const nudgePanel = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     const d = e.key === 'ArrowLeft' ? -24 : e.key === 'ArrowRight' ? 24 : 0;
     if (d === 0) return;
@@ -395,7 +450,7 @@ export function App() {
   const showPicker = phase.kind === 'picker' || picker;
 
   return (
-    <div className={`app${settings.panelOpen ? '' : ' panel-closed'}`}>
+    <div className={`app${settings.panelOpen ? '' : ' panel-closed'}${reducedMotion ? ' motion-reduced' : ''}`}>
       <TopBar
         {...(lab ? { title: lab.title } : {})}
         {...(clock ? { clock } : {})}
@@ -403,6 +458,8 @@ export function App() {
         sink={sinkState}
         settings={settings}
         panelOpen={settings.panelOpen}
+        {...(phase.kind === 'ready' ? { xrayOpen: xray } : {})}
+        toggleXray={toggleXray}
         popover={popover}
         setPopover={setPopover}
         setSettings={setSettings}
@@ -544,6 +601,12 @@ export function App() {
             </div>
           ) : null}
         </section>
+        {phase.kind === 'ready' && xray ? (
+          <>
+            <div className="splitter splitter-xray" role="separator" aria-orientation="vertical" aria-label="Resize the X-ray" tabIndex={0} onPointerDown={startXrayDrag} onKeyDown={nudgeXray} />
+            <XRay {...(viewModel ? { model: viewModel } : {})} reducedMotion={reducedMotion} close={toggleXray} />
+          </>
+        ) : null}
         {showPicker ? (
           <div className={phase.kind === 'picker' ? 'picker-page' : 'picker-overlay'} onMouseDown={(e) => e.target === e.currentTarget && setPicker(false)}>
             <ItemPicker store={store} {...(lab ? { current: lab.id } : {})} start={(item, fresh) => (lab?.id === item.id && !fresh ? setPicker(false) : start(item, fresh))} {...(phase.kind !== 'picker' ? { onClose: () => setPicker(false) } : {})} />

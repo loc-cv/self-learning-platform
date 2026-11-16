@@ -34,3 +34,4 @@ export { UTILITIES, runUtility } from './models/utilities.ts';
 export { applyEditorOps, runLine, stepShell, stepTarget, STEP_COMMAND_TIMEOUT, tail, type EditorOp } from './scenario/shell.ts';
 export { HOST_STEPS, runStep, writeStep, ON_SCHEMA, AS_SCHEMA } from './scenario/steps.ts';
 export { HOST_CHECKS, hostFileCheck, shellExecCheck, matchFailure, describeMatcher, type Matcher } from './scenario/checks.ts';
+export { hostView, hostViewProvider, machineViewId, MACHINE_KIND } from './view/provider.ts';

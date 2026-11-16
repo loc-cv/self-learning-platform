@@ -85,7 +85,7 @@ export function printAnnotationsMultiline(w: PrefixWriter, title: string, annota
 }
 
 /** Taint.ToString */
-function taintString(t: JsonObject): string {
+export function taintString(t: JsonObject): string {
   const key = s(t.key);
   const value = s(t.value);
   const effect = s(t.effect);

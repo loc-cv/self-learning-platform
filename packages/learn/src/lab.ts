@@ -16,7 +16,9 @@ export type LabEvent =
   | { kind: 'hint'; t: Millis; index: number }
   | { kind: 'check'; t: Millis; passed: boolean; score: number }
   | { kind: 'reset'; t: Millis }
-  | { kind: 'solution'; t: Millis };
+  | { kind: 'solution'; t: Millis }
+  /** The live view of the world (the X-ray) was opened or closed: help, which phase 11 rates. */
+  | { kind: 'view'; t: Millis; open: boolean };
 
 export interface Lab {
   readonly variant: Variant;
@@ -37,6 +39,8 @@ export interface Lab {
   /** The reference solutions; viewing them is recorded. */
   solutions(): Solution[];
   readonly solutionViewed: boolean;
+  /** Records that the live view of the world was opened or closed. */
+  view(open: boolean): void;
   /**
    * Runs steps on the session world as setup and solutions run (separate logins, never the
    * learner's terminal). Throws `StepFailure`. For tests and demonstrations.
@@ -100,6 +104,9 @@ export function openLab(baseline: Baseline, registry: Registry, ports?: Ports): 
     },
     get solutionViewed() {
       return viewed;
+    },
+    view(open) {
+      events.push({ kind: 'view', t: world.kernel.now, open });
     },
     run(steps, label = 'steps') {
       runSteps(world.kernel, steps, { registry, entry: baseline.entry, hub: world.hub, baseline: baseline.kernel.world }, label);

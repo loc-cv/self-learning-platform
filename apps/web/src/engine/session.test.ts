@@ -83,6 +83,30 @@ describe('the web engine session', () => {
     expect(stored.report?.passed).toBe(false);
   });
 
+  test('the X-ray gets the world’s view model when it opens and while it changes; opening it is logged', () => {
+    const r = rig();
+    r.send({ type: 'start', item: 'k8s.scheduling.pending-pods-01', seed: 1, startTime: START });
+    expect(r.seen.some((m) => m.type === 'view')).toBe(false);
+    r.send({ type: 'view', open: true });
+    const first = r.last('view').model;
+    expect(first.entities.some((e) => e.kind === 'host.Machine')).toBe(true);
+    const views = (): number => r.seen.filter((m) => m.type === 'view').length;
+    // Unchanged world, nothing new; time passes and the world changes, a new model at most every VIEW_EVERY.
+    r.t.now += 50;
+    r.engine.tick();
+    expect(views()).toBe(1);
+    r.send({ type: 'view', open: false });
+    r.t.now += 60_000;
+    r.engine.tick();
+    expect(views()).toBe(1);
+    r.send({ type: 'flush' });
+    const logged = r.last('attempt').attempt.current.inputs.filter((i) => i.kind === 'learn.action');
+    expect(logged.map((i) => [i['action'], i['data']])).toEqual([
+      ['view', { open: true }],
+      ['view', { open: false }],
+    ]);
+  });
+
   test('virtual time follows the clock and stops while paused', () => {
     const r = rig();
     r.send({ type: 'start', item: BUILD, seed: 1, startTime: START });

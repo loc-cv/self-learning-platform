@@ -233,6 +233,17 @@ describe('a lab session', () => {
     expect(shown[0]).toMatch(/^\$ bump \d$/m);
     expect(lab.solutionViewed).toBe(true);
   });
+
+  test('opening and closing the live view of the world is recorded with its time', () => {
+    const lab = createLab(counterItem(), registry, { seed: 1 });
+    lab.view(true);
+    lab.kernel.advance(5_000);
+    lab.view(false);
+    expect(lab.events.slice(1)).toEqual([
+      { kind: 'view', t: lab.baseline.kernel.now, open: true },
+      { kind: 'view', t: lab.baseline.kernel.now + 5_000, open: false },
+    ]);
+  });
 });
 
 describe('content validation', () => {

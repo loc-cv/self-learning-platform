@@ -1,0 +1,153 @@
+# Captured from fixtures/golden/cases/controllers/namespace-deletion.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: controllers/namespace-deletion
+description: "The namespace controller: a namespace whose ConfigMap holds a finalizer stays Terminating with conditions saying what remains; new content is refused; once the finalizer is removed the namespace goes. Then a fresh namespace: the serviceaccount controller creates `default` and the root CA publisher (kube-controller-manager's root-ca-cert-publisher) creates the ConfigMap kube-root-ca.crt."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl delete namespace held --wait=false
+    exit: 0
+    stdout: |
+      namespace "held" deleted
+    stderr: ""
+  - run: kubectl get namespace held
+    exit: 0
+    stdout: |
+      NAME   STATUS        AGE
+      held   Terminating   <<age>>
+    stderr: ""
+  - objects:
+      - ref: namespace/held
+        object:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            creationTimestamp: <<time>>
+            deletionTimestamp: <<time>>
+            labels:
+              kubernetes.io/metadata.name: held
+            name: held
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            finalizers:
+              - kubernetes
+          status:
+            conditions:
+              - lastTransitionTime: <<time>>
+                message: All resources successfully discovered
+                reason: ResourcesDiscovered
+                status: "False"
+                type: NamespaceDeletionDiscoveryFailure
+              - lastTransitionTime: <<time>>
+                message: All legacy kube types successfully parsed
+                reason: ParsedGroupVersions
+                status: "False"
+                type: NamespaceDeletionGroupVersionParsingFailure
+              - lastTransitionTime: <<time>>
+                message: All content successfully deleted, may be waiting on finalization
+                reason: ContentDeleted
+                status: "False"
+                type: NamespaceDeletionContentFailure
+              - lastTransitionTime: <<time>>
+                message: "Some resources are remaining: configmaps. has 1 resource instances"
+                reason: SomeResourcesRemain
+                status: "True"
+                type: NamespaceContentRemaining
+              - lastTransitionTime: <<time>>
+                message: "Some content in the namespace has finalizers remaining: example.com/hold in 1 resource instances"
+                reason: SomeFinalizersRemain
+                status: "True"
+                type: NamespaceFinalizersRemaining
+            phase: Terminating
+  - objects:
+      - ref: -n held configmap
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              data:
+                a: "1"
+              kind: ConfigMap
+              metadata:
+                creationTimestamp: <<time>>
+                deletionGracePeriodSeconds: 0
+                deletionTimestamp: <<time>>
+                finalizers:
+                  - example.com/hold
+                name: pinned
+                namespace: held
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - run: kubectl create configmap late -n held --from-literal=a=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create configmap: configmaps "late" is forbidden: unable to create new content in namespace held because it is being terminated
+  - run: kubectl patch configmap pinned -n held --type=merge -p '{"metadata":{"finalizers":null}}'
+    exit: 0
+    stdout: |
+      configmap/pinned patched
+    stderr: ""
+  - run: kubectl get namespace held
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): namespaces "held" not found
+  - run: kubectl create namespace fresh
+    exit: 0
+    stdout: |
+      namespace/fresh created
+    stderr: ""
+  - objects:
+      - ref: -n fresh serviceaccount/default
+        object:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            creationTimestamp: <<time>>
+            name: default
+            namespace: fresh
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>
+      - ref: -n fresh configmap
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              data:
+                ca.crt: |
+                  -----BEGIN CERTIFICATE-----
+                  <<cert>>
+                  -----END CERTIFICATE-----
+              kind: ConfigMap
+              metadata:
+                annotations:
+                  kubernetes.io/description: Contains a CA bundle that can be used to verify the kube-apiserver when using internal endpoints such as the internal service IP or kubernetes.default.svc. No other usage is guaranteed across distributions of Kubernetes clusters.
+                creationTimestamp: <<time>>
+                name: kube-root-ca.crt
+                namespace: fresh
+                resourceVersion: <<rv>>
+                uid: <<uid:4>>
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - run: kubectl get serviceaccounts,configmaps -n fresh
+    exit: 0
+    stdout: |
+      NAME                     AGE
+      serviceaccount/default   <<age>>
+
+      NAME                         DATA   AGE
+      configmap/kube-root-ca.crt   1      <<age>>
+    stderr: ""

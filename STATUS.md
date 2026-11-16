@@ -19,7 +19,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 03 `prompts/03-tty-and-terminal-player.md`
 - [x] 04 `prompts/04-oracle-and-golden-fixtures.md` (needs only 00; can run earlier)
 - [x] 05a `prompts/05a-k8s-api-store-and-pipeline.md`
-- [ ] 05b `prompts/05b-k8s-controllers.md`
+- [x] 05b `prompts/05b-k8s-controllers.md`
 - [ ] 06a `prompts/06a-topology-and-scheduler.md`
 - [ ] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
 - [ ] 07a `prompts/07a-kubectl-framework-and-get.md`
@@ -123,6 +123,19 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   Endpoints or EndpointSlice does not bring them back (upstream re-creates them every 10 s), and
   the `kubernetes` ServiceCIDR has no servicecidrs-controller finalizer. Phase 27 (the API server
   as a process with its loops), or 05b if a controller needs them first.
+- **The controller manager is started by callers** (`startControllerManager` in
+  `packages/k8s/src/controllers/manager.ts`, every registered controller, no flags). Phase 27
+  starts and stops it with the static Pod's process and reads `--controllers`.
+- **No Node objects exist unless a test creates them.** The EndpointSlice controller skips a Pod
+  whose Node is not in the store, as upstream does, and retries (its tests create node01/node02 in
+  `controllers/endpointslice/testenv.ts`). Phase 06a builds the topology's Nodes.
+- **No root-ca-certificate-publisher**: namespaces get no `kube-root-ca.crt` ConfigMap (the golden
+  `controllers/namespace-deletion` shows it). Phase 20a (service account credentials), or 16a if
+  projected volumes need it first.
+- **No `deletecollection` verb and no strategic merge patch in the pipeline.** The namespace
+  deleter uses upstream's list-and-delete fallback (D-050); controllers send JSON merge patches
+  with the same result (D-052). Phase 07b (kubectl apply/patch send strategic merge patches) adds
+  strategic merge; deletecollection comes with the first client that sends it.
 - **The client calls the pipeline directly** (`packages/k8s/src/client/client.ts`): no kubeconfig,
   credentials or network. Phase 07a adds the transport and connection errors.
 - **The scale subresource is read-only** (D-045): writes are a gap. The phase that builds
@@ -134,6 +147,12 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 ## Carry-over
 
 Unfinished work from a phase, precise enough for the next session to continue.
+
+- **Tools, concurrent oracles.** `npm run oracle -- up|down` keeps one state file
+  (`.upstream/oracle/state.json`): a second `up` overwrites it and a `down` can stop another
+  session's control plane (seen in phase 05b with two agents). `golden:capture` starts its own
+  control planes and is not affected. Fix: one state file per oracle directory, `down` taking the
+  directory or stopping only its own. Owner: the next session that runs the oracle, or R3.
 
 - **Phase 05a, API warnings (DIV-017).** `pkg/api/pod/warnings.go` (GetWarningsForPod,
   GetWarningsForPodTemplate) was not in the checkout; it is now. Port it into the Pod, Deployment
@@ -156,6 +175,72 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 05b done.** Controller runtime and the first controllers.
+  - Built (`packages/k8s/src/controllers/`): the runtime (`runtime.ts`: watch-fed queues in world
+    data, one key per sync event, 5 ms modeled latency, client-go's per-key backoff, maxRetries,
+    start/stop, `controller.sync`/`controller.write` trace records with causes), the event
+    recorder (`record.ts`, client-go's correlator: counts, aggregation, spam filter),
+    `manager.ts` (upstream start order), `catalog.ts`. Controllers: deployment (rolling and
+    recreate, proportional scaling, revisions and history limit, the rollback annotation, paused,
+    progress deadline, conditions), replicaset (slow start, victim ranking, adoption and release,
+    status), garbage-collector (background, foreground, orphan, dangling and UID-mismatch owners),
+    namespace (the deleter and its five conditions), serviceaccount, endpointslice (the
+    staging/endpointslice reconciler, trigger times, tracker, hints), endpoints (RepackSubsets,
+    truncation). `hash/`: the exact pod-template-hash (D-053). The API server gained
+    `pods/binding` (D-048) and `namespaces/finalize` (D-050). `testing/kubelet.ts` (fake
+    scheduler+kubelet) and `testing/workloads.ts` (what kubectl sends for create deployment, set
+    image, scale, rollout undo). Six new golden cases in `fixtures/golden/cases/controllers/`
+    (ReplicaSet Pods and Event objects, endpoints with not-ready and named ports, stuck rollout,
+    paused, namespace deletion, orphan and foreground GC), with a KWOK stage for not-ready Pods
+    (annotation `simlab.dev/kwok-not-ready`). The upstream checkout gained client-go's
+    record/events/workqueue, staging/endpointslice, pkg/util/hash and vendored go-spew,
+    k8s.io/utils/dump and integer, inf.v0.
+  - Exit criteria, each a test: Deployment → ReplicaSet → Pods and scaling
+    (`deployment/deployment.test.ts`, `replicaset/replica_set.test.ts`); rolling updates checked
+    every virtual millisecond against maxSurge/maxUnavailable for three strategies, rollback
+    reusing the old ReplicaSet with the next revision; the never-ready rollout stops at old 3/new 2
+    with ProgressDeadlineExceeded exactly as `controllers/rollout-stuck`; background cascade and
+    orphan deletion (`garbagecollector.test.ts`, `deployment/golden.test.ts` with
+    `controllers/gc-orphan-foreground`); a Service has endpoints exactly for ready matching Pods,
+    relabeling moves them (`endpointslice.test.ts`, `endpoints.test.ts`, against
+    `controllers/endpoints`); Deployment conditions and events equal `deployments/rollout`,
+    `deployments/create-and-read` (incl. the literal hash `69c6f74b8b`), `controllers/paused` and
+    `controllers/replicaset-pods`; same seed → same world hash in every controller's tests.
+    Exercised end to end with a script (deployment, rollout to a new image, all controllers): real
+    hash names and event sequence, identical world hash on reruns. No program reaches the API yet,
+    so there was nothing to try in `npm run play`.
+  - Decisions D-047 (reads from the store, latency, backoff), D-048, D-049 (recorder state),
+    D-050, D-051 (backoff override, `initial`, slice pseudo-keys), D-052 (merge patches for
+    ownership), D-053. `docs/ARCHITECTURE.md` §4.3 rewritten, §4.6 has the Go layout file;
+    `docs/FIDELITY.md` §6.4/§6.5 (endpoint sorting in captures, the not-ready KWOK stage).
+  - Fixed on the way: `.gitignore`'s `data/` ignored `packages/k8s/src/openapi/data/` and
+    `discovery/data/`, so phase 05a's vendored schema and registry were never committed and a
+    fresh clone could not pass the gate; the pattern is now `/data/` and the files are committed.
+    The finalizer name check (05a) accepted only `kubernetes` as a standard name; upstream's
+    `IsStandardFinalizerName` also accepts `orphan` and `foregroundDeletion`, without which every
+    status write of an object being deleted in the foreground failed.
+  - Surprises. The collision count is hashed as 8 little-endian bytes, not 4. go-spew prints
+    strings raw under `%#v`. A template's hash depends on the controller manager's time zone when
+    it has timestamps (D-053). Upstream's namespace controller finalizes with the object read
+    before its own status update, so every finalize meets one 409 and retries (visible in the
+    trace); likewise a second status write in one Deployment sync. EndpointSlice ports are ordered
+    by an FNV-128a hash of their spew dump, which happens to look like name order in the fixture.
+    The real endpoint order within a slice varies between runs. No events for ProgressDeadline,
+    pause or resume. A foreground-deleting Deployment has no `status.replicas`.
+  - For later phases. 06a: the scheduler binds through `pods/binding` and runs on the controller
+    runtime; it must create the topology's Nodes (the EndpointSlice controller needs them); KWOK's
+    not-ready Pods carry no reason/message on their False conditions, a real kubelet writes
+    `ContainersNotReady` (06b). 06b: replace the fake kubelet in scenario code (it stays for
+    tests). 07a/07b: `testing/workloads.ts` shows the requests kubectl's create deployment, set
+    image, scale and rollout undo send; the events.k8s.io view of events has `deprecated*` fields
+    and no `reportingInstance` when empty (`controllers/replicaset-pods`). 18a: reuse
+    `controllerref.ts`, `controller_utils.ts`, `podcontrol.ts` and `hash/`. 27: tie
+    `startControllerManager` to the process. The GC scans every monitored resource per lookup; add
+    a UID index if it gets slow.
+  - Workflow: two agents (hash port, golden captures) ran while the runtime was written, then
+    three controller agents (deployment+replicaset, GC+namespace+serviceaccount,
+    endpointslice+endpoints) worked in parallel on it.
 
 - 2026-11-16 — **Phase 05a done.** The API server: vendored schema and registry, store and watch,
   request pipeline, 13 kinds (plus IPAddress and ServiceCIDR minimally), a client.
@@ -202,9 +287,8 @@ Newest first. Each session adds: what was built, decisions made, surprises, know
     oracle's `/metrics`, `apis/core/validation/options.ts`).
   - For later phases. 05b: watch with `client.resource(…).watch(ns, {resourceVersion}, owner)`
     and read events after `k8s.watch:<id>` is published; list then watch at the list's
-    resourceVersion is replayed from history; `namespaces/finalize` (the namespace controller's
-    subresource) is not served yet; `lifecycle#6`'s KNOWN entry goes when the deployment
-    controller writes the revision annotation. 07a: `ApiResponse` has a third case,
+    resourceVersion is replayed from history. (05b served `namespaces/finalize`; `lifecycle#6`
+    stays a KNOWN entry, for timing reasons now stated in `tools/src/golden/api.test.ts`.) 07a: `ApiResponse` has a third case,
     `notSimulated`, for the `[sim]` notice; warnings come back in `warnings`; Status bodies are
     what kubectl formats (`errors/validation` shows kubectl's renderings of the same errors).
     20b: delete the admission stripping in the differential tests (D-046).

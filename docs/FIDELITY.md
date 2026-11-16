@@ -445,7 +445,10 @@ layout). Capture fails when the split does not render back to the captured text.
 table that hold a `<<suffix>>` or event `<<hex>>` are sorted by their normalized text; in
 `describe`, consecutive rows whose suffix-bearing cell is equal are. Objects are normalized as JSON
 (the same string rules, plus `resourceVersion` and `nodePort` by key); the items of a list are
-sorted by their normalized JSON.
+sorted by their normalized JSON, and the endpoints of an EndpointSlice by address before that (the
+controller writes them in its Pod cache's order, which varies between runs). Hash label values in
+JSON (`"pod-template-hash": "557577df75"`) stay as captured: the hash is a function of the Pod
+template, the same on every run.
 
 ### 6.5 KWOK: not a kubelet
 
@@ -453,7 +456,12 @@ KWOK (`tools/src/oracle/kwok-stages.yaml`, D-036) renews Node leases, writes Nod
 moves Pods to Running. It writes what no real kubelet would: a Ready Pod with no `containerID`,
 `imageID` or `started`, no `PodReadyToStartContainers` condition, Pod IPs counted from the Node's
 CIDR, Node conditions copied from kubelet wording (and `NetworkUnavailable` with reason
-`RouteCreated`), a node lease held by KWOK's own identity, and no kubelet events. So:
+`RouteCreated`), a node lease held by KWOK's own identity, and no kubelet events.
+A Pod annotated `simlab.dev/kwok-not-ready: "true"` (in a case, or in a Deployment's template) is
+moved to Running with Ready and ContainersReady `False` and never becomes ready (the stage
+`pod-running-not-ready`): the stand-in for a failing readiness probe, without the `reason` and
+`message` a kubelet would give those conditions. Cases use it for not-ready endpoints and stuck
+rollouts (`cases/controllers/`). So:
 
 - every fixture of a case with KWOK lists the fields under `kwokAuthored`;
 - a step whose output shows any of them carries `kwok: true` (set in the case), and an object of

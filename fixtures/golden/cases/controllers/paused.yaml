@@ -1,0 +1,25 @@
+description: >-
+  kubectl rollout pause and resume: the Progressing condition while paused (DeploymentPaused), a
+  template change that starts no rollout while paused, rollout status without watching, pausing twice
+  and resuming twice; then resume and the finished rollout.
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=2
+  - do: kubectl rollout status deployment/web --timeout=60s
+steps:
+  - run: kubectl rollout pause deployment/web
+  - until: kubectl get deployment web -o jsonpath='{.status.conditions[?(@.type=="Progressing")].reason}'
+    match: '^DeploymentPaused$'
+  - objects: [deployment/web]
+  - run: kubectl rollout pause deployment/web
+  - run: kubectl set image deployment/web nginx=nginx:1.28
+  - until: kubectl get deployment web -o jsonpath='{.metadata.generation} {.status.observedGeneration}'
+    match: '^(\d+) \1$'
+  - run: kubectl get rs
+  - run: kubectl rollout status deployment/web --watch=false
+  - run: kubectl get deployment web -o jsonpath='{.status.conditions[?(@.type=="Progressing")]}'
+  - run: kubectl rollout resume deployment/web
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout resume deployment/web
+  - run: kubectl get rs
+  - objects: [deployment/web]
+  - objects: [event --field-selector involvedObject.kind=Deployment]

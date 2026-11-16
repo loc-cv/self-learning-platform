@@ -1,0 +1,101 @@
+description: >-
+  What the EndpointSlice and Endpoints controllers write for a Service whose selector matches two ready
+  Pods of a Deployment and one running but not ready bare Pod (KWOK's not-ready annotation), with one
+  named and one numbered target port; then the bare Pod relabelled out; then a Service without a
+  selector, for which no slice is managed. All Pods are pinned to node01 so that address order is fixed
+  (KWOK counts Pod IPs per node in creation order). `kubectl get endpoints` prints the deprecation warning.
+files:
+  web.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+            tier: web
+        spec:
+          nodeSelector:
+            kubernetes.io/hostname: node01
+          containers:
+          - name: app
+            image: nginx:1.27
+            ports:
+            - name: http
+              containerPort: 8080
+  slow.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: slow
+      labels:
+        tier: web
+        extra: x
+      annotations:
+        simlab.dev/kwok-not-ready: "true"
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node01
+      containers:
+      - name: app
+        image: nginx:1.27
+        ports:
+        - name: http
+          containerPort: 8080
+  front.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: front
+    spec:
+      selector:
+        tier: web
+      ports:
+      - name: web
+        port: 80
+        targetPort: http
+      - name: metrics
+        port: 9100
+        targetPort: 9100
+  manual.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: manual
+    spec:
+      ports:
+      - port: 80
+        targetPort: 8080
+setup:
+  - do: kubectl create -f web.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl create -f slow.yaml
+  - until: kubectl get pod slow -o jsonpath='{.status.phase}'
+    match: '^Running$'
+  - do: kubectl create -f front.yaml
+  - until: kubectl get endpointslice -l kubernetes.io/service-name=front -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} {end}'
+    match: '^\S+ \S+ \S+ $'
+  - until: kubectl get endpoints front -o jsonpath='{.subsets[0].addresses[1].ip} {.subsets[0].notReadyAddresses[0].ip}'
+    match: '^\S+ \S+$'
+steps:
+  - run: kubectl get pods -o wide
+    kwok: true
+  - objects: [endpointslice -l kubernetes.io/service-name=front, endpoints/front, service/front]
+  - run: kubectl get endpointslices
+  - run: kubectl get endpoints
+  - run: kubectl label pod slow tier-
+  - until: kubectl get endpointslice -l kubernetes.io/service-name=front -o jsonpath='{range .items[*].endpoints[*]}{.addresses[0]} {end}'
+    match: '^\S+ \S+ $'
+  - until: kubectl get endpoints front -o jsonpath='{.subsets[*].notReadyAddresses}'
+    match: '^$'
+  - objects: [endpointslice -l kubernetes.io/service-name=front, endpoints/front]
+  - run: kubectl create -f manual.yaml
+  - sleep: 2
+  - objects: [endpointslice]
+  - run: kubectl get endpoints manual

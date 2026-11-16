@@ -12,7 +12,8 @@ const KNOWN: Record<string, string> = {
   'api/defaults#19': 'admission plugins (phase 20b): TaintNodesByCondition adds the node.kubernetes.io/not-ready:NoSchedule taint to a new Node',
   'api/validation#52':
     'admission plugins (phase 20b): the old Pod has the ServiceAccount volume mount the patch drops, so the diff differs; and the unified diff of the internal PodSpec after the first line of the Forbidden message is not simulated (apis/core/validation/podspecdiff.ts)',
-  'api/lifecycle#6': 'deployment controller (phase 05b): the revision annotation and the Progressing condition it writes before the Foreground delete',
+  'api/lifecycle#6':
+    'timing: the real deployment controller wrote the revision annotation and the Progressing condition between two raw requests, at a wall-clock moment the fixture does not record; this differential replays requests without controllers (the controller behavior itself is compared in packages/k8s/src/controllers/deployment/golden.test.ts)',
 };
 
 /**

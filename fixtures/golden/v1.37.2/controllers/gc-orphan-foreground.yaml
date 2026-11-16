@@ -1,0 +1,461 @@
+# Captured from fixtures/golden/cases/controllers/gc-orphan-foreground.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: controllers/gc-orphan-foreground
+description: "The garbage collector: after an orphaning delete of a Deployment it removes the ReplicaSet's ownerReference (the Pods keep theirs); a foreground delete, held by a finalizer on the only Pod, leaves the Deployment and its ReplicaSet with deletionTimestamp and the foregroundDeletion finalizer until the Pod goes. Each Deployment has one Pod; its placement is a scheduling tie (anyWorker)."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl delete deployment keep --cascade=orphan
+    exit: 0
+    stdout: |
+      deployment.apps "keep" deleted from default namespace
+    stderr: ""
+  - objects:
+      - ref: rs -l app=keep
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "1"
+                  deployment.kubernetes.io/max-replicas: "2"
+                  deployment.kubernetes.io/revision: "1"
+                creationTimestamp: <<time>>
+                generation: 1
+                labels:
+                  app: keep
+                  pod-template-hash: 6dbfccf98c
+                name: keep-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: keep
+                    pod-template-hash: 6dbfccf98c
+                template:
+                  metadata:
+                    labels:
+                      app: keep
+                      pod-template-hash: 6dbfccf98c
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                availableReplicas: 1
+                fullyLabeledReplicas: 1
+                observedGeneration: 1
+                readyReplicas: 1
+                replicas: 1
+                terminatingReplicas: 0
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: pod -l app=keep
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              kind: Pod
+              metadata:
+                creationTimestamp: <<time>>
+                generateName: keep-<<hash:1>>-
+                generation: 1
+                labels:
+                  app: keep
+                  pod-template-hash: 6dbfccf98c
+                name: keep-<<hash:1>>-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: ReplicaSet
+                    name: keep-<<hash:1>>
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                    volumeMounts:
+                      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                        name: kube-api-access-<<suffix>>
+                        readOnly: true
+                dnsPolicy: ClusterFirst
+                enableServiceLinks: true
+                nodeName: <<node>>
+                preemptionPolicy: PreemptLowerPriority
+                priority: 0
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                serviceAccount: default
+                serviceAccountName: default
+                terminationGracePeriodSeconds: 30
+                tolerations:
+                  - effect: NoExecute
+                    key: node.kubernetes.io/not-ready
+                    operator: Exists
+                    tolerationSeconds: 300
+                  - effect: NoExecute
+                    key: node.kubernetes.io/unreachable
+                    operator: Exists
+                    tolerationSeconds: 300
+                volumes:
+                  - name: kube-api-access-<<suffix>>
+                    projected:
+                      defaultMode: 420
+                      sources:
+                        - serviceAccountToken:
+                            expirationSeconds: 3607
+                            path: token
+                        - configMap:
+                            items:
+                              - key: ca.crt
+                                path: ca.crt
+                            name: kube-root-ca.crt
+                        - downwardAPI:
+                            items:
+                              - fieldRef:
+                                  apiVersion: v1
+                                  fieldPath: metadata.namespace
+                                path: namespace
+              status:
+                conditions:
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Initialized
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Ready
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: ContainersReady
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: PodScheduled
+                containerStatuses:
+                  - image: nginx:1.27
+                    imageID: ""
+                    lastState: {}
+                    name: nginx
+                    ready: true
+                    restartCount: 0
+                    state:
+                      running:
+                        startedAt: <<time>>
+                hostIP: <<ip>>
+                hostIPs:
+                  - ip: <<ip>>
+                phase: Running
+                podIP: <<ip>>
+                podIPs:
+                  - ip: <<ip>>
+                qosClass: BestEffort
+                startTime: <<time>>
+          kind: List
+          metadata:
+            resourceVersion: ""
+    anyWorker: true
+  - run: kubectl delete deployment fg --cascade=foreground --wait=false
+    exit: 0
+    stdout: |
+      deployment.apps "fg" deleted from default namespace
+    stderr: ""
+  - run: kubectl get deployments,rs,pods -l app=fg
+    exit: 0
+    stdout: |
+      NAME                 READY   UP-TO-DATE   AVAILABLE   AGE
+      deployment.apps/fg   0/1     0            0           <<age>>
+
+      NAME                            DESIRED   CURRENT   READY   AGE
+      replicaset.apps/fg-<<hash:2>>   1         0         0       <<age>>
+
+      NAME                           READY   STATUS        RESTARTS   AGE
+      pod/fg-<<hash:2>>-<<suffix>>   1/1     Terminating   0          <<age>>
+    stderr: ""
+    kwok: true
+  - objects:
+      - ref: deployment/fg
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+            creationTimestamp: <<time>>
+            deletionGracePeriodSeconds: 0
+            deletionTimestamp: <<time>>
+            finalizers:
+              - foregroundDeletion
+            generation: 2
+            labels:
+              app: fg
+            name: fg
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 1
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: fg
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: fg
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "fg-<<hash:2>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment does not have minimum availability.
+                reason: MinimumReplicasUnavailable
+                status: "False"
+                type: Available
+            observedGeneration: 2
+            terminatingReplicas: 1
+            unavailableReplicas: 1
+      - ref: rs -l app=fg
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "1"
+                  deployment.kubernetes.io/max-replicas: "2"
+                  deployment.kubernetes.io/revision: "1"
+                creationTimestamp: <<time>>
+                deletionGracePeriodSeconds: 0
+                deletionTimestamp: <<time>>
+                finalizers:
+                  - foregroundDeletion
+                generation: 2
+                labels:
+                  app: fg
+                  pod-template-hash: 7bd5d496bf
+                name: fg-<<hash:2>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: fg
+                    uid: <<uid:3>>
+                resourceVersion: <<rv>>
+                uid: <<uid:4>>
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: fg
+                    pod-template-hash: 7bd5d496bf
+                template:
+                  metadata:
+                    labels:
+                      app: fg
+                      pod-template-hash: 7bd5d496bf
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                observedGeneration: 2
+                replicas: 0
+                terminatingReplicas: 1
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: pod -l app=fg
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              kind: Pod
+              metadata:
+                creationTimestamp: <<time>>
+                deletionGracePeriodSeconds: 0
+                deletionTimestamp: <<time>>
+                finalizers:
+                  - example.com/hold
+                generateName: fg-<<hash:2>>-
+                generation: 2
+                labels:
+                  app: fg
+                  pod-template-hash: 7bd5d496bf
+                name: fg-<<hash:2>>-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: ReplicaSet
+                    name: fg-<<hash:2>>
+                    uid: <<uid:4>>
+                resourceVersion: <<rv>>
+                uid: <<uid:5>>
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                    volumeMounts:
+                      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                        name: kube-api-access-<<suffix>>
+                        readOnly: true
+                dnsPolicy: ClusterFirst
+                enableServiceLinks: true
+                nodeName: <<node>>
+                preemptionPolicy: PreemptLowerPriority
+                priority: 0
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                serviceAccount: default
+                serviceAccountName: default
+                terminationGracePeriodSeconds: 30
+                tolerations:
+                  - effect: NoExecute
+                    key: node.kubernetes.io/not-ready
+                    operator: Exists
+                    tolerationSeconds: 300
+                  - effect: NoExecute
+                    key: node.kubernetes.io/unreachable
+                    operator: Exists
+                    tolerationSeconds: 300
+                volumes:
+                  - name: kube-api-access-<<suffix>>
+                    projected:
+                      defaultMode: 420
+                      sources:
+                        - serviceAccountToken:
+                            expirationSeconds: 3607
+                            path: token
+                        - configMap:
+                            items:
+                              - key: ca.crt
+                                path: ca.crt
+                            name: kube-root-ca.crt
+                        - downwardAPI:
+                            items:
+                              - fieldRef:
+                                  apiVersion: v1
+                                  fieldPath: metadata.namespace
+                                path: namespace
+              status:
+                conditions:
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Initialized
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Ready
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: ContainersReady
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: PodScheduled
+                containerStatuses:
+                  - image: nginx:1.27
+                    imageID: ""
+                    lastState: {}
+                    name: nginx
+                    ready: true
+                    restartCount: 0
+                    state:
+                      running:
+                        startedAt: <<time>>
+                hostIP: <<ip>>
+                hostIPs:
+                  - ip: <<ip>>
+                phase: Running
+                podIP: <<ip>>
+                podIPs:
+                  - ip: <<ip>>
+                qosClass: BestEffort
+                startTime: <<time>>
+          kind: List
+          metadata:
+            resourceVersion: ""
+    anyWorker: true
+  - run: kubectl get deployments,rs,pods -l app=fg
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.

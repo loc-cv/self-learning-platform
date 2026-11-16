@@ -122,6 +122,23 @@ function apiRequest(oracle: OracleState, step: RequestStep): Promise<{ code: num
   });
 }
 
+/**
+ * The endpoints of an EndpointSlice in address order, before normalization numbers their UIDs. The
+ * controller writes them in the order of its Pod cache, which varies from run to run (upstream:
+ * staging/src/k8s.io/endpointslice/reconciler.go sorts slices, never the endpoints in one).
+ */
+function sortSliceEndpoints(v: unknown): unknown {
+  if (v === null || typeof v !== 'object') return v;
+  const o = v as Record<string, unknown>;
+  if (Array.isArray(o.items)) return { ...o, items: o.items.map(sortSliceEndpoints) };
+  if (o.kind !== 'EndpointSlice' || !Array.isArray(o.endpoints)) return v;
+  const key = (e: unknown) => {
+    const a = ((e as { addresses?: string[] }).addresses ?? [])[0] ?? '';
+    return a.split('.').map((x) => x.padStart(3, '0')).join('.');
+  };
+  return { ...o, endpoints: [...o.endpoints].sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0)) };
+}
+
 /** One captured step as written in the fixture. */
 type Record_ = Record<string, unknown>;
 
@@ -163,7 +180,7 @@ async function runCase(file: string, log: (s: string) => void, slot: number): Pr
         for (const ref of step.objects) {
           const r = sh(shell, `kubectl get ${ref} -o json`);
           if (r.status !== 0) throw new Error(`${where}: kubectl get ${ref}: ${r.stderr}`);
-          let obj = JSON.parse(r.stdout) as Record<string, unknown>;
+          let obj = sortSliceEndpoints(JSON.parse(r.stdout)) as Record<string, unknown>;
           if (Array.isArray(obj.items)) {
             // A list: item order follows names, which normalization may hide; sort normalized items.
             const items = (obj.items as unknown[]).map((x) => normalizeJson(x, ctx));

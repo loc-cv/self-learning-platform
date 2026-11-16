@@ -269,6 +269,73 @@ function visitNamed(rawId: string): void {
 
 const defNameOf = new Map<string, string>();
 
+// ---- Go struct layouts (DeepHashObject) ----
+//
+// pkg/util/hash DeepHashObject prints a Go value with go-spew, which shows every field of every
+// struct in declaration order under its Go name, embedded structs as a field named after their
+// type, unexported fields and fields encoding/json skips included. The schema above keeps none of
+// that, so the types reachable from LAYOUT_ROOTS get their layouts here
+// (packages/k8s/src/openapi/data/<tag>.golayout.ts, read by packages/k8s/src/controllers/hash):
+//   { version, types: { <short id>: T } }, where T is
+//   { n: '<reflect display name>', f: [[goName, json, type], …] }   a struct, fields in order;
+//       json is the JSON key the field decodes from, '' for an embedded struct that reads the
+//       enclosing object (inline or untagged), '-' for a field JSON never sets (unexported, json:"-");
+//   { n, u: type }    a defined non-struct type (`type Protocol string`);
+//   { n, c: kind }    a type with its own JSON methods (CUSTOM); its layout is hand-written next
+//       to the code that prints it (time.Time, resource.Quantity, intstr.IntOrString, FieldsV1).
+// Types are written as in the schema: `string`, `*int64`, `[]@core/v1.Container`, `bytes`,
+// `map[string]string`, `@resource.Quantity`.
+
+const LAYOUT_ROOTS = ['k8s.io/api/core/v1.PodTemplateSpec'];
+const layouts: Record<string, Record<string, unknown>> = {};
+
+function layoutExpr(e: GoExpr): string {
+  switch (e.k) {
+    case 'basic':
+      return e.name;
+    case 'any':
+      throw new Error('an interface{} field in a hashed type: its dynamic type is not in the declaration');
+    case 'ptr':
+      return '*' + layoutExpr(e.elem);
+    case 'slice':
+      return e.elem.k === 'basic' && e.elem.name === 'uint8' ? 'bytes' : '[]' + layoutExpr(e.elem);
+    case 'map':
+      return `map[${layoutExpr(e.key)}]${layoutExpr(e.elem)}`;
+    case 'named':
+      return '@' + visitLayout(e.id);
+  }
+}
+
+/** Records the layout of a named type; returns its key. Aliases resolve to their target. */
+function visitLayout(rawId: string): string {
+  const id = resolveAlias(rawId);
+  const key = shortId(id);
+  if (layouts[key]) return key;
+  const [pkgPath, name] = splitId(id);
+  const pkg = goPackage(pkgPath);
+  const n = `${pkg.name}.${name}`;
+  const custom = CUSTOM[id];
+  if (custom) {
+    layouts[key] = { n, c: custom };
+    return key;
+  }
+  const { decl } = declOf(id);
+  if (decl.kind !== 'struct') {
+    layouts[key] = { n, u: layoutExpr(decl.type) };
+    return key;
+  }
+  const row: Record<string, unknown> = { n, f: [] };
+  layouts[key] = row;
+  row.f = decl.fields.map((f) => {
+    let json: string;
+    if (!/^[A-Z]/.test(f.name) || f.json?.skip) json = '-';
+    else if (f.embedded && (f.json === undefined || f.json.inline || f.json.name === '')) json = '';
+    else json = f.json?.name || f.name;
+    return [f.name, json, layoutExpr(f.type)];
+  });
+  return key;
+}
+
 // ---- Main ----
 
 function generated(what: string, data: unknown): string {
@@ -344,9 +411,13 @@ const registry = {
   ),
 };
 
+for (const root of LAYOUT_ROOTS) visitLayout(root);
+const golayout = { version: KUBERNETES_TAG, types: Object.fromEntries(Object.keys(layouts).sort().map((k) => [k, layouts[k]])) };
+
 const outputs: [string, string][] = [
   [path.join(repoRoot, 'packages', 'k8s', 'src', 'openapi', 'data', `${KUBERNETES_TAG}.ts`), generated(`the OpenAPI v3 documents and Go types of ${KUBERNETES_TAG}`, schema)],
   [path.join(repoRoot, 'packages', 'k8s', 'src', 'discovery', 'data', `${KUBERNETES_TAG}.ts`), generated(`fixtures/golden/${KUBERNETES_TAG}/api/discovery.yaml`, registry)],
+  [path.join(repoRoot, 'packages', 'k8s', 'src', 'openapi', 'data', `${KUBERNETES_TAG}.golayout.ts`), generated(`the Go types of ${KUBERNETES_TAG} (Go struct layouts)`, golayout)],
 ];
 if (process.argv.includes('--descriptions')) {
   outputs.push([path.join(repoRoot, 'packages', 'k8s', 'src', 'openapi', 'data', `${KUBERNETES_TAG}.descriptions.ts`), generated(`the OpenAPI v3 documents of ${KUBERNETES_TAG}`, descs)]);

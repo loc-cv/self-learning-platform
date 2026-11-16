@@ -99,7 +99,10 @@ export function handle(ctx: Ctx, server: ApiServerConfig, req: ApiRequest): ApiR
   if (!strategy) return gap(`${req.resource}${req.group ? `.${req.group}` : ''}`);
   // The scale subresource is read-only so far: writing it must update spec.replicas through the
   // main strategy and answer with a Scale, which is not built yet.
-  if (req.subresource && req.subresource !== 'status' && !(req.subresource === 'scale' && strategy.scale && req.verb === 'get')) {
+  const binding = req.subresource === 'binding' && req.verb === 'create' && strategy.kind === 'Pod';
+  // Subresources written through update with their own strategy (namespaces/finalize).
+  const updateSub = req.subresource !== undefined && (req.verb === 'update' || req.verb === 'patch') && strategy.updateSubresources?.[req.subresource] !== undefined;
+  if (req.subresource && req.subresource !== 'status' && !binding && !updateSub && !(req.subresource === 'scale' && strategy.scale && req.verb === 'get')) {
     return gap(`the ${req.resource}/${req.subresource} subresource`);
   }
   // Authentication and authorization (phase 20a): every request is admitted as given.
@@ -129,6 +132,7 @@ export function handle(ctx: Ctx, server: ApiServerConfig, req: ApiRequest): ApiR
 }
 
 function dispatch(served: Served, req: ApiRequest): ApiResponse {
+  if (req.subresource === 'binding') return bindPod(served, req);
   switch (req.verb) {
     case 'get':
       return get(served, req);
@@ -373,6 +377,8 @@ function createOnce(sv: Served, obj: JsonObject, ns: string | undefined, generat
  */
 function update(sv: Served, req: ApiRequest, merged: JsonObject | undefined): ApiResponse {
   const status = req.subresource === 'status';
+  // The update strategy of the subresource, when it has one (StatusStrategy, FinalizeStrategy).
+  const sub = status ? sv.strategy.status : req.subresource !== undefined ? sv.strategy.updateSubresources?.[req.subresource] : undefined;
   const optErr = checkFieldValidation(req.options, merged ? 'PatchOptions' : 'UpdateOptions');
   if (optErr) return fail(optErr);
   let obj: JsonObject;
@@ -391,7 +397,7 @@ function update(sv: Served, req: ApiRequest, merged: JsonObject | undefined): Ap
   const key = objectKey(ns, name);
   const existing = storeGet(sv.etcd, sv.strategy.storage, key);
   if (!existing) {
-    if (merged || status || !sv.strategy.allowCreateOnUpdate) return fail(notFoundError(sv.gr, name), sv.warnings);
+    if (merged || req.subresource !== undefined || !sv.strategy.allowCreateOnUpdate) return fail(notFoundError(sv.gr, name), sv.warnings);
     // Create on update: wipe and fill system fields, then the create path.
     const admitErr = admitAll(admission(sv, 'CREATE', name, ns, obj), sv.etcd);
     if (admitErr) return fail(admitErr, sv.warnings);
@@ -424,7 +430,7 @@ function update(sv: Served, req: ApiRequest, merged: JsonObject | undefined): Ap
   // rest.BeforeUpdate.
   if (oldMeta.generation !== undefined) m.generation = oldMeta.generation;
   else delete m.generation;
-  if (status && sv.strategy.status) sv.strategy.status.prepareForUpdate(obj, old, sv.s);
+  if (sub) sub.prepareForUpdate(obj, old, sv.s);
   else sv.strategy.prepareForUpdate?.(obj, old, sv.s);
   if (str(m.uid) === '') m.uid = oldMeta.uid as Json;
   if (oldMeta.creationTimestamp) m.creationTimestamp = oldMeta.creationTimestamp;
@@ -436,11 +442,11 @@ function update(sv: Served, req: ApiRequest, merged: JsonObject | undefined): Ap
   const errs = [
     ...validateObjectMeta(m, sv.res.namespaced, validatePathSegment, newPath('metadata')),
     ...validateObjectMetaUpdate(m, oldMeta, newPath('metadata')),
-    ...(status && sv.strategy.status ? sv.strategy.status.validateUpdate(obj, old, sv.s) : sv.strategy.validateUpdate(obj, old, sv.s)),
+    ...(sub ? sub.validateUpdate(obj, old, sv.s) : sv.strategy.validateUpdate(obj, old, sv.s)),
   ];
   if (errs.length > 0) return fail(invalidError(sv.gk, name, errs), sv.warnings);
-  // The status subresource has its own strategy, whose WarningsOnUpdate is usually empty.
-  const warn = status && sv.strategy.status ? sv.strategy.status.warningsOnUpdate : sv.strategy.warningsOnUpdate;
+  // A subresource has its own strategy, whose WarningsOnUpdate is usually empty.
+  const warn = sub ? sub.warningsOnUpdate : sv.strategy.warningsOnUpdate;
   sv.warnings.push(...(warn?.(obj, old, sv.s) ?? []));
   sv.strategy.canonicalize?.(obj);
   const valErr = validateAll(admission(sv, 'UPDATE', name, ns, obj, old), sv.etcd);
@@ -672,6 +678,55 @@ function parseSeconds(t: string): number {
   if (!m) return 0;
   const [, y, mo, d, h, mi, s] = m.map(Number) as [number, number, number, number, number, number, number];
   return daysFromCivil(y, mo, d) * 86400 + h * 3600 + mi * 60 + s;
+}
+
+// ---- pods/binding ----
+
+/**
+ * POST pods/<name>/binding: assigns a Pod to a node. A storage-level update that bypasses the
+ * Pod strategy (no generation bump), as upstream's GuaranteedUpdate does.
+ * upstream: pkg/registry/core/pod/storage/storage.go BindingREST.Create, setPodNodeAndMetadata,
+ * assignPod; pkg/api/pod/util.go UpdatePodCondition; the create handler fills a Success Status's
+ * code with 201 (endpoints/handlers/create.go). ClearingNominatedNodeNameAfterBinding and
+ * PodTopologyLabelsAdmission are beta and on at the pin (pkg/features/kube_features.go).
+ */
+function bindPod(sv: Served, req: ApiRequest): ApiResponse {
+  const b = isObject(req.body) ? req.body : {};
+  const bm = isObject(b.metadata) ? b.metadata : {};
+  const name = req.name ?? '';
+  if (str(bm.name) !== name) return fail(badRequestError('name in URL does not match name in Binding object'));
+  const target = isObject(b.target) ? b.target : {};
+  // ValidatePodBinding's errors reach the client as an aggregate without a Status: not modeled.
+  if ((str(target.kind) !== '' && str(target.kind) !== 'Node') || str(target.name) === '') return gap('an invalid Binding');
+  if (bm.uid !== undefined || bm.resourceVersion !== undefined) return gap('Binding preconditions');
+  const key = objectKey(req.namespace, name);
+  const existing = storeGet(sv.etcd, sv.strategy.storage, key);
+  if (!existing) return fail(notFoundError({ group: '', resource: 'pods' }, name));
+  const pod = cloneJson(existing);
+  const m = meta(pod);
+  const spec = isObject(pod.spec) ? pod.spec : {};
+  const conflict = (msg: string) => fail(conflictError({ group: '', resource: 'pods/binding' }, name, msg));
+  if (m.deletionTimestamp) return conflict(`pod ${name} is being deleted, cannot be assigned to a host`);
+  if (str(spec.nodeName) !== '') return conflict(`pod ${name} is already assigned to node "${str(spec.nodeName)}"`);
+  if (Array.isArray(spec.schedulingGates) && spec.schedulingGates.length > 0) return conflict(`pod ${name} has non-empty .spec.schedulingGates`);
+  spec.nodeName = str(target.name);
+  pod.spec = spec;
+  const status = isObject(pod.status) ? pod.status : {};
+  delete status.nominatedNodeName;
+  const annotations = { ...(isObject(m.annotations) ? m.annotations : {}), ...(isObject(bm.annotations) ? bm.annotations : {}) };
+  if (Object.keys(annotations).length > 0) m.annotations = annotations;
+  if (isObject(bm.labels) && Object.keys(bm.labels).length > 0) m.labels = { ...(isObject(m.labels) ? m.labels : {}), ...bm.labels };
+  const conditions = Array.isArray(status.conditions) ? [...status.conditions] : [];
+  const i = conditions.findIndex((c) => isObject(c) && c.type === 'PodScheduled');
+  const now = sv.s.now();
+  const old = i >= 0 ? (conditions[i] as JsonObject) : undefined;
+  const cond: JsonObject = { type: 'PodScheduled', status: 'True', lastProbeTime: null, lastTransitionTime: old && old.status === 'True' ? (old.lastTransitionTime ?? null) : now };
+  if (i >= 0) conditions[i] = cond;
+  else conditions.push(cond);
+  status.conditions = conditions;
+  pod.status = status;
+  if (!sv.s.dryRun) storeUpdate(sv.s.ctx, sv.server.etcd, sv.strategy.storage, key, canonicalStored(sv, pod));
+  return okResponse(201, { kind: 'Status', apiVersion: 'v1', metadata: {}, status: 'Success', code: 201 });
 }
 
 // ---- watch ----

@@ -1,0 +1,385 @@
+# Captured from fixtures/golden/cases/controllers/endpoints.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: controllers/endpoints
+description: What the EndpointSlice and Endpoints controllers write for a Service whose selector matches two ready Pods of a Deployment and one running but not ready bare Pod (KWOK's not-ready annotation), with one named and one numbered target port; then the bare Pod relabelled out; then a Service without a selector, for which no slice is managed. All Pods are pinned to node01 so that address order is fixed (KWOK counts Pod IPs per node in creation order). `kubectl get endpoints` prints the deprecation warning.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME                        READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      slow                        0/1     Running   0          <<age>>   <<ip>>   node01   <none>           <none>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   node01   <none>           <none>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   node01   <none>           <none>
+    stderr: ""
+    kwok: true
+  - objects:
+      - ref: endpointslice -l kubernetes.io/service-name=front
+        object:
+          apiVersion: v1
+          items:
+            - addressType: IPv4
+              apiVersion: discovery.k8s.io/v1
+              endpoints:
+                - addresses:
+                    - <<ip>>
+                  conditions:
+                    ready: true
+                    serving: true
+                    terminating: false
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:1>>
+                - addresses:
+                    - <<ip>>
+                  conditions:
+                    ready: true
+                    serving: true
+                    terminating: false
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:2>>
+                - addresses:
+                    - <<ip>>
+                  conditions:
+                    ready: false
+                    serving: false
+                    terminating: false
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: slow
+                    namespace: default
+                    uid: <<uid:3>>
+              kind: EndpointSlice
+              metadata:
+                annotations:
+                  endpoints.kubernetes.io/last-change-trigger-time: <<time>>
+                creationTimestamp: <<time>>
+                generateName: front-
+                generation: 1
+                labels:
+                  endpointslice.kubernetes.io/managed-by: endpointslice-controller.k8s.io
+                  kubernetes.io/service-name: front
+                name: front-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Service
+                    name: front
+                    uid: <<uid:4>>
+                resourceVersion: <<rv>>
+                uid: <<uid:5>>
+              ports:
+                - name: metrics
+                  port: 9100
+                  protocol: TCP
+                - name: web
+                  port: 8080
+                  protocol: TCP
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: endpoints/front
+        object:
+          apiVersion: v1
+          kind: Endpoints
+          metadata:
+            annotations:
+              endpoints.kubernetes.io/last-change-trigger-time: <<time>>
+            creationTimestamp: <<time>>
+            labels:
+              endpoints.kubernetes.io/managed-by: endpoint-controller
+            name: front
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:6>>
+          subsets:
+            - addresses:
+                - ip: <<ip>>
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:1>>
+                - ip: <<ip>>
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:2>>
+              notReadyAddresses:
+                - ip: <<ip>>
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: slow
+                    namespace: default
+                    uid: <<uid:3>>
+              ports:
+                - name: metrics
+                  port: 9100
+                  protocol: TCP
+                - name: web
+                  port: 8080
+                  protocol: TCP
+      - ref: service/front
+        object:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            creationTimestamp: <<time>>
+            name: front
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:4>>
+          spec:
+            clusterIP: <<ip>>
+            clusterIPs:
+              - <<ip>>
+            internalTrafficPolicy: Cluster
+            ipFamilies:
+              - IPv4
+            ipFamilyPolicy: SingleStack
+            ports:
+              - name: web
+                port: 80
+                protocol: TCP
+                targetPort: http
+              - name: metrics
+                port: 9100
+                protocol: TCP
+                targetPort: 9100
+            selector:
+              tier: web
+            sessionAffinity: None
+            type: ClusterIP
+          status:
+            loadBalancer: {}
+  - run: kubectl get endpointslices
+    exit: 0
+    stdout: |
+      NAME               ADDRESSTYPE   PORTS       ENDPOINTS              AGE
+      front-<<suffix>>   IPv4          9100,8080   <<ip>>,<<ip>>,<<ip>>   <<age>>
+      kubernetes         IPv4          6443        172.16.0.10            <<age>>
+    stderr: ""
+  - run: kubectl get endpoints
+    exit: 0
+    stdout: |
+      NAME         ENDPOINTS                                         AGE
+      front        <<ip>>:9100,<<ip>>:9100,<<ip>>:8080 + 1 more...   <<age>>
+      kubernetes   172.16.0.10:6443                                  <<age>>
+    stderr: |
+      Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+  - run: kubectl label pod slow tier-
+    exit: 0
+    stdout: |
+      pod/slow unlabeled
+    stderr: ""
+  - objects:
+      - ref: endpointslice -l kubernetes.io/service-name=front
+        object:
+          apiVersion: v1
+          items:
+            - addressType: IPv4
+              apiVersion: discovery.k8s.io/v1
+              endpoints:
+                - addresses:
+                    - <<ip>>
+                  conditions:
+                    ready: true
+                    serving: true
+                    terminating: false
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:1>>
+                - addresses:
+                    - <<ip>>
+                  conditions:
+                    ready: true
+                    serving: true
+                    terminating: false
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:2>>
+              kind: EndpointSlice
+              metadata:
+                creationTimestamp: <<time>>
+                generateName: front-
+                generation: 2
+                labels:
+                  endpointslice.kubernetes.io/managed-by: endpointslice-controller.k8s.io
+                  kubernetes.io/service-name: front
+                name: front-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Service
+                    name: front
+                    uid: <<uid:4>>
+                resourceVersion: <<rv>>
+                uid: <<uid:5>>
+              ports:
+                - name: metrics
+                  port: 9100
+                  protocol: TCP
+                - name: web
+                  port: 8080
+                  protocol: TCP
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: endpoints/front
+        object:
+          apiVersion: v1
+          kind: Endpoints
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              endpoints.kubernetes.io/managed-by: endpoint-controller
+            name: front
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:6>>
+          subsets:
+            - addresses:
+                - ip: <<ip>>
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:1>>
+                - ip: <<ip>>
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:2>>
+              ports:
+                - name: metrics
+                  port: 9100
+                  protocol: TCP
+                - name: web
+                  port: 8080
+                  protocol: TCP
+  - run: kubectl create -f manual.yaml
+    exit: 0
+    stdout: |
+      service/manual created
+    stderr: ""
+  - objects:
+      - ref: endpointslice
+        object:
+          apiVersion: v1
+          items:
+            - addressType: IPv4
+              apiVersion: discovery.k8s.io/v1
+              endpoints:
+                - addresses:
+                    - 172.16.0.10
+                  conditions:
+                    ready: true
+              kind: EndpointSlice
+              metadata:
+                creationTimestamp: <<time>>
+                generation: 1
+                labels:
+                  kubernetes.io/service-name: kubernetes
+                name: kubernetes
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:7>>
+              ports:
+                - name: https
+                  port: 6443
+                  protocol: TCP
+            - addressType: IPv4
+              apiVersion: discovery.k8s.io/v1
+              endpoints:
+                - addresses:
+                    - <<ip>>
+                  conditions:
+                    ready: true
+                    serving: true
+                    terminating: false
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:1>>
+                - addresses:
+                    - <<ip>>
+                  conditions:
+                    ready: true
+                    serving: true
+                    terminating: false
+                  nodeName: node01
+                  targetRef:
+                    kind: Pod
+                    name: web-<<hash:1>>-<<suffix>>
+                    namespace: default
+                    uid: <<uid:2>>
+              kind: EndpointSlice
+              metadata:
+                creationTimestamp: <<time>>
+                generateName: front-
+                generation: 2
+                labels:
+                  endpointslice.kubernetes.io/managed-by: endpointslice-controller.k8s.io
+                  kubernetes.io/service-name: front
+                name: front-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Service
+                    name: front
+                    uid: <<uid:4>>
+                resourceVersion: <<rv>>
+                uid: <<uid:5>>
+              ports:
+                - name: metrics
+                  port: 9100
+                  protocol: TCP
+                - name: web
+                  port: 8080
+                  protocol: TCP
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - run: kubectl get endpoints manual
+    exit: 1
+    stdout: ""
+    stderr: |
+      Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+      Error from server (NotFound): endpoints "manual" not found

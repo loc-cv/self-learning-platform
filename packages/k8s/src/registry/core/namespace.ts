@@ -4,7 +4,9 @@
 // pkg/registry/core/namespace/storage/storage.go (REST.Delete, ShouldDeleteNamespaceDuringUpdate,
 // ReturnDeletedObject), pkg/apis/core/v1/defaults.go (SetDefaults_Namespace,
 // SetDefaults_NamespaceStatus), pkg/apis/core/validation/validation.go (ValidateNamespace,
-// ValidateNamespaceUpdate, ValidateNamespaceStatusUpdate, validateFinalizerName).
+// ValidateNamespaceUpdate, ValidateNamespaceStatusUpdate, ValidateNamespaceFinalizeUpdate,
+// validateFinalizerName). The finalize subresource (storage.go FinalizeREST, an update through
+// namespaceFinalizeStrategy) is how the namespace controller removes the `kubernetes` finalizer.
 
 import { conflictError } from '../../apimachinery/errors.ts';
 import { invalid, newPath, type FieldError, type Path } from '../../apimachinery/field.ts';
@@ -105,6 +107,23 @@ export const namespaceStrategy: Strategy = {
         errs.push(invalid(newPath('status', 'Phase'), phase, "may only be 'Terminating' if `deletionTimestamp` is not empty"));
       }
       return errs;
+    },
+  },
+  updateSubresources: {
+    // upstream: strategy.go namespaceFinalizeStrategy: the namespace strategy with its own
+    // PrepareForUpdate (status kept, spec and metadata as sent) and ValidateUpdate.
+    finalize: {
+      prepareForUpdate(obj, old) {
+        obj.status = cloneJson(old.status ?? {});
+      },
+      validateUpdate(obj, old) {
+        // validation.go ValidateNamespaceFinalizeUpdate: indexed paths, unlike ValidateNamespace.
+        const errs = validateObjectMetaUpdate(meta(obj), old.metadata as JsonObject, newPath('metadata'));
+        const finalizers = isObject(obj.spec) && Array.isArray(obj.spec.finalizers) ? obj.spec.finalizers : [];
+        finalizers.forEach((f, i) => errs.push(...validateFinalizerName(str(f), newPath('spec', 'finalizers').index(i))));
+        return errs;
+      },
+      warningsOnUpdate: () => [],
     },
   },
   deleteDuringUpdate(obj) {

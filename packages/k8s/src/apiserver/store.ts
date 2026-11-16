@@ -9,6 +9,8 @@
 
 import { compareCodeUnits, keys, put, remove, type Ctx, type Table } from '@simlab/kernel';
 import type { Json, JsonObject } from '../apimachinery/json.ts';
+import type { ControllerState } from '../controllers/runtime.ts';
+import type { RecorderState } from '../controllers/record.ts';
 
 export const K8S = 'k8s';
 
@@ -51,6 +53,11 @@ export interface WatchEvent {
   type: WatchEventType;
   /** The object in its storage version; the reader converts it. */
   object: ApiObject;
+  /**
+   * MODIFIED: the object as stored before this change. A watch carries only the new object; this
+   * stands in for the informer cache's previous copy, which controllers' update handlers receive.
+   */
+  old?: ApiObject;
 }
 
 export interface WatchSubscription {
@@ -75,6 +82,10 @@ export interface K8sSlice {
   /** etcd data per data directory id. */
   etcd: Record<string, EtcdData>;
   watches: Table<WatchSubscription>;
+  /** Running controllers by `<instance>/<name>` (controllers/runtime.ts ControllerState). */
+  controllers: Table<ControllerState>;
+  /** Event recorder state (correlator caches) per controller id (controllers/record.ts). */
+  recorders: Table<RecorderState>;
 }
 
 export function emptyEtcd(): EtcdData {
@@ -193,7 +204,7 @@ function deliver(ctx: Ctx, etcdId: string, storage: string, type: WatchEventType
     if (sub.etcd !== etcdId || sub.storage !== storage) continue;
     const ev = eventFor(sub, type, obj, old);
     if (!ev) continue;
-    put(s.watches, id, { ...sub, pending: [...sub.pending, { type: ev, object: obj }] });
+    put(s.watches, id, { ...sub, pending: [...sub.pending, { type: ev, object: obj, ...(ev === 'MODIFIED' && old ? { old } : {}) }] });
     ctx.publish(watchTopic(id));
   }
 }
@@ -239,7 +250,7 @@ export function openSubscription(ctx: Ctx, sub: Omit<WatchSubscription, 'id' | '
   full.pending = initial.filter((o) => watchMatcher(full, o)).map((o) => ({ type: 'ADDED', object: o }));
   for (const e of replay) {
     const ev = eventFor(full, e.type, e.object, e.old);
-    if (ev) full.pending.push({ type: ev, object: e.object });
+    if (ev) full.pending.push({ type: ev, object: e.object, ...(ev === 'MODIFIED' && e.old ? { old: e.old } : {}) });
   }
   put(s.watches, id, full);
   if (full.pending.length > 0) ctx.publish(watchTopic(id));

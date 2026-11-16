@@ -1,15 +1,18 @@
 // The core group's ObjectMeta checks: apimachinery's, plus the finalizer name rule of core
 // objects. upstream: pkg/apis/core/validation/validation.go ValidateObjectMeta,
-// ValidateObjectMetaUpdate, validateKubeFinalizerName (helper.IsStandardFinalizerName: only
-// `kubernetes` is a standard name without a domain).
+// ValidateObjectMetaUpdate, validateKubeFinalizerName (pkg/apis/core/helper/helpers.go
+// IsStandardFinalizerName: `kubernetes`, metav1.FinalizerOrphanDependents `orphan` and
+// metav1.FinalizerDeleteDependents `foregroundDeletion` are the standard names without a domain).
 
 import { invalid, newPath, type FieldError, type Path } from '../../../apimachinery/field.ts';
 import type { Json, JsonObject } from '../../../apimachinery/json.ts';
 import type { NameFn } from '../../../apimachinery/validation/names.ts';
 import * as generic from '../../../apimachinery/validation/objectmeta.ts';
 
+const STANDARD_FINALIZERS = new Set(['kubernetes', 'orphan', 'foregroundDeletion']);
+
 export function validateKubeFinalizerName(name: string, path: Path): FieldError[] {
-  if (name.split('/').length === 1 && name !== 'kubernetes') return [invalid(path, name, 'name is neither a standard finalizer name nor is it fully qualified')];
+  if (name.split('/').length === 1 && !STANDARD_FINALIZERS.has(name)) return [invalid(path, name, 'name is neither a standard finalizer name nor is it fully qualified')];
   return [];
 }
 

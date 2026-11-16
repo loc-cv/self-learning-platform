@@ -339,7 +339,9 @@ lifecycle controller marks the fake Nodes NotReady and taints them within a minu
 kubelet no Pod ever runs. KWOK v0.8.0 renews Node leases and moves Pods to Running. Its
 `stage-fast` configuration is copied to `tools/src/oracle/kwok-stages.yaml` with two changes, so
 that it keeps the Node as registered: `nodeInfo` and `daemonEndpoints` are not filled with
-`kwok-v0.8.0` placeholders, and no Node `phase` is invented. What KWOK writes is never treated as
+`kwok-v0.8.0` placeholders, and no Node `phase` is invented. One stage is added: Pods annotated
+`simlab.dev/kwok-not-ready: "true"` run without becoming ready, for cases that need not-ready
+endpoints or a stuck rollout. What KWOK writes is never treated as
 kubelet output: fixtures list it under `kwokAuthored`, and steps and objects that show it carry
 `kwok: true` (`docs/FIDELITY.md` §6.5).
 
@@ -419,3 +421,69 @@ Rather than listing whole steps as known differences, `tools/src/golden/api.test
 `defaulted.test.ts` remove the fields the ServiceAccount, DefaultTolerationSeconds and Priority
 plugins write from both sides of Pod responses, so that every other field (graceful deletion,
 generation, defaults) is still compared with the real server. Phase 20b deletes the stripping.
+
+**D-047 — Controllers read the store and model their reaction time.** A controller's informer
+cache is the store itself (`Reader` in `packages/k8s/src/controllers/types.ts`), so bookkeeping
+that only hides informer lag (ReplicaSet and Deployment expectations) is left out: with no lag it
+never changes what a controller does. A MODIFIED watch event carries the previous object, which
+informer update handlers receive. Writes go through the pipeline as the controller's service
+account. Every controller reacts 5 ms after the watch event that queued a key, unless upstream
+adds a delay of its own for a path; the figure is a model (informer delivery plus queue pickup),
+since the oracle's second-precision timestamps cannot measure it, and nothing observable depends
+on its exact value: rollout pacing comes from the kubelets. Retries use client-go's default
+per-item backoff, 5 ms · 2^n capped at 1000 s; its overall 10 qps bucket is left out. Details in
+`docs/ARCHITECTURE.md` §4.3.
+
+**D-048 — `pods/binding` is served from phase 05b.** The scheduler of phase 06a binds through it,
+and the controller tests need bound Pods now, because only a bound Pod is deleted gracefully
+(an unbound one disappears at once), which decides `terminatingReplicas` and what a rollout
+sees. The subresource is a port of `BindingREST.Create` for valid bindings without
+preconditions; an invalid Binding and Binding preconditions answer with a gap until a client
+sends them.
+
+**D-049 — The event recorder keeps client-go's correlator state in world data.** Each
+controller's recorder state (the de-duplication log, the aggregation records, the spam filter's
+token buckets) lives in the k8s slice per controller, so `count`, `(combined from similar
+events)` and spam filtering survive snapshots and replay. Where Go is random or concurrent the
+simulator fixes a choice: `PopAny` takes the oldest key, the broadcaster writes within the sync
+that recorded the event, and event names use the virtual clock in nanoseconds, counted up within
+a millisecond so two events about one object never collide (a real nanosecond clock never does).
+
+**D-050 — `namespaces/finalize` is served, through per-subresource update strategies.** The
+namespace controller removes the `kubernetes` finalizer with it, as upstream does. A strategy
+can declare update subresources with their own `StatusStrategy`-shaped rules
+(`Strategy.updateSubresources`); the pipeline uses that strategy for PrepareForUpdate,
+ValidateUpdate and warnings, the way it uses `status`. The Namespace's `finalize` is a port of
+`namespaceFinalizeStrategy` (status kept, spec and metadata as sent,
+`ValidateNamespaceFinalizeUpdate`). Discovery gives it only `update`, so a patch is a 405 as on
+the real server. The API server serves no `deletecollection` verb yet; the namespace deleter uses
+upstream's own fallback for resources without it (list, then delete each item).
+
+**D-051 — The runtime carries what some controllers' queues need beyond the default.** A
+controller may name its own per-key backoff (`ControllerSpec.backoff`; the endpointslice
+controller's Service queue starts at 1 s), and start-up list events are marked `initial`
+(the endpoints controller's `checkLeftoverEndpoints` acts on the first sync only). State that
+upstream keeps in a handler-side tracker (the EndpointSlice tracker) lives in the controller's
+`data`, which only a sync can read, so slice events become their own queue keys
+(`slice-sync:…`, `slice-deleted:…`) whose sync does what upstream's handler does. They show up
+in the trace as syncs.
+
+**D-052 — Ownership patches are JSON merge patches with the same result.** Upstream adopts and
+releases (ControllerRefManager) and the garbage collector removes owner references with
+strategic merge patches, which the pipeline does not accept yet. Controllers send JSON merge
+patches carrying the whole resulting `ownerReferences` (and `finalizers`) list, with `uid` or
+`resourceVersion` preconditions as upstream's patches have; `ownerReferences: null` when none
+remain, so the key disappears as the golden fixture shows. The stored objects are identical; the
+requests differ only in their patch type.
+
+**D-053 — The pod-template-hash is computed exactly, from vendored Go struct layouts.**
+`controller.ComputeHash` hashes go-spew's printing of the Go `PodTemplateSpec`, which shows
+every field, Go field names, nil versus empty, and unexported internals. `npm run api:vendor`
+also writes `packages/k8s/src/openapi/data/v1.37.2.golayout.ts` (the struct layouts reachable
+from `PodTemplateSpec`), and `packages/k8s/src/controllers/hash/` turns stored JSON into the Go
+value the controller holds after protobuf decoding and prints it with spew's rules. Checked
+against 28 templates hashed by the real control plane (`podtemplate.fixture.json`). So ReplicaSet
+and Pod names equal the real cluster's for the same template. The hash of a template with
+timestamps depends on the controller manager's time zone; the simulator models UTC, Go's
+fallback when the container has no `/etc/localtime` (expected for kubeadm's static Pod image, not
+verified on a running cluster).

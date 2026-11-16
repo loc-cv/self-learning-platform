@@ -1,0 +1,31 @@
+description: >-
+  The garbage collector: after an orphaning delete of a Deployment it removes the ReplicaSet's
+  ownerReference (the Pods keep theirs); a foreground delete, held by a finalizer on the only Pod,
+  leaves the Deployment and its ReplicaSet with deletionTimestamp and the foregroundDeletion finalizer
+  until the Pod goes. Each Deployment has one Pod; its placement is a scheduling tie (anyWorker).
+setup:
+  - do: kubectl create deployment keep --image=nginx:1.27 --replicas=1
+  - do: kubectl create deployment fg --image=nginx:1.27 --replicas=1
+  - do: kubectl rollout status deployment/keep --timeout=60s
+  - do: kubectl rollout status deployment/fg --timeout=60s
+steps:
+  - run: kubectl delete deployment keep --cascade=orphan
+  - until: kubectl get rs -l app=keep -o jsonpath='{.items[0].metadata.name} {.items[0].metadata.ownerReferences}'
+    match: '^\S+ $'
+  - objects: [rs -l app=keep, pod -l app=keep]
+    anyWorker: true
+  - do: >-
+      kubectl patch $(kubectl get pod -l app=fg -o name) -p '{"metadata":{"finalizers":["example.com/hold"]}}'
+  - run: kubectl delete deployment fg --cascade=foreground --wait=false
+  - until: kubectl get rs -l app=fg -o jsonpath='{.items[0].status.terminatingReplicas} {.items[0].metadata.finalizers}'
+    match: '^1 \["foregroundDeletion"\]$'
+  - until: kubectl get deployment fg -o jsonpath='{.status.terminatingReplicas} {.status.conditions[?(@.type=="Available")].status}'
+    match: '^1 False$'
+  - run: kubectl get deployments,rs,pods -l app=fg
+    kwok: true
+  - objects: [deployment/fg, rs -l app=fg, pod -l app=fg]
+    anyWorker: true
+  - do: >-
+      kubectl patch $(kubectl get pod -l app=fg -o name) --type=merge -p '{"metadata":{"finalizers":null}}'
+  - do: kubectl wait --for=delete deployment/fg --timeout=60s
+  - run: kubectl get deployments,rs,pods -l app=fg

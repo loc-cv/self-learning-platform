@@ -126,6 +126,11 @@ export interface Strategy {
   /** The status subresource, when the kind has one. */
   status?: StatusStrategy;
   /**
+   * Other subresources written with update, each with its own update strategy over the whole
+   * object (namespaces/finalize: pkg/registry/core/namespace/strategy.go namespaceFinalizeStrategy).
+   */
+  updateSubresources?: Record<string, StatusStrategy>;
+  /**
    * Storage-level work at create time inside the write, after validation and admission:
    * Service IP and port allocation. Errors become Invalid; a Status is returned as it is.
    */

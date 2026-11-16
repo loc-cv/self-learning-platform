@@ -43,8 +43,15 @@ export interface Client {
   stopWatch(watchId: string): void;
 }
 
-export function createClient(ctx: Ctx, server: ApiServerConfig, user?: UserInfo): Client {
-  const request = (req: ApiRequest): ApiResponse => handle(ctx, server, user ? { ...req, user } : req);
+/** Sees every request a client sends and its response: controllers trace their writes with it. */
+export type RequestObserver = (req: ApiRequest, res: ApiResponse) => void;
+
+export function createClient(ctx: Ctx, server: ApiServerConfig, user?: UserInfo, observe?: RequestObserver): Client {
+  const request = (req: ApiRequest): ApiResponse => {
+    const r = handle(ctx, server, user ? { ...req, user } : req);
+    observe?.(req, r);
+    return r;
+  };
   const nameOf = (body: JsonObject): string => {
     const m = body.metadata;
     return m !== null && typeof m === 'object' && !Array.isArray(m) && typeof m.name === 'string' ? m.name : '';

@@ -42,6 +42,23 @@ export const UPSTREAM_SPARSE_PATHS: readonly string[] = [
   'pkg/proxy',
   // controllers (05b, 18a, 18b, 21)
   'pkg/controller',
+  // the EndpointSlice reconciler the endpointslice controller calls (05b)
+  'staging/src/k8s.io/endpointslice',
+  // event recorders (record: core/v1 with the correlator; events: events.k8s.io/v1 with series),
+  // work queue rate limiters, the informer's resync (05b)
+  'staging/src/k8s.io/client-go/tools/record',
+  'staging/src/k8s.io/client-go/tools/events',
+  'staging/src/k8s.io/client-go/util/workqueue',
+  // DeepHashObject: the pod-template-hash and ControllerRevision hashes (05b, 18a)
+  'pkg/util/hash',
+  // go-spew, which DeepHashObject prints objects with (05b)
+  'vendor/github.com/davecgh/go-spew',
+  // dump.ForHash: the go-spew configuration DeepHashObject prints with (05b)
+  'vendor/k8s.io/utils/dump',
+  // integer.RoundToInt32: the deployment controller's proportional scaling (05b)
+  'vendor/k8s.io/utils/integer',
+  // inf.Dec: the layout of resource.Quantity's decimal form, which DeepHashObject prints (05b)
+  'vendor/gopkg.in/inf.v0',
   // admission plugins, RBAC authorizer and bootstrap policy (20a, 20b)
   'plugin/pkg',
   // Pod Security admission checks and messages (20b)

@@ -1,0 +1,1072 @@
+# Captured from fixtures/golden/cases/controllers/replicaset-pods.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: controllers/replicaset-pods
+description: "What the deployment and replicaset controllers and the scheduler write for `kubectl create deployment` with three replicas, once settled: the ReplicaSet, the Pods (status by KWOK), and the Events as full core/v1 objects and through events.k8s.io/v1; then a scale down to one replica (SuccessfulDelete). Placement of three Pods on two workers is a scheduling tie (anyWorker)."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - objects:
+      - ref: rs -l app=web
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "3"
+                  deployment.kubernetes.io/max-replicas: "4"
+                  deployment.kubernetes.io/revision: "1"
+                creationTimestamp: <<time>>
+                generation: 1
+                labels:
+                  app: web
+                  pod-template-hash: 557577df75
+                name: web-<<hash:1>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              spec:
+                replicas: 3
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 557577df75
+                template:
+                  metadata:
+                    labels:
+                      app: web
+                      pod-template-hash: 557577df75
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        ports:
+                          - containerPort: 80
+                            protocol: TCP
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                availableReplicas: 3
+                fullyLabeledReplicas: 3
+                observedGeneration: 1
+                readyReplicas: 3
+                replicas: 3
+                terminatingReplicas: 0
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - objects:
+      - ref: pod -l app=web
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              kind: Pod
+              metadata:
+                creationTimestamp: <<time>>
+                generateName: web-<<hash:1>>-
+                generation: 1
+                labels:
+                  app: web
+                  pod-template-hash: 557577df75
+                name: web-<<hash:1>>-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: ReplicaSet
+                    name: web-<<hash:1>>
+                    uid: <<uid:2>>
+                resourceVersion: <<rv>>
+                uid: <<uid:3>>
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    ports:
+                      - containerPort: 80
+                        protocol: TCP
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                    volumeMounts:
+                      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                        name: kube-api-access-<<suffix>>
+                        readOnly: true
+                dnsPolicy: ClusterFirst
+                enableServiceLinks: true
+                nodeName: <<node>>
+                preemptionPolicy: PreemptLowerPriority
+                priority: 0
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                serviceAccount: default
+                serviceAccountName: default
+                terminationGracePeriodSeconds: 30
+                tolerations:
+                  - effect: NoExecute
+                    key: node.kubernetes.io/not-ready
+                    operator: Exists
+                    tolerationSeconds: 300
+                  - effect: NoExecute
+                    key: node.kubernetes.io/unreachable
+                    operator: Exists
+                    tolerationSeconds: 300
+                volumes:
+                  - name: kube-api-access-<<suffix>>
+                    projected:
+                      defaultMode: 420
+                      sources:
+                        - serviceAccountToken:
+                            expirationSeconds: 3607
+                            path: token
+                        - configMap:
+                            items:
+                              - key: ca.crt
+                                path: ca.crt
+                            name: kube-root-ca.crt
+                        - downwardAPI:
+                            items:
+                              - fieldRef:
+                                  apiVersion: v1
+                                  fieldPath: metadata.namespace
+                                path: namespace
+              status:
+                conditions:
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Initialized
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Ready
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: ContainersReady
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: PodScheduled
+                containerStatuses:
+                  - image: nginx:1.27
+                    imageID: ""
+                    lastState: {}
+                    name: nginx
+                    ready: true
+                    restartCount: 0
+                    state:
+                      running:
+                        startedAt: <<time>>
+                hostIP: <<ip>>
+                hostIPs:
+                  - ip: <<ip>>
+                phase: Running
+                podIP: <<ip>>
+                podIPs:
+                  - ip: <<ip>>
+                qosClass: BestEffort
+                startTime: <<time>>
+            - apiVersion: v1
+              kind: Pod
+              metadata:
+                creationTimestamp: <<time>>
+                generateName: web-<<hash:1>>-
+                generation: 1
+                labels:
+                  app: web
+                  pod-template-hash: 557577df75
+                name: web-<<hash:1>>-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: ReplicaSet
+                    name: web-<<hash:1>>
+                    uid: <<uid:2>>
+                resourceVersion: <<rv>>
+                uid: <<uid:4>>
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    ports:
+                      - containerPort: 80
+                        protocol: TCP
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                    volumeMounts:
+                      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                        name: kube-api-access-<<suffix>>
+                        readOnly: true
+                dnsPolicy: ClusterFirst
+                enableServiceLinks: true
+                nodeName: <<node>>
+                preemptionPolicy: PreemptLowerPriority
+                priority: 0
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                serviceAccount: default
+                serviceAccountName: default
+                terminationGracePeriodSeconds: 30
+                tolerations:
+                  - effect: NoExecute
+                    key: node.kubernetes.io/not-ready
+                    operator: Exists
+                    tolerationSeconds: 300
+                  - effect: NoExecute
+                    key: node.kubernetes.io/unreachable
+                    operator: Exists
+                    tolerationSeconds: 300
+                volumes:
+                  - name: kube-api-access-<<suffix>>
+                    projected:
+                      defaultMode: 420
+                      sources:
+                        - serviceAccountToken:
+                            expirationSeconds: 3607
+                            path: token
+                        - configMap:
+                            items:
+                              - key: ca.crt
+                                path: ca.crt
+                            name: kube-root-ca.crt
+                        - downwardAPI:
+                            items:
+                              - fieldRef:
+                                  apiVersion: v1
+                                  fieldPath: metadata.namespace
+                                path: namespace
+              status:
+                conditions:
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Initialized
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Ready
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: ContainersReady
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: PodScheduled
+                containerStatuses:
+                  - image: nginx:1.27
+                    imageID: ""
+                    lastState: {}
+                    name: nginx
+                    ready: true
+                    restartCount: 0
+                    state:
+                      running:
+                        startedAt: <<time>>
+                hostIP: <<ip>>
+                hostIPs:
+                  - ip: <<ip>>
+                phase: Running
+                podIP: <<ip>>
+                podIPs:
+                  - ip: <<ip>>
+                qosClass: BestEffort
+                startTime: <<time>>
+            - apiVersion: v1
+              kind: Pod
+              metadata:
+                creationTimestamp: <<time>>
+                generateName: web-<<hash:1>>-
+                generation: 1
+                labels:
+                  app: web
+                  pod-template-hash: 557577df75
+                name: web-<<hash:1>>-<<suffix>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: ReplicaSet
+                    name: web-<<hash:1>>
+                    uid: <<uid:2>>
+                resourceVersion: <<rv>>
+                uid: <<uid:5>>
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    ports:
+                      - containerPort: 80
+                        protocol: TCP
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                    volumeMounts:
+                      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                        name: kube-api-access-<<suffix>>
+                        readOnly: true
+                dnsPolicy: ClusterFirst
+                enableServiceLinks: true
+                nodeName: <<node>>
+                preemptionPolicy: PreemptLowerPriority
+                priority: 0
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                serviceAccount: default
+                serviceAccountName: default
+                terminationGracePeriodSeconds: 30
+                tolerations:
+                  - effect: NoExecute
+                    key: node.kubernetes.io/not-ready
+                    operator: Exists
+                    tolerationSeconds: 300
+                  - effect: NoExecute
+                    key: node.kubernetes.io/unreachable
+                    operator: Exists
+                    tolerationSeconds: 300
+                volumes:
+                  - name: kube-api-access-<<suffix>>
+                    projected:
+                      defaultMode: 420
+                      sources:
+                        - serviceAccountToken:
+                            expirationSeconds: 3607
+                            path: token
+                        - configMap:
+                            items:
+                              - key: ca.crt
+                                path: ca.crt
+                            name: kube-root-ca.crt
+                        - downwardAPI:
+                            items:
+                              - fieldRef:
+                                  apiVersion: v1
+                                  fieldPath: metadata.namespace
+                                path: namespace
+              status:
+                conditions:
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Initialized
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: Ready
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: ContainersReady
+                  - lastProbeTime: null
+                    lastTransitionTime: <<time>>
+                    status: "True"
+                    type: PodScheduled
+                containerStatuses:
+                  - image: nginx:1.27
+                    imageID: ""
+                    lastState: {}
+                    name: nginx
+                    ready: true
+                    restartCount: 0
+                    state:
+                      running:
+                        startedAt: <<time>>
+                hostIP: <<ip>>
+                hostIPs:
+                  - ip: <<ip>>
+                phase: Running
+                podIP: <<ip>>
+                podIPs:
+                  - ip: <<ip>>
+                qosClass: BestEffort
+                startTime: <<time>>
+          kind: List
+          metadata:
+            resourceVersion: ""
+    anyWorker: true
+  - objects:
+      - ref: event --field-selector involvedObject.kind=Deployment
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: Scaled up replica set web-<<hash:1>> from 0 to 3
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:6>>
+              reason: ScalingReplicaSet
+              reportingComponent: deployment-controller
+              reportingInstance: ""
+              source:
+                component: deployment-controller
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: event --field-selector involvedObject.kind=ReplicaSet
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Created pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:7>>
+              reason: SuccessfulCreate
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Created pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:8>>
+              reason: SuccessfulCreate
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Created pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:9>>
+              reason: SuccessfulCreate
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - objects:
+      - ref: event --field-selector involvedObject.kind=Pod
+        object:
+          apiVersion: v1
+          items:
+            - action: Binding
+              apiVersion: v1
+              eventTime: <<time>>
+              firstTimestamp: null
+              involvedObject:
+                apiVersion: v1
+                kind: Pod
+                name: web-<<hash:1>>-<<suffix>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:3>>
+              kind: Event
+              lastTimestamp: null
+              message: Successfully assigned default/web-<<hash:1>>-<<suffix>> to <<node>>
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>-<<suffix>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:10>>
+              reason: Scheduled
+              reportingComponent: default-scheduler
+              reportingInstance: default-scheduler-controlplane
+              source: {}
+              type: Normal
+            - action: Binding
+              apiVersion: v1
+              eventTime: <<time>>
+              firstTimestamp: null
+              involvedObject:
+                apiVersion: v1
+                kind: Pod
+                name: web-<<hash:1>>-<<suffix>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:4>>
+              kind: Event
+              lastTimestamp: null
+              message: Successfully assigned default/web-<<hash:1>>-<<suffix>> to <<node>>
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>-<<suffix>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:11>>
+              reason: Scheduled
+              reportingComponent: default-scheduler
+              reportingInstance: default-scheduler-controlplane
+              source: {}
+              type: Normal
+            - action: Binding
+              apiVersion: v1
+              eventTime: <<time>>
+              firstTimestamp: null
+              involvedObject:
+                apiVersion: v1
+                kind: Pod
+                name: web-<<hash:1>>-<<suffix>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:5>>
+              kind: Event
+              lastTimestamp: null
+              message: Successfully assigned default/web-<<hash:1>>-<<suffix>> to <<node>>
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>-<<suffix>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:12>>
+              reason: Scheduled
+              reportingComponent: default-scheduler
+              reportingInstance: default-scheduler-controlplane
+              source: {}
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""
+    anyWorker: true
+  - objects:
+      - ref: events.events.k8s.io --field-selector regarding.kind=Deployment
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: events.k8s.io/v1
+              deprecatedCount: 1
+              deprecatedFirstTimestamp: <<time>>
+              deprecatedLastTimestamp: <<time>>
+              deprecatedSource:
+                component: deployment-controller
+              eventTime: null
+              kind: Event
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:6>>
+              note: Scaled up replica set web-<<hash:1>> from 0 to 3
+              reason: ScalingReplicaSet
+              regarding:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              reportingController: deployment-controller
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: events.events.k8s.io --field-selector regarding.kind=ReplicaSet
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: events.k8s.io/v1
+              deprecatedCount: 1
+              deprecatedFirstTimestamp: <<time>>
+              deprecatedLastTimestamp: <<time>>
+              deprecatedSource:
+                component: replicaset-controller
+              eventTime: null
+              kind: Event
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:7>>
+              note: "Created pod: web-<<hash:1>>-<<suffix>>"
+              reason: SuccessfulCreate
+              regarding:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              reportingController: replicaset-controller
+              type: Normal
+            - apiVersion: events.k8s.io/v1
+              deprecatedCount: 1
+              deprecatedFirstTimestamp: <<time>>
+              deprecatedLastTimestamp: <<time>>
+              deprecatedSource:
+                component: replicaset-controller
+              eventTime: null
+              kind: Event
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:8>>
+              note: "Created pod: web-<<hash:1>>-<<suffix>>"
+              reason: SuccessfulCreate
+              regarding:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              reportingController: replicaset-controller
+              type: Normal
+            - apiVersion: events.k8s.io/v1
+              deprecatedCount: 1
+              deprecatedFirstTimestamp: <<time>>
+              deprecatedLastTimestamp: <<time>>
+              deprecatedSource:
+                component: replicaset-controller
+              eventTime: null
+              kind: Event
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:9>>
+              note: "Created pod: web-<<hash:1>>-<<suffix>>"
+              reason: SuccessfulCreate
+              regarding:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              reportingController: replicaset-controller
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - run: kubectl scale deployment web --replicas=1
+    exit: 0
+    stdout: |
+      deployment.apps/web scaled
+    stderr: ""
+  - objects:
+      - ref: rs -l app=web
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "1"
+                  deployment.kubernetes.io/max-replicas: "2"
+                  deployment.kubernetes.io/revision: "1"
+                creationTimestamp: <<time>>
+                generation: 2
+                labels:
+                  app: web
+                  pod-template-hash: 557577df75
+                name: web-<<hash:1>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 557577df75
+                template:
+                  metadata:
+                    labels:
+                      app: web
+                      pod-template-hash: 557577df75
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        ports:
+                          - containerPort: 80
+                            protocol: TCP
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                availableReplicas: 1
+                fullyLabeledReplicas: 1
+                observedGeneration: 2
+                readyReplicas: 1
+                replicas: 1
+                terminatingReplicas: 0
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+            creationTimestamp: <<time>>
+            generation: 2
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 1
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    ports:
+                      - containerPort: 80
+                        protocol: TCP
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 1
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 2
+            readyReplicas: 1
+            replicas: 1
+            terminatingReplicas: 0
+            updatedReplicas: 1
+      - ref: event --field-selector involvedObject.kind=Deployment
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: Scaled down replica set web-<<hash:1>> from 3 to 1
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:13>>
+              reason: ScalingReplicaSet
+              reportingComponent: deployment-controller
+              reportingInstance: ""
+              source:
+                component: deployment-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: Scaled up replica set web-<<hash:1>> from 0 to 3
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:6>>
+              reason: ScalingReplicaSet
+              reportingComponent: deployment-controller
+              reportingInstance: ""
+              source:
+                component: deployment-controller
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""
+      - ref: event --field-selector involvedObject.kind=ReplicaSet
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Created pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:7>>
+              reason: SuccessfulCreate
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Created pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:8>>
+              reason: SuccessfulCreate
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Created pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:9>>
+              reason: SuccessfulCreate
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Deleted pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:14>>
+              reason: SuccessfulDelete
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: web-<<hash:1>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: "Deleted pod: web-<<hash:1>>-<<suffix>>"
+              metadata:
+                creationTimestamp: <<time>>
+                name: web-<<hash:1>>.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:15>>
+              reason: SuccessfulDelete
+              reportingComponent: replicaset-controller
+              reportingInstance: ""
+              source:
+                component: replicaset-controller
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""

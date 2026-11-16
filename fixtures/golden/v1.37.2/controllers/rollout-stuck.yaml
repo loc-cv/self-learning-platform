@@ -1,0 +1,384 @@
+# Captured from fixtures/golden/cases/controllers/rollout-stuck.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: controllers/rollout-stuck
+description: "A rolling update that cannot finish: the new template's Pods run but never become ready (KWOK's not-ready annotation), and with progressDeadlineSeconds 10 the deployment controller sets Progressing False, ProgressDeadlineExceeded. Records the ReplicaSets (maxSurge and maxUnavailable of 25% of 4), the Deployment's conditions and status, rollout status's error and the events."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl patch deployment web -p '{"spec":{"progressDeadlineSeconds":10,"template":{"metadata":{"annotations":{"simlab.dev/kwok-not-ready":"true"}}}}}'
+    exit: 0
+    stdout: |
+      deployment.apps/web patched
+    stderr: ""
+  - run: kubectl get rs
+    exit: 0
+    stdout: |
+      NAME             DESIRED   CURRENT   READY   AGE
+      web-<<hash:1>>   3         3         3       <<age>>
+      web-<<hash:2>>   2         2         0       <<age>>
+    stderr: ""
+  - run: kubectl get pods
+    exit: 0
+    stdout: |
+      NAME                        READY   STATUS    RESTARTS   AGE
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>
+      web-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>
+      web-<<hash:2>>-<<suffix>>   0/1     Running   0          <<age>>
+      web-<<hash:2>>-<<suffix>>   0/1     Running   0          <<age>>
+    stderr: ""
+    kwok: true
+  - run: kubectl get deployment web
+    exit: 0
+    stdout: |
+      NAME   READY   UP-TO-DATE   AVAILABLE   AGE
+      web    3/4     2            3           <<age>>
+    stderr: ""
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "2"
+            creationTimestamp: <<time>>
+            generation: 2
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 10
+            replicas: 4
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                annotations:
+                  simlab.dev/kwok-not-ready: "true"
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 3
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:2>>" has timed out progressing.
+                reason: ProgressDeadlineExceeded
+                status: "False"
+                type: Progressing
+            observedGeneration: 2
+            readyReplicas: 3
+            replicas: 5
+            terminatingReplicas: 0
+            unavailableReplicas: 2
+            updatedReplicas: 2
+      - ref: rs -l app=web
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "4"
+                  deployment.kubernetes.io/max-replicas: "5"
+                  deployment.kubernetes.io/revision: "1"
+                creationTimestamp: <<time>>
+                generation: 2
+                labels:
+                  app: web
+                  pod-template-hash: 69c6f74b8b
+                name: web-<<hash:1>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              spec:
+                replicas: 3
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 69c6f74b8b
+                template:
+                  metadata:
+                    labels:
+                      app: web
+                      pod-template-hash: 69c6f74b8b
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                availableReplicas: 3
+                fullyLabeledReplicas: 3
+                observedGeneration: 2
+                readyReplicas: 3
+                replicas: 3
+                terminatingReplicas: 0
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "4"
+                  deployment.kubernetes.io/max-replicas: "5"
+                  deployment.kubernetes.io/revision: "2"
+                creationTimestamp: <<time>>
+                generation: 2
+                labels:
+                  app: web
+                  pod-template-hash: 7bcc8cd9df
+                name: web-<<hash:2>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:3>>
+              spec:
+                replicas: 2
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 7bcc8cd9df
+                template:
+                  metadata:
+                    annotations:
+                      simlab.dev/kwok-not-ready: "true"
+                    labels:
+                      app: web
+                      pod-template-hash: 7bcc8cd9df
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                fullyLabeledReplicas: 2
+                observedGeneration: 2
+                replicas: 2
+                terminatingReplicas: 0
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - run: kubectl rollout status deployment/web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: deployment "web" exceeded its progress deadline
+  - run: kubectl describe deployment web
+    exit: 0
+    stdout: |
+      Name:                   web
+      Namespace:              default
+      CreationTimestamp:      <<time>>
+      Labels:                 app=web
+      Annotations:            deployment.kubernetes.io/revision: 2
+      Selector:               app=web
+      Replicas:               4 desired | 2 updated | 5 total | 3 available | 2 unavailable
+      StrategyType:           RollingUpdate
+      MinReadySeconds:        0
+      RollingUpdateStrategy:  25% max unavailable, 25% max surge
+      Pod Template:
+        Labels:       app=web
+        Annotations:  simlab.dev/kwok-not-ready: true
+        Containers:
+         nginx:
+          Image:         nginx:1.27
+          Port:          <none>
+          Host Port:     <none>
+          Environment:   <none>
+          Mounts:        <none>
+        Volumes:         <none>
+        Node-Selectors:  <none>
+        Tolerations:     <none>
+      Conditions:
+        Type           Status  Reason
+        ----           ------  ------
+        Available      True    MinimumReplicasAvailable
+        Progressing    False   ProgressDeadlineExceeded
+      OldReplicaSets:  web-<<hash:1>> (3/3 replicas created)
+      NewReplicaSet:   web-<<hash:2>> (2/2 replicas created)
+      Events:
+        Type    Reason             Age      From                   Message
+        ----    ------             ----     ----                   -------
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled up replica set web-<<hash:1>> from 0 to 4
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled up replica set web-<<hash:2>> from 0 to 1
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled down replica set web-<<hash:1>> from 4 to 3
+        Normal  ScalingReplicaSet  <<age>>  deployment-controller  Scaled up replica set web-<<hash:2>> from 1 to 2
+    stderr: ""
+  - objects:
+      - ref: event --field-selector involvedObject.kind=Deployment
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: Scaled down replica set web-<<hash:1>> from 4 to 3
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:6>>
+              reason: ScalingReplicaSet
+              reportingComponent: deployment-controller
+              reportingInstance: ""
+              source:
+                component: deployment-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: Scaled up replica set web-<<hash:1>> from 0 to 4
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:4>>
+              reason: ScalingReplicaSet
+              reportingComponent: deployment-controller
+              reportingInstance: ""
+              source:
+                component: deployment-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: Scaled up replica set web-<<hash:2>> from 0 to 1
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:5>>
+              reason: ScalingReplicaSet
+              reportingComponent: deployment-controller
+              reportingInstance: ""
+              source:
+                component: deployment-controller
+              type: Normal
+            - apiVersion: v1
+              count: 1
+              eventTime: null
+              firstTimestamp: <<time>>
+              involvedObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: web
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:1>>
+              kind: Event
+              lastTimestamp: <<time>>
+              message: Scaled up replica set web-<<hash:2>> from 1 to 2
+              metadata:
+                creationTimestamp: <<time>>
+                name: web.<<hex>>
+                namespace: default
+                resourceVersion: <<rv>>
+                uid: <<uid:7>>
+              reason: ScalingReplicaSet
+              reportingComponent: deployment-controller
+              reportingInstance: ""
+              source:
+                component: deployment-controller
+              type: Normal
+          kind: List
+          metadata:
+            resourceVersion: ""

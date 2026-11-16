@@ -1156,8 +1156,12 @@ interface K8sSlice {
   etcd: Record<string, EtcdData>;
   /** Watch subscriptions of every API server, with their undelivered events. */
   watches: Table<WatchSubscription>;
-  // Added by later phases: components (controller, scheduler and kubelet queues), runtimes
-  // (sandboxes, containers, images per node), network (kube-proxy and CNI state per node).
+  /** Running controllers, `<instance>/<name>` → ControllerState (§4.3). */
+  controllers: Table<ControllerState>;
+  /** Event recorder (correlator) state per controller (§4.3). */
+  recorders: Table<RecorderState>;
+  // Added by later phases: scheduler and kubelet state, runtimes (sandboxes, containers, images
+  // per node), network (kube-proxy and CNI state per node).
 }
 ```
 
@@ -1322,35 +1326,41 @@ flowchart TB
 
 ### 4.3 Controller runtime
 
+Code: `packages/k8s/src/controllers/` — `types.ts` (the contract), `runtime.ts` (queues, watches,
+sync dispatch, retries, start and stop), `record.ts` (the event recorder), `manager.ts`
+(kube-controller-manager's start order), `catalog.ts` (the controllers the plugin contributes
+under the registry kind `k8s.controller`), one directory per controller.
+
 ```ts
 interface ControllerSpec {
-  /** Upstream name: `deployment`, `replicaset`, `endpointslice`. */
-  name: string;
-  /** Which component runs it: kube-controller-manager, or a named add-on. */
-  component: string;
-  /** What it watches and how a changed object maps to queue keys. */
-  watches: {
-    resource: string;
-    keys(object: ApiObject, event: WatchEvent['type'], read: StoreReader): string[];
-  }[];
-  /** Reconciles one key. Reads and writes go through the client. */
-  sync(ctx: ControllerCtx, key: string): SyncResult;
-  /** Delay between a key entering the queue and its sync: the controller's modeled reaction time. */
-  latency: Millis;
+  name: string;                 // upstream name, as --controllers spells it: `deployment`
+  component: 'kube-controller-manager';
+  serviceAccount: string;       // identity of its requests: `deployment-controller`
+  eventSource?: string;         // EventSource.Component: `deployment-controller`
+  watches: { resource: string; keys(ev: ControllerEvent, read: Reader): string[] }[];
+  sync(c: SyncCtx, key: string): SyncResult;
+  latency: Millis;              // watch event → sync of the keys it produced
+  backoff?: { baseMs: Millis; maxMs: Millis };  // when the queue's limiter is not the default
+  maxRetries?: number;          // deployment, endpoints, endpointslice: 15
 }
 
-type SyncResult =
-  | { done: true }
-  | { requeueAfter: Millis }
-  | { error: string };          // requeued with rate-limited backoff, as upstream work queues do
+interface ControllerEvent {
+  type: 'ADDED' | 'MODIFIED' | 'DELETED';
+  object: ApiObject;
+  old?: ApiObject;              // MODIFIED: the previous state
+  initial?: true;               // part of the list at controller start
+}
+
+type SyncResult = { done: true } | { requeueAfter: Millis } | { error: string };
 
 interface ControllerState {
-  /** Keys waiting, in arrival order, each at most once. */
-  queue: string[];
-  /** Failures per key, for backoff. */
+  id: string;                   // `<instance>/<name>`
+  name: string; instance: string; server: ApiServerConfig;
+  watches: { index: number; subscription: string; waiter: string }[];
+  queue: { key: string; at: Millis; cause: string }[];   // each key at most once
   failures: Record<string, number>;
-  /** Id of the pending sync event, if one is scheduled. */
-  scheduled?: string;
+  scheduled?: { event: string; at: Millis };            // the one pending sync event
+  data: Record<string, Json>;   // controller bookkeeping that changes behavior (rare)
 }
 ```
 
@@ -1360,28 +1370,71 @@ sequenceDiagram
   participant Q as Work queue (world data)
   participant K as Kernel queue
   participant C as Controller sync
-  St->>Q: watch event → keys(object) → enqueue (deduplicated)
-  Q->>K: schedule k8s.controller.sync after latency, if none pending
-  K->>C: dispatch
-  C->>St: read through client
+  St->>K: publish k8s.watch:<id> → k8s.controller.watch event
+  K->>Q: take events → keys(event) → enqueue at now + latency (deduplicated)
+  Q->>K: one k8s.controller.sync pending, at the earliest due key
+  K->>C: dispatch: sync one key
+  C->>St: read the store (the informer cache)
   C->>St: write through the request pipeline (as the controller's service account)
-  St->>Q: resulting watch events enqueue further keys
-  C->>K: more keys queued → schedule next sync
+  St->>K: resulting watch events, later in the same instant
+  C->>K: next due key → schedule the next sync
 ```
 
-- One sync event processes one key. Controllers therefore interleave at key granularity, in the
-  order the kernel queue gives, which is deterministic.
-- Controllers hold no state outside the store and their `ControllerState`. What a real controller
-  keeps in an informer cache is read from the store; expectations and similar bookkeeping go into
-  `ControllerState` when a controller's observable behavior depends on them.
-- Controllers act as their own identity and go through authorization like any client. A broken
-  RBAC binding for a controller breaks that controller.
-- The **scheduler** uses the same runtime: its queue holds unscheduled Pods, `sync` runs the
-  filter and score plugins and binds, and a Pod that fits nowhere is retried when a relevant
-  object changes. Every filter decision is a trace record; the `FailedScheduling` event message is
-  built from the filter results with upstream's format.
-- Time-driven controllers (CronJob, node lifecycle, HPA, TTL) schedule their own next wake with
-  `requeueAfter`, computed from the object, so nothing polls.
+- **One sync event processes one key.** Controllers interleave at key granularity, in the order
+  the kernel queue gives, which is deterministic. Within a controller the earliest due key goes
+  first; ties keep arrival order.
+- **Queue semantics** follow client-go's workqueue: adding a queued key is a no-op, and a delayed
+  add of a queued key keeps the earlier time. A sync result `{ error }` requeues the key with
+  `DefaultTypedControllerRateLimiter`'s per-item backoff, 5 ms · 2^failures capped at 1000 s
+  (`staging/src/k8s.io/client-go/util/workqueue/default_rate_limiters.go`); a controller with
+  `maxRetries` drops the key after that many failures, as the deployment controller does after 15.
+  The limiter's overall 10 qps/100 burst bucket is not modeled (it only matters above about a
+  hundred failing keys at once).
+- **Latency** is modeled, not measured: 5 ms from a watch event to the sync, standing for
+  informer delivery and queue pickup, for every controller unless upstream adds an explicit
+  delay for a path (named and cited in the controller). The oracle's timestamps have second
+  precision and cannot measure it. Rollout pacing comes from the kubelet's timing (phase 06b),
+  not from controller latency.
+- **Reads come from the store.** What a real controller keeps in its informer cache is read from
+  the store, which the cache mirrors with negligible lag in a healthy cluster. Bookkeeping that
+  exists to hide informer lag (ReplicaSet expectations) is therefore not needed. A MODIFIED watch
+  event carries the previous object (`old`), standing in for the informer's old copy that update
+  handlers receive.
+- **Writes go through the pipeline** with the controller's identity
+  (`system:serviceaccount:kube-system:<serviceAccount>`, as kubeadm's
+  `--use-service-account-credentials=true` sets up). A broken RBAC binding for a controller will
+  break that controller once authorization exists (phase 20a).
+- **Start and stop.** `startController` opens one watch per watched resource from "now", which
+  begins with ADDED for every object, so a start lists everything, as an informer does. `stop`
+  closes the watches and drops the queue, the pending sync and the failure counts: a stopped
+  process forgets. `startControllerManager` starts the registered controllers in the registration
+  order of upstream's `NewControllerDescriptors` (upstream then iterates a Go map; the fixed order
+  is the simulator's choice). Phase 27 ties both to the controller-manager process.
+- **Trace.** Every sync is a `controller.sync` record naming the key and the event that queued
+  it (`queued by MODIFIED apps/v1/replicasets default/web-5d7`); every write is a
+  `controller.write` (or `controller.write-failed`, with the status) record whose `causes` is the
+  sync's record; retries, drops, start and stop have their own kinds. Trace ids are not stored in
+  world state (trace buffers differ between forks), so the cause is carried as text.
+- **Events** go through `record.ts`, a port of client-go's legacy recorder and EventCorrelator
+  (`tools/record/event.go`, `events_cache.go`): de-duplication into `count` and `lastTimestamp`
+  (patching the first event), aggregation of the tenth similar event within ten minutes into
+  `(combined from similar events): …`, and the per-object spam filter (burst 25, one more every
+  five minutes). Each controller has its own correlator state, as each has its own broadcaster
+  upstream. Modeled: the LRU caches evict by a use counter, `PopAny` takes the oldest key, the
+  asynchronous broadcaster writes within the sync, and event names use the virtual clock in
+  nanoseconds made unique within a millisecond.
+- Controllers act as their own identity and go through authorization like any client.
+- The **scheduler** (phase 06a) uses the same runtime: its queue holds unscheduled Pods, `sync`
+  runs the filter and score plugins and binds through `pods/binding`, and a Pod that fits nowhere
+  is retried when a relevant object changes. Every filter decision is a trace record; the
+  `FailedScheduling` event message is built from the filter results with upstream's format.
+- Time-driven controllers (CronJob, node lifecycle, HPA, TTL, the Deployment progress deadline)
+  schedule their own next wake with `requeueAfter` or `enqueueAfter`, computed from the object,
+  so nothing polls.
+- **Tests** run Pods with `packages/k8s/src/testing/kubelet.ts`, a stand-in for the scheduler and
+  the kubelets (itself a controller on the runtime, never registered by the plugin): it binds
+  Pods round robin, reports them Running and Ready, not ready, or failed after a delay, and
+  finishes graceful deletions.
 
 ### 4.4 Components are processes on nodes
 
@@ -1494,6 +1547,10 @@ in the trace.
   groups in discovery order with their versions and preferred version, and per group version every
   resource and subresource with its singular name, kind (and the kind's group and version for
   subresources such as `scale`), scope, verbs, short names, categories and storage version hash.
+- `packages/k8s/src/openapi/data/<tag>.golayout.ts`: the Go struct layouts of the types reachable
+  from `core/v1.PodTemplateSpec` (field order, Go names, embedded structs, unexported fields),
+  which `controllers/hash` needs to print a template the way go-spew does for the
+  `pod-template-hash` (DeepHashObject). Format in `tools/src/openapi/vendor.ts`.
 - Field and type descriptions for `kubectl explain` (739 KiB at v1.37.2) are written only with
   `--descriptions`, once explain exists (D-038).
 
@@ -1554,7 +1611,7 @@ Each item is decided by the phase named, and recorded here when decided.
 | Normalization tokens (`<<kind>>`, `packages/host/src/transcript/tokens.ts`; D-034, D-035): **decided in 04** | 04 |
 | Provenance registry implementation (`prompts/07a-kubectl-framework-and-get.md`) | 07a |
 | Processed OpenAPI format (§4.6); exact pipeline stage order verified against upstream (§4.2): **decided in 05a** | 05a |
-| Work queue backoff parameters, controller latencies with their sources | 05b |
+| Work queue backoff parameters, controller latencies with their sources: **decided in 05b** (§4.3) | 05b |
 | Declarative behavior model fields beyond `docs/SCENARIO_FORMAT.md` §5.4; image catalog format | 06b |
 | Certificate stand-in format | 25b |
 | Container machines: how mounts project volumes | 16a, 17 |

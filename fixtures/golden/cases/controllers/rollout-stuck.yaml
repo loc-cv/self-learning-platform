@@ -1,0 +1,22 @@
+description: >-
+  A rolling update that cannot finish: the new template's Pods run but never become ready (KWOK's
+  not-ready annotation), and with progressDeadlineSeconds 10 the deployment controller sets
+  Progressing False, ProgressDeadlineExceeded. Records the ReplicaSets (maxSurge and maxUnavailable of
+  25% of 4), the Deployment's conditions and status, rollout status's error and the events.
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=4
+  - do: kubectl rollout status deployment/web --timeout=60s
+steps:
+  - run: >-
+      kubectl patch deployment web -p
+      '{"spec":{"progressDeadlineSeconds":10,"template":{"metadata":{"annotations":{"simlab.dev/kwok-not-ready":"true"}}}}}'
+  - until: kubectl get deployment web -o jsonpath='{.status.conditions[?(@.type=="Progressing")].reason}'
+    match: '^ProgressDeadlineExceeded$'
+  - run: kubectl get rs
+  - run: kubectl get pods
+    kwok: true
+  - run: kubectl get deployment web
+  - objects: [deployment/web, rs -l app=web]
+  - run: kubectl rollout status deployment/web
+  - run: kubectl describe deployment web
+  - objects: [event --field-selector involvedObject.kind=Deployment]

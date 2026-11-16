@@ -61,7 +61,9 @@ packages/kernel    virtual clock, event queue, world state, snapshot/replay, PRN
 packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd, processes
 packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kubelet, network, kubectl, kubeadm, …
                    (src/apiserver pipeline and store, src/registry strategies, src/apis defaulting and
-                   validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data)
+                   validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data,
+                   src/controllers runtime, event recorder and one directory per controller,
+                   src/testing helpers for tests only: the fake kubelet, workload requests)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
 packages/content   content packs (YAML + Markdown), topology templates
 apps/web  apps/server  apps/cli

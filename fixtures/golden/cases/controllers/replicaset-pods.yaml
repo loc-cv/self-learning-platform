@@ -1,0 +1,29 @@
+description: >-
+  What the deployment and replicaset controllers and the scheduler write for `kubectl create deployment`
+  with three replicas, once settled: the ReplicaSet, the Pods (status by KWOK), and the Events as full
+  core/v1 objects and through events.k8s.io/v1; then a scale down to one replica (SuccessfulDelete).
+  Placement of three Pods on two workers is a scheduling tie (anyWorker).
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=3 --port=80
+  - do: kubectl rollout status deployment/web --timeout=60s
+steps:
+  - objects: [rs -l app=web]
+  - objects: [pod -l app=web]
+    anyWorker: true
+  - objects:
+      - event --field-selector involvedObject.kind=Deployment
+      - event --field-selector involvedObject.kind=ReplicaSet
+  - objects: [event --field-selector involvedObject.kind=Pod]
+    anyWorker: true
+  - objects:
+      - events.events.k8s.io --field-selector regarding.kind=Deployment
+      - events.events.k8s.io --field-selector regarding.kind=ReplicaSet
+  - run: kubectl scale deployment web --replicas=1
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - until: kubectl get pods -l app=web -o name | wc -l
+    match: '^1$'
+  - objects:
+      - rs -l app=web
+      - deployment/web
+      - event --field-selector involvedObject.kind=Deployment
+      - event --field-selector involvedObject.kind=ReplicaSet

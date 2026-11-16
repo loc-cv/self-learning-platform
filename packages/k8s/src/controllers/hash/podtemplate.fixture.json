@@ -1,0 +1,1405 @@
+{
+ "captured": "oracle v1.37.2 (npm run oracle -- up), 2026-11-16: kubectl get -o json of each Deployment (spec.template, status.collisionCount) and the pod-template-hash label of its current ReplicaSet. The templates with timestamps (h19-creationts, h24-managedfields) come from a run with TZ set empty for kube-controller-manager (time.Local is the UTC fallback); the rest do not depend on it.",
+ "cases": [
+  {
+   "deployment": "c01",
+   "collisionCount": 1,
+   "hash": "5444b5796c",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h01"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "c02",
+   "hash": "f8c7fbd57",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "c02"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx:1.27",
+       "imagePullPolicy": "IfNotPresent",
+       "name": "nginx",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "c03",
+   "collisionCount": 2,
+   "hash": "66d9996d96",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "web"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx:1.27",
+       "imagePullPolicy": "IfNotPresent",
+       "name": "nginx",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h01-minimal",
+   "hash": "ddc696bb6",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h01"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h02-ports",
+   "hash": "6d5d488dc9",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h02"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx:1.27",
+       "imagePullPolicy": "IfNotPresent",
+       "name": "web",
+       "ports": [
+        {
+         "containerPort": 80,
+         "protocol": "TCP"
+        },
+        {
+         "containerPort": 9090,
+         "name": "metrics",
+         "protocol": "TCP"
+        },
+        {
+         "containerPort": 53,
+         "hostPort": 5353,
+         "name": "dns",
+         "protocol": "UDP"
+        }
+       ],
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h03-env",
+   "hash": "7d8f5bc78f",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h03"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "env": [
+        {
+         "name": "MODE",
+         "value": "production"
+        },
+        {
+         "name": "EMPTY"
+        },
+        {
+         "name": "POD_NAME",
+         "valueFrom": {
+          "fieldRef": {
+           "apiVersion": "v1",
+           "fieldPath": "metadata.name"
+          }
+         }
+        },
+        {
+         "name": "CPU_LIMIT",
+         "valueFrom": {
+          "resourceFieldRef": {
+           "containerName": "app",
+           "divisor": "1m",
+           "resource": "limits.cpu"
+          }
+         }
+        },
+        {
+         "name": "PASSWORD",
+         "valueFrom": {
+          "secretKeyRef": {
+           "key": "password",
+           "name": "db",
+           "optional": true
+          }
+         }
+        },
+        {
+         "name": "COLOR",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "key": "color",
+           "name": "cfg"
+          }
+         }
+        }
+       ],
+       "envFrom": [
+        {
+         "configMapRef": {
+          "name": "cfg"
+         },
+         "prefix": "CFG_"
+        }
+       ],
+       "image": "busybox:1.36",
+       "imagePullPolicy": "IfNotPresent",
+       "name": "app",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h04-resources",
+   "hash": "f6b5fb5f",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h04"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "app",
+       "resources": {
+        "limits": {
+         "cpu": "500m",
+         "memory": "1Gi"
+        },
+        "requests": {
+         "cpu": "100m",
+         "memory": "128974848"
+        }
+       },
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h05-quantities",
+   "hash": "78d78f8b7b",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h05"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "app",
+       "resources": {
+        "limits": {
+         "cpu": "2k",
+         "ephemeral-storage": "2Gi",
+         "memory": "16G"
+        },
+        "requests": {
+         "cpu": "1e3",
+         "ephemeral-storage": "1536Mi",
+         "memory": "8Gi"
+        }
+       },
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h06-command",
+   "hash": "647667f58d",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h06"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "args": [
+        "echo hello world; sleep 3600",
+        "--flag=a b"
+       ],
+       "command": [
+        "sh",
+        "-c"
+       ],
+       "image": "busybox",
+       "imagePullPolicy": "IfNotPresent",
+       "name": "app",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File",
+       "workingDir": "/tmp"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h07-volumes",
+   "hash": "6b457447c4",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h07"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "app",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File",
+       "volumeMounts": [
+        {
+         "mountPath": "/scratch",
+         "name": "scratch"
+        },
+        {
+         "mountPath": "/etc/app",
+         "name": "cfg",
+         "readOnly": true
+        },
+        {
+         "mountPath": "/etc/tls",
+         "name": "sec",
+         "subPath": "tls.crt"
+        }
+       ]
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30,
+     "volumes": [
+      {
+       "emptyDir": {
+        "sizeLimit": "500Mi"
+       },
+       "name": "scratch"
+      },
+      {
+       "emptyDir": {
+        "medium": "Memory"
+       },
+       "name": "mem"
+      },
+      {
+       "emptyDir": {},
+       "name": "plain"
+      },
+      {
+       "configMap": {
+        "defaultMode": 420,
+        "items": [
+         {
+          "key": "app.conf",
+          "mode": 256,
+          "path": "conf/app.conf"
+         }
+        ],
+        "name": "app-config"
+       },
+       "name": "cfg"
+      },
+      {
+       "name": "sec",
+       "secret": {
+        "defaultMode": 420,
+        "secretName": "tls"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "deployment": "h08-probes",
+   "hash": "7f7dd669cf",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h08"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "livenessProbe": {
+        "failureThreshold": 3,
+        "httpGet": {
+         "path": "/healthz",
+         "port": "http",
+         "scheme": "HTTP"
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 10,
+        "successThreshold": 1,
+        "timeoutSeconds": 1
+       },
+       "name": "app",
+       "ports": [
+        {
+         "containerPort": 8080,
+         "name": "http",
+         "protocol": "TCP"
+        }
+       ],
+       "readinessProbe": {
+        "failureThreshold": 3,
+        "periodSeconds": 10,
+        "successThreshold": 1,
+        "tcpSocket": {
+         "port": 8080
+        },
+        "timeoutSeconds": 1
+       },
+       "resources": {},
+       "startupProbe": {
+        "exec": {
+         "command": [
+          "cat",
+          "/tmp/ready"
+         ]
+        },
+        "failureThreshold": 30,
+        "periodSeconds": 10,
+        "successThreshold": 1,
+        "timeoutSeconds": 1
+       },
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h09-metadata",
+   "hash": "5cb77c7bc4",
+   "template": {
+    "metadata": {
+     "annotations": {
+      "kubectl.kubernetes.io/restartedAt": "2026-11-16T10:00:00Z",
+      "note": "hello, wörld",
+      "prometheus.io/scrape": "true"
+     },
+     "labels": {
+      "app": "h09",
+      "tier": "backend",
+      "version": "v2"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h10-scheduling",
+   "hash": "5f5b744f6f",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h10"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "nodeSelector": {
+      "disktype": "ssd",
+      "kubernetes.io/os": "linux"
+     },
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30,
+     "tolerations": [
+      {
+       "effect": "NoSchedule",
+       "key": "dedicated",
+       "operator": "Equal",
+       "value": "gpu"
+      },
+      {
+       "effect": "NoExecute",
+       "key": "node.kubernetes.io/not-ready",
+       "operator": "Exists",
+       "tolerationSeconds": 300
+      }
+     ]
+    }
+   }
+  },
+  {
+   "deployment": "h11-security",
+   "hash": "644964bd5d",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h11"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "securityContext": {
+        "allowPrivilegeEscalation": false,
+        "capabilities": {
+         "add": [
+          "NET_BIND_SERVICE"
+         ],
+         "drop": [
+          "ALL"
+         ]
+        },
+        "readOnlyRootFilesystem": true
+       },
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {
+      "fsGroup": 2000,
+      "runAsGroup": 3000,
+      "runAsNonRoot": true,
+      "runAsUser": 1000,
+      "seccompProfile": {
+       "type": "RuntimeDefault"
+      }
+     },
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h12-init",
+   "hash": "76c549cb5b",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h12"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "initContainers": [
+      {
+       "command": [
+        "sh",
+        "-c",
+        "until nslookup db; do sleep 2; done"
+       ],
+       "image": "busybox",
+       "imagePullPolicy": "Always",
+       "name": "wait",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      },
+      {
+       "image": "fluent-bit",
+       "imagePullPolicy": "Always",
+       "name": "sidecar",
+       "resources": {},
+       "restartPolicy": "Always",
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h13-affinity",
+   "hash": "887d89d6c",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h13"
+     }
+    },
+    "spec": {
+     "affinity": {
+      "nodeAffinity": {
+       "requiredDuringSchedulingIgnoredDuringExecution": {
+        "nodeSelectorTerms": [
+         {
+          "matchExpressions": [
+           {
+            "key": "zone",
+            "operator": "In",
+            "values": [
+             "a",
+             "b"
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "podAntiAffinity": {
+       "preferredDuringSchedulingIgnoredDuringExecution": [
+        {
+         "podAffinityTerm": {
+          "labelSelector": {
+           "matchLabels": {
+            "app": "h13"
+           }
+          },
+          "topologyKey": "kubernetes.io/hostname"
+         },
+         "weight": 100
+        }
+       ]
+      }
+     },
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30,
+     "topologySpreadConstraints": [
+      {
+       "labelSelector": {
+        "matchLabels": {
+         "app": "h13"
+        }
+       },
+       "maxSkew": 1,
+       "topologyKey": "zone",
+       "whenUnsatisfiable": "DoNotSchedule"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "deployment": "h14-misc",
+   "hash": "7684867b8f",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h14"
+     }
+    },
+    "spec": {
+     "automountServiceAccountToken": false,
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "lifecycle": {
+        "postStart": {
+         "httpGet": {
+          "path": "/",
+          "port": 80,
+          "scheme": "HTTP"
+         }
+        },
+        "preStop": {
+         "exec": {
+          "command": [
+           "sleep",
+           "5"
+          ]
+         }
+        }
+       },
+       "name": "c",
+       "resources": {},
+       "stdin": true,
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "FallbackToLogsOnError",
+       "tty": true
+      }
+     ],
+     "dnsConfig": {
+      "nameservers": [
+       "1.1.1.1"
+      ],
+      "options": [
+       {
+        "name": "ndots",
+        "value": "2"
+       },
+       {
+        "name": "edns0"
+       }
+      ]
+     },
+     "dnsPolicy": "ClusterFirstWithHostNet",
+     "enableServiceLinks": false,
+     "hostAliases": [
+      {
+       "hostnames": [
+        "db.local",
+        "cache.local"
+       ],
+       "ip": "10.0.0.1"
+      }
+     ],
+     "hostNetwork": true,
+     "hostname": "box",
+     "imagePullSecrets": [
+      {
+       "name": "regcred"
+      }
+     ],
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "serviceAccount": "builder",
+     "serviceAccountName": "builder",
+     "shareProcessNamespace": true,
+     "subdomain": "sub",
+     "terminationGracePeriodSeconds": 0
+    }
+   }
+  },
+  {
+   "deployment": "h15-multi",
+   "hash": "b87c89f54",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h15"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "a",
+       "resources": {
+        "limits": {
+         "cpu": "250m",
+         "example.com/widget": "2",
+         "memory": "64Mi"
+        }
+       },
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      },
+      {
+       "image": "redis:7",
+       "imagePullPolicy": "IfNotPresent",
+       "name": "b",
+       "ports": [
+        {
+         "containerPort": 6379,
+         "name": "redis",
+         "protocol": "TCP"
+        }
+       ],
+       "resources": {
+        "requests": {
+         "cpu": "10m",
+         "memory": "1000Ki"
+        }
+       },
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h16-bigquantity",
+   "hash": "6579589ff4",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h16"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "a",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30,
+     "volumes": [
+      {
+       "emptyDir": {
+        "sizeLimit": "1234567890123456789012"
+       },
+       "name": "big"
+      },
+      {
+       "emptyDir": {
+        "sizeLimit": "1n"
+       },
+       "name": "frac"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "deployment": "h17-projected",
+   "hash": "68b667dd48",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h17"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File",
+       "volumeMounts": [
+        {
+         "mountPath": "/var/run/x",
+         "name": "proj"
+        }
+       ]
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30,
+     "volumes": [
+      {
+       "name": "proj",
+       "projected": {
+        "defaultMode": 420,
+        "sources": [
+         {
+          "serviceAccountToken": {
+           "audience": "api",
+           "expirationSeconds": 3600,
+           "path": "token"
+          }
+         },
+         {
+          "downwardAPI": {
+           "items": [
+            {
+             "fieldRef": {
+              "apiVersion": "v1",
+              "fieldPath": "metadata.labels"
+             },
+             "path": "labels"
+            }
+           ]
+          }
+         }
+        ]
+       }
+      },
+      {
+       "hostPath": {
+        "path": "/var/log",
+        "type": "Directory"
+       },
+       "name": "host"
+      },
+      {
+       "name": "pvc",
+       "persistentVolumeClaim": {
+        "claimName": "data"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "deployment": "h18-template-name",
+   "hash": "85c776c57b",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h18"
+     },
+     "name": "tmpl-name",
+     "namespace": "default"
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "ports": [
+        {
+         "containerPort": 80,
+         "hostIP": "127.0.0.1",
+         "protocol": "TCP"
+        }
+       ],
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h19-creationts",
+   "hash": "7bb7fd5757",
+   "template": {
+    "metadata": {
+     "creationTimestamp": "2026-01-02T03:04:05Z",
+     "labels": {
+      "app": "h19"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h20-sizes",
+   "hash": "79965b9bf4",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h20"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {
+        "limits": {
+         "cpu": "1",
+         "memory": "2Mi"
+        },
+        "requests": {
+         "cpu": "1m",
+         "memory": "1536Ki"
+        }
+       },
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30,
+     "volumes": [
+      {
+       "emptyDir": {
+        "sizeLimit": "1536Mi"
+       },
+       "name": "a"
+      },
+      {
+       "emptyDir": {
+        "sizeLimit": "512"
+       },
+       "name": "b"
+      },
+      {
+       "emptyDir": {
+        "sizeLimit": "1G"
+       },
+       "name": "c"
+      },
+      {
+       "emptyDir": {
+        "sizeLimit": "12m"
+       },
+       "name": "d"
+      },
+      {
+       "emptyDir": {
+        "sizeLimit": "0"
+       },
+       "name": "e"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "deployment": "h21-pod-extras",
+   "hash": "98dc8df66",
+   "template": {
+    "metadata": {
+     "annotations": {
+      "B": "ä 日本",
+      "a-1": "x",
+      "a.1": "y",
+      "a1": "z",
+      "b": "é"
+     },
+     "finalizers": [
+      "example.com/f"
+     ],
+     "generateName": "gen-",
+     "labels": {
+      "A": "3",
+      "a.b/c": "2",
+      "app": "h21",
+      "zz": "1"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "livenessProbe": {
+        "failureThreshold": 3,
+        "grpc": {
+         "port": 9000,
+         "service": "health"
+        },
+        "periodSeconds": 10,
+        "successThreshold": 1,
+        "timeoutSeconds": 1
+       },
+       "name": "c",
+       "readinessProbe": {
+        "failureThreshold": 3,
+        "httpGet": {
+         "httpHeaders": [
+          {
+           "name": "X-A",
+           "value": "1"
+          },
+          {
+           "name": "X-B",
+           "value": ""
+          }
+         ],
+         "path": "/",
+         "port": 8080,
+         "scheme": "HTTP"
+        },
+        "periodSeconds": 10,
+        "successThreshold": 1,
+        "timeoutSeconds": 3
+       },
+       "resizePolicy": [
+        {
+         "resourceName": "cpu",
+         "restartPolicy": "NotRequired"
+        }
+       ],
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "hostUsers": false,
+     "os": {
+      "name": "linux"
+     },
+     "readinessGates": [
+      {
+       "conditionType": "example.com/ready"
+      }
+     ],
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {
+      "supplementalGroups": [
+       1,
+       2,
+       3
+      ],
+      "sysctls": [
+       {
+        "name": "net.core.somaxconn",
+        "value": "1024"
+       }
+      ]
+     },
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h22-managed",
+   "hash": "66574bc7bd",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h22"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "v1",
+       "controller": true,
+       "kind": "ConfigMap",
+       "name": "cm",
+       "uid": "0b6e9f3a-1111-2222-3333-444455556666"
+      }
+     ]
+    },
+    "spec": {
+     "containers": [
+      {
+       "env": [
+        {
+         "name": "A",
+         "value": "multi\nline \"quoted\" {x:y}"
+        }
+       ],
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h23-restart",
+   "hash": "68fc47dd97",
+   "template": {
+    "metadata": {
+     "annotations": {
+      "kubectl.kubernetes.io/restartedAt": "2026-11-16T10:15:54+07:00"
+     },
+     "labels": {
+      "app": "h23-restart"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "nginx",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "h24-managedfields",
+   "hash": "77d99bdf5d",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "h24"
+     },
+     "managedFields": [
+      {
+       "apiVersion": "v1",
+       "fieldsType": "FieldsV1",
+       "fieldsV1": {
+        "f:metadata": {
+         "f:labels": {
+          ".": {},
+          "f:app": {}
+         }
+        }
+       },
+       "manager": "me",
+       "operation": "Apply",
+       "time": "2026-11-16T01:02:03Z"
+      }
+     ]
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx",
+       "imagePullPolicy": "Always",
+       "name": "c",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  },
+  {
+   "deployment": "web",
+   "hash": "69c6f74b8b",
+   "template": {
+    "metadata": {
+     "labels": {
+      "app": "web"
+     }
+    },
+    "spec": {
+     "containers": [
+      {
+       "image": "nginx:1.27",
+       "imagePullPolicy": "IfNotPresent",
+       "name": "nginx",
+       "resources": {},
+       "terminationMessagePath": "/dev/termination-log",
+       "terminationMessagePolicy": "File"
+      }
+     ],
+     "dnsPolicy": "ClusterFirst",
+     "restartPolicy": "Always",
+     "schedulerName": "default-scheduler",
+     "securityContext": {},
+     "terminationGracePeriodSeconds": 30
+    }
+   }
+  }
+ ]
+}

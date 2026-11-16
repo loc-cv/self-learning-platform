@@ -2,7 +2,7 @@ node_modules/
 dist/
 .tsbuild/
 coverage/
-data/
+/data/
 .upstream/
 *.log
 .DS_Store

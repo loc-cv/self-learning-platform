@@ -1,0 +1,29 @@
+description: >-
+  The namespace controller: a namespace whose ConfigMap holds a finalizer stays Terminating with
+  conditions saying what remains; new content is refused; once the finalizer is removed the namespace
+  goes. Then a fresh namespace: the serviceaccount controller creates `default` and the root CA
+  publisher (kube-controller-manager's root-ca-cert-publisher) creates the ConfigMap kube-root-ca.crt.
+setup:
+  - do: kubectl create namespace held
+  - do: kubectl create configmap pinned -n held --from-literal=a=1
+  - do: >-
+      kubectl patch configmap pinned -n held -p '{"metadata":{"finalizers":["example.com/hold"]}}'
+steps:
+  - run: kubectl delete namespace held --wait=false
+  - until: kubectl get namespace held -o jsonpath='{.status.conditions[?(@.type=="NamespaceFinalizersRemaining")].status}'
+    match: '^True$'
+  - run: kubectl get namespace held
+  - objects: [namespace/held]
+  - objects: [-n held configmap]
+  - run: kubectl create configmap late -n held --from-literal=a=1
+  - run: >-
+      kubectl patch configmap pinned -n held --type=merge -p '{"metadata":{"finalizers":null}}'
+  - do: kubectl wait --for=delete namespace/held --timeout=60s
+  - run: kubectl get namespace held
+  - run: kubectl create namespace fresh
+  - until: kubectl get serviceaccount default -n fresh -o name
+    match: '^serviceaccount/default$'
+  - until: kubectl get configmap kube-root-ca.crt -n fresh -o name
+    match: '^configmap/kube-root-ca.crt$'
+  - objects: [-n fresh serviceaccount/default, -n fresh configmap]
+  - run: kubectl get serviceaccounts,configmaps -n fresh

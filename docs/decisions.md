@@ -363,7 +363,7 @@ non-pointer `metav1.Time` that prints `null`, the Go type names that type errors
 of the API packages too (a small reader of gofmt'ed struct declarations, `tools/src/openapi/gotypes.ts`)
 and fails when they and the OpenAPI properties disagree. Format and measurements:
 `docs/ARCHITECTURE.md` §4.6. Descriptions (739 KiB) have no consumer until `kubectl explain`, so
-they are generated only with `--descriptions`; the explain phase turns that on.
+they are generated only with `--descriptions`; the explain phase turns that on. (Phase 08 found the checked-in v3 spec lacks enums and captures explain's documents from the real server instead: D-082; `--descriptions` is gone.)
 - Rules out guessing Go encoding from OpenAPI `default` values, which mark some non-omitempty
   fields but not nil slices (`EndpointSlice.endpoints: null`) or non-pointer times
   (`lastProbeTime: null`).
@@ -416,7 +416,7 @@ watch events. So an Event a kubelet records through events.k8s.io shows up in
 **D-045 — The scale subresource is read-only until kubectl scale needs it.** GET of
 `deployments/scale` and `replicasets/scale` answers with the autoscaling/v1 Scale. Writing it has
 to apply the Scale to `spec.replicas` through the main strategy and answer with a Scale; until the
-phase with `kubectl scale` builds that, a write is a gap rather than a wrong answer.
+phase with `kubectl scale` builds that, a write is a gap rather than a wrong answer. (Done in phase 08: D-092.)
 
 **D-046 — Differential tests strip what admission plugins of phase 20b add, field by field.**
 Rather than listing whole steps as known differences, `tools/src/golden/api.test.ts` and
@@ -647,6 +647,8 @@ create and start, sandbox stop — uniform draws, each step from its own stream
 measurements; upstream's own constants (relist, back-offs, resyncs, grace periods) are not in the
 table.
 
+## Phase 07a (2026-11-16)
+
 **D-066 — A category lists only types the simulator stores.** `kubectl get all` expands to every
 member of the `all` category, as discovery announces it (cronjobs, jobs, statefulsets, HPAs…).
 The API server answers `notSimulated` for a resource it does not store; a visit that came only
@@ -706,6 +708,8 @@ listed as differences, numbered tokens are renumbered per step (a skipped step m
 later numbering; consistency across steps is no longer checked), and every accepted difference
 is a KNOWN entry with its cause that fails the test once it passes. The shim shrinks as phases
 07b, 08 and 15 build the verbs.
+
+## Phase 07b (2026-11-16)
 
 **D-073 — Strategic merge patch is a direct port over the Go struct tags.**
 `apimachinery/strategicpatch/` ports patch.go function by function: apply (merge keys, `$patch`,
@@ -786,3 +790,138 @@ Deployment, ReplicaSet and DaemonSet strategies as upstream calls it. The apiser
 recorder (deduplication, the 4096-rune budget and 256-rune truncation) runs once at the end of
 `handle()`, after the deprecation warning is put first (`apiserver/warning.ts`). Warnings that
 upstream produces by iterating a Go map are emitted in sorted key order (DIV-017).
+
+## Phase 08 (2026-11-16)
+
+**D-082 — explain's OpenAPI v3 documents are captured from the real API server.** At v1.37.2 the
+checked-in `api/openapi-spec/v3` of the upstream checkout has no `enum` keys and none of the
+"Possible enum values" description text, while the real server serves both and `kubectl explain`
+prints them. `npm run openapi:capture` (`tools/src/openapi/capture.ts`) starts an oracle without
+KWOK, reads `/openapi/v3` and every group version's document with `kubectl get --raw` (rank 1),
+and writes `packages/k8s/src/openapi/data/<tag>.openapiv3.ts`; `--check` compares a fresh capture.
+This replaces D-038's plan of `api:vendor --descriptions`, which is gone.
+- The documents are reduced to what explain's template reads (description, type, items,
+  additionalProperties, allOf, `$ref`, properties, required, enum, externalDocs,
+  x-kubernetes-group-version-kind), each operation's GVK and the per-document differences
+  (DeleteOptions' and WatchEvent's GVK lists): 12 MiB become 1.1 MiB (196 KiB gzipped), parsed
+  on the first explain. Capture fails if a reduction empties a schema, because the template tests
+  schemas for emptiness.
+- `apiserver/openapi.ts` serves `/openapi/v3` and `/openapi/v3/<path>` from them; explain calls it
+  through the session's server, without a generic non-resource hook.
+- Field paths go through a port of the part of client-go's jsonpath parser they reach (fields,
+  escapes, `..`, `*`); other syntax prints a notice rather than guessing the parser's errors.
+- Rules out serving explain from the checked-in spec, which would print fields without their enums.
+
+**D-083 — Rollouts of DaemonSets and StatefulSets print a notice until phase 18a.** DaemonSets
+are stored but no controller maintains their status or ControllerRevisions, so `rollout status`
+would wait forever and `history`/`undo` would be wrong; StatefulSets are not stored. status,
+history, undo and restart print `[sim] … rollout <verb> of a DaemonSet (phase 18a)`. pause and
+resume print kubectl's real "pausing is not supported" error, which needs no controller.
+
+**D-084 — JSON patch is a port of json-patch v4, and its panics are gaps.** `rollout undo` sends a
+JSON patch, so the API server applies them (`apimachinery/jsonpatch.ts`, json-patch v4.13.0
+DecodePatch and Apply, checked against the Go library with a 40 000-case differential fuzz;
+`apiserver/jsonpatch.ts` for the strict decoding and the 400/413/422 statuses). Inputs that make
+the Go library panic (a `test` of arrays holding null, a whole-document `replace` without a value)
+make the real server drop the connection (the oracle's capture failed with "socket hang up"), so
+there is no response to reproduce: the API server records a gap instead.
+
+**D-085 — Commands that print typed objects print `-o json` in struct field order.** Generators and
+the rollout verbs print typed Go objects, whose JSON keys follow the struct declaration (the
+vendored schema's field order), not the sorted order of an unstructured object. One printer does it for every verb: `kubectl/cmd/typed.ts` (`typed`, `typedPrinter`; with a type id it only canonicalizes, without one it finds the Go type from apiVersion and kind and decodes first).
+
+**D-086 — One kubeconfig model, with `kubectl config`'s writer.** `client/kubeconfigmodel.ts` is
+a full round trip of clientcmd's v1 Config that remembers which file each entry came from,
+because ModifyConfig rewrites whole files exactly as latest.Codec writes them
+(`cmd/config/modify.ts`: the file chosen by PathOptions, mkdir 0755, file 0600, `.lock` files).
+`client/kubeconfig.ts`, which every other verb uses, keeps its small view (servers, contexts, user
+names) but decodes files with this model, so every verb reports the real load errors: Go's type
+errors, a wrong apiVersion or kind, read errors such as ENOTDIR, and a repeated name as the
+conversion error with Go's `%v` of the v1 list (deterministic for the fields the model keeps).
+Content the model does not cover (exec and auth-provider credentials, `extensions`, a repeated
+name in a list that holds them, migrating `~/.kube/.kubeconfig`) and writes to clusters, users or
+preferences (set-cluster, set-credentials: phase 15) print notices; kubeadm's files contain none
+of them. `--merge` is a Tristate whose default counts as set, so `view --kubeconfig f` still
+merges and only `--merge=false` reads one file (checked against the binary: component-base is not
+in the checkout).
+
+**D-087 — The simulated API server serves legacy discovery and a fixed version.**
+`apiserver/nonresource.ts` answers `/version`, `/api`, `/apis`, `/api/v1` and `/apis/<g>/<v>` from
+the registry (checked against all 25 discovery GETs of `api/discovery.yaml`), not aggregated
+discovery (apidiscovery v2); the client therefore has no `storageVersionHash`. `/version` is the
+pinned kube-apiserver's build info read from the oracle (buildDate 2026-10-27T12:01:06Z), a
+constant until a phase that upgrades the control plane (29b) moves it into the server's config.
+
+**D-088 — `pods/log` is a stream served beside the request pipeline.** `apiserver/log.ts`
+(`openPodLog`, `readPodLog`) is LogREST: PodLogOptions validation, LogLocation (the container
+checks; a Pod with no node answers empty), the node's address in kubeadm's preferred order and
+its kubelet port, the kubelet URL with LogLocation's query. It sits outside `handle()`, as watches
+do, because the answer is bytes, not an object. The kubelet side (`kubelet/logs.ts`) is
+validateContainerLogStatus and ReadLogs over the CRI file; the kubelet reads the Pod and its
+status from the API object, standing in for its pod and status managers. A kubelet that is not
+running on the machine that holds the node's address refuses the connection (the API server's
+500 with Go's dial error); an address no machine holds or a machine that is off prints a notice,
+as the transport does, until phase 17.
+- **Streaming.** One topic, `k8s.logs`, is published on every log append, container exit,
+  container removal and kubelet stop; a follower re-reads from its offset on each publish (for
+  fsnotify and waitLogs' container check). One topic rather than one per node, because a `-l -f`
+  follower spans nodes and a process waits on one topic; a publish nobody waits for changes no
+  hash. A kubelet stopping mid-stream ends the stream with status 0, as StreamObject ignores
+  io.Copy's error.
+- **Order of several streams.** kubectl ranges over a Go map. v1.37.2 is built with Go 1.26, whose
+  small maps (up to 8 entries) iterate in insertion order rotated by a random offset; the
+  simulator draws that offset from the stream `kubectl.logs.requests` and shuffles above 8.
+- **Retries.** `--pod-running-timeout` retries every second; at the deadline the deadline wins the
+  tie with the ticker (attempts at 0 … N−1 s, then "context deadline exceeded").
+
+**D-089 — Generators: validation first, then the notice; `run`'s name check as the binary does
+it.** `kubectl run -i/-t/--attach/--rm` print the phase 17 notice after Complete and Validate, so
+their real errors still show, and before anything is created. `run`'s NAME check ignores
+ArgsLenAtDash, because RecordFlags.Complete re-parses `os.Args[1:]`, where `run` precedes any
+`--` (`kubectl run --image=x -- name` is accepted; checked against the binary). Typed output
+follows D-085 (`cmd/generate/common.ts` encodes through the vendored Go types, `--save-config`'s
+annotation too). An `--overrides` patch that removes or retypes apiVersion or kind prints a
+notice. The container name suffix of `create deployment` with several images comes from the
+stream `kubectl.rand`; `--append-hash` uses a SHA-256 port (`cmd/generate/sha256.ts`), since the
+engine has no crypto.
+
+**D-090 — kubectl completion is on, as kubectl's documented setup configures it.** Every machine
+completes kubectl as if `source <(kubectl completion bash)` were in `~/.bashrc` (as on the CKA
+exam machines): our bash runs no completion scripts until phase 22a, and bash-completion's
+behavior is reproduced by completers (D-025). An alias completes with the completer of the
+program its value starts with, which models `complete -o default -F __start_kubectl k`; flags in
+the alias value take part, as the script's eval of `k __complete …` expands them. The Tab
+completer and the hidden `kubectl __complete` command run one port of cobra's `getCompletions`
+over the vendored manifest with kubectl's completion functions (`completion/cobra.ts`,
+`functions.ts`; lookups as the process's user, `client.ts`); its stdout is fed to a port of the
+V2 script's presentation (`bash.ts`) and its stderr is dropped, as the script's `2>/dev/null`
+does. Checked two ways: `__complete` against the binary (805 golden steps) and screens key by key
+against real bash 5.2.21 with bash-completion 2.11 and the real script
+(`fixtures/reference/bash/kubectl-completion.json`).
+
+**D-091 — `kubectl edit` runs the editor as a child process on a temporary file.** The editor is
+`KUBE_EDITOR`, else `EDITOR`, else `vi`; a value with spaces is split, or run through
+`$SHELL -c` when it holds quotes or backslashes (editor.go). It is looked up as Go's LookPath does
+(a regular file with an execute bit; an empty PATH entry is `.`) and executed as os/exec does: a
+`#!` script runs its interpreter, a file without `#!` is "there was a problem with the editor",
+with no `/bin/sh` fallback. The temporary file is `os.TempDir()` (`$TMPDIR`, else `/tmp`) plus
+`kubectl-edit-<uint32>.yaml|.json`, mode 0600, the number drawn from the stream
+`kubectl.edit.tempfile` and redrawn on EEXIST. `vi`, `vim` and `nano` then use the editor
+protocol, so the UI's overlay, the terminal player's `$EDITOR` and headless answers all work.
+- Transcripts answer editors with `@editor <<WORD … WORD` (content to save) and `@editor :q!`
+  (close without saving), queued in order for the next editors (docs/TRANSCRIPTS.md); `npm run
+  sim` accepts the same. Golden cases get real editor behavior by setting `KUBE_EDITOR` to a
+  script from the case's `files:` run with bash. Fixtures normalize the file's number to `<<tmp>>`.
+- Where kubectl iterates a Go map (label/annotate `--list`, overwrite errors, set image's
+  not-found errors) the simulator uses argument order, and sorted keys for `--list`; golden steps
+  pipe through `sort` or mark `unorderedLines`.
+- A kind without a scale subresource answers the generic 404 client-go builds ("the server could
+  not find the requested resource"). `kubectl scale` has no conflict-retry loop: the server is
+  synchronous, nothing can come between its GET and PUT.
+
+**D-092 — The scale subresource is writable.** `apiserver/scale.ts` takes update and patch (merge
+or strategic) of `<resource>/scale`, validates the Scale (ValidateScale, Invalid on
+`Scale.autoscaling`), checks a PUT's UID as the storage precondition, moves replicas and
+resourceVersion onto the object and sends it through the main strategy's update, and answers
+with the autoscaling/v1 Scale; a missing object is NotFound on the parent resource. This ends
+D-045's read-only shortcut.

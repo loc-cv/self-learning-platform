@@ -1,0 +1,4008 @@
+# Captured from fixtures/golden/cases/completion/flags.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: completion/flags
+description: "kubectl __complete for the value of every flag of every command that takes one, with no server: the flags with a completion function (output formats, subresources, containers, contexts), the -f file filter (FilterFileExt with json, yaml, yml), the flags whose NoOptDefVal makes the next word an argument (dry-run, validate, cascade), and the default directive."
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl __complete annotate --dry-run ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete annotate --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete annotate --field-selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete annotate --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete annotate --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete annotate --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete annotate --resource-version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete annotate --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete annotate --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete api-resources --api-group ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete api-resources --categories ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete api-resources --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete api-resources --sort-by ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete api-resources --verbs ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --cascade ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete apply --grace-period ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --prune-allowlist ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --subresource ''
+    exit: 0
+    stdout: |
+      status
+      scale
+      resize
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete apply --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply edit-last-applied --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply edit-last-applied --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete apply edit-last-applied --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply edit-last-applied --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply edit-last-applied --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply edit-last-applied --validate ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete apply set-last-applied --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply set-last-applied --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete apply set-last-applied --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply set-last-applied --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply view-last-applied --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete apply view-last-applied --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply view-last-applied --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply view-last-applied --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete attach --container ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete attach --detach-keys ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete attach --pod-running-timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth can-i --subresource ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth reconcile --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth reconcile --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete auth reconcile --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth reconcile --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth reconcile --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth whoami --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth whoami --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --cpu ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --dry-run ''
+    exit: 0
+    stdout: |
+      --max	The upper limit for the number of pods that can be set by the autoscaler. Required.
+      deployment
+      replicaset
+      replicationcontroller
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete autoscale --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete autoscale --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --max ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --memory ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --min ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete certificate approve --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete certificate approve --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete certificate approve --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete certificate approve --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete certificate deny --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete certificate deny --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete certificate deny --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete certificate deny --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cluster-info dump --namespaces ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cluster-info dump --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cluster-info dump --output-directory ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cluster-info dump --pod-running-timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cluster-info dump --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config get-contexts --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-cluster --certificate-authority ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-cluster --proxy-url ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-cluster --server ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-cluster --tls-server-name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-context --cluster ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-context --user ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --auth-provider ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --auth-provider-arg ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --client-certificate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --client-key ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --exec-api-version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --exec-arg ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --exec-command ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --exec-env ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --exec-interactive-mode ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --password ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --token ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-credentials --username ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config view --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config view --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cordon --dry-run ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete cordon --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cp --container ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cp --retries ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete create --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --raw ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --aggregation-rule ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --non-resource-url ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --resource ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --resource-name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrole --verb ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --dry-run ''
+    exit: 0
+    stdout: |
+      --clusterrole	ClusterRole this ClusterRoleBinding should reference
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --group ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --serviceaccount ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --user ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding --validate ''
+    exit: 0
+    stdout: |
+      --clusterrole	ClusterRole this ClusterRoleBinding should reference
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --from-env-file ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --from-file ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --from-literal ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --dry-run ''
+    exit: 0
+    stdout: |
+      --image	Image name to run.
+      --schedule	A schedule in the Cron format the job should be run with.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --image ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --restart ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --schedule ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob --validate ''
+    exit: 0
+    stdout: |
+      --image	Image name to run.
+      --schedule	A schedule in the Cron format the job should be run with.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --dry-run ''
+    exit: 0
+    stdout: |
+      --image	Image names to run. A deployment can have multiple images set for multi-container pod.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --image ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --port ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --replicas ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment --validate ''
+    exit: 0
+    stdout: |
+      --image	Image names to run. A deployment can have multiple images set for multi-container pod.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --annotation ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --class ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --default-backend ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --rule ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job --from ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job --image ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create namespace --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create namespace --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create namespace --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create namespace --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create namespace --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --max-unavailable ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --min-available ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --description ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --preemption-policy ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass --value ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota --hard ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota --scopes ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --resource ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --resource-name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role --verb ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --clusterrole ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --group ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --role ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --serviceaccount ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --user ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --docker-email ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --docker-password ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --docker-server ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --docker-username ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --from-file ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret docker-registry --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --from-env-file ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --from-file ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --from-literal ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --type ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls --cert ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls --key ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service clusterip --clusterip ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service clusterip --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service clusterip --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service clusterip --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service clusterip --tcp ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service clusterip --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service clusterip --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname --dry-run ''
+    exit: 0
+    stdout: |
+      --external-name	External name of service
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname --external-name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname --tcp ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname --validate ''
+    exit: 0
+    stdout: |
+      --external-name	External name of service
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service loadbalancer --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service loadbalancer --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service loadbalancer --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service loadbalancer --tcp ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service loadbalancer --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service loadbalancer --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport --node-port ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport --tcp ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create serviceaccount --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create serviceaccount --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create serviceaccount --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create serviceaccount --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create serviceaccount --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token --audience ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token --bound-object-kind ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token --bound-object-name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token --bound-object-uid ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token --duration ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --container ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --copy-to ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --custom ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --env ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete debug --image ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --image-pull-policy ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --profile ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --set-image ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete debug --target ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete delete --cascade ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete delete --dry-run ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete delete --field-selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete delete --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete delete --grace-period ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete delete --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete delete --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete delete --raw ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete delete --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete delete --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete describe --chunk-size ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete describe --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete describe --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete describe --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete diff --concurrency ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete diff --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete diff --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete diff --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete diff --prune-allowlist ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete diff --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete drain --chunk-size ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete drain --dry-run ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete drain --grace-period ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete drain --pod-selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete drain --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete drain --skip-wait-for-delete-timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete drain --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete edit --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete edit --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete edit --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete edit --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete edit --subresource ''
+    exit: 0
+    stdout: |
+      status
+      scale
+      resize
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete edit --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete edit --validate ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete events --chunk-size ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete events --for ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete events --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete events --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete events --types ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete exec --container ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete exec --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete exec --pod-running-timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete explain --api-version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete explain --max-depth ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete explain --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --cluster-ip ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --dry-run ''
+    exit: 0
+    stdout: |
+      pod
+      service
+      replicationcontroller
+      deployment
+      replicaset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete expose --external-ip ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete expose --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --labels ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --load-balancer-ip ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --override-type ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --overrides ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --port ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --protocol ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --session-affinity ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --target-port ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose --type ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --chunk-size ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --field-selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete get --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --label-columns ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --output ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      kyaml
+      name
+      go-template
+      go-template-file
+      template
+      templatefile
+      jsonpath
+      jsonpath-as-json
+      jsonpath-file
+      custom-columns
+      custom-columns-file
+      wide
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete get --raw ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --sort-by ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete get --subresource ''
+    exit: 0
+    stdout: |
+      status
+      scale
+      resize
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete get --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --allowlist-entry ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --appendarg ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --command ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --kuberc ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --option ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --policy ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --prependarg ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc set --section ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc view --kuberc ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc view --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc view --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize --env ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize --helm-api-versions ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize --helm-command ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize --helm-kube-version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize --load-restrictor ''
+    exit: 0
+    stdout: |
+      LoadRestrictionsNone
+      LoadRestrictionsRootOnly
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete kustomize --mount ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize --network-name ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label --dry-run ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete label --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label --field-selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete label --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label --resource-version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --container ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --limit-bytes ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --max-log-requests ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --pod-running-timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --since ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --since-time ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete logs --tail ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete patch --dry-run ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete patch --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete patch --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete patch --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete patch --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete patch --patch ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete patch --patch-file ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete patch --subresource ''
+    exit: 0
+    stdout: |
+      status
+      scale
+      resize
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete patch --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete patch --type ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete port-forward --address ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete port-forward --pod-running-timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --accept-hosts ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --accept-paths ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --address ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --api-prefix ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --keepalive ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --port ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --reject-methods ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --reject-paths ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --unix-socket ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --www ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete proxy --www-prefix ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --cascade ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete replace --grace-period ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --raw ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --subresource ''
+    exit: 0
+    stdout: |
+      status
+      scale
+      resize
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete replace --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace --validate ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout history --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete rollout history --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout history --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout history --revision ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout history --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout history --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout pause --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout pause --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete rollout pause --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout pause --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout pause --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout pause --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout restart --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout restart --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete rollout restart --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout restart --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout restart --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout restart --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout resume --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout resume --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete rollout resume --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout resume --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout resume --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout resume --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout status --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete rollout status --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout status --revision ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout status --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout status --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout undo --dry-run ''
+    exit: 0
+    stdout: |
+      deployment
+      daemonset
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout undo --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete rollout undo --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout undo --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout undo --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout undo --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout undo --to-revision ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --annotations ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --cascade ''
+    exit: 0
+    stdout: |
+      --image	The image for the container to run.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --detach-keys ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --dry-run ''
+    exit: 0
+    stdout: |
+      --image	The image for the container to run.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --env ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --grace-period ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --image ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --image-pull-policy ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --labels ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --override-type ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --overrides ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --pod-running-timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --port ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --restart ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete run --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --current-replicas ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --dry-run ''
+    exit: 0
+    stdout: |
+      --replicas	The new desired number of replicas. Required.
+      deployment
+      replicaset
+      replicationcontroller
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete scale --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete scale --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --replicas ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --resource-version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --containers ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --env ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete set env --from ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --keys ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --prefix ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set env --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set image --dry-run ''
+    exit: 0
+    stdout: |
+      daemonsets
+      deployments
+      pods
+      cronjobs
+      replicasets
+      replicationcontrollers
+      statefulsets
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete set image --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set image --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete set image --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set image --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set image --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set image --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --containers ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete set resources --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --limits ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --requests ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set resources --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set selector --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set selector --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set selector --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete set selector --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set selector --resource-version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set selector --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set serviceaccount --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set serviceaccount --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set serviceaccount --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete set serviceaccount --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set serviceaccount --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set serviceaccount --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --dry-run ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete set subject --group ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --serviceaccount ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject --user ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete taint --dry-run ''
+    exit: 0
+    stdout: |
+      node
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete taint --field-manager ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete taint --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete taint --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete taint --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete taint --validate ''
+    exit: 0
+    stdout: |
+      node
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete top node --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete top node --sort-by ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete top pod --field-selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete top pod --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete top pod --sort-by ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete uncordon --dry-run ''
+    exit: 0
+    stdout: |
+      :4
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete uncordon --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete version --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete wait --field-selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete wait --filename ''
+    exit: 0
+    stdout: |
+      json
+      yaml
+      yml
+      :8
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveFilterFileExt
+  - run: kubectl __complete wait --for ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete wait --output ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete wait --selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete wait --template ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete wait --timeout ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment -
+    exit: 0
+    stdout: |
+      --image	Image names to run. A deployment can have multiple images set for multi-container pod.
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete logs -
+    exit: 0
+    stdout: |
+      --as	Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+      --as-group	Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --as-uid	UID to impersonate for the operation.
+      --as-user-extra	User extras to impersonate for the operation, this flag can be repeated to specify multiple values for the same key.
+      --cache-dir	Default cache directory
+      --certificate-authority	Path to a cert file for the certificate authority
+      --client-certificate	Path to a client certificate file for TLS
+      --client-key	Path to a client key file for TLS
+      --cluster	The name of the kubeconfig cluster to use
+      --context	The name of the kubeconfig context to use
+      --disable-compression	If true, opt-out of response compression for all requests to the server
+      --insecure-skip-tls-verify	If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kubeconfig	Path to the kubeconfig file to use for CLI requests.
+      --kuberc	Path to the kuberc file to use for preferences. This can be disabled by exporting KUBECTL_KUBERC=false feature gate or turning off the feature KUBERC=off.
+      --log-flush-frequency	Maximum number of seconds between log flushes
+      --match-server-version	Require server version to match client version
+      --namespace	If present, the namespace scope for this CLI request
+      -n	If present, the namespace scope for this CLI request
+      --password	Password for basic authentication to the API server
+      --profile	Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex|trace)
+      --profile-output	Name of the file to write the profile to
+      --proxy-url	Proxy URL to use for requests to the API server
+      --request-timeout	The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+      --server	The address and port of the Kubernetes API server
+      -s	The address and port of the Kubernetes API server
+      --tls-server-name	Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --token	Bearer token for authentication to the API server
+      --user	The name of the kubeconfig user to use
+      --username	Username for basic authentication to the API server
+      --v	number for the log level verbosity
+      -v	number for the log level verbosity
+      --vmodule	comma-separated list of pattern=N settings for file-filtered logging (only works for the default text log format)
+      --warnings-as-errors	Treat warnings received from the server as errors and exit with a non-zero exit code
+      --all-containers	Get all containers' logs in the pod(s).
+      --all-pods	Get logs from all pod(s). Sets prefix to true.
+      --container	Print the logs of this container
+      -c	Print the logs of this container
+      --follow	Specify if the logs should be streamed.
+      -f	Specify if the logs should be streamed.
+      --help	help for logs
+      -h	help for logs
+      --ignore-errors	If watching / following pod logs, allow for any errors that occur to be non-fatal
+      --insecure-skip-tls-verify-backend	Skip verifying the identity of the kubelet that logs are requested from.  In theory, an attacker could provide invalid log content back. You might want to use this if your kubelet serving certificates have expired.
+      --limit-bytes	Maximum bytes of logs to return. Defaults to no limit.
+      --max-log-requests	Specify maximum number of concurrent logs to follow when using by a selector. Defaults to 5.
+      --pod-running-timeout	The length of time (like 5s, 2m, or 3h, higher than zero) to wait until at least one pod is running
+      --prefix	Prefix each log line with the log source (pod name and container name)
+      --previous	If true, print the logs for the previous instance of the container in a pod if it exists.
+      -p	If true, print the logs for the previous instance of the container in a pod if it exists.
+      --selector	Selector (label query) to filter on, supports '=', '==', '!=', 'in', 'notin'.(e.g. -l key1=value1,key2=value2,key3 in (value3)). Matching objects must satisfy all of the specified label constraints.
+      -l	Selector (label query) to filter on, supports '=', '==', '!=', 'in', 'notin'.(e.g. -l key1=value1,key2=value2,key3 in (value3)). Matching objects must satisfy all of the specified label constraints.
+      --since	Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs. Only one of since-time / since may be used.
+      --since-time	Only return logs after a specific date (RFC3339). Defaults to all logs. Only one of since-time / since may be used.
+      --tail	Lines of recent log file to display. Defaults to -1 with no selector, showing all log lines otherwise 10, if a selector is provided.
+      --timestamps	Include timestamps on each line in the log output
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete apply -
+    exit: 0
+    stdout: |
+      --as	Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+      --as-group	Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --as-uid	UID to impersonate for the operation.
+      --as-user-extra	User extras to impersonate for the operation, this flag can be repeated to specify multiple values for the same key.
+      --cache-dir	Default cache directory
+      --certificate-authority	Path to a cert file for the certificate authority
+      --client-certificate	Path to a client certificate file for TLS
+      --client-key	Path to a client key file for TLS
+      --cluster	The name of the kubeconfig cluster to use
+      --context	The name of the kubeconfig context to use
+      --disable-compression	If true, opt-out of response compression for all requests to the server
+      --insecure-skip-tls-verify	If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kubeconfig	Path to the kubeconfig file to use for CLI requests.
+      --kuberc	Path to the kuberc file to use for preferences. This can be disabled by exporting KUBECTL_KUBERC=false feature gate or turning off the feature KUBERC=off.
+      --log-flush-frequency	Maximum number of seconds between log flushes
+      --match-server-version	Require server version to match client version
+      --namespace	If present, the namespace scope for this CLI request
+      -n	If present, the namespace scope for this CLI request
+      --password	Password for basic authentication to the API server
+      --profile	Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex|trace)
+      --profile-output	Name of the file to write the profile to
+      --proxy-url	Proxy URL to use for requests to the API server
+      --request-timeout	The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+      --server	The address and port of the Kubernetes API server
+      -s	The address and port of the Kubernetes API server
+      --tls-server-name	Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --token	Bearer token for authentication to the API server
+      --user	The name of the kubeconfig user to use
+      --username	Username for basic authentication to the API server
+      --v	number for the log level verbosity
+      -v	number for the log level verbosity
+      --vmodule	comma-separated list of pattern=N settings for file-filtered logging (only works for the default text log format)
+      --warnings-as-errors	Treat warnings received from the server as errors and exit with a non-zero exit code
+      --all	Select all resources in the namespace of the specified resource types.
+      --allow-missing-template-keys	If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.
+      --cascade	Must be "background", "orphan", or "foreground". Selects the deletion cascading strategy for the dependents (e.g. Pods created by a ReplicationController). Defaults to background.
+      --dry-run	Must be "none", "server", or "client". If client strategy, only print the object that would be sent, without sending it. If server strategy, submit server-side request without persisting the resource.
+      --field-manager	Name of the manager used to track field ownership.
+      --filename	The files, directories or URLs that contain the configurations to apply.
+      -f	The files, directories or URLs that contain the configurations to apply.
+      --force	If true, immediately remove resources from API and bypass graceful deletion. Note that immediate deletion of some resources may result in inconsistency or data loss and requires confirmation.
+      --force-conflicts	If true, server-side apply will force the changes against conflicts.
+      --grace-period	Period of time in seconds given to the resource to terminate gracefully. Ignored if negative. Set to 1 for immediate shutdown. Can only be set to 0 when --force is true (force deletion).
+      --help	help for apply
+      -h	help for apply
+      --kustomize	Process a kustomization directory. This flag can't be used together with -f or -R.
+      -k	Process a kustomization directory. This flag can't be used together with -f or -R.
+      --openapi-patch	If true, use openapi to calculate diff when the openapi presents and the resource can be found in the openapi spec. Otherwise, fall back to use baked-in types.
+      --output	Output format. One of: (json, yaml, kyaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+      -o	Output format. One of: (json, yaml, kyaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+      --overwrite	Automatically resolve conflicts between the modified and live configuration by using values from the modified configuration
+      --prune	Automatically delete resource objects, that do not appear in the configs and are created by either apply or create --save-config. Should be used with either -l or --all.
+      --prune-allowlist	Overwrite the default allowlist with <group/version/kind> for --prune
+      --recursive	Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      -R	Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --selector	Selector (label query) to filter on, supports '=', '==', '!=', 'in', 'notin'.(e.g. -l key1=value1,key2=value2,key3 in (value3)). Matching objects must satisfy all of the specified label constraints.
+      -l	Selector (label query) to filter on, supports '=', '==', '!=', 'in', 'notin'.(e.g. -l key1=value1,key2=value2,key3 in (value3)). Matching objects must satisfy all of the specified label constraints.
+      --server-side	If true, apply runs in the server instead of the client.
+      --show-managed-fields	If true, keep the managedFields when printing objects in JSON or YAML format.
+      --subresource	If specified, apply will operate on the subresource of the requested object.  Only allowed when using --server-side.
+      --template	Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
+      --timeout	The length of time to wait before giving up on a delete, zero means determine a timeout from the size of the object
+      --validate	Must be one of: strict (or true), warn, ignore (or false). "true" or "strict" will use a schema to validate the input and fail the request if invalid. It will perform server side validation if ServerSideFieldValidation is enabled on the api-server, but will fall back to less reliable client-side validation if not. "warn" will warn about unknown or duplicate fields without blocking the request if server-side field validation is enabled on the API server, and behave as "ignore" otherwise. "false" or "ignore" will not perform any schema validation, silently dropping any unknown or duplicate fields.
+      --wait	If true, wait for resources to be gone before returning. This waits for finalizers.
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout status -
+    exit: 0
+    stdout: |
+      --as	Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+      --as-group	Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --as-uid	UID to impersonate for the operation.
+      --as-user-extra	User extras to impersonate for the operation, this flag can be repeated to specify multiple values for the same key.
+      --cache-dir	Default cache directory
+      --certificate-authority	Path to a cert file for the certificate authority
+      --client-certificate	Path to a client certificate file for TLS
+      --client-key	Path to a client key file for TLS
+      --cluster	The name of the kubeconfig cluster to use
+      --context	The name of the kubeconfig context to use
+      --disable-compression	If true, opt-out of response compression for all requests to the server
+      --insecure-skip-tls-verify	If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kubeconfig	Path to the kubeconfig file to use for CLI requests.
+      --kuberc	Path to the kuberc file to use for preferences. This can be disabled by exporting KUBECTL_KUBERC=false feature gate or turning off the feature KUBERC=off.
+      --log-flush-frequency	Maximum number of seconds between log flushes
+      --match-server-version	Require server version to match client version
+      --namespace	If present, the namespace scope for this CLI request
+      -n	If present, the namespace scope for this CLI request
+      --password	Password for basic authentication to the API server
+      --profile	Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex|trace)
+      --profile-output	Name of the file to write the profile to
+      --proxy-url	Proxy URL to use for requests to the API server
+      --request-timeout	The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+      --server	The address and port of the Kubernetes API server
+      -s	The address and port of the Kubernetes API server
+      --tls-server-name	Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --token	Bearer token for authentication to the API server
+      --user	The name of the kubeconfig user to use
+      --username	Username for basic authentication to the API server
+      --v	number for the log level verbosity
+      -v	number for the log level verbosity
+      --vmodule	comma-separated list of pattern=N settings for file-filtered logging (only works for the default text log format)
+      --warnings-as-errors	Treat warnings received from the server as errors and exit with a non-zero exit code
+      --filename	Filename, directory, or URL to files identifying the resource to get from a server.
+      -f	Filename, directory, or URL to files identifying the resource to get from a server.
+      --help	help for status
+      -h	help for status
+      --kustomize	Process the kustomization directory. This flag can't be used together with -f or -R.
+      -k	Process the kustomization directory. This flag can't be used together with -f or -R.
+      --recursive	Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      -R	Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --revision	Pin to a specific revision for showing its status. Defaults to 0 (last revision).
+      --selector	Selector (label query) to filter on, supports '=', '==', '!=', 'in', 'notin'.(e.g. -l key1=value1,key2=value2,key3 in (value3)). Matching objects must satisfy all of the specified label constraints.
+      -l	Selector (label query) to filter on, supports '=', '==', '!=', 'in', 'notin'.(e.g. -l key1=value1,key2=value2,key3 in (value3)). Matching objects must satisfy all of the specified label constraints.
+      --timeout	The length of time to wait before ending watch, zero means never. Any other values should contain a corresponding time unit (e.g. 1s, 2m, 3h).
+      --watch	Watch the status of the rollout until it's done.
+      -w	Watch the status of the rollout until it's done.
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config view -
+    exit: 0
+    stdout: |
+      --as	Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+      --as-group	Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --as-uid	UID to impersonate for the operation.
+      --as-user-extra	User extras to impersonate for the operation, this flag can be repeated to specify multiple values for the same key.
+      --cache-dir	Default cache directory
+      --certificate-authority	Path to a cert file for the certificate authority
+      --client-certificate	Path to a client certificate file for TLS
+      --client-key	Path to a client key file for TLS
+      --cluster	The name of the kubeconfig cluster to use
+      --context	The name of the kubeconfig context to use
+      --disable-compression	If true, opt-out of response compression for all requests to the server
+      --insecure-skip-tls-verify	If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kubeconfig	use a particular kubeconfig file
+      --kuberc	Path to the kuberc file to use for preferences. This can be disabled by exporting KUBECTL_KUBERC=false feature gate or turning off the feature KUBERC=off.
+      --log-flush-frequency	Maximum number of seconds between log flushes
+      --match-server-version	Require server version to match client version
+      --namespace	If present, the namespace scope for this CLI request
+      -n	If present, the namespace scope for this CLI request
+      --password	Password for basic authentication to the API server
+      --profile	Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex|trace)
+      --profile-output	Name of the file to write the profile to
+      --proxy-url	Proxy URL to use for requests to the API server
+      --request-timeout	The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+      --server	The address and port of the Kubernetes API server
+      -s	The address and port of the Kubernetes API server
+      --tls-server-name	Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --token	Bearer token for authentication to the API server
+      --user	The name of the kubeconfig user to use
+      --username	Username for basic authentication to the API server
+      --v	number for the log level verbosity
+      -v	number for the log level verbosity
+      --vmodule	comma-separated list of pattern=N settings for file-filtered logging (only works for the default text log format)
+      --warnings-as-errors	Treat warnings received from the server as errors and exit with a non-zero exit code
+      --allow-missing-template-keys	If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.
+      --flatten	Flatten the resulting kubeconfig file into self-contained output (useful for creating portable kubeconfig files)
+      --help	help for view
+      -h	help for view
+      --merge	Merge the full hierarchy of kubeconfig files
+      --minify	Remove all information not used by current-context from the output
+      --output	Output format. One of: (json, yaml, kyaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+      -o	Output format. One of: (json, yaml, kyaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+      --raw	Display raw byte data and sensitive data
+      --show-managed-fields	If true, keep the managedFields when printing objects in JSON or YAML format.
+      --template	Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete scale -
+    exit: 0
+    stdout: |
+      --replicas	The new desired number of replicas. Required.
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete run -
+    exit: 0
+    stdout: |
+      --image	The image for the container to run.
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete expose -
+    exit: 0
+    stdout: |
+      --as	Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+      --as-group	Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --as-uid	UID to impersonate for the operation.
+      --as-user-extra	User extras to impersonate for the operation, this flag can be repeated to specify multiple values for the same key.
+      --cache-dir	Default cache directory
+      --certificate-authority	Path to a cert file for the certificate authority
+      --client-certificate	Path to a client certificate file for TLS
+      --client-key	Path to a client key file for TLS
+      --cluster	The name of the kubeconfig cluster to use
+      --context	The name of the kubeconfig context to use
+      --disable-compression	If true, opt-out of response compression for all requests to the server
+      --insecure-skip-tls-verify	If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kubeconfig	Path to the kubeconfig file to use for CLI requests.
+      --kuberc	Path to the kuberc file to use for preferences. This can be disabled by exporting KUBECTL_KUBERC=false feature gate or turning off the feature KUBERC=off.
+      --log-flush-frequency	Maximum number of seconds between log flushes
+      --match-server-version	Require server version to match client version
+      --namespace	If present, the namespace scope for this CLI request
+      -n	If present, the namespace scope for this CLI request
+      --password	Password for basic authentication to the API server
+      --profile	Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex|trace)
+      --profile-output	Name of the file to write the profile to
+      --proxy-url	Proxy URL to use for requests to the API server
+      --request-timeout	The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+      --server	The address and port of the Kubernetes API server
+      -s	The address and port of the Kubernetes API server
+      --tls-server-name	Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --token	Bearer token for authentication to the API server
+      --user	The name of the kubeconfig user to use
+      --username	Username for basic authentication to the API server
+      --v	number for the log level verbosity
+      -v	number for the log level verbosity
+      --vmodule	comma-separated list of pattern=N settings for file-filtered logging (only works for the default text log format)
+      --warnings-as-errors	Treat warnings received from the server as errors and exit with a non-zero exit code
+      --allow-missing-template-keys	If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.
+      --cluster-ip	ClusterIP to be assigned to the service. Leave empty to auto-allocate, or set to 'None' to create a headless service.
+      --dry-run	Must be "none", "server", or "client". If client strategy, only print the object that would be sent, without sending it. If server strategy, submit server-side request without persisting the resource.
+      --external-ip	Additional external IP address (not managed by Kubernetes) to accept for the service. If this IP is routed to a node, the service can be accessed by this IP in addition to its generated service IP.
+      --field-manager	Name of the manager used to track field ownership.
+      --filename	Filename, directory, or URL to files identifying the resource to expose a service
+      -f	Filename, directory, or URL to files identifying the resource to expose a service
+      --help	help for expose
+      -h	help for expose
+      --kustomize	Process the kustomization directory. This flag can't be used together with -f or -R.
+      -k	Process the kustomization directory. This flag can't be used together with -f or -R.
+      --labels	Labels to apply to the service created by this call.
+      -l	Labels to apply to the service created by this call.
+      --load-balancer-ip	IP to assign to the LoadBalancer. If empty, an ephemeral IP will be created and used (cloud-provider specific).
+      --name	The name for the newly created object.
+      --output	Output format. One of: (json, yaml, kyaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+      -o	Output format. One of: (json, yaml, kyaml, name, go-template, go-template-file, template, templatefile, jsonpath, jsonpath-as-json, jsonpath-file).
+      --override-type	The method used to override the generated object: json, merge, or strategic.
+      --overrides	An inline JSON override for the generated object. If this is non-empty, it is used to override the generated object. Requires that the object supply a valid apiVersion field.
+      --port	The port that the service should serve on. Copied from the resource being exposed, if unspecified
+      --protocol	The network protocol for the service to be created. Default is 'TCP'.
+      --recursive	Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      -R	Process the directory used in -f, --filename recursively. Useful when you want to manage related manifests organized within the same directory.
+      --save-config	If true, the configuration of current object will be saved in its annotation. Otherwise, the annotation will be unchanged. This flag is useful when you want to perform kubectl apply on this object in the future.
+      --selector	A label selector to use for this service. Only equality-based selector requirements are supported. If empty (the default) infer the selector from the resource being exposed.
+      --session-affinity	If non-empty, set the session affinity for the service to this; legal values: 'None', 'ClientIP'
+      --show-managed-fields	If true, keep the managedFields when printing objects in JSON or YAML format.
+      --target-port	Name or number for the port on the container that the service should direct traffic to. Optional.
+      --template	Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
+      --type	Type for this service: ClusterIP, NodePort, LoadBalancer, or ExternalName. Default is 'ClusterIP'.
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config -
+    exit: 0
+    stdout: |
+      --as	Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
+      --as-group	Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --as-uid	UID to impersonate for the operation.
+      --as-user-extra	User extras to impersonate for the operation, this flag can be repeated to specify multiple values for the same key.
+      --cache-dir	Default cache directory
+      --certificate-authority	Path to a cert file for the certificate authority
+      --client-certificate	Path to a client certificate file for TLS
+      --client-key	Path to a client key file for TLS
+      --cluster	The name of the kubeconfig cluster to use
+      --context	The name of the kubeconfig context to use
+      --disable-compression	If true, opt-out of response compression for all requests to the server
+      --insecure-skip-tls-verify	If true, the server's certificate will not be checked for validity. This will make your HTTPS connections insecure
+      --kuberc	Path to the kuberc file to use for preferences. This can be disabled by exporting KUBECTL_KUBERC=false feature gate or turning off the feature KUBERC=off.
+      --log-flush-frequency	Maximum number of seconds between log flushes
+      --match-server-version	Require server version to match client version
+      --namespace	If present, the namespace scope for this CLI request
+      -n	If present, the namespace scope for this CLI request
+      --password	Password for basic authentication to the API server
+      --profile	Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex|trace)
+      --profile-output	Name of the file to write the profile to
+      --proxy-url	Proxy URL to use for requests to the API server
+      --request-timeout	The length of time to wait before giving up on a single server request. Non-zero values should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+      --server	The address and port of the Kubernetes API server
+      -s	The address and port of the Kubernetes API server
+      --tls-server-name	Server name to use for server certificate validation. If it is not provided, the hostname used to contact the server is used
+      --token	Bearer token for authentication to the API server
+      --user	The name of the kubeconfig user to use
+      --username	Username for basic authentication to the API server
+      --v	number for the log level verbosity
+      -v	number for the log level verbosity
+      --vmodule	comma-separated list of pattern=N settings for file-filtered logging (only works for the default text log format)
+      --warnings-as-errors	Treat warnings received from the server as errors and exit with a non-zero exit code
+      --help	help for config
+      -h	help for config
+      --kubeconfig	use a particular kubeconfig file
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp

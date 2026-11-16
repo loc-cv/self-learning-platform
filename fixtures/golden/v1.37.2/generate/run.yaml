@@ -1,0 +1,759 @@
+# Captured from fixtures/golden/cases/generate/run.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: generate/run
+description: "kubectl run against a server: client and server dry runs across its flags (-o yaml|json|name), --expose, --overrides of each type and their errors, real creates with --save-config, and the API server's errors (AlreadyExists, an invalid name, a missing namespace, an existing Service)."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl run nginx --image=nginx:1.27 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: nginx
+        name: nginx
+      spec:
+        containers:
+        - image: nginx:1.27
+          name: nginx
+          resources: {}
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+      status: {}
+    stderr: ""
+  - run: kubectl run busy --image=busybox:1.37 --restart=Never --labels=app=busy,tier=x --env=A=1 --env=B='two words' --port=8080 --annotations=note=hi --annotations=empty= --image-pull-policy=IfNotPresent --privileged --command --dry-run=client -o json -- sleep 3600
+    exit: 0
+    stdout: |
+      {
+          "kind": "Pod",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "busy",
+              "labels": {
+                  "app": "busy",
+                  "tier": "x"
+              },
+              "annotations": {
+                  "empty": "",
+                  "note": "hi"
+              }
+          },
+          "spec": {
+              "containers": [
+                  {
+                      "name": "busy",
+                      "image": "busybox:1.37",
+                      "command": [
+                          "sleep",
+                          "3600"
+                      ],
+                      "ports": [
+                          {
+                              "containerPort": 8080
+                          }
+                      ],
+                      "env": [
+                          {
+                              "name": "A",
+                              "value": "1"
+                          },
+                          {
+                              "name": "B",
+                              "value": "two words"
+                          }
+                      ],
+                      "resources": {},
+                      "imagePullPolicy": "IfNotPresent",
+                      "securityContext": {
+                          "privileged": true
+                      }
+                  }
+              ],
+              "restartPolicy": "Never",
+              "dnsPolicy": "ClusterFirst"
+          },
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl run args --image=busybox:1.37 --restart=OnFailure -n team --dry-run=client -o yaml -- echo hello world
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: args
+        name: args
+        namespace: team
+      spec:
+        containers:
+        - args:
+          - echo
+          - hello
+          - world
+          image: busybox:1.37
+          name: args
+          resources: {}
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+      status: {}
+    stderr: ""
+  - run: kubectl run plain --image=nginx:1.27 --dry-run=client -o name
+    exit: 0
+    stdout: |
+      pod/plain
+    stderr: ""
+  - run: kubectl run plain --image=nginx:1.27 --dry-run=client
+    exit: 0
+    stdout: |
+      pod/plain created (dry run)
+    stderr: ""
+  - run: kubectl run plain --image=nginx:1.27 --save-config --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: plain
+        name: plain
+      spec:
+        containers:
+        - image: nginx:1.27
+          name: plain
+          resources: {}
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+      status: {}
+    stderr: ""
+  - run: kubectl run web --image=nginx:1.27 --port=80 --expose --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: web
+        name: web
+      spec:
+        containers:
+        - image: nginx:1.27
+          name: web
+          ports:
+          - containerPort: 80
+          resources: {}
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+      status: {}
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: web
+      spec:
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          run: web
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl run web --image=nginx:1.27 --port=80 --expose --labels=app=web -n team --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Pod",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "web",
+              "namespace": "team",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "containers": [
+                  {
+                      "name": "web",
+                      "image": "nginx:1.27",
+                      "ports": [
+                          {
+                              "containerPort": 80
+                          }
+                      ],
+                      "resources": {}
+                  }
+              ],
+              "restartPolicy": "Always",
+              "dnsPolicy": "ClusterFirst"
+          },
+          "status": {}
+      }
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "web",
+              "namespace": "team",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "ports": [
+                  {
+                      "protocol": "TCP",
+                      "port": 80,
+                      "targetPort": 80
+                  }
+              ],
+              "selector": {
+                  "app": "web"
+              }
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl run web --image=nginx:1.27 --port=80 --expose --dry-run=client
+    exit: 0
+    stdout: |
+      pod/web created (dry run)
+      service/web created (dry run)
+    stderr: ""
+  - run: kubectl run merged --image=nginx:1.27 --dry-run=client -o yaml --overrides='{"metadata":{"labels":{"extra":"y"}},"spec":{"nodeName":"node01","bogus":1,"containers":[{"name":"merged","image":"nginx:1.27","resources":{"limits":{"cpu":"100m"}}}]}}'
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          extra: "y"
+          run: merged
+        name: merged
+      spec:
+        containers:
+        - image: nginx:1.27
+          name: merged
+          resources:
+            limits:
+              cpu: 100m
+        dnsPolicy: ClusterFirst
+        nodeName: node01
+        restartPolicy: Always
+      status: {}
+    stderr: ""
+  - run: kubectl run strategic --image=nginx:1.27 --dry-run=client -o yaml --override-type=strategic --overrides='{"spec":{"containers":[{"name":"strategic","resources":{"limits":{"memory":"64Mi"}}}]}}'
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: strategic
+        name: strategic
+      spec:
+        containers:
+        - image: nginx:1.27
+          name: strategic
+          resources:
+            limits:
+              memory: 64Mi
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+      status: {}
+    stderr: ""
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='{"spec":{"containers":"x"}}'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: json: cannot unmarshal string into Go struct field PodSpec.spec.containers of type []v1.Container
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='"x"'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid JSON Patch
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='{bad'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid JSON Patch
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=strategic --overrides='{bad'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid JSON document
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=strategic --overrides='[1]'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid JSON document
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='[1]'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: couldn't get version/kind; json parse error: json: cannot unmarshal array into Go value of type struct { APIVersion string "json:\"apiVersion,omitempty\""; Kind string "json:\"kind,omitempty\"" }
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=bad --overrides='{}'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid override type: bad
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=bad
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: o
+        name: o
+      spec:
+        containers:
+        - image: nginx:1.27
+          name: o
+          resources: {}
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+      status: {}
+    stderr: ""
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"add","path":"/spec/hostname","value":"h"}]'
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: o
+        name: o
+      spec:
+        containers:
+        - image: nginx:1.27
+          name: o
+          resources: {}
+        dnsPolicy: ClusterFirst
+        hostname: h
+        restartPolicy: Always
+      status: {}
+    stderr: ""
+  - run: kubectl run j --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"replace","path":"/spec/containers/0/image","value":"nginx:1.28"},{"op":"add","path":"/metadata/labels/tier","value":"web"},{"op":"remove","path":"/spec/restartPolicy"}]'
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        labels:
+          run: j
+          tier: web
+        name: j
+      spec:
+        containers:
+        - image: nginx:1.28
+          name: j
+          resources: {}
+        dnsPolicy: ClusterFirst
+      status: {}
+    stderr: ""
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"bogus","path":"/spec"}]'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Unexpected kind: bogus
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"remove","path":"/spec/nothing/here"}]'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: remove operation does not apply: doc is missing path: "/spec/nothing/here": missing value
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"test","path":"/metadata/name","value":"x"}]'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: testing value /metadata/name failed: test failed
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='{"op":"add"}'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: json: cannot unmarshal object into Go value of type jsonpatch.Patch
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"replace","path":"/spec/containers","value":"x"}]'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: json: cannot unmarshal string into Go struct field PodSpec.spec.containers of type []v1.Container
+  - run: kubectl run sdr --image=nginx:1.27 --dry-run=server -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          run: sdr
+        name: sdr
+        namespace: default
+        uid: <<uid:1>>
+      spec:
+        containers:
+        - image: nginx:1.27
+          imagePullPolicy: IfNotPresent
+          name: sdr
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            name: kube-api-access-<<suffix>>
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+        priority: 0
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: default
+        serviceAccountName: default
+        terminationGracePeriodSeconds: 30
+        tolerations:
+        - effect: NoExecute
+          key: node.kubernetes.io/not-ready
+          operator: Exists
+          tolerationSeconds: 300
+        - effect: NoExecute
+          key: node.kubernetes.io/unreachable
+          operator: Exists
+          tolerationSeconds: 300
+        volumes:
+        - name: kube-api-access-<<suffix>>
+          projected:
+            defaultMode: 420
+            sources:
+            - serviceAccountToken:
+                expirationSeconds: 3607
+                path: token
+            - configMap:
+                items:
+                - key: ca.crt
+                  path: ca.crt
+                name: kube-root-ca.crt
+            - downwardAPI:
+                items:
+                - fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+                  path: namespace
+      status:
+        phase: Pending
+        qosClass: BestEffort
+    stderr: ""
+  - run: kubectl run sdr --image=nginx:1.27 --dry-run=server
+    exit: 0
+    stdout: |
+      pod/sdr created (server dry run)
+    stderr: ""
+  - run: kubectl get pods
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl run real --image=nginx:1.27 --labels=app=real
+    exit: 0
+    stdout: |
+      pod/real created
+    stderr: ""
+  - run: kubectl run real --image=nginx:1.27
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): pods "real" already exists
+  - run: kubectl run Bad --image=nginx:1.27 -o name
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Pod "Bad" is invalid: 
+      * metadata.name: Invalid value: "Bad": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+      * spec.containers[0].name: Invalid value: "Bad": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')
+  - run: kubectl run lost --image=nginx:1.27 -n missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): namespaces "missing" not found
+  - run: kubectl run withsvc --image=nginx:1.27 --port=8080 --expose
+    exit: 0
+    stdout: |
+      pod/withsvc created
+      service/withsvc created
+    stderr: ""
+  - run: kubectl run taken --image=nginx:1.27 --port=80 --expose
+    exit: 1
+    stdout: |
+      pod/taken created
+    stderr: |
+      Error from server (AlreadyExists): services "taken" already exists
+  - run: kubectl run saved --image=nginx:1.27 --save-config --field-manager=me -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Pod",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "saved",
+              "namespace": "default",
+              "uid": "<<uid:2>>",
+              "resourceVersion": "<<rv>>",
+              "generation": 1,
+              "creationTimestamp": "<<time>>",
+              "labels": {
+                  "run": "saved"
+              },
+              "annotations": {
+                  "kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1\",\"metadata\":{\"name\":\"saved\",\"labels\":{\"run\":\"saved\"}},\"spec\":{\"containers\":[{\"name\":\"saved\",\"image\":\"nginx:1.27\",\"resources\":{}}],\"restartPolicy\":\"Always\",\"dnsPolicy\":\"ClusterFirst\"},\"status\":{}}\n"
+              }
+          },
+          "spec": {
+              "volumes": [
+                  {
+                      "name": "kube-api-access-<<suffix>>",
+                      "projected": {
+                          "sources": [
+                              {
+                                  "serviceAccountToken": {
+                                      "expirationSeconds": 3607,
+                                      "path": "token"
+                                  }
+                              },
+                              {
+                                  "configMap": {
+                                      "name": "kube-root-ca.crt",
+                                      "items": [
+                                          {
+                                              "key": "ca.crt",
+                                              "path": "ca.crt"
+                                          }
+                                      ]
+                                  }
+                              },
+                              {
+                                  "downwardAPI": {
+                                      "items": [
+                                          {
+                                              "path": "namespace",
+                                              "fieldRef": {
+                                                  "apiVersion": "v1",
+                                                  "fieldPath": "metadata.namespace"
+                                              }
+                                          }
+                                      ]
+                                  }
+                              }
+                          ],
+                          "defaultMode": 420
+                      }
+                  }
+              ],
+              "containers": [
+                  {
+                      "name": "saved",
+                      "image": "nginx:1.27",
+                      "resources": {},
+                      "volumeMounts": [
+                          {
+                              "name": "kube-api-access-<<suffix>>",
+                              "readOnly": true,
+                              "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount"
+                          }
+                      ],
+                      "terminationMessagePath": "/dev/termination-log",
+                      "terminationMessagePolicy": "File",
+                      "imagePullPolicy": "IfNotPresent"
+                  }
+              ],
+              "restartPolicy": "Always",
+              "terminationGracePeriodSeconds": 30,
+              "dnsPolicy": "ClusterFirst",
+              "serviceAccountName": "default",
+              "serviceAccount": "default",
+              "securityContext": {},
+              "schedulerName": "default-scheduler",
+              "tolerations": [
+                  {
+                      "key": "node.kubernetes.io/not-ready",
+                      "operator": "Exists",
+                      "effect": "NoExecute",
+                      "tolerationSeconds": 300
+                  },
+                  {
+                      "key": "node.kubernetes.io/unreachable",
+                      "operator": "Exists",
+                      "effect": "NoExecute",
+                      "tolerationSeconds": 300
+                  }
+              ],
+              "priority": 0,
+              "enableServiceLinks": true,
+              "preemptionPolicy": "PreemptLowerPriority"
+          },
+          "status": {
+              "phase": "Pending",
+              "qosClass": "BestEffort"
+          }
+      }
+    stderr: ""
+  - run: kubectl run inteam --image=nginx:1.27 -n team -o yaml --restart=Never --env=X=1
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          run: inteam
+        name: inteam
+        namespace: team
+        resourceVersion: "<<rv>>"
+        uid: <<uid:3>>
+      spec:
+        containers:
+        - env:
+          - name: X
+            value: "1"
+          image: nginx:1.27
+          imagePullPolicy: IfNotPresent
+          name: inteam
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+            name: kube-api-access-<<suffix>>
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: true
+        preemptionPolicy: PreemptLowerPriority
+        priority: 0
+        restartPolicy: Never
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: default
+        serviceAccountName: default
+        terminationGracePeriodSeconds: 30
+        tolerations:
+        - effect: NoExecute
+          key: node.kubernetes.io/not-ready
+          operator: Exists
+          tolerationSeconds: 300
+        - effect: NoExecute
+          key: node.kubernetes.io/unreachable
+          operator: Exists
+          tolerationSeconds: 300
+        volumes:
+        - name: kube-api-access-<<suffix>>
+          projected:
+            defaultMode: 420
+            sources:
+            - serviceAccountToken:
+                expirationSeconds: 3607
+                path: token
+            - configMap:
+                items:
+                - key: ca.crt
+                  path: ca.crt
+                name: kube-root-ca.crt
+            - downwardAPI:
+                items:
+                - fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+                  path: namespace
+      status:
+        phase: Pending
+        qosClass: BestEffort
+    stderr: ""
+  - run: kubectl get service withsvc -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: withsvc
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:4>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - port: 8080
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          run: withsvc
+        sessionAffinity: None
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl get pods,services --show-labels
+    exit: 0
+    stdout: |
+      NAME          READY   STATUS    RESTARTS   AGE       LABELS
+      pod/real      1/1     Running   0          <<age>>   app=real
+      pod/saved     1/1     Running   0          <<age>>   run=saved
+      pod/taken     1/1     Running   0          <<age>>   run=taken
+      pod/withsvc   1/1     Running   0          <<age>>   run=withsvc
+
+      NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE       LABELS
+      service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP    <<age>>   component=apiserver,provider=kubernetes
+      service/taken        ClusterIP   <<ip>>       <none>        80/TCP     <<age>>   app=taken
+      service/withsvc      ClusterIP   <<ip>>       <none>        8080/TCP   <<age>>   <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl run x --image=nginx:1.27 -- arg --dry-run=client
+    exit: 0
+    stdout: |
+      pod/x created
+    stderr: ""
+  - run: kubectl run x --image=nginx:1.27 --dry-run=client -o json --command
+    exit: 0
+    stdout: |
+      {
+          "kind": "Pod",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "x",
+              "labels": {
+                  "run": "x"
+              }
+          },
+          "spec": {
+              "containers": [
+                  {
+                      "name": "x",
+                      "image": "nginx:1.27",
+                      "resources": {}
+                  }
+              ],
+              "restartPolicy": "Always",
+              "dnsPolicy": "ClusterFirst"
+          },
+          "status": {}
+      }
+    stderr: ""

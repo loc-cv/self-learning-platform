@@ -1,0 +1,111 @@
+# Captured from fixtures/golden/cases/info/version.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: info/version
+description: kubectl version against the server, in every output format.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl version
+    exit: 0
+    stdout: |
+      Client Version: v1.37.2
+      Kustomize Version: v5.8.1
+      Server Version: v1.37.2
+    stderr: ""
+  - run: kubectl version -o yaml
+    exit: 0
+    stdout: |+
+      clientVersion:
+        buildDate: "<<time>>"
+        compiler: gc
+        gitCommit: c50e5395f1ae2d4a2c05f28fdcc38c0916cc1a32
+        gitTreeState: clean
+        gitVersion: v1.37.2
+        goVersion: go1.26.10
+        major: "1"
+        minor: "37"
+        platform: linux/amd64
+      kustomizeVersion: v5.8.1
+      serverVersion:
+        buildDate: "<<time>>"
+        compiler: gc
+        emulationMajor: "1"
+        emulationMinor: "37"
+        gitCommit: c50e5395f1ae2d4a2c05f28fdcc38c0916cc1a32
+        gitTreeState: clean
+        gitVersion: v1.37.2
+        goVersion: go1.26.10
+        major: "1"
+        minCompatibilityMajor: "1"
+        minCompatibilityMinor: "36"
+        minor: "37"
+        platform: linux/amd64
+
+    stderr: ""
+  - run: kubectl version -o json
+    exit: 0
+    stdout: |
+      {
+        "clientVersion": {
+          "major": "1",
+          "minor": "37",
+          "gitVersion": "v1.37.2",
+          "gitCommit": "c50e5395f1ae2d4a2c05f28fdcc38c0916cc1a32",
+          "gitTreeState": "clean",
+          "buildDate": "<<time>>",
+          "goVersion": "go1.26.10",
+          "compiler": "gc",
+          "platform": "linux/amd64"
+        },
+        "kustomizeVersion": "v5.8.1",
+        "serverVersion": {
+          "major": "1",
+          "minor": "37",
+          "emulationMajor": "1",
+          "emulationMinor": "37",
+          "minCompatibilityMajor": "1",
+          "minCompatibilityMinor": "36",
+          "gitVersion": "v1.37.2",
+          "gitCommit": "c50e5395f1ae2d4a2c05f28fdcc38c0916cc1a32",
+          "gitTreeState": "clean",
+          "buildDate": "<<time>>",
+          "goVersion": "go1.26.10",
+          "compiler": "gc",
+          "platform": "linux/amd64"
+        }
+      }
+    stderr: ""
+  - run: kubectl version --client
+    exit: 0
+    stdout: |
+      Client Version: v1.37.2
+      Kustomize Version: v5.8.1
+    stderr: ""
+  - run: kubectl version extra
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: extra arguments: [extra]
+  - request: GET /version
+    code: 200
+    response:
+      major: "1"
+      minor: "37"
+      emulationMajor: "1"
+      emulationMinor: "37"
+      minCompatibilityMajor: "1"
+      minCompatibilityMinor: "36"
+      gitVersion: v1.37.2
+      gitCommit: c50e5395f1ae2d4a2c05f28fdcc38c0916cc1a32
+      gitTreeState: clean
+      buildDate: <<time>>
+      goVersion: go1.26.10
+      compiler: gc
+      platform: linux/amd64

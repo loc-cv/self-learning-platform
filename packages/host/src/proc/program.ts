@@ -34,6 +34,17 @@ export interface ProgramCompletion {
   /** Index of `cur` in `words`. */
   cword: number;
   cur: string;
+  /**
+   * What bash gives a completion function besides the words: COMP_LINE and COMP_POINT (the
+   * current command's text and the cursor in it, aliases not expanded), the environment a command
+   * would get, the aliases (an `eval` in the function expands them) and COLUMNS (readline keeps
+   * it at the terminal's width).
+   */
+  line?: string;
+  point?: number;
+  env?: Readonly<Record<string, string>>;
+  aliases?: Readonly<Record<string, string>>;
+  columns?: number;
 }
 
 export interface ProgramSpec extends Contribution {

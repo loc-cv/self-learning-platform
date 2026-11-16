@@ -1,0 +1,214 @@
+# Captured from fixtures/golden/cases/logs/before-the-kubelet.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: logs/before-the-kubelet
+description: "kubectl logs up to the point where the API server would contact a kubelet: argument and flag validation, the builder's errors, LogsForObject's container choice and its messages (the default container annotation, \"Defaulted container\", \"Found N pods\"), the --max-log-requests check, the API server's PodLogOptions validation, and the empty answer for Pods with no node."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl logs
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+      POD or TYPE/NAME is a required argument for the logs command
+      See 'kubectl logs -h' for help and examples
+  - run: kubectl logs a b c
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: expected 'logs [-f] [-p] (POD | TYPE/NAME) [-c CONTAINER]'.
+      POD or TYPE/NAME is a required argument for the logs command
+      See 'kubectl logs -h' for help and examples
+  - run: kubectl logs -l app=pending pending
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: only a selector (-l) or a POD name is allowed
+      See 'kubectl logs -h' for help and examples
+  - run: kubectl logs rs -l app=queue
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: only a selector (-l) or a POD name is allowed
+      See 'kubectl logs -h' for help and examples
+  - run: kubectl logs pending app -c app
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: only one of -c or an inline [CONTAINER] arg is allowed
+  - run: kubectl logs pending -c app --all-containers
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --all-containers=true should not be specified with container name app
+  - run: kubectl logs pending --limit-bytes=-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --limit-bytes must be greater than 0
+  - run: kubectl logs pending --tail=-2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --tail must be greater than or equal to -1
+  - run: kubectl logs pending --since=-1s
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --since must be greater than 0
+  - run: kubectl logs pending --since=1s --since-time=2026-01-01T00:00:00Z
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: at most one of `sinceTime` or `sinceSeconds` may be specified
+  - run: kubectl logs missing --since-time=yesterday
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: parsing time "yesterday" as "<<time>>07:00": cannot parse "yesterday" as "2006"
+  - run: kubectl logs pending --pod-running-timeout=0
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --pod-running-timeout must be higher than zero
+  - run: kubectl logs missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error from server (NotFound): pods "missing" not found in namespace "default"
+  - run: kubectl logs pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error from server (NotFound): pods "pods" not found in namespace "default"
+  - run: kubectl logs deploy/missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error from server (NotFound): deployments.apps "missing" not found in namespace "default"
+  - run: kubectl logs a/b/c
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: arguments in resource/name form may not have more than one slash
+  - run: kubectl logs foo/bar
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the server doesn't have a resource type "foo"
+  - run: kubectl logs cm/settings
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot get the logs from *v1.ConfigMap: selector for *v1.ConfigMap not implemented
+  - run: kubectl logs -l app=nothing
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl logs -l 'app in ('
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (BadRequest): Unable to find "/v1, Resource=pods" that match label selector "app in (", field selector "": unable to parse requirement: found '', expected: ',', ')' or identifier
+  - run: kubectl logs pending
+    exit: 0
+    stdout: ""
+    stderr: |
+      Defaulted container "app" out of: app, sidecar, init (init)
+  - run: kubectl logs pending -c sidecar
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl logs pending -c init --timestamps
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl logs pending -c nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: container nope is not valid for pod pending out of: app, sidecar, init (init)
+  - run: kubectl logs pod/pending pod/chosen
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: container pod/chosen is not valid for pod pending out of: app, sidecar, init (init)
+  - run: kubectl logs pending --all-containers --prefix
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl logs pending --all-pods
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl logs pending -p --limit-bytes=10 --since-time=2026-01-01T00:00:00.5Z
+    exit: 0
+    stdout: ""
+    stderr: |
+      Defaulted container "app" out of: app, sidecar, init (init)
+  - run: kubectl logs chosen
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl logs chosen --prefix --tail=5
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl logs stale
+    exit: 0
+    stdout: ""
+    stderr: |
+      Default container name "gone" not found in pod stale
+      Defaulted container "app" out of: app, sidecar
+  - run: kubectl logs stale --all-pods -f
+    exit: 0
+    stdout: ""
+    stderr: |
+      Default container name "gone" not found in pod stale
+  - run: kubectl logs -l app=pending --max-log-requests=0 -f
+    exit: 0
+    stdout: ""
+    stderr: |
+      Defaulted container "app" out of: app, sidecar, init (init)
+  - run: kubectl logs deploy/queue
+    exit: 0
+    stdout: ""
+    stderr: |
+      Found 3 pods, using pod/queue-<<hash:1>>-<<suffix>>
+  - run: kubectl logs deployment.apps/queue --all-pods --since=2h
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl logs deploy/queue -f --all-pods --max-log-requests=2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: you are attempting to follow 3 log streams, but maximum allowed concurrency is 2, use --max-log-requests to increase the limit
+  - run: kubectl logs -l app=queue -f --max-log-requests=2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: you are attempting to follow 3 log streams, but maximum allowed concurrency is 2, use --max-log-requests to increase the limit
+  - run: kubectl logs deploy/queue --all-pods --all-containers -c worker
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --all-containers=true should not be specified with container name worker
+  - run: kubectl logs deploy/idle --pod-running-timeout=1s
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: timed out waiting for the condition
+  - run: kubectl logs pending -c app --since=400ms
+    exit: 1
+    stdout: ""
+    stderr: |
+      The PodLogOptions "pending" is invalid: sinceSeconds: Invalid value: 0: must be greater than 0

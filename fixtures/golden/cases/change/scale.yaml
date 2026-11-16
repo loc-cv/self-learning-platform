@@ -1,0 +1,67 @@
+description: >-
+  kubectl scale - one object, several, by selector, --all, from a file; the --current-replicas and
+  --resource-version preconditions; client and server dry runs with -o; and the errors - the required
+  flag, negative counts, a precondition that does not hold, a missing object among others, no objects,
+  a kind without a scale subresource.
+files:
+  rs.yaml: |
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: front
+      labels:
+        app: front
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: front
+      template:
+        metadata:
+          labels:
+            app: front
+        spec:
+          containers:
+          - name: nginx
+            image: nginx:1.27
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=1
+  - do: kubectl create deployment api --image=nginx:1.27 --replicas=1
+  - do: kubectl create -f rs.yaml
+  - do: kubectl run solo --image=nginx:1.27
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/api --timeout=60s
+steps:
+  - run: kubectl scale deployment web --replicas=2
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl scale deployment web
+  - run: kubectl scale deployment web --replicas=-1
+  - run: kubectl scale deployment web --replicas=1 --current-replicas=-2
+  - run: kubectl scale deployment/web --replicas=3 --current-replicas=5
+  - run: kubectl scale deployment/web --replicas=3 --current-replicas=2
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl scale deploy web api --replicas=1 --resource-version=1
+  - run: kubectl scale deploy web api --replicas=2 -o name
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/api --timeout=60s
+  - run: kubectl scale deploy web nope api --replicas=1
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/api --timeout=60s
+  - run: kubectl scale deploy -l app=api --replicas=2 --dry-run=client
+  - run: kubectl scale deploy --all --replicas=3 --dry-run=server
+  - run: kubectl scale deploy -l app=none --replicas=1
+  - run: kubectl scale deploy --replicas=1
+  - run: kubectl scale --replicas=1
+  - run: kubectl scale deploy web --replicas=1 --dry-run=bogus
+  - run: kubectl scale deploy web --replicas=1 -o wide
+  - run: kubectl scale pod solo --replicas=2
+  - run: kubectl scale rs front --replicas=2
+  - until: kubectl get rs front -o jsonpath={.status.readyReplicas}
+    match: '^2$'
+  - run: kubectl scale -f rs.yaml --replicas=1 --dry-run=client -o yaml
+  - run: kubectl scale -f rs.yaml --replicas=1
+  - until: kubectl get pods -l app=front -o name | wc -l
+    match: '^1$'
+  - until: kubectl get rs front -o jsonpath={.status.replicas}
+    match: '^1$'
+  - objects: [deployment/web, rs/front]

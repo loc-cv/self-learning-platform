@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loc
+spec:
+  selector:
+    matchLabels:
+      app: loc
+  template:
+    metadata:
+      labels:
+        app: loc
+    spec:
+      initContainers:
+      - name: init
+        image: busybox:1.36
+        command: ["true"]
+      containers:
+      - name: nginx
+        image: nginx:1.27

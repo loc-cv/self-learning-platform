@@ -1,0 +1,10 @@
+description: kubectl explain --recursive and --max-depth - nested field lists, enums in the short form, and where a recursive type stops.
+kwok: false
+steps:
+  - run: kubectl explain deployment.spec.strategy --recursive
+  - run: kubectl explain service.spec --recursive
+  - run: kubectl explain pod.spec.containers.ports -R
+  - run: kubectl explain deployment --recursive --max-depth=2
+  - run: kubectl explain configmaps -R
+  - run: kubectl explain job.spec -R --max-depth 1
+  - run: kubectl explain crd.spec.versions.schema -R

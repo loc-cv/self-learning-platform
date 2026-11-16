@@ -9,9 +9,31 @@ import { deleteVerb } from './cmd/delete.ts';
 import { describeVerb } from './cmd/describe.ts';
 import { getVerb } from './cmd/get.ts';
 import { helpCommands, helpOutput } from './cmd/help.ts';
+import { CHANGE_VERBS } from './cmd/change/index.ts';
+import { CONFIG_VERBS } from './cmd/config/index.ts';
+import { EXPLAIN_VERBS } from './cmd/explain/index.ts';
+import { GENERATE_VERBS } from './cmd/generate/index.ts';
+import { INFO_VERBS } from './cmd/info/index.ts';
+import { LOGS_VERBS } from './cmd/logs/index.ts';
+import { ROLLOUT_VERBS } from './cmd/rollout/index.ts';
+import { COMPLETION_VERBS, completeKubectl } from './completion/index.ts';
 
 /** The verbs the simulator implements; every other command of the manifest prints a notice. */
-export const VERBS: readonly Verb[] = [getVerb, describeVerb, createVerb, applyVerb, deleteVerb];
+export const VERBS: readonly Verb[] = [
+  getVerb,
+  describeVerb,
+  createVerb,
+  applyVerb,
+  deleteVerb,
+  ...GENERATE_VERBS,
+  ...CHANGE_VERBS,
+  ...ROLLOUT_VERBS,
+  ...LOGS_VERBS,
+  ...EXPLAIN_VERBS,
+  ...INFO_VERBS,
+  ...CONFIG_VERBS,
+  ...COMPLETION_VERBS,
+];
 
 /**
  * Global flags the simulator honors, and those on the no-effect list (docs/FIDELITY.md §4.1) with
@@ -47,4 +69,4 @@ function* main(p: ProcApi): Generator<Syscall, number, unknown> {
   return yield* dispatch(p, DISPATCH);
 }
 
-export const kubectlProgram: ProgramSpec = { name: 'kubectl', main };
+export const kubectlProgram: ProgramSpec = { name: 'kubectl', main, complete: completeKubectl };

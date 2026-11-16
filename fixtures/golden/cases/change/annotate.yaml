@@ -1,0 +1,70 @@
+description: >-
+  kubectl annotate - add, overwrite (the error lists every declared annotation that would change;
+  kubernetes.io/change-cause may always change), remove, --list, values with spaces and JSON,
+  selectors, --all, -f with a directory (-R is on by default), --local, client and server dry runs
+  with -o (one printer: YAML documents separated), --resource-version; and the errors - a bad pair, a
+  key both set and removed, no change, the --local and --list mistakes, an invalid key the server
+  refuses, a missing object.
+files:
+  dir/cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: a
+  dir/sub/cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: b
+  local.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: loc
+      annotations:
+        keep: "yes"
+setup:
+  - do: kubectl create configmap a --from-literal=k=v
+  - do: kubectl create configmap b --from-literal=k=v
+  - do: kubectl label configmap a b app=ann
+steps:
+  - run: kubectl annotate configmap a note=hello
+  - run: kubectl annotate configmap a note=bye
+  - run: kubectl annotate configmap a note=bye other=x
+  - run: kubectl annotate configmap a note=hello
+  - run: kubectl annotate configmap a note=bye --overwrite
+  - run: kubectl annotate configmap a kubernetes.io/change-cause=first
+  - run: kubectl annotate configmap a kubernetes.io/change-cause=second
+  - run: >-
+      kubectl annotate configmap a 'desc=my frontend' 'json={"a": 1}'
+  - run: kubectl annotate configmap a note-
+  - run: kubectl annotate configmap a note-
+  - run: kubectl annotate configmap a x=1 x-
+  - run: kubectl annotate configmap a x=1 y=2 x- y-
+  - run: kubectl annotate configmap a =x
+  - run: kubectl annotate configmap a x=1 foo
+  - run: kubectl annotate configmap a
+  - run: kubectl annotate configmap a 'bad key!=v'
+  - run: kubectl annotate configmap a --list | sort
+  - run: kubectl annotate configmap a b --list
+    unorderedLines: true
+  - run: kubectl annotate configmap -l app=ann tier=sel
+  - run: kubectl annotate configmap -l app=none tier=sel
+  - run: kubectl annotate configmap --field-selector metadata.name=b only=b
+  - run: kubectl annotate configmap a b x=1 -o yaml
+  - run: kubectl annotate configmap a x=2 --dry-run=client -o name
+  - run: kubectl annotate configmap a x=3 --dry-run=server
+  - run: kubectl annotate configmap a x=4 --resource-version=1 --overwrite
+  - run: kubectl annotate configmap a b x=4 --resource-version=1
+  - run: kubectl annotate configmap nope a z=1
+  - run: kubectl annotate -f dir from=dir
+  - run: kubectl annotate -f dir -R=false from=top --overwrite
+  - run: kubectl annotate --local -f local.yaml l=v -o yaml
+  - run: kubectl annotate --local -f local.yaml keep-
+  - run: kubectl annotate --local configmap a x=1
+  - run: kubectl annotate --local x=1
+  - run: kubectl annotate --local -f local.yaml x=1 --dry-run=server
+  - run: kubectl annotate x=1
+  - run: kubectl annotate configmap a x=1 --list -o yaml
+  - run: kubectl annotate configmap --all -l app=ann x=1
+  - objects: [configmap/a, configmap/b]

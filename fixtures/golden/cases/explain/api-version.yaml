@@ -1,0 +1,13 @@
+description: kubectl explain --api-version - another served version of the type, and the errors when the group version does not serve it, is not served, or does not parse.
+kwok: false
+steps:
+  - run: kubectl explain deployments --api-version=apps/v1
+  - run: kubectl explain hpa --api-version=autoscaling/v1
+  - run: kubectl explain hpa.spec --api-version autoscaling/v1
+  - run: kubectl explain events --api-version=events.k8s.io/v1
+  - run: kubectl explain deployments --api-version=v1
+  - run: kubectl explain deployments --api-version=apps/v1beta1
+  - run: kubectl explain deployments --api-version=a/b/c
+  - run: kubectl explain deployments.apps --api-version=apps/v1
+  - run: kubectl explain deploy.spec.replicas --api-version=apps/v1
+  - run: kubectl explain pods.spec.foo --api-version=v1

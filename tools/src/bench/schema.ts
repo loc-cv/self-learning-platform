@@ -1,6 +1,7 @@
-// Measures the vendored API schema and resource registry: size on disk (raw and gzip, what a
-// browser downloads with compression) and the time to load them (module import, parse, and
-// building every type). Results are recorded in docs/ARCHITECTURE.md §4.6.
+// Measures the vendored API schema, the resource registry and the OpenAPI v3 documents explain
+// reads: size on disk (raw and gzip, what a browser downloads with compression) and the time to
+// load them (module import, parse, building every type, building every document). Results are
+// recorded in docs/ARCHITECTURE.md §4.6.
 // Run: npm run bench:schema
 
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 // Not from ../oracle/paths.ts: that imports @simlab/k8s, which would load the data before timing.
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 
-const files = ['packages/k8s/src/openapi/data/v1.37.2.ts', 'packages/k8s/src/discovery/data/v1.37.2.ts'];
+const files = ['packages/k8s/src/openapi/data/v1.37.2.ts', 'packages/k8s/src/discovery/data/v1.37.2.ts', 'packages/k8s/src/openapi/data/v1.37.2.openapiv3.ts'];
 for (const f of files) {
   const buf = readFileSync(path.join(repoRoot, f));
   console.log(`${f}: ${(buf.length / 1024).toFixed(0)} KiB, gzip ${(gzipSync(buf).length / 1024).toFixed(0)} KiB`);
@@ -20,7 +21,7 @@ for (const f of files) {
 
 let t = performance.now();
 const schemaModule = await import('@simlab/k8s');
-console.log(`import @simlab/k8s (includes both data modules): ${(performance.now() - t).toFixed(1)} ms`);
+console.log(`import @simlab/k8s (includes the three data modules): ${(performance.now() - t).toFixed(1)} ms`);
 
 t = performance.now();
 const s = schemaModule.schema();
@@ -52,3 +53,10 @@ console.log(`building every type reachable from a kind: ${(performance.now() - t
 t = performance.now();
 const r = schemaModule.registry();
 console.log(`registry(): ${(performance.now() - t).toFixed(1)} ms (${r.all.length} resources and subresources)`);
+
+t = performance.now();
+const gvs = schemaModule.openApiV3Paths();
+console.log(`openApiV3Paths(): parse ${(performance.now() - t).toFixed(1)} ms (${gvs.length} group versions)`);
+t = performance.now();
+for (const gv of gvs) schemaModule.openApiV3Document(gv);
+console.log(`building every OpenAPI v3 document: ${(performance.now() - t).toFixed(1)} ms`);

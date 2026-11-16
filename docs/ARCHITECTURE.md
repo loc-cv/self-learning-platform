@@ -1583,8 +1583,12 @@ in the trace.
   from `core/v1.PodTemplateSpec` (field order, Go names, embedded structs, unexported fields),
   which `controllers/hash` needs to print a template the way go-spew does for the
   `pod-template-hash` (DeepHashObject). Format in `tools/src/openapi/vendor.ts`.
-- Field and type descriptions for `kubectl explain` (739 KiB at v1.37.2) are written only with
-  `--descriptions`, once explain exists (D-038).
+- `packages/k8s/src/openapi/data/<tag>.openapiv3.ts`: the OpenAPI v3 documents the real API
+  server serves per group version, captured from an oracle by `npm run openapi:capture`
+  (`tools/src/openapi/capture.ts`, D-082; the checked-in spec lacks the enums explain prints) and
+  reduced to the keys `kubectl explain` reads. `openapi/v3.ts` rebuilds each document and
+  `apiserver/openapi.ts` serves `/openapi/v3`. 1102 KiB (196 KiB gzipped); parsed on the first
+  explain in 7–13 ms, all 23 documents built in 4–6 ms (`npm run bench:schema`, phase 08).
 
 The data is a JSON string in a TypeScript module, parsed on first use and cached outside world
 state (§2.12). Measured with `npm run bench:schema` (phase 05a, this workstation): the schema is
@@ -1663,8 +1667,9 @@ flowchart LR
 
 ### 4.9 kubectl
 
-`packages/k8s/src/kubectl/` (phases 07a and 07b; D-066…D-070, D-073…D-078). One program, `kubectl`, registered by the
-k8s plugin; a simulated command is one `Verb` module under `cmd/`.
+`packages/k8s/src/kubectl/` (phases 07a, 07b and 08; D-066…D-070, D-073…D-078, D-082…D-092). One program, `kubectl`,
+registered by the k8s plugin; a simulated command is one `Verb` module under `cmd/`, the phase 08
+verbs one directory per group (`cmd/<group>/index.ts` registers them and their provenance).
 
 ```mermaid
 flowchart LR
@@ -1735,6 +1740,33 @@ flowchart LR
   Node send the requests upstream's do (events by involvedObject field selector, a Deployment's
   ReplicaSets, a Node's non-terminated Pods and Lease, a Service's EndpointSlices) and write
   through a port of the PrefixWriter onto the tab writer.
+- **Generators** (`cmd/generate/`, D-085, D-089): run, expose, `create deployment|namespace|
+  serviceaccount|configmap|secret generic|service *`. Typed objects print through
+  `cmd/typed.ts` (struct order via the vendored Go types); `--overrides` through merge, strategic
+  and JSON patch.
+- **Changing things** (`cmd/change/`, D-091, D-092): scale (the scale subresource,
+  `apiserver/scale.ts`; `--timeout` polls in virtual time), set image (a typed strategic patch),
+  label and annotate (JSON merge patches), edit (the editor as a child process on a temporary
+  file, the reopen-on-invalid loop); `finder.ts` is their shared builder.
+- **Rollouts** (`cmd/rollout/`, D-083, D-084): status watches the object by name in virtual time
+  and prints the status viewer's line per event; history and undo read the ReplicaSets; undo
+  sends a JSON patch (`apimachinery/jsonpatch.ts`, a json-patch v4 port); pause, resume and
+  restart send two-way strategic patches.
+- **logs** (`cmd/logs/`, D-088): LogsForObject picks Pods, `apiserver/log.ts` is LogREST and
+  `kubelet/logs.ts` ReadLogs over the CRI file; `-f` waits on the topic `k8s.logs` and ends when
+  the container or the kubelet stops, or on Ctrl-C (status 1).
+- **explain** (`cmd/explain/`, D-082): explain.go and explain/v2 ported; `template.ts` is
+  plaintext.tmpl define by define over the served document, `fieldpath.ts` the jsonpath subset
+  field paths use.
+- **Version and discovery** (`cmd/info/`, D-087): version, api-resources, api-versions and
+  cluster-info read `/version` and legacy discovery from `apiserver/nonresource.ts` through
+  `session.getNonResourcePath`.
+- **config** (`cmd/config/`, D-086): the kubeconfig model (`client/kubeconfigmodel.ts`, whose
+  decoder every verb's loader uses), clientcmd's PathOptions and ModifyConfig; view, get-contexts, get-clusters, get-users, current-context, use-context,
+  set-context, delete-context.
+- **Completion** (`completion/`, D-090): cobra's `__complete` over the manifest with kubectl's
+  completion functions, and the bash V2 script's presentation; the shell runs it as the
+  documented setup does, through aliases too.
 - **Latency** (`npm run bench:kubectl`, PLAN.md §2: p95 under 50 ms for read commands): from Enter
   to the prompt in a login shell on the control plane with a three-replica Deployment running,
   200 runs each, measured 2026-11-16 on the workstation (§2.1 of docs/FIDELITY.md): `get pods`

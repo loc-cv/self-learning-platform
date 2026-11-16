@@ -1,0 +1,17 @@
+description: kubectl explain errors - arguments, unknown resource types and fields, flag validation, output formats and path syntax.
+kwok: false
+steps:
+  - run: kubectl explain
+  - run: kubectl explain pods services
+  - run: kubectl explain foo
+  - run: kubectl explain foo.bar
+  - run: kubectl explain pods.spec.foo
+  - run: kubectl explain pods.spec.foo.bar
+  - run: kubectl explain pods.foo.spec
+  - run: kubectl explain deployment.spec.strategy.type.foo
+  - run: kubectl explain pods --max-depth=1
+  - run: kubectl explain pods -R --max-depth=-1
+  - run: kubectl explain pods -o json
+  - run: kubectl explain foo -o json
+  - run: kubectl explain .pods
+  - run: kubectl explain deployments.foo

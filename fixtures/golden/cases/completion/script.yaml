@@ -1,0 +1,10 @@
+description: >-
+  kubectl completion: the bash completion script (kubectl's license boilerplate, then cobra's bash
+  completion V2 script with descriptions, which calls `kubectl __complete`) and the usage errors.
+server: false
+steps:
+  - run: kubectl completion bash
+    normalize: false
+  - run: kubectl completion
+  - run: kubectl completion tcsh
+  - run: kubectl completion bash zsh

@@ -9,11 +9,14 @@
 //   ls: cannot access 'nope': No such file or directory
 //   d:
 //   [exit 2]                   the exit status, when it is not 0
+//   @editor <<EOF              what the next editor (vim, nano, kubectl edit's) saves, up to
+//   new content                the closing word; `@editor :q!` closes the next one without
+//   EOF                        saving; given before the command that opens it
 //
-// Expected output is every line up to the next `$`, `%` or `#` line, blank lines included: steps
-// are separated by comment lines, not blank ones. An output line that starts
-// with one of `$ `, `% `, `> `, `#`, `[exit ` or `\` is written with a leading backslash. Output
-// that does not end in a newline ends with ` (no-eol)`.
+// Expected output is every line up to the next `$`, `%`, `#` or `@editor` line, blank lines
+// included: steps are separated by comment lines, not blank ones. An output line that starts
+// with one of `$ `, `% `, `> `, `#`, `[exit `, `@editor` or `\` is written with a leading
+// backslash. Output that does not end in a newline ends with ` (no-eol)`.
 
 export interface TranscriptStep {
   /** `setup` steps run like commands, but only their success is checked. */
@@ -25,6 +28,12 @@ export interface TranscriptStep {
   status: number;
   /** 1-based line of the step in the file. */
   line: number;
+  /**
+   * Answers for the editors opened from here on, queued before the step runs (`@editor` lines
+   * above it): the content to save, or null to close without saving. Editors with nothing queued
+   * close without saving.
+   */
+  editors?: (string | null)[];
 }
 
 export interface Transcript {
@@ -35,7 +44,24 @@ export interface Transcript {
   steps: TranscriptStep[];
 }
 
-const ESCAPE = /^(\$ |% |> |#|\[exit |\\)/;
+const ESCAPE = /^(\$ |% |> |#|\[exit |@editor(?: |$)|\\)/;
+const EDITOR = /^@editor(?: |$)/;
+
+/**
+ * An `@editor` directive at `lines[i]`: the answer and the index after it (throws when malformed).
+ * `@editor <<WORD` (or `<<'WORD'`) takes the lines up to WORD, each ending in a newline.
+ */
+function parseEditor(lines: readonly string[], i: number): { answer: string | null; next: number } {
+  const arg = (lines[i] as string).slice('@editor'.length).trim();
+  if (arg === ':q!') return { answer: null, next: i + 1 };
+  const m = /^<<\s*'?(\w+)'?$/.exec(arg);
+  if (!m) throw new Error(`transcript line ${i + 1}: expected "@editor <<WORD" or "@editor :q!", got ${JSON.stringify(lines[i])}`);
+  const body: string[] = [];
+  let j = i + 1;
+  for (; j < lines.length && lines[j] !== m[1]; j++) body.push(lines[j] as string);
+  if (j >= lines.length) throw new Error(`transcript line ${i + 1}: @editor: no closing ${m[1] as string}`);
+  return { answer: body.map((l) => `${l}\n`).join(''), next: j + 1 };
+}
 
 export function parseTranscript(text: string): Transcript {
   const lines = text.split('\n');
@@ -50,20 +76,31 @@ export function parseTranscript(text: string): Transcript {
     const cols = /^cols:\s*(\d+)$/.exec(h);
     if (cols) t.cols = Number(cols[1]);
   }
+  let editors: (string | null)[] = [];
   while (i < lines.length) {
     const line = lines[i] as string;
     if (line.startsWith('#') || line === '') {
       i++;
       continue;
     }
-    if (!line.startsWith('$ ') && !line.startsWith('% ')) throw new Error(`transcript line ${i + 1}: expected "$ " or "% ", got ${JSON.stringify(line)}`);
+    if (EDITOR.test(line)) {
+      const e = parseEditor(lines, i);
+      editors.push(e.answer);
+      i = e.next;
+      continue;
+    }
+    if (!line.startsWith('$ ') && !line.startsWith('% ')) throw new Error(`transcript line ${i + 1}: expected "$ ", "% " or "@editor", got ${JSON.stringify(line)}`);
     const step: TranscriptStep = { kind: line.startsWith('$ ') ? 'command' : 'setup', command: line.slice(2), output: '', status: 0, line: i + 1 };
+    if (editors.length > 0) {
+      step.editors = editors;
+      editors = [];
+    }
     i++;
     while (i < lines.length && (lines[i] as string).startsWith('> ')) step.command += `\n${(lines[i++] as string).slice(2)}`;
     const out: string[] = [];
     while (i < lines.length) {
       const l = lines[i] as string;
-      if (l.startsWith('$ ') || l.startsWith('% ') || l.startsWith('#')) break;
+      if (l.startsWith('$ ') || l.startsWith('% ') || l.startsWith('#') || EDITOR.test(l)) break;
       const exit = /^\[exit (\d+)\]$/.exec(l);
       if (exit) {
         step.status = Number(exit[1]);
@@ -84,6 +121,7 @@ export function parseTranscript(text: string): Transcript {
     }
     t.steps.push(step);
   }
+  if (editors.length > 0) throw new Error('transcript: @editor after the last command');
   return t;
 }
 
@@ -117,6 +155,12 @@ export function replaceOutputs(text: string, results: readonly { output: string;
   while (i < lines.length && (lines[i] as string).startsWith('#')) out.push(lines[i++] as string);
   while (i < lines.length) {
     const line = lines[i] as string;
+    if (EDITOR.test(line)) {
+      const e = parseEditor(lines, i);
+      out.push(...lines.slice(i, e.next));
+      i = e.next;
+      continue;
+    }
     if (!line.startsWith('$ ') && !line.startsWith('% ')) {
       out.push(line);
       i++;
@@ -129,7 +173,7 @@ export function replaceOutputs(text: string, results: readonly { output: string;
     const start = i;
     while (i < lines.length) {
       const l = lines[i] as string;
-      if (l.startsWith('$ ') || l.startsWith('% ') || l.startsWith('#')) break;
+      if (l.startsWith('$ ') || l.startsWith('% ') || l.startsWith('#') || EDITOR.test(l)) break;
       i++;
       if (/^\[exit \d+\]$/.test(l)) break;
     }

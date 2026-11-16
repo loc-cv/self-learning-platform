@@ -1,18 +1,16 @@
 // The kubectl verbs the simulator does not have yet, as the API requests the real kubectl sends,
 // so that a golden case's setup and state-changing steps can be replayed before their verbs are
-// simulated. Tools code only: what the shim prints is never compared (a shimmed `run` step is
+// simulated. Tools code only: what the shim prints is never compared (a shimmed `patch` step is
 // reported, not judged), and `kubectl get` is never shimmed for a compared step — it is what the
 // differential runner tests. The shim's `get` serves only polling (`until`) and `$(...)`.
 //
 // Sources for what each verb sends (fieldManager values from each command's
 // cmdutil.AddFieldManagerFlagVar; managedFields are not simulated, DIV-015, so they have no effect):
-//   generated objects: fixtures/golden/v1.37.2/client/generators.yaml (create deployment, service,
-//   configmap, namespace), staging/src/k8s.io/kubectl/pkg/cmd/run/run.go createPod (run), and
-//   cmd/expose/expose.go createService (expose).
+//   cmd/wait/wait.go (wait), cmd/patch/patch.go (patch), cmd/taint/taint.go and drain/cordon.go
+//   (taint, cordon, uncordon).
 //
-// A simulator limit shapes some requests, noted where it applies: the scale subresource is
-// read-only. Patches go as real kubectl sends them, JSON merge or strategic merge (the API
-// server applies both, apiserver/pipeline.ts patch); JSON patches are refused.
+// Patches go as real kubectl sends them, JSON merge or strategic merge (the API server applies
+// both, apiserver/pipeline.ts patch); JSON patches are refused.
 
 import type { Kernel } from '@simlab/kernel';
 import { createClient, DEFAULT_APISERVER, registry, type ApiRequest, type ApiResponse, type RequestOptions } from '@simlab/k8s';
@@ -274,118 +272,6 @@ function patch(env: ShimEnv, m: Mapping, ns: string, name: string, body: unknown
 
 type Verb = (env: ShimEnv, a: Args, ns: string, stdin: string | undefined) => ShimResult | Unsupported;
 
-function createGenerated(env: ShimEnv, m: Mapping, ns: string, body: Obj, fieldManager: string): ShimResult {
-  const res = send(env, req(m, 'create', ns, { body: body as never, options: { fieldManager, fieldValidation: 'Strict' } }));
-  const name = String(meta(body).name);
-  if (res.ok) return out(`${qualified(m, name)} created\n`);
-  return err(`error: failed to create ${m.kind.toLowerCase()}: ${serverError(res).replace(/^Error from server \([^)]*\): /, '')}`);
-}
-
-const create: Verb = (env, a, ns) => {
-  // The simulated kubectl creates from files (phase 07b); it printed a notice for this manifest.
-  if (flag(a, 'filename')) return { unsupported: 'a manifest the simulated kubectl create -f prints a notice for' };
-  const [what, name] = a.pos;
-  // upstream: cmd/create/create.go RunCreate, before any request.
-  if (what === undefined) return err('error: must specify one of -f and -k');
-  if (what === 'deployment' || what === 'deploy') {
-    // fixtures/golden/v1.37.2/client/generators.yaml (create deployment … -o yaml / -o json)
-    const image = flag(a, 'image');
-    if (!image || !name) return err('error: required flag(s) "image" not set');
-    const container: Obj = { name: image.replace(/[:@].*$/, '').replace(/^.*\//, ''), image, resources: {} };
-    if (flag(a, 'port')) container.ports = [{ containerPort: Number(flag(a, 'port')) }];
-    const labels = { app: name };
-    const d = {
-      apiVersion: 'apps/v1',
-      kind: 'Deployment',
-      metadata: { name, labels },
-      spec: { replicas: Number(flag(a, 'replicas') ?? 1), selector: { matchLabels: labels }, template: { metadata: { labels }, spec: { containers: [container] } }, strategy: {} },
-      status: {},
-    };
-    return createGenerated(env, mappingFor('deployments') as Mapping, ns, d, 'kubectl-create');
-  }
-  if (what === 'namespace' || what === 'ns') {
-    // generators.yaml: create namespace dev --dry-run=client -o yaml
-    const res = send(env, req(mappingFor('namespaces') as Mapping, 'create', undefined, { body: { apiVersion: 'v1', kind: 'Namespace', metadata: { name }, spec: {}, status: {} } as never, options: { fieldManager: 'kubectl-create', fieldValidation: 'Strict' } }));
-    return res.ok ? out(`namespace/${String(name)} created\n`) : err(serverError(res));
-  }
-  if (what === 'configmap' || what === 'cm') {
-    // generators.yaml (create configmap --from-literal); --from-file: the key is the file's base name
-    // (cmd/create/create_configmap.go handleConfigMapFromFileSources); keys are checked client-side
-    // with validation.IsConfigMapKey before anything is sent.
-    const data: Record<string, string> = {};
-    for (const lit of a.flags['from-literal'] ?? []) {
-      const i = lit.indexOf('=');
-      data[lit.slice(0, i)] = lit.slice(i + 1);
-    }
-    for (const f of a.flags['from-file'] ?? []) {
-      const [k, p] = f.includes('=') ? (f.split('=', 2) as [string, string]) : [f.replace(/^.*\//, ''), f];
-      const text = env.readFile(p);
-      if (text === undefined) return err(`error: stat ${p}: no such file or directory`);
-      data[k] = text;
-    }
-    for (const k of Object.keys(data)) if (!/^[-._a-zA-Z0-9]+$/.test(k)) return err(`error: "${k}" is not a valid key name for a ConfigMap`);
-    const body: Obj = { apiVersion: 'v1', kind: 'ConfigMap', metadata: { name } };
-    if (Object.keys(data).length > 0) body.data = Object.fromEntries(Object.keys(data).sort().map((k) => [k, data[k]]));
-    return createGenerated(env, mappingFor('configmaps') as Mapping, ns, body, 'kubectl-create');
-  }
-  if (what === 'service' || what === 'svc') {
-    // generators.yaml (create service clusterip|nodeport --tcp=80:8080 [--node-port])
-    const [, type, svcName] = a.pos;
-    if (type !== 'clusterip' && type !== 'nodeport') return { unsupported: `kubectl create service ${String(type)}` };
-    const ports = (a.flags.tcp ?? []).map((t) => {
-      const [port, target] = t.split(':') as [string, string | undefined];
-      const p: Obj = { name: `${port}-${target ?? port}`, port: Number(port), protocol: 'TCP', targetPort: Number(target ?? port) };
-      if (type === 'nodeport' && flag(a, 'node-port') && flag(a, 'node-port') !== '0') p.nodePort = Number(flag(a, 'node-port'));
-      return p;
-    });
-    const labels = { app: svcName };
-    const body = { apiVersion: 'v1', kind: 'Service', metadata: { name: svcName, labels }, spec: { ports, selector: labels, type: type === 'nodeport' ? 'NodePort' : 'ClusterIP' }, status: { loadBalancer: {} } };
-    const res = send(env, req(mappingFor('services') as Mapping, 'create', ns, { body: body as never, options: { fieldManager: 'kubectl-create', fieldValidation: 'Strict' } }));
-    return res.ok ? out(`service/${String(svcName)} created\n`) : err(serverError(res));
-  }
-  return { unsupported: `kubectl create ${String(what)}` };
-};
-
-/** kubectl run: run.go createPod, then the --overrides JSON merge patch (override_options.go, DefaultOverrideType merge). */
-const run: Verb = (env, a, ns) => {
-  const name = a.pos[0];
-  const image = flag(a, 'image');
-  if (!image) return err('error: required flag(s) "image" not set');
-  if (!name) return err('error: NAME is required for run');
-  const labels: Record<string, string> = {};
-  for (const kv of (flag(a, 'labels') ?? '').split(',').filter((s) => s !== '')) {
-    const [k, v] = kv.split('=') as [string, string];
-    labels[k] = v;
-  }
-  const container: Obj = { name, image, resources: {} };
-  if (a.flags.env) container.env = a.flags.env.map((e) => ({ name: e.slice(0, e.indexOf('=')), value: e.slice(e.indexOf('=') + 1) }));
-  if (a.rest.length > 0) container[bool(a, 'command') ? 'command' : 'args'] = a.rest;
-  if (flag(a, 'port')) container.ports = [{ containerPort: Number(flag(a, 'port')) }];
-  const restart = flag(a, 'restart') ?? 'Always';
-  let pod: unknown = {
-    apiVersion: 'v1',
-    kind: 'Pod',
-    metadata: { name, labels: Object.keys(labels).length > 0 ? labels : { run: name } },
-    spec: { containers: [container], dnsPolicy: 'ClusterFirst', restartPolicy: restart },
-    status: {},
-  };
-  const overrides = flag(a, 'overrides');
-  if (overrides) pod = mergePatch(pod, JSON.parse(overrides) as unknown);
-  const res = send(env, req(mappingFor('pods') as Mapping, 'create', ns, { body: pod as never, options: { fieldManager: 'kubectl-run' } }));
-  return res.ok ? out(`pod/${name} created\n`) : err(serverError(res));
-};
-
-/** RFC 7386 JSON merge patch. */
-function mergePatch(target: unknown, p: unknown): unknown {
-  if (p === null || typeof p !== 'object' || Array.isArray(p)) return p;
-  const t: Obj = target !== null && typeof target === 'object' && !Array.isArray(target) ? { ...(target as Obj) } : {};
-  for (const [k, v] of Object.entries(p)) {
-    if (v === null) delete t[k];
-    else t[k] = mergePatch(t[k], v);
-  }
-  return t;
-}
-
 /** kubectl wait: --for=delete, --for=condition=NAME[=VALUE] (case folded). upstream: cmd/wait/wait.go, condition.go IsConditionMet. */
 const wait: Verb = (env, a, ns) => {
   const fors = a.flags.for ?? [];
@@ -412,155 +298,6 @@ const wait: Verb = (env, a, ns) => {
     timeout,
   );
   return ok ? out('') : err('error: timed out waiting for the condition');
-};
-
-/**
- * What kubectl rollout status waits for. upstream:
- * staging/src/k8s.io/kubectl/pkg/polymorphichelpers/rollout_status.go DeploymentStatusViewer.Status.
- */
-function rolloutState(d: Obj): 'done' | 'waiting' | 'deadline' {
-  const md = meta(d);
-  const spec = (d.spec ?? {}) as Obj;
-  const st = (d.status ?? {}) as Obj;
-  const n = (v: unknown): number => (typeof v === 'number' ? v : 0);
-  if (n(md.generation) > n(st.observedGeneration)) return 'waiting';
-  const progressing = ((st.conditions ?? []) as Obj[]).find((c) => c.type === 'Progressing');
-  if (progressing?.reason === 'ProgressDeadlineExceeded') return 'deadline';
-  if (spec.replicas !== undefined && n(st.updatedReplicas) < n(spec.replicas)) return 'waiting';
-  if (n(st.replicas) > n(st.updatedReplicas)) return 'waiting';
-  if (n(st.availableReplicas) < n(st.updatedReplicas)) return 'waiting';
-  return 'done';
-}
-
-const DEPLOYMENTS = (): Mapping => mappingFor('deployments') as Mapping;
-
-function deploymentArg(a: Args, at = 1): string | undefined {
-  const p = a.pos[at];
-  if (p === undefined) return undefined;
-  const [t, n] = p.includes('/') ? (p.split('/') as [string, string]) : [p, a.pos[at + 1]];
-  return mappingFor(t)?.resource === 'deployments' ? n : undefined;
-}
-
-/** strategicpatch of `{"spec":{"paused":X}}` (rollout_pause.go / rollout_resume.go via ObjectPauser/ObjectResumer). */
-function pauseResume(env: ShimEnv, ns: string, name: string, paused: boolean): ShimResult | Unsupported {
-  const m = DEPLOYMENTS();
-  const d = get(env, m, ns, name);
-  if (!d) return err(`Error from server (NotFound): deployments.apps "${name}" not found`);
-  const now = ((d.spec as Obj).paused ?? false) === true;
-  if (now === paused) return err(`error: deployments.apps "${name}" is ${paused ? 'already paused' : 'not paused'}`);
-  const r = patch(env, m, ns, name, { spec: { paused: paused ? true : null } }, 'strategic', { fieldManager: 'kubectl-rollout' });
-  if ('unsupported' in r) return r;
-  return r.ok ? out(`deployment.apps/${name} ${paused ? 'paused' : 'resumed'}\n`) : err(serverError(r));
-}
-
-const ANNOTATIONS_TO_SKIP = [
-  'kubectl.kubernetes.io/last-applied-configuration',
-  'deployment.kubernetes.io/revision',
-  'deployment.kubernetes.io/revision-history',
-  'deployment.kubernetes.io/desired-replicas',
-  'deployment.kubernetes.io/max-replicas',
-  'deprecated.deployment.rollback.to',
-];
-
-/**
- * kubectl rollout undo: polymorphichelpers/rollback.go DeploymentRollbacker.Rollback sends a JSON
- * patch replacing /spec/template (the revision's ReplicaSet template without pod-template-hash) and
- * /metadata/annotations (the Deployment's skipped annotations, the ReplicaSet's others). JSON
- * patches are not simulated: an update with the same result is sent instead.
- */
-function undo(env: ShimEnv, ns: string, name: string, toRevision: number): ShimResult | Unsupported {
-  const m = DEPLOYMENTS();
-  const d = get(env, m, ns, name);
-  if (!d) return err(`Error from server (NotFound): deployments.apps "${name}" not found`);
-  const uid = meta(d).uid;
-  const rss = list(env, mappingFor('replicasets') as Mapping, ns).filter((rs) => ((meta(rs).ownerReferences ?? []) as Obj[]).some((r) => r.uid === uid));
-  const rev = (rs: Obj): number => Number(((meta(rs).annotations ?? {}) as Obj)['deployment.kubernetes.io/revision'] ?? 0);
-  const sorted = [...rss].sort((x, y) => rev(x) - rev(y));
-  const target = toRevision === 0 ? sorted[sorted.length - 2] : sorted.find((rs) => rev(rs) === toRevision);
-  if (!target) return err(toRevision === 0 ? 'error: no rollout history found for deployment "web"' : `error: unable to find specified revision ${toRevision} in history`);
-  const template = JSON.parse(JSON.stringify((target.spec as Obj).template)) as Obj;
-  delete ((meta(template).labels ?? {}) as Obj)['pod-template-hash'];
-  const annotations: Obj = {};
-  const da = (meta(d).annotations ?? {}) as Obj;
-  for (const k of ANNOTATIONS_TO_SKIP) if (k in da) annotations[k] = da[k];
-  const ra = (meta(target).annotations ?? {}) as Obj;
-  for (const k of Object.keys(ra)) if (!ANNOTATIONS_TO_SKIP.includes(k)) annotations[k] = ra[k];
-  const body = { ...d, metadata: { ...meta(d), annotations }, spec: { ...(d.spec as Obj), template } };
-  const r = send(env, req(m, 'update', ns, { name, body: body as never, options: { fieldManager: 'kubectl-rollout' } }));
-  return r.ok ? out(`deployment.apps/${name} rolled back\n`) : err(serverError(r));
-}
-
-const rollout: Verb = (env, a, ns) => {
-  const sub = a.pos[0];
-  const name = deploymentArg(a);
-  if (name === undefined) return { unsupported: `kubectl rollout ${a.pos.join(' ')} (Deployments only)` };
-  if (sub === 'status') {
-    if (!bool(a, 'watch', true)) return out('');
-    const current = () => get(env, DEPLOYMENTS(), ns, name);
-    const ok = waitUntil(env, () => {
-      const d = current();
-      return !d || rolloutState(d) !== 'waiting';
-    }, duration(flag(a, 'timeout'), 7 * 24 * 3_600_000));
-    const d = current();
-    if (!d) return err(`Error from server (NotFound): deployments.apps "${name}" not found`);
-    if (!ok) return err('error: timed out waiting for the condition');
-    return rolloutState(d) === 'done' ? out(`deployment "${name}" successfully rolled out\n`) : err(`error: deployment "${name}" exceeded its progress deadline`);
-  }
-  if (sub === 'history') return out('');
-  if (sub === 'pause') return pauseResume(env, ns, name, true);
-  if (sub === 'resume') return pauseResume(env, ns, name, false);
-  if (sub === 'undo') return undo(env, ns, name, Number(flag(a, 'to-revision') ?? 0));
-  return { unsupported: `kubectl rollout ${String(sub)}` };
-};
-
-/** kubectl label: a JSON merge patch of metadata.labels (cmd/label/label.go RunLabel, MergePatchType). */
-const label: Verb = (env, a, ns) => {
-  // Label specs are `key=value` and `key-`; the other arguments name the objects.
-  const kvs = a.pos.filter((p) => p.includes('=') || (p.endsWith('-') && !p.includes('/')));
-  const objs = a.pos.filter((p) => !kvs.includes(p));
-  const rs = refs(objs);
-  if (!rs || rs.length === 0 || rs.some((r) => r.name === undefined)) return { unsupported: `kubectl label ${a.pos.join(' ')}` };
-  let stdout = '';
-  for (const r of rs) {
-    const o = get(env, r.m, ns, r.name as string);
-    if (!o) return err(`Error from server (NotFound): ${r.m.resource}${r.m.group ? `.${r.m.group}` : ''} "${String(r.name)}" not found`);
-    const current = (meta(o).labels ?? {}) as Record<string, string>;
-    const labels: Record<string, string | null> = {};
-    let removing = false;
-    for (const kv of kvs) {
-      if (kv.endsWith('-') && !kv.includes('=')) {
-        labels[kv.slice(0, -1)] = null;
-        removing = true;
-        continue;
-      }
-      const [k, v] = [kv.slice(0, kv.indexOf('=')), kv.slice(kv.indexOf('=') + 1)];
-      if (k in current && current[k] !== v && !bool(a, 'overwrite')) return err(`error: '${k}' already has a value (${String(current[k])}), and --overwrite is false`);
-      labels[k] = v;
-    }
-    const res = send(env, req(r.m, 'patch', ns, { name: r.name as string, body: { metadata: { labels } } as never, options: { patchType: 'merge', fieldManager: 'kubectl-label' } }));
-    if (!res.ok) return err(serverError(res));
-    stdout += `${qualified(r.m, r.name as string)} ${removing ? 'unlabeled' : 'labeled'}\n`;
-  }
-  return out(stdout);
-};
-
-/**
- * kubectl scale: a JSON merge patch `{"spec":{"replicas":N}}` of the scale subresource
- * (staging/src/k8s.io/kubectl/pkg/scale/scale.go ScaleSimple). The simulator's scale subresource is
- * read-only, so the same patch is sent to the Deployment itself, where it sets the same field.
- */
-const scale: Verb = (env, a, ns) => {
-  const rs = refs(a.pos);
-  if (!rs || rs.length === 0) return { unsupported: `kubectl scale ${a.pos.join(' ')}` };
-  if (rs.some((r) => r.name === undefined)) return err('error: resource(s) were provided, but no name was specified');
-  let stdout = '';
-  for (const r of rs) {
-    if (r.m.resource !== 'deployments' && r.m.resource !== 'replicasets') return { unsupported: `kubectl scale ${r.m.resource}` };
-    const res = send(env, req(r.m, 'patch', ns, { name: r.name as string, body: { spec: { replicas: Number(flag(a, 'replicas')) } } as never, options: { patchType: 'merge' } }));
-    if (!res.ok) return err(serverError(res));
-    stdout += `${qualified(r.m, r.name as string)} scaled\n`;
-  }
-  return out(stdout);
 };
 
 /** kubectl cordon/uncordon: strategic patch of spec.unschedulable (drain/cordon.go PatchOrReplaceWithContext). */
@@ -621,50 +358,6 @@ const patchVerb: Verb = (env, a, ns) => {
   return r.ok ? out(`${qualified(r0.m, r0.name as string)} patched\n`) : err(serverError(r));
 };
 
-/** kubectl expose deployment: cmd/expose/expose.go RunExpose and createService. */
-const expose: Verb = (env, a, ns) => {
-  const rs = refs(a.pos);
-  if (!rs || rs.length !== 1 || rs[0]?.name === undefined || rs[0].m.resource !== 'deployments') return { unsupported: `kubectl expose ${a.pos.join(' ')}` };
-  const d = get(env, rs[0].m, ns, rs[0].name);
-  if (!d) return err(`Error from server (NotFound): deployments.apps "${rs[0].name}" not found`);
-  const port = flag(a, 'port');
-  if (!port) return { unsupported: 'kubectl expose without --port (port introspection)' };
-  const selector = (((d.spec as Obj).selector as Obj).matchLabels ?? {}) as Obj;
-  const target = flag(a, 'target-port') ?? port;
-  const svc = {
-    apiVersion: 'v1',
-    kind: 'Service',
-    metadata: { name: flag(a, 'name') ?? rs[0].name, labels: meta(d).labels },
-    spec: { ports: [{ port: Number(port), protocol: flag(a, 'protocol') ?? 'TCP', targetPort: /^\d+$/.test(target) ? Number(target) : target }], selector },
-  };
-  const r = send(env, req(mappingFor('services') as Mapping, 'create', ns, { body: svc as never, options: { fieldManager: 'kubectl-expose' } }));
-  return r.ok ? out(`service/${String(svc.metadata.name)} exposed\n`) : err(serverError(r));
-};
-
-/**
- * kubectl set image deployment/NAME C=IMAGE: a strategic patch of the containers by name
- * (cmd/set/set_image.go). It merges a list, so the Deployment is updated with the image changed:
- * the result the patch would have.
- */
-const set: Verb = (env, a, ns) => {
-  if (a.pos[0] !== 'image') return { unsupported: `kubectl set ${String(a.pos[0])}` };
-  const name = deploymentArg(a);
-  if (name === undefined) return { unsupported: `kubectl set image ${a.pos.slice(1).join(' ')}` };
-  const m = DEPLOYMENTS();
-  const d = get(env, m, ns, name);
-  if (!d) return err(`Error from server (NotFound): deployments.apps "${name}" not found`);
-  const pairs = a.pos.slice(a.pos[1]?.includes('/') ? 2 : 3).map((p) => p.split('=') as [string, string]);
-  const copy = JSON.parse(JSON.stringify(d)) as Obj;
-  const containers = (((copy.spec as Obj).template as Obj).spec as Obj).containers as Obj[];
-  for (const [c, image] of pairs) {
-    const target = containers.find((x) => x.name === c || c === '*');
-    if (!target) return err(`error: unable to find container named "${c}"`);
-    target.image = image;
-  }
-  const r = send(env, req(m, 'update', ns, { name, body: copy as never, options: { fieldManager: 'kubectl-set' } }));
-  return r.ok ? out(`deployment.apps/${name} image updated\n`) : err(serverError(r));
-};
-
 /**
  * kubectl get for polling and substitution only: `-o name` and `-o jsonpath=…` of a listing or of
  * named objects (a List when several are named). Never used for a compared step.
@@ -693,27 +386,14 @@ const getVerb: Verb = (env, a, ns) => {
 const READ_ONLY: Verb = () => out('');
 
 const VERBS: Record<string, Verb> = {
-  create,
-  run,
   wait,
-  rollout,
-  label,
-  scale,
   cordon: cordon(true),
   uncordon: cordon(false),
   taint,
   patch: patchVerb,
-  expose,
-  set,
   get: getVerb,
   describe: READ_ONLY,
-  logs: READ_ONLY,
-  explain: READ_ONLY,
   top: READ_ONLY,
-  version: READ_ONLY,
-  'cluster-info': READ_ONLY,
-  'api-resources': READ_ONLY,
-  'api-versions': READ_ONLY,
   kustomize: READ_ONLY,
   help: READ_ONLY,
   options: READ_ONLY,
@@ -729,8 +409,8 @@ export function verbOf(line: string): { verb: string; sub?: string } | undefined
   return { verb: pos[0] as string, ...(pos[1] !== undefined ? { sub: pos[1] } : {}) };
 }
 
-/** `kubectl config` subcommands that only read the kubeconfig. */
-const CONFIG_MUTATORS = new Set(['use-context', 'set-context', 'delete-context', 'rename-context', 'set-cluster', 'delete-cluster', 'set-credentials', 'delete-user', 'set', 'unset']);
+/** `kubectl config` subcommands that write the kubeconfig and are not simulated yet (phase 15; view, get-*, current-context, use-, set- and delete-context are). */
+const CONFIG_MUTATORS = new Set(['rename-context', 'set-cluster', 'delete-cluster', 'set-credentials', 'delete-user', 'set', 'unset']);
 
 /**
  * Whether the command changes no state the rest of a case could see, so that it may be skipped
@@ -744,7 +424,6 @@ export function readOnly(line: string, server = true): boolean {
   if (v.verb === 'config') return !CONFIG_MUTATORS.has(v.sub ?? '');
   if (!server) return true;
   if (/(^| )--dry-run(=(client|server))?( |$)/.test(line) || /(^| )--local( |$|=true)/.test(line)) return true;
-  if (v.verb === 'rollout') return v.sub === 'history' || v.sub === 'status';
   if (/(^| )(-h|--help)( |$)/.test(line)) return true;
   return VERBS[v.verb] === READ_ONLY || v.verb === 'get' || v.verb === '';
 }
@@ -769,26 +448,23 @@ export function shim(env: ShimEnv, line: string, stdin?: string): ShimResult | U
   }
 }
 
-/** The phase that brings a verb to the simulated kubectl (prompts/07b, 08, 15, 18b, 23, 26b). */
+/** The phase that brings a verb to the simulated kubectl (prompts/07b, 15, 18b, 23, 26b). */
 export function phaseOf(line: string): string {
   const v = verbOf(line);
   if (!v) return 'unknown';
-  const sub = v.sub ?? '';
   if (v.verb === 'get') {
     if (/jsonpath|custom-columns|--sort-by|--field-selector|--raw/.test(line)) return '15';
     return '07a';
   }
-  if (v.verb === 'create') return /(^| )(-f|--filename)( |=)/.test(line) ? '07b' : '08';
   // describe prints a notice only for kinds other than Pod, Deployment, Service and Node (prompts/15).
   if (v.verb === 'describe') return '15';
-  if (['apply', 'delete'].includes(v.verb)) return '07b';
+  if (['apply', 'create', 'delete'].includes(v.verb)) return '07b';
   if (['patch', 'wait', 'replace'].includes(v.verb)) return '15';
-  // prompts/08: config view, get-contexts, use-context, set-context --current; prompts/15: the rest.
-  if (v.verb === 'config') return ['view', 'get-contexts', 'use-context', 'set-context', 'current-context'].includes(sub) ? '08' : '15';
+  if (v.verb === 'config') return '15';
   if (['top', 'autoscale'].includes(v.verb)) return '18b';
   if (['cordon', 'uncordon', 'drain', 'taint'].includes(v.verb)) return '26b';
   if (v.verb === 'kustomize') return '23';
   if (['auth', 'certificate'].includes(v.verb)) return '20a';
   if (['exec', 'cp', 'port-forward'].includes(v.verb)) return '17';
-  return '08';
+  return '15';
 }

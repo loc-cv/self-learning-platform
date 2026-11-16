@@ -31,6 +31,8 @@ npm run bench:fork            # time fork, hash, snapshot and restore of a three
 npm run bench:schema          # size and load time of the vendored API schema and resource registry
 npm run bench:kubectl         # wall-clock latency of kubectl get (p50/p95) on the default topology
 npm run api:vendor [-- --check]   # regenerate the vendored schema (OpenAPI v3 + Go types) and registry (discovery fixture)
+npm run openapi:capture [-- --check]   # the OpenAPI v3 documents the real API server serves (oracle), for
+                                      # kubectl explain → packages/k8s/src/openapi/data/<tag>.openapiv3.ts
 npm run transcript:capture -- <file|dir>  # write real bash/coreutils output into golden-verified transcripts
 npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
 npm run dev                   # (phase 10) web app with hot reload
@@ -85,7 +87,10 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
                    src/kubectl kubectl (cli/ cobra and pflag ports, client/ kubeconfig, transport and
                    REST mapper, resource/ the builder and the -f reader, cmd/ one module per verb,
                    describe/ the describers, util/ the last-applied annotation, help/, printers/ the
-                   table printer and tab writer, data/ the vendored command manifest),
+                   table printer and tab writer, data/ the vendored command manifest; phase 08's verbs
+                   one directory per group under cmd/: generate/, change/, rollout/, logs/, explain/,
+                   info/, config/, with cmd/typed.ts their typed printer; completion/ cobra's
+                   __complete and the bash script's presentation),
                    src/printers the API server's Table printers, src/apimachinery/yaml go-yaml and
                    sigs.k8s.io/yaml (kubectl's YAML/JSON output and manifest parsing),
                    src/apimachinery/strategicpatch strategic merge patch (server and three-way),
@@ -150,6 +155,9 @@ that first.
 - Protect your context. Delegate bulky reading (upstream source files, long logs) to a subagent and
   keep its conclusion. Read upstream files by targeted search, not whole.
 - Use Sonnet subagents for search and mechanical work; escalate to Opus for debugging and design.
+  Set `model` on every Agent call: left unset, a subagent inherits the session's model (Opus).
+  Choose per agent, and have every brief repeat this rule so the agent's own subagents follow it
+  (bulky upstream reading and grep go to Sonnet).
 - If the phase can't be finished at full quality in this session, stop at a coherent boundary with
   the gate green. Don't cut quality to fit. Record exactly what remains under Carry-over.
 - A shortcut that a later phase must replace (seeded objects, an assumed-healthy component) goes in

@@ -1,0 +1,418 @@
+# Captured from fixtures/golden/cases/change/scale-subresource.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: change/scale-subresource
+description: Writes to the scale subresource of Deployments and ReplicaSets through the raw API - a JSON merge patch and a strategic merge patch of spec.replicas, a PUT of a Scale with and without resourceVersion, a stale resourceVersion, a UID that does not match, negative replicas, an unknown field, a server dry run, and objects that do not exist. Successes keep kind, apiVersion and spec (the controllers write status in the background).
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: web
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 201
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+  - request: GET /apis/apps/v1/namespaces/default/deployments/web/scale
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 1
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":3}}'
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 3
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"replicas":4}}'
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 4
+  - request: GET /apis/apps/v1/namespaces/default/deployments/web
+    keep:
+      - kind
+      - spec
+    code: 200
+    response:
+      kind: Deployment
+      spec:
+        replicas: 4
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":-1}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Scale.autoscaling "web" is invalid: spec.replicas: Invalid value: -1: must be greater than or equal to 0'
+      reason: Invalid
+      details:
+        name: web
+        group: autoscaling
+        kind: Scale
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: -1: must be greater than or equal to 0"
+            field: spec.replicas
+      code: 422
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":2,"bogus":1}}'
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    warnings:
+      - unknown field "spec.bogus"
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 2
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+      spec:
+        replicas: 5
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 5
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+        resourceVersion: "1"
+      spec:
+        replicas: 6
+    code: 409
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Operation cannot be fulfilled on deployments.apps "web": the object has been modified; please apply your changes to the latest version and try again'
+      reason: Conflict
+      details:
+        name: web
+        group: apps
+        kind: deployments
+      code: 409
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+        uid: 00000000-0000-0000-0000-000000000000
+      spec:
+        replicas: 6
+    code: 409
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Operation cannot be fulfilled on deployments.apps "web": StorageError: invalid object, Code: 4, Key: /registry/deployments/default/web, ResourceVersion: 0, AdditionalErrorMsg: Precondition failed: UID in precondition: <<uid:1>>, UID in object meta: <<uid:2>>'
+      reason: Conflict
+      details:
+        name: web
+        group: apps
+        kind: deployments
+      code: 409
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+      spec:
+        replicas: -2
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'Scale.autoscaling "web" is invalid: spec.replicas: Invalid value: -2: must be greater than or equal to 0'
+      reason: Invalid
+      details:
+        name: web
+        group: autoscaling
+        kind: Scale
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: -2: must be greater than or equal to 0"
+            field: spec.replicas
+      code: 422
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale?dryRun=All
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":9}}'
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 9
+  - request: GET /apis/apps/v1/namespaces/default/deployments/web/scale
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 5
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/nope/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":1}}'
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: deployments.apps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        group: apps
+        kind: deployments
+      code: 404
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/nope/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: nope
+        namespace: default
+      spec:
+        replicas: 1
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: deployments.apps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        group: apps
+        kind: deployments
+      code: 404
+  - request: GET /apis/apps/v1/namespaces/default/deployments/nope/scale
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: deployments.apps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        group: apps
+        kind: deployments
+      code: 404
+  - request: POST /apis/apps/v1/namespaces/default/replicasets
+    body: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        name: rs
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: rs
+        template:
+          metadata:
+            labels:
+              app: rs
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 201
+    response:
+      kind: ReplicaSet
+      apiVersion: apps/v1
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: rs
+        template:
+          metadata:
+            labels:
+              app: rs
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+  - request: PATCH /apis/apps/v1/namespaces/default/replicasets/rs/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":2}}'
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Scale
+      apiVersion: autoscaling/v1
+      spec:
+        replicas: 2
+  - request: PATCH /apis/apps/v1/namespaces/default/replicasets/nope/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":1}}'
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: replicasets.apps "nope" not found
+      reason: NotFound
+      details:
+        name: nope
+        group: apps
+        kind: replicasets
+      code: 404

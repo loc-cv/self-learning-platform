@@ -1,0 +1,446 @@
+{
+  "captured": "2026-11-16",
+  "bash": "GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)",
+  "kubectl": "v1.37.2",
+  "setup": "PS1='student@node01:~$ '; source /usr/share/bash-completion/bash_completion; source <(kubectl completion bash); alias k=kubectl; complete -o default -F __start_kubectl k; mkdir work && cd work && touch a.yaml b.yml c.json notes.txt Upper.YAML mixed.Yaml dot. && mkdir dir; clear",
+  "cases": [
+    {
+      "name": "verb-unique",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl ge",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl ge",
+        "t "
+      ]
+    },
+    {
+      "name": "verbs-with-descriptions",
+      "note": "r: replace, rollout, run share only r; the second Tab lists them with descriptions.",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl r",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl r",
+        "\u0007",
+        "\r\nreplace  (Replace a resource by file name or stdin)\r\nrollout  (Manage the rollout of a resource)\r\nrun      (Run a particular image on the cluster)\r\nstudent@node01:~$ kubectl r"
+      ]
+    },
+    {
+      "name": "verbs-narrow",
+      "note": "The descriptions are cut to the 40 columns with an ellipsis.",
+      "cols": 40,
+      "rows": 24,
+      "keys": [
+        "kubectl r",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl r",
+        "\u0007",
+        "\r\nreplace  (Replace a resource by file n\u2026)\r\nrollout  (Manage the rollout of a reso\u2026)\r\nrun      (Run a particular image on th\u2026)\r\nstudent@node01:~$ kubectl r"
+      ]
+    },
+    {
+      "name": "subcommand-prefix",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl rollout re",
+        "\t",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl rollout re",
+        "\u0007s",
+        "\u0007",
+        "\r\nrestart  (Restart a resource)        resume   (Resume a paused resource)\r\nstudent@node01:~$ kubectl rollout res"
+      ]
+    },
+    {
+      "name": "resource-type-prefix",
+      "note": "po: the first Tab inserts the common prefix pod, the third lists.",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get po",
+        "\t",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get po",
+        "\u0007d",
+        "\u0007",
+        "\r\npodcertificaterequests.certificates.k8s.io\r\npoddisruptionbudgets.policy\r\npods\r\npodtemplates\r\nstudent@node01:~$ kubectl get pod"
+      ]
+    },
+    {
+      "name": "resource-types-all",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl describe ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl describe ",
+        "\u0007",
+        "\r\napiservices.apiregistration.k8s.io\r\ncertificatesigningrequests.certificates.k8s.io\r\nclusterrolebindings.rbac.authorization.k8s.io\r\nclusterroles.rbac.authorization.k8s.io\r\nclustertrustbundles.certificates.k8s.io\r\ncomponentstatuses\r\nconfigmaps\r\ncontrollerrevisions.apps\r\ncronjobs.batch\r\ncsidrivers.storage.k8s.io\r\ncsinodes.storage.k8s.io\r\ncsistoragecapacities.storage.k8s.io\r\ncustomresourcedefinitions.apiextensions.k8s.io\r\ndaemonsets.apps\r\ndeployments.apps\r\ndeviceclasses.resource.k8s.io\r\ndevicetaintrules.resource.k8s.io\r\nendpoints\r\nendpointslices.discovery.k8s.io\r\nevents\r\nevents.events.k8s.io\r\nflowschemas.flowcontrol.apiserver.k8s.io\r\nhorizontalpodautoscalers.autoscaling\r\n--More--"
+      ]
+    },
+    {
+      "name": "pod-names",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods ",
+        "\u0007",
+        "\r\napi    web-1  web-2  \r\nstudent@node01:~$ kubectl get pods "
+      ]
+    },
+    {
+      "name": "pod-names-prefix",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods w",
+        "\t",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods w",
+        "\u0007eb-",
+        "\u0007",
+        "\r\nweb-1  web-2  \r\nstudent@node01:~$ kubectl get pods web-"
+      ]
+    },
+    {
+      "name": "pod-names-namespace-before",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl -n team-a get pods ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl -n team-a get pods ",
+        "\u0007",
+        "\r\ncache  db     \r\nstudent@node01:~$ kubectl -n team-a get pods "
+      ]
+    },
+    {
+      "name": "namespaces-after-n",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods -n ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods -n ",
+        "\u0007",
+        "\r\ndefault          kube-public      team-a           \r\nkube-node-lease  kube-system      \r\nstudent@node01:~$ kubectl get pods -n "
+      ]
+    },
+    {
+      "name": "namespace-after-n-unique",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods -n te",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods -n te",
+        "am-a "
+      ]
+    },
+    {
+      "name": "namespace-equals",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods --namespace=te",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods --namespace=te",
+        "am-a "
+      ]
+    },
+    {
+      "name": "type-slash-name",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl rollout status deployment/",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl rollout status deployment/",
+        "frontend "
+      ]
+    },
+    {
+      "name": "type-list-escaped",
+      "note": "One match left: printf %q escapes the comma.",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods,secr",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods,secr",
+        "\b\b\b\b\b\\,secrets "
+      ]
+    },
+    {
+      "name": "type-list-several",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods,se",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods,se",
+        "\u0007",
+        "\r\npods,secrets                         pods,servicecidrs.networking.k8s.io\r\npods,serviceaccounts                 pods,services\r\nstudent@node01:~$ kubectl get pods,se"
+      ]
+    },
+    {
+      "name": "logs-pods-and-types",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl logs ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl logs ",
+        "\u0007",
+        "\r\napi                      pods/                    statefulsets/\r\ndaemonsets/              replicasets/             web-1\r\ndeployments/             replicationcontrollers/  web-2\r\njobs/                    services/                \r\nstudent@node01:~$ kubectl logs "
+      ]
+    },
+    {
+      "name": "logs-type-nospace",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl logs dep",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl logs dep",
+        "loyments/"
+      ]
+    },
+    {
+      "name": "output-formats",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get pods -o j",
+        "\t",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get pods -o j",
+        "\u0007son",
+        "\u0007",
+        "\r\njson              jsonpath          jsonpath-as-json  jsonpath-file\r\nstudent@node01:~$ kubectl get pods -o json"
+      ]
+    },
+    {
+      "name": "required-flag",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl create deployment ",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl create deployment ",
+        "--image "
+      ]
+    },
+    {
+      "name": "flag-name-unique",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl get --show-l",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get --show-l",
+        "abels "
+      ]
+    },
+    {
+      "name": "flag-names",
+      "note": "60 rows, so the list needs no pager. The candidates end at the first colon of the output.",
+      "cols": 80,
+      "rows": 60,
+      "keys": [
+        "kubectl get --",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl get --",
+        "\u0007",
+        "\r\n--all-namespaces               (If present, list the requested object(s) acros\u2026)\r\n--allow-missing-template-keys  (If true, ignore any errors in templates when a\u2026)\r\n--as                           (Username to impersonate for the operation. Use\u2026)\r\n--as-group                     (Group to impersonate for the operation, this f\u2026)\r\n--as-uid                       (UID to impersonate for the operation.)\r\n--as-user-extra                (User extras to impersonate for the operation, \u2026)\r\n--cache-dir                    (Default cache directory)\r\n--certificate-authority        (Path to a cert file for the certificate author\u2026)\r\n--chunk-size                   (Return large lists in chunks rather than all a\u2026)\r\n--client-certificate           (Path to a client certificate file for TLS)\r\n--client-key                   (Path to a client key file for TLS)\r\n--cluster                      (The name of the kubeconfig cluster to use)\r\n--context                      (The name of the kubeconfig context to use)\r\n--disable-compression          (If true, opt-out of response compression for a\u2026)\r\n--field-selector               (Selector (field query) to filter on, supports \u2026)\r\n--filename                     (Filename, directory, or URL to files identifyi\u2026)\r\n--help                         (help for get)\r\n--ignore-not-found             (If set to true, suppresses NotFound error for \u2026)\r\n--insecure-skip-tls-verify     (If true, the server's certificate will not be \u2026)\r\n--kubeconfig                   (Path to the kubeconfig file to use for CLI req\u2026)\r\n--kuberc                       (Path to the kuberc file to use for preferences\u2026)\r\n--kustomize                    (Process the kustomization directory. This flag\u2026)\r\n--label-columns                (Accepts a comma separated list of labels that \u2026)\r\n--log-flush-frequency          (Maximum number of seconds between log flushes)\r\n--match-server-version         (Require server version to match client version)\r\n--namespace                    (If present, the namespace scope for this CLI r\u2026)\r\n--no-headers                   (When using the default or custom-column output\u2026)\r\n--output                       (Output format. One of: (json, yaml, kyaml, nam\u2026)\r\n--output-watch-events          (Output watch event objects when --watch or --w\u2026)\r\n--password                     (Password for basic authentication to the API s\u2026)\r\n--profile                      (Name of profile to capture. One of (none|cpu|h\u2026)\r\n--profile-output               (Name of the file to write the profile to)\r\n--proxy-url                    (Proxy URL to use for requests to the API server)\r\n--raw                          (Raw URI to request from the server.  Uses the \u2026)\r\n--recursive                    (Process the directory used in -f, --filename r\u2026)\r\n--request-timeout              (The length of time to wait before giving up on\u2026)\r\n--selector                     (Selector (label query) to filter on, supports \u2026)\r\n--server                       (The address and port of the Kubernetes API ser\u2026)\r\n--server-print                 (If true, have the server return the appropriat\u2026)\r\n--show-kind                    (If present, list the resource type for the req\u2026)\r\n--show-labels                  (When printing, show all labels as the last col\u2026)\r\n--show-managed-fields          (If true, keep the managedFields when printing \u2026)\r\n--sort-by                      (If non-empty, sort list types using this field\u2026)\r\n--subresource                  (If specified, gets the subresource of the requ\u2026)\r\n--template                     (Template string or path to template file to us\u2026)\r\n--tls-server-name              (Server name to use for server certificate vali\u2026)\r\n--token                        (Bearer token for authentication to the API ser\u2026)\r\n--user                         (The name of the kubeconfig user to use)\r\n--username                     (Username for basic authentication to the API s\u2026)\r\n--v                            (number for the log level verbosity)\r\n--vmodule                      (comma-separated list of pattern=N settings for\u2026)\r\n--warnings-as-errors           (Treat warnings received from the server as err\u2026)\r\n--watch                        (After listing/getting the requested object, wa\u2026)\r\n--watch-only                   (Watch for changes to the requested object(s), \u2026)\r\nstudent@node01:~$ kubectl get --"
+      ]
+    },
+    {
+      "name": "filename-filter",
+      "note": "-f: json, yaml and yml files, either case, a name ending in a dot, and directories.",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl apply -f ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl apply -f ",
+        "\u0007",
+        "\r\nUpper.YAML  a.yaml      b.yml       c.json      dir/        dot.\r\nstudent@node01:~$ kubectl apply -f "
+      ]
+    },
+    {
+      "name": "filename-unique",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl apply -f a",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl apply -f a",
+        ".yaml "
+      ]
+    },
+    {
+      "name": "filename-directory",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl apply -f d",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl apply -f d",
+        "\u0007"
+      ]
+    },
+    {
+      "name": "filename-fallback",
+      "note": "No json/yaml/yml file or directory starts with n: -o default completes any file.",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl apply -f n",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl apply -f n",
+        "otes.txt "
+      ]
+    },
+    {
+      "name": "context",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl config use-context ",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl config use-context ",
+        "kubernetes-admin@kubernetes "
+      ]
+    },
+    {
+      "name": "alias-type-prefix",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "k get po",
+        "\t"
+      ],
+      "outputs": [
+        "k get po",
+        "\u0007d"
+      ]
+    },
+    {
+      "name": "alias-pod-names",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "k get pods w",
+        "\t"
+      ],
+      "outputs": [
+        "k get pods w",
+        "\u0007eb-"
+      ]
+    },
+    {
+      "name": "alias-namespace-before",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "k -n team-a get pods ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "k -n team-a get pods ",
+        "\u0007",
+        "\r\ncache  db     \r\nstudent@node01:~$ k -n team-a get pods "
+      ]
+    },
+    {
+      "name": "unknown-command-files",
+      "note": "No such command: the directive is 0 and -o default completes file names.",
+      "cols": 80,
+      "rows": 24,
+      "keys": [
+        "kubectl bogus ",
+        "\t",
+        "\t"
+      ],
+      "outputs": [
+        "kubectl bogus ",
+        "\u0007",
+        "\r\nUpper.YAML  b.yml       dir/        mixed.Yaml  \r\na.yaml      c.json      dot.        notes.txt   \r\nstudent@node01:~$ kubectl bogus "
+      ]
+    }
+  ]
+}

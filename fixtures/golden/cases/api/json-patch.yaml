@@ -1,0 +1,99 @@
+description: >-
+  JSON patches (application/json-patch+json, RFC 6902) through the raw API, as kubectl rollout undo
+  sends one - add, remove, replace, move, copy and test on a ConfigMap; pointer escapes, "-" and
+  negative indices; the errors - an operation that does not apply, a failed test, an unknown op, a
+  body that is not a list, an operation with an unknown field or a field of the wrong type per field
+  validation mode (an Invalid on `patch` quotes the whole patched object with its managedFields and
+  resourceVersion, which no replay can match, so it is left out), a missing object; and the replacement of a
+  Deployment's template and annotations as undo does it.
+kwok: false
+steps:
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cfg
+        labels:
+          app: cfg
+      data:
+        b: two
+        a: one
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/c","value":"three"},{"op":"replace","path":"/data/a","value":"uno"},{"op":"remove","path":"/data/b"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/metadata/labels/example.com~1tier","value":"x"},{"op":"add","path":"/metadata/annotations","value":{"z":"1","a~b":"2"}},{"op":"copy","from":"/data/c","path":"/data/d"},{"op":"move","from":"/data/a","path":"/data/e"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"test","path":"/data/c","value":"three"},{"op":"add","path":"/metadata/finalizers","value":["a.example/x"]},{"op":"add","path":"/metadata/finalizers/-","value":"b.example/y"},{"op":"add","path":"/metadata/finalizers/0","value":"c.example/z"},{"op":"remove","path":"/metadata/finalizers/-1"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"remove","path":"/metadata/finalizers"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"test","path":"/data/c","value":"four"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"remove","path":"/data/nope"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"replace","path":"/spec/x","value":1}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/metadata/finalizers/5","value":"x"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"frobnicate","path":"/data/c"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '{"op":"add","path":"/data/c","value":"x"}'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/f","value":"x","extra":true},{"op":"test","path":"/data/f","value":"x","more":1}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg?fieldValidation=Ignore
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/h","value":"x","extra":true}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":1,"path":"/data/c"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/bogus","value":5}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"test","path":"/metadata/labels","value":[null]}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/missing
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/c","value":"x"}]'
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg?dryRun=All
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/dry","value":"x"}]'
+  - request: GET /api/v1/namespaces/default/configmaps/cfg
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    keep: [kind, apiVersion, spec]
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: web
+        annotations:
+          kubernetes.io/change-cause: first
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/json-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '[{"op":"replace","path":"/spec/template","value":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"name":"app","image":"nginx:1.28","resources":{}}]}}},{"op":"replace","path":"/metadata/annotations","value":{"kubernetes.io/change-cause":"second"}}]'

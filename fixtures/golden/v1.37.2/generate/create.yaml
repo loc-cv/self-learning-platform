@@ -1,0 +1,857 @@
+# Captured from fixtures/golden/cases/generate/create.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: generate/create
+description: "The create generators against a server: real creates printed as the typed client returns them (-o json keeps struct order), server dry runs, --save-config, -n, objects read back with get -o yaml, and the API server's errors behind each command's own prefix (AlreadyExists, invalid names and values, a missing namespace, a taken node port)."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl create deployment web --image=nginx:1.27 --replicas=2 --port=80
+    exit: 0
+    stdout: |
+      deployment.apps/web created
+    stderr: ""
+  - run: kubectl create deployment api --image=nginx:1.27 -n team -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Deployment",
+          "apiVersion": "apps/v1",
+          "metadata": {
+              "name": "api",
+              "namespace": "team",
+              "uid": "<<uid:1>>",
+              "resourceVersion": "<<rv>>",
+              "generation": 1,
+              "creationTimestamp": "<<time>>",
+              "labels": {
+                  "app": "api"
+              }
+          },
+          "spec": {
+              "replicas": 1,
+              "selector": {
+                  "matchLabels": {
+                      "app": "api"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "labels": {
+                          "app": "api"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "name": "nginx",
+                              "image": "nginx:1.27",
+                              "resources": {},
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "imagePullPolicy": "IfNotPresent"
+                          }
+                      ],
+                      "restartPolicy": "Always",
+                      "terminationGracePeriodSeconds": 30,
+                      "dnsPolicy": "ClusterFirst",
+                      "securityContext": {},
+                      "schedulerName": "default-scheduler"
+                  }
+              },
+              "strategy": {
+                  "type": "RollingUpdate",
+                  "rollingUpdate": {
+                      "maxUnavailable": "25%",
+                      "maxSurge": "25%"
+                  }
+              },
+              "revisionHistoryLimit": 10,
+              "progressDeadlineSeconds": 600
+          },
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl create deployment saved --image=busybox:1.37 --save-config -o yaml -- sleep 3600
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"kind":"Deployment","apiVersion":"apps/v1","metadata":{"name":"saved","labels":{"app":"saved"}},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"saved"}},"template":{"metadata":{"labels":{"app":"saved"}},"spec":{"containers":[{"name":"busybox","image":"busybox:1.37","command":["sleep","3600"],"resources":{}}]}},"strategy":{}},"status":{}}
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: saved
+        name: saved
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 1
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: saved
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: saved
+          spec:
+            containers:
+            - command:
+              - sleep
+              - "3600"
+              image: busybox:1.37
+              imagePullPolicy: IfNotPresent
+              name: busybox
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status: {}
+    stderr: ""
+  - run: kubectl create deployment sdr --image=nginx:1.27 --dry-run=server -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: sdr
+        name: sdr
+        namespace: default
+        uid: <<uid:3>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 1
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: sdr
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: sdr
+          spec:
+            containers:
+            - image: nginx:1.27
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status: {}
+    stderr: ""
+  - run: kubectl create deployment sdr --image=nginx:1.27 --dry-run=server
+    exit: 0
+    stdout: |
+      deployment.apps/sdr created (server dry run)
+    stderr: ""
+  - run: kubectl create deployment web --image=nginx:1.27
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: deployments.apps "web" already exists
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: deployments.apps "web" already exists
+  - run: kubectl create deployment Bad --image=nginx:1.27
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: Deployment.apps "Bad" is invalid: metadata.name: Invalid value: "Bad": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+  - run: kubectl create deployment lost --image=nginx:1.27 -n missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: namespaces "missing" not found
+  - run: kubectl create deployment empty --image=
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: Deployment.apps "empty" is invalid: spec.template.spec.containers: Required value
+  - run: kubectl create namespace dev
+    exit: 0
+    stdout: |
+      namespace/dev created
+    stderr: ""
+  - run: kubectl create namespace saved --save-config -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"kind":"Namespace","apiVersion":"v1","metadata":{"name":"saved"},"spec":{},"status":{}}
+        creationTimestamp: "<<time>>"
+        labels:
+          kubernetes.io/metadata.name: saved
+        name: saved
+        resourceVersion: "<<rv>>"
+        uid: <<uid:4>>
+      spec:
+        finalizers:
+        - kubernetes
+      status:
+        phase: Active
+    stderr: ""
+  - run: kubectl create namespace sdr --dry-run=server -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Namespace",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "sdr",
+              "uid": "<<uid:5>>",
+              "creationTimestamp": "<<time>>",
+              "labels": {
+                  "kubernetes.io/metadata.name": "sdr"
+              }
+          },
+          "spec": {
+              "finalizers": [
+                  "kubernetes"
+              ]
+          },
+          "status": {
+              "phase": "Active"
+          }
+      }
+    stderr: ""
+  - run: kubectl create namespace dev
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): namespaces "dev" already exists
+  - run: kubectl create namespace Dev
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Namespace "Dev" is invalid: metadata.name: Invalid value: "Dev": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')
+  - run: kubectl create serviceaccount builder -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: builder
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:6>>
+    stderr: ""
+  - run: kubectl create serviceaccount builder
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create serviceaccount: serviceaccounts "builder" already exists
+  - run: kubectl create sa builder -n team --dry-run=server -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "ServiceAccount",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "builder",
+              "namespace": "team",
+              "uid": "<<uid:7>>",
+              "creationTimestamp": "<<time>>"
+          }
+      }
+    stderr: ""
+  - run: kubectl create serviceaccount Bad
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create serviceaccount: ServiceAccount "Bad" is invalid: metadata.name: Invalid value: "Bad": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+  - run: kubectl create serviceaccount lost -n missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create serviceaccount: namespaces "missing" not found
+  - run: kubectl create configmap app --from-file=app.properties --from-literal=mode=prod
+    exit: 0
+    stdout: |
+      configmap/app created
+    stderr: ""
+  - run: kubectl create configmap app --from-literal=a=b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create configmap: configmaps "app" already exists
+  - run: kubectl create configmap hashed --from-literal=a=1 --append-hash -n team -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "ConfigMap",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "hashed-tt42b4m6hd",
+              "namespace": "team",
+              "uid": "<<uid:8>>",
+              "resourceVersion": "<<rv>>",
+              "creationTimestamp": "<<time>>"
+          },
+          "data": {
+              "a": "1"
+          }
+      }
+    stderr: ""
+  - run: kubectl create configmap saved --from-literal=a=1 --save-config -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "1"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"kind":"ConfigMap","apiVersion":"v1","metadata":{"name":"saved"},"data":{"a":"1"}}
+        creationTimestamp: "<<time>>"
+        name: saved
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:9>>
+    stderr: ""
+  - run: kubectl create configmap sdr --from-literal=a=1 --dry-run=server -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "1"
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: sdr
+        namespace: default
+        uid: <<uid:10>>
+    stderr: ""
+  - run: kubectl create configmap Bad --from-literal=a=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create configmap: ConfigMap "Bad" is invalid: metadata.name: Invalid value: "Bad": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')
+  - run: kubectl create configmap lost --from-literal=a=1 -n missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create configmap: namespaces "missing" not found
+  - run: kubectl create secret generic creds --from-literal=user=admin --from-file=app.properties -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        app.properties: Y29sb3I9Ymx1ZQpzaXplPTEwCg==
+        user: YWRtaW4=
+      kind: Secret
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: creds
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:11>>
+      type: Opaque
+    stderr: ""
+  - run: kubectl create secret generic creds --from-literal=a=b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create secret secrets "creds" already exists
+  - run: kubectl create secret generic typed --type=kubernetes.io/basic-auth --from-literal=username=u --from-literal=password=p -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Secret",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "typed",
+              "namespace": "default",
+              "uid": "<<uid:12>>",
+              "resourceVersion": "<<rv>>",
+              "creationTimestamp": "<<time>>"
+          },
+          "data": {
+              "password": "cA==",
+              "username": "dQ=="
+          },
+          "type": "kubernetes.io/basic-auth"
+      }
+    stderr: ""
+  - run: kubectl create secret generic badtls --type=kubernetes.io/tls --from-literal=a=b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create secret Secret "badtls" is invalid: [data[tls.crt]: Required value, data[tls.key]: Required value]
+  - run: kubectl create secret generic sdr --from-literal=a=b --dry-run=server -o name
+    exit: 0
+    stdout: |
+      secret/sdr
+    stderr: ""
+  - run: kubectl create secret generic lost --from-literal=a=b -n missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create secret namespaces "missing" not found
+  - run: kubectl create service clusterip web --tcp=80:8080 -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: web
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:13>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - name: 80-8080
+          port: 80
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: web
+        sessionAffinity: None
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service clusterip web --tcp=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create ClusterIP service: services "web" already exists
+  - run: kubectl create service clusterip headless --clusterip=None -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "headless",
+              "namespace": "default",
+              "uid": "<<uid:14>>",
+              "resourceVersion": "<<rv>>",
+              "creationTimestamp": "<<time>>",
+              "labels": {
+                  "app": "headless"
+              }
+          },
+          "spec": {
+              "selector": {
+                  "app": "headless"
+              },
+              "clusterIP": "None",
+              "clusterIPs": [
+                  "None"
+              ],
+              "type": "ClusterIP",
+              "sessionAffinity": "None",
+              "ipFamilies": [
+                  "IPv4"
+              ],
+              "ipFamilyPolicy": "SingleStack",
+              "internalTrafficPolicy": "Cluster"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl create service clusterip badip --clusterip=1.2.3.4 --tcp=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create ClusterIP service: Service "badip" is invalid: spec.clusterIPs: Invalid value: ["1.2.3.4"]: failed to allocate IP 1.2.3.4: the provided network does not match the current range
+  - run: kubectl create service nodeport np --tcp=80:8080 --node-port=30080 -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: np
+        name: np
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:15>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        externalTrafficPolicy: Cluster
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - name: 80-8080
+          nodePort: 30080
+          port: 80
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: np
+        sessionAffinity: None
+        type: NodePort
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service nodeport np2 --tcp=80 --node-port=30080
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create NodePort service: Service "np2" is invalid: spec.ports[0].nodePort: Invalid value: 30080: provided port is already allocated
+  - run: kubectl create service nodeport np3 --tcp=80 --node-port=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create NodePort service: Service "np3" is invalid: spec.ports[0].nodePort: Invalid value: 80: provided port is not in the valid range. The range of valid ports is 30000-32767
+  - run: kubectl create service loadbalancer lb --tcp=80:8080 --save-config
+    exit: 0
+    stdout: |
+      service/lb created
+    stderr: ""
+  - run: kubectl create service externalname ext --external-name=db.example.com -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: ext
+        name: ext
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:16>>
+      spec:
+        externalName: db.example.com
+        selector:
+          app: ext
+        sessionAffinity: None
+        type: ExternalName
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service clusterip sdr --tcp=80 --dry-run=server -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: sdr
+        name: sdr
+        namespace: default
+        uid: <<uid:17>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - name: "80"
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: sdr
+        sessionAffinity: None
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service clusterip lost --tcp=80 -n missing
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create ClusterIP service: namespaces "missing" not found
+  - run: kubectl create service clusterip Bad --tcp=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create ClusterIP service: Service "Bad" is invalid: metadata.name: Invalid value: "Bad": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')
+  - run: kubectl get deployments,secrets,services
+    exit: 0
+    stdout: |
+      NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+      deployment.apps/saved   1/1     1            1           <<age>>
+      deployment.apps/web     2/2     2            2           <<age>>
+
+      NAME           TYPE                       DATA   AGE
+      secret/creds   Opaque                     2      <<age>>
+      secret/typed   kubernetes.io/basic-auth   2      <<age>>
+
+      NAME                 TYPE           CLUSTER-IP   EXTERNAL-IP      PORT(S)           AGE
+      service/ext          ExternalName   <none>       db.example.com   <none>            <<age>>
+      service/headless     ClusterIP      None         <none>           <none>            <<age>>
+      service/kubernetes   ClusterIP      10.96.0.1    <none>           443/TCP           <<age>>
+      service/lb           LoadBalancer   <<ip>>       <pending>        80:<<port>>/TCP   <<age>>
+      service/np           NodePort       <<ip>>       <none>           80:30080/TCP      <<age>>
+      service/web          ClusterIP      <<ip>>       <none>           80/TCP            <<age>>
+    stderr: ""
+  - run: kubectl get configmaps app saved
+    exit: 0
+    stdout: |
+      NAME    DATA   AGE
+      app     2      <<age>>
+      saved   1      <<age>>
+    stderr: ""
+  - run: kubectl get deployment web -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        annotations:
+          deployment.kubernetes.io/revision: "1"
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: web
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:18>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 2
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: web
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.27
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              ports:
+              - containerPort: 80
+                protocol: TCP
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status:
+        availableReplicas: 2
+        conditions:
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: Deployment has minimum availability.
+          reason: MinimumReplicasAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+          reason: NewReplicaSetAvailable
+          status: "True"
+          type: Progressing
+        observedGeneration: 1
+        readyReplicas: 2
+        replicas: 2
+        terminatingReplicas: 0
+        updatedReplicas: 2
+    stderr: ""
+    kwok: true
+  - run: kubectl get configmap app -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        app.properties: |
+          color=blue
+          size=10
+        mode: prod
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: app
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:19>>
+    stderr: ""
+  - run: kubectl get secret creds -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        app.properties: Y29sb3I9Ymx1ZQpzaXplPTEwCg==
+        user: YWRtaW4=
+      kind: Secret
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: creds
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:11>>
+      type: Opaque
+    stderr: ""
+  - run: kubectl get namespace saved -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"kind":"Namespace","apiVersion":"v1","metadata":{"name":"saved"},"spec":{},"status":{}}
+        creationTimestamp: "<<time>>"
+        labels:
+          kubernetes.io/metadata.name: saved
+        name: saved
+        resourceVersion: "<<rv>>"
+        uid: <<uid:4>>
+      spec:
+        finalizers:
+        - kubernetes
+      status:
+        phase: Active
+    stderr: ""
+  - run: kubectl get service np -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: np
+        name: np
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:15>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        externalTrafficPolicy: Cluster
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - name: 80-8080
+          nodePort: 30080
+          port: 80
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: np
+        sessionAffinity: None
+        type: NodePort
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl get service lb -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "kind": "Service",
+          "metadata": {
+              "creationTimestamp": "<<time>>",
+              "labels": {
+                  "app": "lb"
+              },
+              "name": "lb",
+              "namespace": "default",
+              "resourceVersion": "<<rv>>",
+              "uid": "<<uid:20>>"
+          },
+          "spec": {
+              "allocateLoadBalancerNodePorts": true,
+              "clusterIP": "<<ip>>",
+              "clusterIPs": [
+                  "<<ip>>"
+              ],
+              "externalTrafficPolicy": "Cluster",
+              "internalTrafficPolicy": "Cluster",
+              "ipFamilies": [
+                  "IPv4"
+              ],
+              "ipFamilyPolicy": "SingleStack",
+              "ports": [
+                  {
+                      "name": "80-8080",
+                      "nodePort": <<port>>,
+                      "port": 80,
+                      "protocol": "TCP",
+                      "targetPort": 8080
+                  }
+              ],
+              "selector": {
+                  "app": "lb"
+              },
+              "sessionAffinity": "None",
+              "type": "LoadBalancer"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""

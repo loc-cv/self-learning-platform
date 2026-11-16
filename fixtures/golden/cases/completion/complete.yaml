@@ -1,0 +1,184 @@
+description: >-
+  What `kubectl __complete` (cobra's hidden completion command, which the bash completion script
+  calls on every Tab) answers - commands, resource types, names in the right namespace, flags,
+  flag values, file filters, required flags, container names - and its directive.
+files:
+  pod.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: multi
+    spec:
+      initContainers:
+      - name: setup
+        image: busybox:1.36
+        command: ["true"]
+      containers:
+      - name: app
+        image: nginx:1.27
+        ports:
+        - containerPort: 8080
+      - name: sidecar
+        image: nginx:1.27
+  other-config: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - cluster:
+        server: https://localhost:1
+      name: far
+    - cluster:
+        server: https://localhost:2
+      name: near
+    contexts:
+    - context:
+        cluster: far
+        user: alice
+        namespace: team-a
+      name: alice@far
+    - context:
+        cluster: near
+        user: bob
+      name: bob@near
+    - context:
+        cluster: near
+        user: carol
+      name: carol@near
+    current-context: alice@far
+    users:
+    - name: alice
+      user:
+        token: a
+    - name: bob
+      user:
+        token: b
+    - name: carol
+      user:
+        token: c
+setup:
+  - do: kubectl create namespace team-a
+  - do: kubectl create namespace team-b
+  - do: kubectl run web-1 --image=nginx:1.27
+  - do: kubectl run web-2 --image=nginx:1.27
+  - do: kubectl run api --image=nginx:1.27
+  - do: kubectl create -f pod.yaml
+  - do: kubectl run db --image=nginx:1.27 -n team-a
+  - do: kubectl run cache --image=nginx:1.27 -n team-a
+  - do: kubectl create deployment frontend --image=nginx:1.27 --replicas=0
+  - do: kubectl create deployment backend --image=nginx:1.27 --replicas=0 -n team-a
+  - do: kubectl create configmap settings --from-literal=k=v
+  - do: kubectl create service clusterip web --tcp=80:8080
+steps:
+  - run: kubectl __complete ''
+  - run: kubectl __complete ge
+  - run: kubectl __complete r
+  - run: kubectl __completeNoDesc r
+  - run: kubectl __complete get ''
+  - run: kubectl __complete get po
+  - run: kubectl __complete get pods ''
+  - run: kubectl __complete get pods web
+  - run: kubectl __complete get pods web-1 ''
+  - run: kubectl __complete get pod/web-1 ''
+  - run: kubectl __complete get pod/
+  - run: kubectl __complete get pods,se
+  - run: kubectl __complete get deploy ''
+  - run: kubectl __complete -n team-a get pods ''
+  - run: kubectl __complete get pods -n team-a ''
+  - run: kubectl __complete get pods --namespace=team-a ''
+  - run: kubectl __complete get pods -A ''
+  - run: kubectl __complete get pods -n ''
+  - run: kubectl __complete get pods -n te
+  - run: kubectl __complete get pods --namespace=
+  - run: kubectl __complete get pods --namespace=team-
+  - run: kubectl __complete get pods -n=te
+  - run: kubectl __complete get --
+  - run: kubectl __complete get --a
+  - run: kubectl __complete get -
+  - run: kubectl __complete get --show-labels --sh
+  - run: kubectl __complete get -o ''
+  - run: kubectl __complete get -o j
+  - run: kubectl __complete get pods --selector ''
+  - run: kubectl __complete get pods -h ''
+  - run: kubectl __complete get --bogus ''
+  - run: kubectl __complete bogus ''
+  - run: kubectl __complete apply -f ''
+  - run: kubectl __complete apply -f=
+  - run: kubectl __complete apply ''
+  - run: kubectl __complete create ''
+  - run: kubectl __complete create deployment ''
+  - run: kubectl __complete create deployment web ''
+  - run: kubectl __complete create deployment web --image=nginx ''
+  - run: kubectl __complete create -o ''
+  - run: kubectl __complete delete --cascade ''
+  - run: kubectl __complete delete configmap s
+  - run: kubectl __complete describe ''
+  - run: kubectl __complete scale ''
+  - run: kubectl __complete scale deployment ''
+  - run: kubectl __complete rollout ''
+  - run: kubectl __complete rollout status ''
+  - run: kubectl __complete rollout status deployment ''
+  - run: kubectl __complete rollout status deployment/
+  - run: kubectl __complete rollout status deployment frontend ''
+  - run: kubectl __complete rollout history deployment frontend ''
+  - run: kubectl __complete rollout undo -n team-a deployment/
+  - run: kubectl __complete logs ''
+  - run: kubectl __complete logs d
+  - run: kubectl __complete logs multi ''
+  - run: kubectl __complete logs multi app ''
+  - run: kubectl __complete logs pods/
+  - run: kubectl __complete logs -n team-a ''
+  - run: kubectl __complete exec multi -c ''
+  - run: kubectl __complete exec -c ''
+  - run: kubectl __complete set image ''
+  - run: kubectl __complete label pods ''
+  - run: kubectl __complete edit ''
+  - run: kubectl __complete expose ''
+  - run: kubectl __complete config ''
+  - run: kubectl __complete config use-context ''
+  - run: kubectl __complete config use-context kubernetes-admin@kubernetes ''
+  - run: kubectl __complete --context ''
+  - run: kubectl __complete --cluster ''
+  - run: kubectl __complete --user ''
+  - run: kubectl __complete --kubeconfig ''
+  - run: kubectl __complete completion b
+  - run: kubectl __complete completion p
+  - run: kubectl __complete api-resources ''
+  - run: kubectl __complete explain ''
+  - run: kubectl __complete get pods -- ''
+  - run: kubectl __complete help ''
+  - run: kubectl __complete get ns ''
+  - run: kubectl __complete get pods web-1 web-2 ''
+  - run: kubectl __complete get pods -Z ''
+  - run: kubectl __complete label pods web-1 ''
+  - run: kubectl __complete get --subresource ''
+  - run: kubectl __complete -n team-a logs cache ''
+  - run: kubectl __complete exec -n team-a db -c ''
+  - run: kubectl __complete attach ''
+  - run: kubectl __complete port-forward ''
+  - run: kubectl __complete port-forward multi ''
+  - run: kubectl __complete port-forward multi 90
+  - run: kubectl __complete port-forward svc/web ''
+  - run: kubectl __complete port-forward service/web 8
+  - run: kubectl __complete cp ''
+  - run: kubectl __complete cp w
+  - run: kubectl __complete cp team-a/
+  - run: kubectl __complete cp ./
+  - run: kubectl __complete create token ''
+  - run: kubectl __complete config set-context --namespace te
+  - run: kubectl __complete --kubeconfig other-config --context c
+  - run: kubectl __complete --kubeconfig other-config --cluster f
+  - run: kubectl __complete --kubeconfig other-config --user b
+  - run: kubectl __complete --kubeconfig=other-config get pods --context a
+  - run: kubectl __complete --kubeconfig other-config config use-context b
+  - run: kubectl __complete config use-context --kubeconfig other-config ''
+  - run: kubectl __complete --kubeconfig nowhere --context ''
+  - run: kubectl __complete --context bogus get pods ''
+  - run: kubectl __complete --kubeconfig other-config get pods ''
+  - run: kubectl __complete get pods --context=kubernetes-admin@kubernetes -n te
+  - run: kubectl __complete get all ''
+  - run: kubectl __complete get svc,deploy ''
+  - run: kubectl __complete scale -
+  - run: kubectl __complete create deployment -
+  - run: kubectl __complete taint node ''
+  - run: kubectl __complete
+  - run: kubectl __completeNoDesc rollout ''

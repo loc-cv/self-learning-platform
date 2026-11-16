@@ -1,0 +1,648 @@
+# Captured from fixtures/golden/cases/config/view.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: config/view
+description: "kubectl config view on kubeconfig files with no server: redaction, --raw, --minify, --flatten, --merge, -o json, the KUBECONFIG list merged, explicit files, and the errors."
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl config view
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority: certs/ca.crt
+          disable-compression: true
+          server: https://10.0.0.9:6443
+        name: files
+      - cluster:
+          certificate-authority-data: DATA+OMITTED
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      - cluster:
+          insecure-skip-tls-verify: true
+          proxy-url: http://proxy:3128
+          server: https://10.0.0.5:6443
+          tls-server-name: api.staging
+        name: staging
+      contexts:
+      - context:
+          cluster: files
+          user: basic
+        name: basic@files
+      - context:
+          cluster: staging
+          namespace: team-a
+          user: dev
+        name: dev@staging
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: kubernetes-admin@kubernetes
+      kind: Config
+      users:
+      - name: basic
+        user:
+          client-certificate: certs/client.crt
+          client-key: /etc/missing/client.key
+          password: REDACTED
+          username: admin
+      - name: dev
+        user:
+          as: jane
+          as-groups:
+          - devs
+          - ops
+          token: REDACTED
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: DATA+OMITTED
+          client-key-data: DATA+OMITTED
+    stderr: ""
+  - run: kubectl config view --raw
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority: certs/ca.crt
+          disable-compression: true
+          server: https://10.0.0.9:6443
+        name: files
+      - cluster:
+          certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      - cluster:
+          insecure-skip-tls-verify: true
+          proxy-url: http://proxy:3128
+          server: https://10.0.0.5:6443
+          tls-server-name: api.staging
+        name: staging
+      contexts:
+      - context:
+          cluster: files
+          user: basic
+        name: basic@files
+      - context:
+          cluster: staging
+          namespace: team-a
+          user: dev
+        name: dev@staging
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: kubernetes-admin@kubernetes
+      kind: Config
+      users:
+      - name: basic
+        user:
+          client-certificate: certs/client.crt
+          client-key: /etc/missing/client.key
+          password: s3cret
+          username: admin
+      - name: dev
+        user:
+          as: jane
+          as-groups:
+          - devs
+          - ops
+          token: abc123
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          client-key-data: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==
+    stderr: ""
+  - run: kubectl config view -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Config",
+          "apiVersion": "v1",
+          "clusters": [
+              {
+                  "name": "files",
+                  "cluster": {
+                      "server": "https://10.0.0.9:6443",
+                      "certificate-authority": "certs/ca.crt",
+                      "disable-compression": true
+                  }
+              },
+              {
+                  "name": "kubernetes",
+                  "cluster": {
+                      "server": "https://172.16.0.10:6443",
+                      "certificate-authority-data": "DATA+OMITTED"
+                  }
+              },
+              {
+                  "name": "staging",
+                  "cluster": {
+                      "server": "https://10.0.0.5:6443",
+                      "tls-server-name": "api.staging",
+                      "insecure-skip-tls-verify": true,
+                      "proxy-url": "http://proxy:3128"
+                  }
+              }
+          ],
+          "users": [
+              {
+                  "name": "basic",
+                  "user": {
+                      "client-certificate": "certs/client.crt",
+                      "client-key": "/etc/missing/client.key",
+                      "username": "admin",
+                      "password": "REDACTED"
+                  }
+              },
+              {
+                  "name": "dev",
+                  "user": {
+                      "token": "REDACTED",
+                      "as": "jane",
+                      "as-groups": [
+                          "devs",
+                          "ops"
+                      ]
+                  }
+              },
+              {
+                  "name": "kubernetes-admin",
+                  "user": {
+                      "client-certificate-data": "DATA+OMITTED",
+                      "client-key-data": "DATA+OMITTED"
+                  }
+              }
+          ],
+          "contexts": [
+              {
+                  "name": "basic@files",
+                  "context": {
+                      "cluster": "files",
+                      "user": "basic"
+                  }
+              },
+              {
+                  "name": "dev@staging",
+                  "context": {
+                      "cluster": "staging",
+                      "user": "dev",
+                      "namespace": "team-a"
+                  }
+              },
+              {
+                  "name": "kubernetes-admin@kubernetes",
+                  "context": {
+                      "cluster": "kubernetes",
+                      "user": "kubernetes-admin"
+                  }
+              }
+          ],
+          "current-context": "kubernetes-admin@kubernetes"
+      }
+    stderr: ""
+  - run: kubectl config view --minify
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: DATA+OMITTED
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      contexts:
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: kubernetes-admin@kubernetes
+      kind: Config
+      users:
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: DATA+OMITTED
+          client-key-data: DATA+OMITTED
+    stderr: ""
+  - run: kubectl config view --minify --context=dev@staging
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          insecure-skip-tls-verify: true
+          proxy-url: http://proxy:3128
+          server: https://10.0.0.5:6443
+          tls-server-name: api.staging
+        name: staging
+      contexts:
+      - context:
+          cluster: staging
+          namespace: team-a
+          user: dev
+        name: dev@staging
+      current-context: dev@staging
+      kind: Config
+      users:
+      - name: dev
+        user:
+          as: jane
+          as-groups:
+          - devs
+          - ops
+          token: REDACTED
+    stderr: ""
+  - run: kubectl config view --minify --raw -o json --context=dev@staging
+    exit: 0
+    stdout: |
+      {
+          "kind": "Config",
+          "apiVersion": "v1",
+          "clusters": [
+              {
+                  "name": "staging",
+                  "cluster": {
+                      "server": "https://10.0.0.5:6443",
+                      "tls-server-name": "api.staging",
+                      "insecure-skip-tls-verify": true,
+                      "proxy-url": "http://proxy:3128"
+                  }
+              }
+          ],
+          "users": [
+              {
+                  "name": "dev",
+                  "user": {
+                      "token": "abc123",
+                      "as": "jane",
+                      "as-groups": [
+                          "devs",
+                          "ops"
+                      ]
+                  }
+              }
+          ],
+          "contexts": [
+              {
+                  "name": "dev@staging",
+                  "context": {
+                      "cluster": "staging",
+                      "user": "dev",
+                      "namespace": "team-a"
+                  }
+              }
+          ],
+          "current-context": "dev@staging"
+      }
+    stderr: ""
+  - run: kubectl config view --minify --context=nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot locate context nope
+  - run: kubectl config view --minify --context=basic@files --flatten
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: open /etc/missing/client.key: no such file or directory
+  - run: kubectl config view --flatten
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: open /etc/missing/client.key: no such file or directory
+  - run: KUBECONFIG=flat.yaml kubectl config view --flatten
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+          server: https://x:6443
+        name: c
+      contexts:
+      - context:
+          cluster: c
+          user: u
+        name: c
+      current-context: c
+      kind: Config
+      users:
+      - name: u
+        user:
+          client-certificate-data: Y2xpZW50IGNlcnQK
+          token: t
+    stderr: ""
+  - run: kubectl config view --kubeconfig flat.yaml --flatten -o json --minify
+    exit: 0
+    stdout: |
+      {
+          "kind": "Config",
+          "apiVersion": "v1",
+          "clusters": [
+              {
+                  "name": "c",
+                  "cluster": {
+                      "server": "https://x:6443",
+                      "certificate-authority-data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
+                  }
+              }
+          ],
+          "users": [
+              {
+                  "name": "u",
+                  "user": {
+                      "client-certificate-data": "Y2xpZW50IGNlcnQK",
+                      "token": "t"
+                  }
+              }
+          ],
+          "contexts": [
+              {
+                  "name": "c",
+                  "context": {
+                      "cluster": "c",
+                      "user": "u"
+                  }
+              }
+          ],
+          "current-context": "c"
+      }
+    stderr: ""
+  - run: (cd .kube && kubectl config view --kubeconfig ../flat.yaml --flatten)
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+          server: https://x:6443
+        name: c
+      contexts:
+      - context:
+          cluster: c
+          user: u
+        name: c
+      current-context: c
+      kind: Config
+      users:
+      - name: u
+        user:
+          client-certificate-data: Y2xpZW50IGNlcnQK
+          token: t
+    stderr: ""
+  - run: KUBECONFIG=both.yaml kubectl config view --flatten
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot have values for both path and contents
+  - run: kubectl config view --merge=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: if merge==false a precise file must be specified
+  - run: kubectl config view --merge=x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid argument "x" for "--merge" flag: strconv.ParseBool: parsing "x": invalid syntax
+      See 'kubectl config view --help' for usage.
+  - run: kubectl config view --kubeconfig .kube/config --minify
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: DATA+OMITTED
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      contexts:
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: kubernetes-admin@kubernetes
+      kind: Config
+      users:
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: DATA+OMITTED
+          client-key-data: DATA+OMITTED
+    stderr: ""
+  - run: kubectl config view --kubeconfig missing.yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts: null
+      current-context: ""
+      kind: Config
+      users: null
+    stderr: ""
+  - run: kubectl config view --kubeconfig missing.yaml --merge
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts: null
+      current-context: ""
+      kind: Config
+      users: null
+    stderr: ""
+  - run: kubectl config view --kubeconfig empty.yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts: null
+      current-context: ""
+      kind: Config
+      users: null
+    stderr: ""
+  - run: kubectl config view --kubeconfig .kube
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error loading config file ".kube": read .kube: is a directory
+  - run: kubectl config view extra
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected arguments: [extra]
+      See 'kubectl config view -h' for help and examples
+  - run: kubectl config view -o name
+    exit: 0
+    stdout: |
+      config/<unknown>
+    stderr: ""
+  - run: kubectl config view -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config view
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          server: https://only-a:6443
+        name: only-a
+      - cluster:
+          server: https://a.example:6443
+        name: shared
+      contexts:
+      - context:
+          cluster: shared
+          user: ua
+        name: ctx-a
+      - context:
+          cluster: shared
+          namespace: nb
+          user: ub
+        name: ctx-b
+      current-context: ctx-b
+      kind: Config
+      users:
+      - name: ua
+        user:
+          token: REDACTED
+      - name: ub
+        user:
+          client-key-data: DATA+OMITTED
+    stderr: ""
+  - run: KUBECONFIG=b.yaml:a.yaml kubectl config view -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Config",
+          "apiVersion": "v1",
+          "clusters": [
+              {
+                  "name": "only-a",
+                  "cluster": {
+                      "server": "https://only-a:6443"
+                  }
+              },
+              {
+                  "name": "shared",
+                  "cluster": {
+                      "server": "https://b.example:6443"
+                  }
+              }
+          ],
+          "users": [
+              {
+                  "name": "ua",
+                  "user": {
+                      "token": "REDACTED"
+                  }
+              },
+              {
+                  "name": "ub",
+                  "user": {
+                      "client-key-data": "DATA+OMITTED"
+                  }
+              }
+          ],
+          "contexts": [
+              {
+                  "name": "ctx-a",
+                  "context": {
+                      "cluster": "shared",
+                      "user": "ua"
+                  }
+              },
+              {
+                  "name": "ctx-b",
+                  "context": {
+                      "cluster": "shared",
+                      "user": "ub",
+                      "namespace": "nb"
+                  }
+              }
+          ],
+          "current-context": "ctx-b"
+      }
+    stderr: ""
+  - run: KUBECONFIG=b.yaml:a.yaml kubectl config view --minify
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          server: https://b.example:6443
+        name: shared
+      contexts:
+      - context:
+          cluster: shared
+          namespace: nb
+          user: ub
+        name: ctx-b
+      current-context: ctx-b
+      kind: Config
+      users:
+      - name: ub
+        user:
+          client-key-data: DATA+OMITTED
+    stderr: ""
+  - run: KUBECONFIG=a.yaml kubectl config view --minify
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: current-context must exist in order to minify
+  - run: KUBECONFIG=missing1.yaml:missing2.yaml kubectl config view
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts: null
+      current-context: ""
+      kind: Config
+      users: null
+    stderr: ""
+  - run: KUBECONFIG=missing1.yaml:missing2.yaml kubectl config view -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Config",
+          "apiVersion": "v1",
+          "clusters": null,
+          "users": null,
+          "contexts": null,
+          "current-context": ""
+      }
+    stderr: ""
+  - run: kubectl config view --kubeconfig type.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error loading config file "type.yaml": json: cannot unmarshal number into Go struct field Config.clusters of type []v1.NamedCluster
+  - run: kubectl config view --kubeconfig nested.yaml --merge=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: json: cannot unmarshal string into Go struct field Cluster.clusters.cluster.insecure-skip-tls-verify of type bool
+  - run: KUBECONFIG=kind.yaml:a.yaml kubectl config get-contexts
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error loading config file "kind.yaml": no kind "Foo" is registered for version "v1" in scheme "k8s.io/client-go/tools/clientcmd/api/latest/latest.go:50"
+  - run: KUBECONFIG=version.yaml:bad.yaml:.kube:a.yaml kubectl config current-context
+    exit: 1
+    stdout: ""
+    stderr: |
+      error loading config file "version.yaml": no kind "Config" is registered for version "v2" in scheme "k8s.io/client-go/tools/clientcmd/api/latest/latest.go:50"
+      error loading config file "bad.yaml": yaml: line 2: did not find expected ',' or ']'
+      error loading config file ".kube": read .kube: is a directory
+  - run: kubectl config view --kubeconfig bad.yaml --merge=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: yaml: line 2: did not find expected ',' or ']'
+  - run: KUBECONFIG=b64.yaml kubectl config get-users
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error loading config file "b64.yaml": illegal base64 data at input byte 3

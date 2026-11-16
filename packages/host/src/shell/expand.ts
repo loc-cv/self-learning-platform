@@ -125,13 +125,52 @@ function braceExpand(toks: BraceTok[]): BraceTok[][] {
 
 // ---- parameter and command expansion -------------------------------------------------------------
 
-function* expandParts(parts: readonly WordPart[], env: ExpandEnv, inDq: boolean, tildeOk: boolean): Op<Seg[]> {
+/**
+ * Tilde expansion inside an assignment-like word (`name=~/a:~/b`): after the `=` and after each
+ * `:` of unquoted literal text. Bash does this for every simple command's arguments outside posix
+ * mode, so `echo X=~` and `export X=~` both expand (bash(1) Tilde Expansion; checked on bash 5.2.21).
+ */
+function assignTildes(v: string, from: number, last: boolean, env: ExpandEnv): Seg[] {
+  const out: Seg[] = [];
+  let lit = v.slice(0, from);
+  let i = from;
+  while (i <= v.length) {
+    if (v[i] === '~') {
+      let end = i + 1;
+      while (end < v.length && v[end] !== '/' && v[end] !== ':') end++;
+      // The prefix must end at a slash, a colon, or the end of the word.
+      if (end < v.length || last) {
+        const home = env.home(v.slice(i + 1, end));
+        if (home !== undefined) {
+          if (lit !== '') out.push({ text: lit, quoted: false, split: false });
+          out.push({ text: home, quoted: true, split: false });
+          lit = '';
+          i = end;
+        }
+      }
+    }
+    const colon = v.indexOf(':', i);
+    const stop = colon < 0 ? v.length : colon + 1;
+    lit += v.slice(i, stop);
+    i = stop;
+    if (colon < 0) break;
+  }
+  if (lit !== '') out.push({ text: lit, quoted: false, split: false });
+  return out;
+}
+
+function* expandParts(parts: readonly WordPart[], env: ExpandEnv, inDq: boolean, tildeOk: boolean, assignWord = false): Op<Seg[]> {
   const out: Seg[] = [];
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i] as WordPart;
     switch (p.t) {
       case 'lit': {
         let v = p.v;
+        if (assignWord && !inDq) {
+          const eq = i === 0 ? v.indexOf('=') + 1 : 0;
+          out.push(...assignTildes(v, eq, i === parts.length - 1, env));
+          break;
+        }
         if (i === 0 && tildeOk && v.startsWith('~')) {
           const slash = v.indexOf('/');
           const prefixEnd = slash < 0 ? v.length : slash;
@@ -288,7 +327,10 @@ export function* expandWords(words: readonly Word[], env: ExpandEnv): Op<string[
   const out: string[] = [];
   for (const w of words) {
     for (const toks of braceExpand(toBraceToks(w.parts))) {
-      const segs = yield* expandParts(fromBraceToks(toks), env, false, true);
+      const wparts = fromBraceToks(toks);
+      const first = wparts[0];
+      const isAssign = first?.t === 'lit' && /^[A-Za-z_][A-Za-z0-9_]*\+?=/.test(first.v);
+      const segs = yield* expandParts(wparts, env, false, true, isAssign);
       for (const field of split(segs, env.get('IFS'))) {
         if (hasGlobChars(field)) {
           const matches = expandPathname(field, env.glob);

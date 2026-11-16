@@ -50,6 +50,11 @@ function splitDockerDomain(name: string): [string, string] {
   return [DEFAULT_DOMAIN, name];
 }
 
+/** reference.ReferenceRegexp.MatchString: the grammar alone, before any normalization (kubectl run's image check). */
+export function matchesReference(s: string): boolean {
+  return REFERENCE.test(s);
+}
+
 /** ParseNormalizedNamed. Returns the parsed name or the library's error text. */
 export function parseNormalizedNamed(s: string): ImageName | { error: string } {
   if (IDENTIFIER.test(s)) return { error: `invalid repository name (${s}), cannot specify 64-byte hexadecimal strings` };

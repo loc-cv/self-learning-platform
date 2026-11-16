@@ -59,6 +59,8 @@ const EVENT_HEX = /(?<=[a-z0-9>])\.[0-9a-f]{15,17}(?![0-9a-z])/g;
 const RV = /(?<=resourceVersion"?: ?")[0-9]+(?=")/g;
 const NODEPORT_TEXT = /(?<=[0-9]:|^)3[0-2][0-9]{3}(?=\/(?:TCP|UDP|SCTP)\b)/g;
 const NODEPORT_YAML = /(?<=nodePort"?: )[0-9]+/g;
+// kubectl edit's temporary file: os.CreateTemp("", "kubectl-edit-*.yaml") (editor.go LaunchTempFile).
+const EDIT_TMP = /(?<=\/kubectl-edit-)[0-9]{1,10}(?=\.(?:yaml|json)\b)/g;
 // klog's header: Lmmdd hh:mm:ss.uuuuuu threadid file:line] (k8s.io/klog/v2 klog.go formatHeader)
 const KLOG = /(?<=^[IWEF])[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6} +[0-9]+(?= [^ ]+:[0-9]+\])/gm;
 // The body of a PEM block, in text (YAML block scalar, indented) or in a JSON string.
@@ -94,6 +96,7 @@ export function normalizeValue(s: string, ctx: NormalizeContext): string {
   s = s.replace(HASH, (v) => indexed(ctx, 'hash', v));
   s = s.replace(EVENT_HEX, `.${token('hex')}`);
   s = s.replace(SUFFIX, token('suffix'));
+  s = s.replace(EDIT_TMP, token('tmp'));
   const port = (v: string) => (ctx.literals?.has(v) ? v : token('port'));
   s = s.replace(NODEPORT_TEXT, port).replace(NODEPORT_YAML, port);
   if (ctx.anyWorker) {

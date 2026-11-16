@@ -140,6 +140,10 @@ describe('every -o yaml and -o json output in the fixtures survives a parse and 
     for (const [i, s] of fixture(rel).entries()) {
       const fmt = s.run ? output(s.run) : undefined;
       if (!fmt || s.exit !== 0 || !s.stdout || /[|;&]/.test(s.run as string)) continue;
+      // kubectl version marshals its version.Info struct itself (yaml.Marshal, json.MarshalIndent with
+      // two spaces), not through the object printers this test round-trips.
+      //   upstream: staging/src/k8s.io/kubectl/pkg/cmd/version/version.go Run
+      if (/^kubectl version\b/.test(s.run as string)) continue;
       test(`${rel} step ${i}: ${(s.run as string).slice(0, 60)}`, () => {
         const stdout = s.stdout as string;
         const text = tokensToValues(stdout);

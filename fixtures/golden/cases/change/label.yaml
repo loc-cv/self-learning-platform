@@ -1,0 +1,76 @@
+description: >-
+  kubectl label - add, overwrite (and the error without --overwrite), the same value again, remove
+  with KEY- (and a key that is not there), --list for one object and several (Go prints a map: lines in random order), selectors, --all (on Namespaces: every namespace has a kube-root-ca.crt ConfigMap the simulator lacks), -A,
+  --field-selector, -f, --local, client and server dry runs with -o, --resource-version; and the
+  errors - an invalid value, a bad spec, a key both set and removed, pairs before resources, no
+  change, the --local, --list and --all mistakes, an invalid key the server refuses, a missing object.
+files:
+  cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: a
+      namespace: default
+    data:
+      k: v
+  local.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: loc
+      labels:
+        keep: "yes"
+setup:
+  - do: kubectl create configmap a --from-literal=k=v
+  - do: kubectl create configmap b --from-literal=k=v
+  - do: kubectl label configmap a b app=list
+  - do: kubectl create namespace other
+  - do: kubectl create configmap c -n other --from-literal=k=v
+  - do: kubectl label configmap c -n other app=list
+steps:
+  - run: kubectl label configmap a tier=web
+  - run: kubectl label configmap a tier=db
+  - run: kubectl label configmap a tier=db x=1
+  - run: kubectl label configmap a tier=db --overwrite
+  - run: kubectl label configmap a tier=db
+  - run: kubectl label configmap a tier-
+  - run: kubectl label configmap a tier-
+  - run: kubectl label configmap a x=1 y-
+  - run: kubectl label configmap a x=1 y=2 x-
+  - run: kubectl label configmap a 'v=a b'
+  - run: kubectl label configmap a a=b=c
+  - run: kubectl label configmap a foo
+  - run: kubectl label configmap a x=1 foo
+  - run: kubectl label configmap a 'bad key!=v'
+  - run: kubectl label configmap a --list | sort
+  - run: kubectl label configmap a b --list
+    unorderedLines: true
+  - run: kubectl label configmap a --list z=9 | sort
+  - run: kubectl label configmap -l app=none tier=web
+  - run: kubectl label configmap -l app=list tier=sel
+  - run: kubectl label namespace --all tier=all
+  - run: kubectl label configmap -A -l app=list region=eu
+  - run: kubectl label configmap --field-selector metadata.name=b only=b
+  - run: kubectl label configmap a x=3 --dry-run=client -o yaml
+  - run: kubectl label configmap a b x=4 -o yaml
+  - run: kubectl label configmap a x=5 --dry-run=server -o json
+  - run: kubectl label configmap a x=6 -o name
+  - run: kubectl label configmap a x=7 --resource-version=1
+  - run: kubectl label configmap a b x=7 --resource-version=1
+  - run: kubectl label configmap nope a x=8
+  - run: kubectl label configmap a -n other x=9
+  - run: kubectl label -f cm.yaml from=file
+  - run: kubectl label -f cm.yaml -n other from=file
+  - run: kubectl label --local -f local.yaml l=v
+  - run: kubectl label --local -f local.yaml keep- -o yaml
+  - run: kubectl label --local -f local.yaml --list
+    unorderedLines: true
+  - run: kubectl label --local configmap a x=1
+  - run: kubectl label --local x=1
+  - run: kubectl label --local -f local.yaml x=1 --dry-run=server
+  - run: kubectl label x=1
+  - run: kubectl label configmap a x=1 --list -o yaml
+  - run: kubectl label configmap --all -l app=list x=1
+  - run: kubectl label configmap --all --field-selector metadata.name=a x=1
+  - run: kubectl label configmap tier=x
+  - objects: [configmap/a, configmap/b, -n other configmap/c]

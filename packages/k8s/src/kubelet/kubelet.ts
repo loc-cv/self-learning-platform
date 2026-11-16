@@ -14,6 +14,7 @@ import type { Json, JsonObject } from '../apimachinery/json.ts';
 import type { ApiServerConfig } from '../apiserver/config.ts';
 import { enqueue, isRunning, startController, stopController } from '../controllers/runtime.ts';
 import type { ControllerEvent, ControllerSpec, SyncCtx, SyncResult } from '../controllers/types.ts';
+import { LOG_TOPIC } from '../runtime/logs.ts';
 import { runtimeOf } from '../runtime/runtime.ts';
 import { cancelHeartbeats, kubeletStarted, kubeletUser } from './node.ts';
 import { KUBELET, kubeletId, podKey } from './pleg.ts';
@@ -113,6 +114,8 @@ export function stopKubelet(ctx: Ctx, node: string): void {
   cancelHeartbeats(ctx, node);
   stopController(ctx, node, KUBELET);
   ctx.trace({ source: `k8s.kubelet/${node}`, kind: 'kubelet.stop', message: `kubelet on ${node} stopped` });
+  // The log streams it served end with its connections (kubelet/logs.ts).
+  ctx.publish(LOG_TOPIC);
 }
 
 export function isKubeletRunning(ctx: Ctx, node: string): boolean {

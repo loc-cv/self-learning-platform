@@ -5,11 +5,11 @@
 //   - the schema: every type reachable from a served kind, with each field's JSON name, Go type
 //     and encoding/json options (from the Go sources, gotypes.ts) and the OpenAPI v3 annotations
 //     (required, list type and keys, patch strategy) — packages/k8s/src/openapi/data/<tag>.ts;
-//   - with --descriptions, field and type descriptions for `kubectl explain`, kept apart so that
-//     only explain loads them — packages/k8s/src/openapi/data/<tag>.descriptions.ts (739 KiB at
-//     v1.37.2; not vendored until explain exists, D-038);
 //   - the resource registry from the API server's discovery documents as captured by the oracle
 //     (fixtures/golden/<tag>/api/discovery.yaml) — packages/k8s/src/discovery/data/<tag>.ts.
+// The OpenAPI v3 documents `kubectl explain` reads, descriptions included, come from the real API
+// server instead (npm run openapi:capture, tools/src/openapi/capture.ts): the checked-in documents
+// read here lack part of what the server serves, such as enums.
 // Inputs: .upstream/kubernetes (npm run upstream:fetch) and the committed discovery fixture.
 // With --check, nothing is written and a difference from the vendored files fails.
 
@@ -153,7 +153,6 @@ interface FieldOut {
 }
 
 const types: Record<string, unknown[] | Record<string, unknown>> = {};
-const descriptions: Record<string, Record<string, string>> = {};
 const visiting = new Set<string>();
 
 function exprString(e: GoExpr): string {
@@ -238,8 +237,6 @@ function visitNamed(rawId: string): void {
     const missing = Object.keys(props).filter((p) => !goNames.has(p));
     if (missing.length > 0) throw new Error(`${id}: OpenAPI properties without a Go field: ${missing.join(', ')}`);
   }
-  const desc: Record<string, string> = {};
-  if (def?.description) desc[''] = def.description;
   const rows = fields.map(({ field }) => {
     const p = props[field.json];
     const extra: Record<string, unknown> = {};
@@ -254,7 +251,6 @@ function visitNamed(rawId: string): void {
       ] as const) {
         if (p[k] !== undefined) extra[short] = p[k];
       }
-      if (typeof p.description === 'string') desc[field.json] = p.description;
     }
     const flags = field.flags + (required.has(field.json) ? 'r' : '');
     const row: unknown[] = [field.json, field.type];
@@ -264,7 +260,6 @@ function visitNamed(rawId: string): void {
   });
   const defName = def ? defNameOf.get(id) : undefined;
   types[key] = { n: display, ...(defName ? { d: defName } : {}), f: rows };
-  if (Object.keys(desc).length > 0) descriptions[key] = desc;
 }
 
 const defNameOf = new Map<string, string>();
@@ -386,7 +381,6 @@ for (const extra of ['io.k8s.apimachinery.pkg.apis.meta.v1.DeleteOptions', 'io.k
 const sortedTypes = Object.fromEntries(Object.keys(types).sort().map((k) => [k, types[k]]));
 const sortedKinds = Object.fromEntries(Object.keys(kinds).sort().map((k) => [k, kinds[k]]));
 const schema = { version: KUBERNETES_TAG, kinds: sortedKinds, types: sortedTypes };
-const descs = Object.fromEntries(Object.keys(descriptions).sort().map((k) => [k, descriptions[k]]));
 
 // The registry: discovery's resource lists, in discovery order, without volatile fields.
 const registry = {
@@ -419,9 +413,6 @@ const outputs: [string, string][] = [
   [path.join(repoRoot, 'packages', 'k8s', 'src', 'discovery', 'data', `${KUBERNETES_TAG}.ts`), generated(`fixtures/golden/${KUBERNETES_TAG}/api/discovery.yaml`, registry)],
   [path.join(repoRoot, 'packages', 'k8s', 'src', 'openapi', 'data', `${KUBERNETES_TAG}.golayout.ts`), generated(`the Go types of ${KUBERNETES_TAG} (Go struct layouts)`, golayout)],
 ];
-if (process.argv.includes('--descriptions')) {
-  outputs.push([path.join(repoRoot, 'packages', 'k8s', 'src', 'openapi', 'data', `${KUBERNETES_TAG}.descriptions.ts`), generated(`the OpenAPI v3 documents of ${KUBERNETES_TAG}`, descs)]);
-}
 let failed = false;
 for (const [file, text] of outputs) {
   const old = existsSync(file) ? readFileSync(file, 'utf8') : undefined;

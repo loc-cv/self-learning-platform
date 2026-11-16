@@ -1,0 +1,1832 @@
+# Captured from fixtures/golden/cases/explain/resources.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: explain/resources
+description: kubectl explain of resources and nested fields from the server's OpenAPI v3 documents - groups, short names, arrays, maps, enums, required fields and refs to non-object types.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - run: kubectl explain deployment.spec.strategy
+    exit: 0
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+      FIELD: strategy <DeploymentStrategy>
+
+
+      DESCRIPTION:
+          The deployment strategy to use to replace existing pods with new ones.
+          DeploymentStrategy describes how to replace existing pods with new ones.
+          
+      FIELDS:
+        rollingUpdate	<RollingUpdateDeployment>
+          Rolling update config params. Present only if DeploymentStrategyType =
+          RollingUpdate.
+
+        type	<string>
+        enum: Recreate, RollingUpdate
+          Type of deployment. Can be "Recreate" or "RollingUpdate". Default is
+          RollingUpdate.
+          
+          Possible enum values:
+           - `"Recreate"` Kill all existing pods before creating new ones.
+           - `"RollingUpdate"` Replace the old ReplicaSets by new one using rolling
+          update i.e gradually scale down the old ReplicaSets and scale up the new
+          one.
+
+
+    stderr: ""
+  - run: kubectl explain pods
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      DESCRIPTION:
+          Pod is a collection of containers that can run on a host. This resource is
+          created by clients and scheduled onto hosts.
+          
+      FIELDS:
+        apiVersion	<string>
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+        kind	<string>
+          Kind is a string value representing the REST resource this object
+          represents. Servers may infer this from the endpoint the client submits
+          requests to. Cannot be updated. In CamelCase. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+        metadata	<ObjectMeta>
+          Standard object's metadata. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+        spec	<PodSpec>
+          Specification of the desired behavior of the pod. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+        status	<PodStatus>
+          Most recently observed status of the pod. This data may not be up to date.
+          Populated by the system. Read-only. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+
+    stderr: ""
+  - run: kubectl explain deploy
+    exit: 0
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+      DESCRIPTION:
+          Deployment enables declarative updates for Pods and ReplicaSets.
+          
+      FIELDS:
+        apiVersion	<string>
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+        kind	<string>
+          Kind is a string value representing the REST resource this object
+          represents. Servers may infer this from the endpoint the client submits
+          requests to. Cannot be updated. In CamelCase. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+        metadata	<ObjectMeta>
+          Standard object's metadata. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+        spec	<DeploymentSpec> -required-
+          Specification of the desired behavior of the Deployment.
+
+        status	<DeploymentStatus>
+          Most recently observed status of the Deployment.
+
+
+    stderr: ""
+  - run: kubectl explain deployments.apps
+    exit: 0
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+      DESCRIPTION:
+          Deployment enables declarative updates for Pods and ReplicaSets.
+          
+      FIELDS:
+        apiVersion	<string>
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+        kind	<string>
+          Kind is a string value representing the REST resource this object
+          represents. Servers may infer this from the endpoint the client submits
+          requests to. Cannot be updated. In CamelCase. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+        metadata	<ObjectMeta>
+          Standard object's metadata. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+        spec	<DeploymentSpec> -required-
+          Specification of the desired behavior of the Deployment.
+
+        status	<DeploymentStatus>
+          Most recently observed status of the Deployment.
+
+
+    stderr: ""
+  - run: kubectl explain deployments.apps.spec.strategy.rollingUpdate
+    exit: 0
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+      FIELD: rollingUpdate <RollingUpdateDeployment>
+
+
+      DESCRIPTION:
+          Rolling update config params. Present only if DeploymentStrategyType =
+          RollingUpdate.
+          Spec to control the desired behavior of rolling update.
+          
+      FIELDS:
+        maxSurge	<IntOrString>
+          The maximum number of pods that can be scheduled above the desired number of
+          pods. Value can be an absolute number (ex: 5) or a percentage of desired
+          pods (ex: 10%). This can not be 0 if MaxUnavailable is 0. Absolute number is
+          calculated from percentage by rounding up. Defaults to 25%. Example: when
+          this is set to 30%, the new ReplicaSet can be scaled up immediately when the
+          rolling update starts, such that the total number of old and new pods do not
+          exceed 130% of desired pods. Once old pods have been killed, new ReplicaSet
+          can be scaled up further, ensuring that total number of pods running at any
+          time during the update is at most 130% of desired pods.
+
+        maxUnavailable	<IntOrString>
+          The maximum number of pods that can be unavailable during the update. Value
+          can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
+          Absolute number is calculated from percentage by rounding down. This can not
+          be 0 if MaxSurge is 0. Defaults to 25%. Example: when this is set to 30%,
+          the old ReplicaSet can be scaled down to 70% of desired pods immediately
+          when the rolling update starts. Once new pods are ready, old ReplicaSet can
+          be scaled down further, followed by scaling up the new ReplicaSet, ensuring
+          that the total number of pods available at all times during the update is at
+          least 70% of desired pods.
+
+
+    stderr: ""
+  - run: kubectl explain deploy.spec.strategy.rollingUpdate.maxSurge
+    exit: 0
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+      FIELD: maxSurge <IntOrString>
+
+
+      DESCRIPTION:
+          The maximum number of pods that can be scheduled above the desired number of
+          pods. Value can be an absolute number (ex: 5) or a percentage of desired
+          pods (ex: 10%). This can not be 0 if MaxUnavailable is 0. Absolute number is
+          calculated from percentage by rounding up. Defaults to 25%. Example: when
+          this is set to 30%, the new ReplicaSet can be scaled up immediately when the
+          rolling update starts, such that the total number of old and new pods do not
+          exceed 130% of desired pods. Once old pods have been killed, new ReplicaSet
+          can be scaled up further, ensuring that total number of pods running at any
+          time during the update is at most 130% of desired pods.
+          IntOrString is a type that can hold an int32 or a string.  When used in JSON
+          or YAML marshalling and unmarshalling, it produces or consumes the inner
+          type.  This allows you to have, for example, a JSON field that can accept a
+          name or number.
+          
+
+    stderr: ""
+  - run: kubectl explain pod.spec.containers
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: containers <[]Container>
+
+
+      DESCRIPTION:
+          List of containers belonging to the pod. Containers cannot currently be
+          added or removed. There must be at least one container in a Pod. Cannot be
+          updated.
+          A single application container that you want to run within a pod.
+          
+      FIELDS:
+        args	<[]string>
+          Arguments to the entrypoint. The container image's CMD is used if this is
+          not provided. Variable references $(VAR_NAME) are expanded using the
+          container's environment. If a variable cannot be resolved, the reference in
+          the input string will be unchanged. Double $$ are reduced to a single $,
+          which allows for escaping the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will
+          produce the string literal "$(VAR_NAME)". Escaped references will never be
+          expanded, regardless of whether the variable exists or not. Cannot be
+          updated. More info:
+          https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+
+        command	<[]string>
+          Entrypoint array. Not executed within a shell. The container image's
+          ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME)
+          are expanded using the container's environment. If a variable cannot be
+          resolved, the reference in the input string will be unchanged. Double $$ are
+          reduced to a single $, which allows for escaping the $(VAR_NAME) syntax:
+          i.e. "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)". Escaped
+          references will never be expanded, regardless of whether the variable exists
+          or not. Cannot be updated. More info:
+          https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell
+
+        env	<[]EnvVar>
+          List of environment variables to set in the container. Cannot be updated.
+
+        envFrom	<[]EnvFromSource>
+          List of sources to populate environment variables in the container. The keys
+          defined within a source may consist of any printable ASCII characters except
+          '='. When a key exists in multiple sources, the value associated with the
+          last source will take precedence. Values defined by an Env with a duplicate
+          key will take precedence. Cannot be updated.
+
+        image	<string>
+          Container image name. More info:
+          https://kubernetes.io/docs/concepts/containers/images This field is optional
+          to allow higher level config management to default or override container
+          images in workload controllers like Deployments and StatefulSets.
+
+        imagePullPolicy	<string>
+        enum: Always, IfNotPresent, Never
+          Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if
+          :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More
+          info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+          
+          Possible enum values:
+           - `"Always"` means that kubelet always attempts to pull the latest image.
+          Container will fail If the pull fails.
+           - `"IfNotPresent"` means that kubelet pulls if the image isn't present on
+          disk. Container will fail if the image isn't present and the pull fails.
+           - `"Never"` means that kubelet never pulls an image, but only uses a local
+          image. Container will fail if the image isn't present
+
+        lifecycle	<Lifecycle>
+          Actions that the management system should take in response to container
+          lifecycle events. Cannot be updated.
+
+        livenessProbe	<Probe>
+          Periodic probe of container liveness. Container will be restarted if the
+          probe fails. Cannot be updated. More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+
+        name	<string> -required-
+          Name of the container specified as a DNS_LABEL. Each container in a pod must
+          have a unique name (DNS_LABEL). Cannot be updated.
+
+        ports	<[]ContainerPort>
+          List of ports to expose from the container. Not specifying a port here DOES
+          NOT prevent that port from being exposed. Any port which is listening on the
+          default "0.0.0.0" address inside a container will be accessible from the
+          network. Modifying this array with strategic merge patch may corrupt the
+          data. For more information See
+          https://github.com/kubernetes/kubernetes/issues/108255. Cannot be updated.
+
+        readinessProbe	<Probe>
+          Periodic probe of container service readiness. Container will be removed
+          from service endpoints if the probe fails. Cannot be updated. More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+
+        resizePolicy	<[]ContainerResizePolicy>
+          Resources resize policy for the container. This field cannot be set on
+          ephemeral containers.
+
+        resources	<ResourceRequirements>
+          Compute Resources required by this container. Cannot be updated. More info:
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+        restartPolicy	<string>
+          RestartPolicy defines the restart behavior of individual containers in a
+          pod. This overrides the pod-level restart policy. When this field is not
+          specified, the restart behavior is defined by the Pod's restart policy and
+          the container type. Additionally, setting the RestartPolicy as "Always" for
+          the init container will have the following effect: this init container will
+          be continually restarted on exit until all regular containers have
+          terminated. Once all regular containers have completed, all init containers
+          with restartPolicy "Always" will be shut down. This lifecycle differs from
+          normal init containers and is often referred to as a "sidecar" container.
+          Although this init container still starts in the init container sequence, it
+          does not wait for the container to complete before proceeding to the next
+          init container. Instead, the next init container starts immediately after
+          this init container is started, or after any startupProbe has successfully
+          completed.
+
+        restartPolicyRules	<[]ContainerRestartRule>
+          Represents a list of rules to be checked to determine if the container
+          should be restarted on exit. The rules are evaluated in order. Once a rule
+          matches a container exit condition, the remaining rules are ignored. If no
+          rule matches the container exit condition, the Container-level restart
+          policy determines the whether the container is restarted or not. Constraints
+          on the rules: - At most 20 rules are allowed. - Rules can have the same
+          action. - Identical rules are not forbidden in validations. When rules are
+          specified, container MUST set RestartPolicy explicitly even it if matches
+          the Pod's RestartPolicy.
+
+        securityContext	<SecurityContext>
+          SecurityContext defines the security options the container should be run
+          with. If set, the fields of SecurityContext override the equivalent fields
+          of PodSecurityContext. More info:
+          https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+
+        startupProbe	<Probe>
+          StartupProbe indicates that the Pod has successfully initialized. If
+          specified, no other probes are executed until this completes successfully.
+          If this probe fails, the Pod will be restarted, just as if the livenessProbe
+          failed. This can be used to provide different probe parameters at the
+          beginning of a Pod's lifecycle, when it might take a long time to load data
+          or warm a cache, than during steady-state operation. This cannot be updated.
+          More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+
+        stdin	<boolean>
+          Whether this container should allocate a buffer for stdin in the container
+          runtime. If this is not set, reads from stdin in the container will always
+          result in EOF. Default is false.
+
+        stdinOnce	<boolean>
+          Whether the container runtime should close the stdin channel after it has
+          been opened by a single attach. When stdin is true the stdin stream will
+          remain open across multiple attach sessions. If stdinOnce is set to true,
+          stdin is opened on container start, is empty until the first client attaches
+          to stdin, and then remains open and accepts data until the client
+          disconnects, at which time stdin is closed and remains closed until the
+          container is restarted. If this flag is false, a container processes that
+          reads from stdin will never receive an EOF. Default is false
+
+        terminationMessagePath	<string>
+          Optional: Path at which the file to which the container's termination
+          message will be written is mounted into the container's filesystem. Message
+          written is intended to be brief final status, such as an assertion failure
+          message. Will be truncated by the node if greater than 4096 bytes. The total
+          message length across all containers will be limited to 12kb. Defaults to
+          /dev/termination-log. Cannot be updated.
+
+        terminationMessagePolicy	<string>
+        enum: FallbackToLogsOnError, File
+          Indicate how the termination message should be populated. File will use the
+          contents of terminationMessagePath to populate the container status message
+          on both success and failure. FallbackToLogsOnError will use the last chunk
+          of container log output if the termination message file is empty and the
+          container exited with an error. The log output is limited to 2048 bytes or
+          80 lines, whichever is smaller. Defaults to File. Cannot be updated.
+          
+          Possible enum values:
+           - `"FallbackToLogsOnError"` will read the most recent contents of the
+          container logs for the container status message when the container exits
+          with an error and the terminationMessagePath has no contents.
+           - `"File"` is the default behavior and will set the container status
+          message to the contents of the container's terminationMessagePath when the
+          container exits.
+
+        tty	<boolean>
+          Whether this container should allocate a TTY for itself, also requires
+          'stdin' to be true. Default is false.
+
+        volumeDevices	<[]VolumeDevice>
+          volumeDevices is the list of block devices to be used by the container.
+
+        volumeMounts	<[]VolumeMount>
+          Pod volumes to mount into the container's filesystem. Cannot be updated.
+
+        workingDir	<string>
+          Container's working directory. If not specified, the container runtime's
+          default will be used, which might be configured in the container image.
+          Cannot be updated.
+
+
+    stderr: ""
+  - run: kubectl explain pod.spec.containers.resources
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: resources <ResourceRequirements>
+
+
+      DESCRIPTION:
+          Compute Resources required by this container. Cannot be updated. More info:
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          ResourceRequirements describes the compute resource requirements.
+          
+      FIELDS:
+        claims	<[]ResourceClaim>
+          Claims lists the names of resources, defined in spec.resourceClaims, that
+          are used by this container.
+          
+          This field depends on the DynamicResourceAllocation feature gate.
+          
+          This field is immutable. It can only be set for containers.
+
+        limits	<map[string]Quantity>
+          Limits describes the maximum amount of compute resources allowed. More info:
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+        requests	<map[string]Quantity>
+          Requests describes the minimum amount of compute resources required. If
+          Requests is omitted for a container, it defaults to Limits if that is
+          explicitly specified, otherwise to an implementation-defined value. Requests
+          cannot exceed Limits. More info:
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+
+    stderr: ""
+  - run: kubectl explain pods.spec.containers.resources.limits
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: limits <map[string]Quantity>
+
+
+      DESCRIPTION:
+          Limits describes the maximum amount of compute resources allowed. More info:
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          Quantity is a fixed-point representation of a number. It provides convenient
+          marshaling/unmarshaling in JSON and YAML, in addition to String() and
+          AsInt64() accessors.
+          
+          The serialization format is:
+          
+          ``` <quantity>        ::= <signedNumber><suffix>
+          
+          	(Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+          
+          <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> |
+          <digit><digits> <number>          ::= <digits> | <digits>.<digits> |
+          <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::=
+          <number> | <sign><number> <suffix>          ::= <binarySI> |
+          <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi
+          | Ei
+          
+          	(International System of units; See:
+          http://physics.nist.gov/cuu/Units/binary.html)
+          
+          <decimalSI>       ::= m | "" | k | M | G | T | P | E
+          
+          	(Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+          
+          <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber> ```
+          
+          No matter which of the three exponent forms is used, no quantity may
+          represent a number greater than 2^63-1 in magnitude, nor may it have more
+          than 3 decimal places. Numbers larger or more precise will be capped or
+          rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the
+          future if we require larger or smaller quantities.
+          
+          When a Quantity is parsed from a string, it will remember the type of suffix
+          it had, and will use the same type again when it is serialized.
+          
+          Before serializing, Quantity will be put in "canonical form". This means
+          that Exponent/suffix will be adjusted up or down (with a corresponding
+          increase or decrease in Mantissa) such that:
+          
+          - No precision is lost - No fractional digits will be emitted - The exponent
+          (or suffix) is as large as possible.
+          
+          The sign will be omitted unless the number is negative.
+          
+          Examples:
+          
+          - 1.5 will be serialized as "1500m" - 1.5Gi will be serialized as "1536Mi"
+          
+          Note that the quantity will NEVER be internally represented by a floating
+          point number. That is the whole point of this exercise.
+          
+          Non-canonical values will still parse as long as they are well formed, but
+          will be re-emitted in their canonical form. (So always use canonical form,
+          or don't diff.)
+          
+          This format is intended to make it difficult to use these numbers without
+          writing some sort of special handling code in the hopes that that will cause
+          implementors to also use a fixed point implementation.
+          
+
+    stderr: ""
+  - run: kubectl explain pod.spec.restartPolicy
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: restartPolicy <string>
+      ENUM:
+          Always
+          Never
+          OnFailure
+
+      DESCRIPTION:
+          Restart policy for all containers within the pod. One of Always, OnFailure,
+          Never. In some contexts, only a subset of those values may be permitted.
+          Default to Always. More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+          
+          Possible enum values:
+           - `"Always"`
+           - `"Never"`
+           - `"OnFailure"`
+          
+
+    stderr: ""
+  - run: kubectl explain svc.spec.type
+    exit: 0
+    stdout: |+
+      KIND:       Service
+      VERSION:    v1
+
+      FIELD: type <string>
+      ENUM:
+          ClusterIP
+          ExternalName
+          LoadBalancer
+          NodePort
+
+      DESCRIPTION:
+          type determines how the Service is exposed. Defaults to ClusterIP. Valid
+          options are ExternalName, ClusterIP, NodePort, and LoadBalancer. "ClusterIP"
+          allocates a cluster-internal IP address for load-balancing to endpoints.
+          Endpoints are determined by the selector or if that is not specified, by
+          manual construction of an Endpoints object or EndpointSlice objects. If
+          clusterIP is "None", no virtual IP is allocated and the endpoints are
+          published as a set of endpoints rather than a virtual IP. "NodePort" builds
+          on ClusterIP and allocates a port on every node which routes to the same
+          endpoints as the clusterIP. "LoadBalancer" builds on NodePort and creates an
+          external load-balancer (if supported in the current cloud) which routes to
+          the same endpoints as the clusterIP. "ExternalName" aliases this service to
+          the specified externalName. Several other fields do not apply to
+          ExternalName services. More info:
+          https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+          
+          Possible enum values:
+           - `"ClusterIP"` means a service will only be accessible inside the cluster,
+          via the cluster IP.
+           - `"ExternalName"` means a service consists of only a reference to an
+          external name that kubedns or equivalent will return as a CNAME record, with
+          no exposing or proxying of any pods involved.
+           - `"LoadBalancer"` means a service will be exposed via an external load
+          balancer (if the cloud provider supports it), in addition to 'NodePort'
+          type.
+           - `"NodePort"` means a service will be exposed on one port of every node,
+          in addition to 'ClusterIP' type.
+          
+
+    stderr: ""
+  - run: kubectl explain svc.spec
+    exit: 0
+    stdout: |+
+      KIND:       Service
+      VERSION:    v1
+
+      FIELD: spec <ServiceSpec>
+
+
+      DESCRIPTION:
+          Spec defines the behavior of a service.
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+          ServiceSpec describes the attributes that a user creates on a service.
+          
+      FIELDS:
+        allocateLoadBalancerNodePorts	<boolean>
+          allocateLoadBalancerNodePorts defines if NodePorts will be automatically
+          allocated for services with type LoadBalancer.  Default is "true". It may be
+          set to "false" if the cluster load-balancer does not rely on NodePorts.  If
+          the caller requests specific NodePorts (by specifying a value), those
+          requests will be respected, regardless of this field. This field may only be
+          set for services with type LoadBalancer and will be cleared if the type is
+          changed to any other type.
+
+        clusterIP	<string>
+          clusterIP is the IP address of the service and is usually assigned randomly.
+          If an address is specified manually, is in-range (as per system
+          configuration), and is not in use, it will be allocated to the service;
+          otherwise creation of the service will fail. This field may not be changed
+          through updates unless the type field is also being changed to ExternalName
+          (which requires this field to be blank) or the type field is being changed
+          from ExternalName (in which case this field may optionally be specified, as
+          describe above).  Valid values are "None", empty string (""), or a valid IP
+          address. Setting this to "None" makes a "headless service" (no virtual IP),
+          which is useful when direct endpoint connections are preferred and proxying
+          is not required.  Only applies to types ClusterIP, NodePort, and
+          LoadBalancer. If this field is specified when creating a Service of type
+          ExternalName, creation will fail. This field will be wiped when updating a
+          Service to type ExternalName. More info:
+          https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+
+        clusterIPs	<[]string>
+          ClusterIPs is a list of IP addresses assigned to this service, and are
+          usually assigned randomly.  If an address is specified manually, is in-range
+          (as per system configuration), and is not in use, it will be allocated to
+          the service; otherwise creation of the service will fail. This field may not
+          be changed through updates unless the type field is also being changed to
+          ExternalName (which requires this field to be empty) or the type field is
+          being changed from ExternalName (in which case this field may optionally be
+          specified, as describe above).  Valid values are "None", empty string (""),
+          or a valid IP address.  Setting this to "None" makes a "headless service"
+          (no virtual IP), which is useful when direct endpoint connections are
+          preferred and proxying is not required.  Only applies to types ClusterIP,
+          NodePort, and LoadBalancer. If this field is specified when creating a
+          Service of type ExternalName, creation will fail. This field will be wiped
+          when updating a Service to type ExternalName.  If this field is not
+          specified, it will be initialized from the clusterIP field.  If this field
+          is specified, clients must ensure that clusterIPs[0] and clusterIP have the
+          same value.
+          
+          This field may hold a maximum of two entries (dual-stack IPs, in either
+          order). These IPs must correspond to the values of the ipFamilies field.
+          Both clusterIPs and ipFamilies are governed by the ipFamilyPolicy field.
+          More info:
+          https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+
+        externalIPs	<[]string>
+          externalIPs is a list of IP addresses for which nodes in the cluster will
+          also accept traffic for this service.  These IPs are not managed by
+          Kubernetes.  The user is responsible for ensuring that traffic arrives at a
+          node with this IP.  A common example is external load-balancers that are not
+          part of the Kubernetes system.
+
+        externalName	<string>
+          externalName is the external reference that discovery mechanisms will return
+          as an alias for this service (e.g. a DNS CNAME record). No proxying will be
+          involved.  Must be a lowercase RFC-1123 hostname
+          (https://tools.ietf.org/html/rfc1123) and requires `type` to be
+          "ExternalName".
+
+        externalTrafficPolicy	<string>
+        enum: Cluster, Local
+          externalTrafficPolicy describes how nodes distribute service traffic they
+          receive on one of the Service's "externally-facing" addresses (NodePorts,
+          ExternalIPs, and LoadBalancer IPs). If set to "Local", the proxy will
+          configure the service in a way that assumes that external load balancers
+          will take care of balancing the service traffic between nodes, and so each
+          node will deliver traffic only to the node-local endpoints of the service,
+          without masquerading the client source IP. (Traffic mistakenly sent to a
+          node with no endpoints will be dropped.) The default value, "Cluster", uses
+          the standard behavior of routing to all endpoints evenly (possibly modified
+          by topology and other features). Note that traffic sent to an External IP or
+          LoadBalancer IP from within the cluster will always get "Cluster" semantics,
+          but clients sending to a NodePort from within the cluster may need to take
+          traffic policy into account when picking a node.
+          
+          Possible enum values:
+           - `"Cluster"` routes traffic to all endpoints.
+           - `"Local"` preserves the source IP of the traffic by routing only to
+          endpoints on the same node as the traffic was received on (dropping the
+          traffic if there are no local endpoints).
+
+        healthCheckNodePort	<integer>
+          healthCheckNodePort specifies the healthcheck nodePort for the service. This
+          only applies when type is set to LoadBalancer and externalTrafficPolicy is
+          set to Local. If a value is specified, is in-range, and is not in use, it
+          will be used.  If not specified, a value will be automatically allocated.
+          External systems (e.g. load-balancers) can use this port to determine if a
+          given node holds endpoints for this service or not.  If this field is
+          specified when creating a Service which does not need it, creation will
+          fail. This field will be wiped when updating a Service to no longer need it
+          (e.g. changing type). This field cannot be updated once set.
+
+        internalTrafficPolicy	<string>
+        enum: Cluster, Local
+          InternalTrafficPolicy describes how nodes distribute service traffic they
+          receive on the ClusterIP. If set to "Local", the proxy will assume that pods
+          only want to talk to endpoints of the service on the same node as the pod,
+          dropping the traffic if there are no local endpoints. The default value,
+          "Cluster", uses the standard behavior of routing to all endpoints evenly
+          (possibly modified by topology and other features).
+          
+          Possible enum values:
+           - `"Cluster"` routes traffic to all endpoints.
+           - `"Local"` routes traffic only to endpoints on the same node as the client
+          pod (dropping the traffic if there are no local endpoints).
+
+        ipFamilies	<[]string>
+          IPFamilies is a list of IP families (e.g. IPv4, IPv6) assigned to this
+          service. This field is usually assigned automatically based on cluster
+          configuration and the ipFamilyPolicy field. If this field is specified
+          manually, the requested family is available in the cluster, and
+          ipFamilyPolicy allows it, it will be used; otherwise creation of the service
+          will fail. This field is conditionally mutable: it allows for adding or
+          removing a secondary IP family, but it does not allow changing the primary
+          IP family of the Service. Valid values are "IPv4" and "IPv6".  This field
+          only applies to Services of types ClusterIP, NodePort, and LoadBalancer, and
+          does apply to "headless" services. This field will be wiped when updating a
+          Service to type ExternalName.
+          
+          This field may hold a maximum of two entries (dual-stack families, in either
+          order).  These families must correspond to the values of the clusterIPs
+          field, if specified. Both clusterIPs and ipFamilies are governed by the
+          ipFamilyPolicy field.
+
+        ipFamilyPolicy	<string>
+        enum: PreferDualStack, RequireDualStack, SingleStack
+          IPFamilyPolicy represents the dual-stack-ness requested or required by this
+          Service. If there is no value provided, then this field will be set to
+          SingleStack. Services can be "SingleStack" (a single IP family),
+          "PreferDualStack" (two IP families on dual-stack configured clusters or a
+          single IP family on single-stack clusters), or "RequireDualStack" (two IP
+          families on dual-stack configured clusters, otherwise fail). The ipFamilies
+          and clusterIPs fields depend on the value of this field. This field will be
+          wiped when updating a service to type ExternalName.
+          
+          Possible enum values:
+           - `"PreferDualStack"` indicates that this service prefers dual-stack when
+          the cluster is configured for dual-stack. If the cluster is not configured
+          for dual-stack the service will be assigned a single IPFamily. If the
+          IPFamily is not set in service.spec.ipFamilies then the service will be
+          assigned the default IPFamily configured on the cluster
+           - `"RequireDualStack"` indicates that this service requires dual-stack.
+          Using IPFamilyPolicyRequireDualStack on a single stack cluster will result
+          in validation errors. The IPFamilies (and their order) assigned to this
+          service is based on service.spec.ipFamilies. If service.spec.ipFamilies was
+          not provided then it will be assigned according to how they are configured
+          on the cluster. If service.spec.ipFamilies has only one entry then the
+          alternative IPFamily will be added by apiserver
+           - `"SingleStack"` indicates that this service is required to have a single
+          IPFamily. The IPFamily assigned is based on the default IPFamily used by the
+          cluster or as identified by service.spec.ipFamilies field
+
+        loadBalancerClass	<string>
+          loadBalancerClass is the class of the load balancer implementation this
+          Service belongs to. If specified, the value of this field must be a
+          label-style identifier, with an optional prefix, e.g. "internal-vip" or
+          "example.com/internal-vip". Unprefixed names are reserved for end-users.
+          This field can only be set when the Service type is 'LoadBalancer'. If not
+          set, the default load balancer implementation is used, today this is
+          typically done through the cloud provider integration, but should apply for
+          any default implementation. If set, it is assumed that a load balancer
+          implementation is watching for Services with a matching class. Any default
+          load balancer implementation (e.g. cloud providers) should ignore Services
+          that set this field. This field can only be set when creating or updating a
+          Service to type 'LoadBalancer'. Once set, it can not be changed. This field
+          will be wiped when a service is updated to a non 'LoadBalancer' type.
+
+        loadBalancerIP	<string>
+          Only applies to Service Type: LoadBalancer. This feature depends on whether
+          the underlying cloud-provider supports specifying the loadBalancerIP when a
+          load balancer is created. This field will be ignored if the cloud-provider
+          does not support the feature. Deprecated: This field was under-specified and
+          its meaning varies across implementations. Using it is non-portable and it
+          may not support dual-stack. Users are encouraged to use
+          implementation-specific annotations when available.
+
+        loadBalancerSourceRanges	<[]string>
+          If specified and supported by the platform, this will restrict traffic
+          through the cloud-provider load-balancer will be restricted to the specified
+          client IPs. This field will be ignored if the cloud-provider does not
+          support the feature." More info:
+          https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/
+
+        ports	<[]ServicePort>
+          The list of ports that are exposed by this service. More info:
+          https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+
+        publishNotReadyAddresses	<boolean>
+          publishNotReadyAddresses indicates that any agent which deals with endpoints
+          for this Service should disregard any indications of ready/not-ready. The
+          primary use case for setting this field is for a StatefulSet's Headless
+          Service to propagate SRV DNS records for its Pods for the purpose of peer
+          discovery. The Kubernetes controllers that generate Endpoints and
+          EndpointSlice resources for Services interpret this to mean that all
+          endpoints are considered "ready" even if the Pods themselves are not. Agents
+          which consume only Kubernetes generated endpoints through the Endpoints or
+          EndpointSlice resources can safely assume this behavior.
+
+        selector	<map[string]string>
+          Route service traffic to pods with label keys and values matching this
+          selector. If empty or not present, the service is assumed to have an
+          external process managing its endpoints, which Kubernetes will not modify.
+          Only applies to types ClusterIP, NodePort, and LoadBalancer. Ignored if type
+          is ExternalName. More info:
+          https://kubernetes.io/docs/concepts/services-networking/service/
+
+        sessionAffinity	<string>
+        enum: ClientIP, None
+          Supports "ClientIP" and "None". Used to maintain session affinity. Enable
+          client IP based session affinity. Must be ClientIP or None. Defaults to
+          None. More info:
+          https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
+          
+          Possible enum values:
+           - `"ClientIP"` is the Client IP based.
+           - `"None"` - no session affinity.
+
+        sessionAffinityConfig	<SessionAffinityConfig>
+          sessionAffinityConfig contains the configurations of session affinity.
+
+        trafficDistribution	<string>
+          TrafficDistribution offers a way to express preferences for how traffic is
+          distributed to Service endpoints. Implementations can use this field as a
+          hint, but are not required to guarantee strict adherence. If the field is
+          not set, the implementation will apply its default routing strategy. If set
+          to "PreferClose", implementations should prioritize endpoints that are in
+          the same zone.
+
+        type	<string>
+        enum: ClusterIP, ExternalName, LoadBalancer, NodePort
+          type determines how the Service is exposed. Defaults to ClusterIP. Valid
+          options are ExternalName, ClusterIP, NodePort, and LoadBalancer. "ClusterIP"
+          allocates a cluster-internal IP address for load-balancing to endpoints.
+          Endpoints are determined by the selector or if that is not specified, by
+          manual construction of an Endpoints object or EndpointSlice objects. If
+          clusterIP is "None", no virtual IP is allocated and the endpoints are
+          published as a set of endpoints rather than a virtual IP. "NodePort" builds
+          on ClusterIP and allocates a port on every node which routes to the same
+          endpoints as the clusterIP. "LoadBalancer" builds on NodePort and creates an
+          external load-balancer (if supported in the current cloud) which routes to
+          the same endpoints as the clusterIP. "ExternalName" aliases this service to
+          the specified externalName. Several other fields do not apply to
+          ExternalName services. More info:
+          https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+          
+          Possible enum values:
+           - `"ClusterIP"` means a service will only be accessible inside the cluster,
+          via the cluster IP.
+           - `"ExternalName"` means a service consists of only a reference to an
+          external name that kubedns or equivalent will return as a CNAME record, with
+          no exposing or proxying of any pods involved.
+           - `"LoadBalancer"` means a service will be exposed via an external load
+          balancer (if the cloud provider supports it), in addition to 'NodePort'
+          type.
+           - `"NodePort"` means a service will be exposed on one port of every node,
+          in addition to 'ClusterIP' type.
+
+
+    stderr: ""
+  - run: kubectl explain cm.data
+    exit: 0
+    stdout: |+
+      KIND:       ConfigMap
+      VERSION:    v1
+
+      FIELD: data <map[string]string>
+
+
+      DESCRIPTION:
+          Data contains the configuration data. Each key must consist of alphanumeric
+          characters, '-', '_' or '.'. Values with non-UTF-8 byte sequences must use
+          the BinaryData field. The keys stored in Data must not overlap with the keys
+          in the BinaryData field, this is enforced during validation process.
+          
+
+    stderr: ""
+  - run: kubectl explain pods.metadata.labels
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: labels <map[string]string>
+
+
+      DESCRIPTION:
+          Map of string keys and values that can be used to organize and categorize
+          (scope and select) objects. May match selectors of replication controllers
+          and services. More info:
+          https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+          
+
+    stderr: ""
+  - run: kubectl explain node.status.conditions
+    exit: 0
+    stdout: |+
+      KIND:       Node
+      VERSION:    v1
+
+      FIELD: conditions <[]NodeCondition>
+
+
+      DESCRIPTION:
+          Conditions is an array of current observed node conditions. More info:
+          https://kubernetes.io/docs/reference/node/node-status/#condition
+          NodeCondition contains condition information for a node.
+          
+      FIELDS:
+        lastHeartbeatTime	<string>
+          Last time we got an update on a given condition.
+
+        lastTransitionTime	<string>
+          Last time the condition transit from one status to another.
+
+        message	<string>
+          Human readable message indicating details about last transition.
+
+        reason	<string>
+          (brief) reason for the condition's last transition.
+
+        status	<string> -required-
+          Status of the condition, one of True, False, Unknown.
+
+        type	<string> -required-
+          Type of node condition.
+
+
+    stderr: ""
+  - run: kubectl explain hpa
+    exit: 0
+    stdout: |+
+      GROUP:      autoscaling
+      KIND:       HorizontalPodAutoscaler
+      VERSION:    v2
+
+      DESCRIPTION:
+          HorizontalPodAutoscaler is the configuration for a horizontal pod
+          autoscaler, which automatically manages the replica count of any resource
+          implementing the scale subresource based on the metrics specified.
+          
+      FIELDS:
+        apiVersion	<string>
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+        kind	<string>
+          Kind is a string value representing the REST resource this object
+          represents. Servers may infer this from the endpoint the client submits
+          requests to. Cannot be updated. In CamelCase. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+        metadata	<ObjectMeta>
+          metadata is the standard object metadata. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+        spec	<HorizontalPodAutoscalerSpec> -required-
+          spec is the specification for the behaviour of the autoscaler. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status.
+
+        status	<HorizontalPodAutoscalerStatus>
+          status is the current information about the autoscaler.
+
+
+    stderr: ""
+  - run: kubectl explain events
+    exit: 0
+    stdout: |+
+      KIND:       Event
+      VERSION:    v1
+
+      DESCRIPTION:
+          Event is a report of an event somewhere in the cluster.  Events have a
+          limited retention time and triggers and messages may evolve with time.
+          Event consumers should not rely on the timing of an event with a given
+          Reason reflecting a consistent underlying trigger, or the continued
+          existence of events with that Reason.  Events should be treated as
+          informative, best-effort, supplemental data.
+          
+      FIELDS:
+        action	<string>
+          What action was taken/failed regarding to the Regarding object.
+
+        apiVersion	<string>
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+        count	<integer>
+          The number of times this event has occurred.
+
+        eventTime	<string>
+          Time when this Event was first observed.
+
+        firstTimestamp	<string>
+          The time at which the event was first recorded. (Time of server receipt is
+          in TypeMeta.)
+
+        involvedObject	<ObjectReference> -required-
+          The object that this event is about.
+
+        kind	<string>
+          Kind is a string value representing the REST resource this object
+          represents. Servers may infer this from the endpoint the client submits
+          requests to. Cannot be updated. In CamelCase. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+        lastTimestamp	<string>
+          The time at which the most recent occurrence of this event was recorded.
+
+        message	<string>
+          A human-readable description of the status of this operation.
+
+        metadata	<ObjectMeta> -required-
+          Standard object's metadata. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+        reason	<string>
+          This should be a short, machine understandable string that gives the reason
+          for the transition into the object's current status.
+
+        related	<ObjectReference>
+          Optional secondary object for more complex actions.
+
+        reportingComponent	<string>
+          Name of the controller that emitted this Event, e.g.
+          `kubernetes.io/kubelet`.
+
+        reportingInstance	<string>
+          ID of the controller instance, e.g. `kubelet-xyzf`.
+
+        series	<EventSeries>
+          Data about the Event series this event represents or nil if it's a singleton
+          Event.
+
+        source	<EventSource>
+          The component reporting this event. Should be a short machine understandable
+          string.
+
+        type	<string>
+          Type of this event (Normal, Warning), new types could be added in the future
+
+
+    stderr: ""
+  - run: kubectl explain events.events.k8s.io
+    exit: 1
+    stdout: |+
+      KIND:       Event
+      VERSION:    v1
+
+    stderr: |
+      error: field "io" does not exist
+  - run: kubectl explain cronjob.spec.jobTemplate.spec.template.spec.containers.livenessProbe.httpGet.port
+    exit: 0
+    stdout: |+
+      GROUP:      batch
+      KIND:       CronJob
+      VERSION:    v1
+
+      FIELD: port <IntOrString>
+
+
+      DESCRIPTION:
+          Name or number of the port to access on the container. Number must be in the
+          range 1 to 65535. Name must be an IANA_SVC_NAME.
+          IntOrString is a type that can hold an int32 or a string.  When used in JSON
+          or YAML marshalling and unmarshalling, it produces or consumes the inner
+          type.  This allows you to have, for example, a JSON field that can accept a
+          name or number.
+          
+
+    stderr: ""
+  - run: kubectl explain crd.spec.versions.schema.openAPIV3Schema
+    exit: 0
+    stdout: |+
+      GROUP:      apiextensions.k8s.io
+      KIND:       CustomResourceDefinition
+      VERSION:    v1
+
+      FIELD: openAPIV3Schema <JSONSchemaProps>
+
+
+      DESCRIPTION:
+          openAPIV3Schema is the OpenAPI v3 schema to use for validation and pruning.
+          JSONSchemaProps is a JSON-Schema following Specification Draft 4
+          (http://json-schema.org/).
+          
+      FIELDS:
+        $ref	<string>
+          <no description>
+
+        $schema	<string>
+          <no description>
+
+        additionalItems	<JSONSchemaPropsOrBool>
+          <no description>
+
+        additionalProperties	<JSONSchemaPropsOrBool>
+          <no description>
+
+        allOf	<[]JSONSchemaProps>
+          <no description>
+
+        anyOf	<[]JSONSchemaProps>
+          <no description>
+
+        default	<JSON>
+          default is a default value for undefined object fields. Defaulting is a beta
+          feature under the CustomResourceDefaulting feature gate. Defaulting requires
+          spec.preserveUnknownFields to be false.
+
+        definitions	<map[string]JSONSchemaProps>
+          <no description>
+
+        dependencies	<map[string]JSONSchemaPropsOrStringArray>
+          <no description>
+
+        description	<string>
+          <no description>
+
+        enum	<[]JSON>
+          <no description>
+
+        example	<JSON>
+          <no description>
+
+        exclusiveMaximum	<boolean>
+          <no description>
+
+        exclusiveMinimum	<boolean>
+          <no description>
+
+        externalDocs	<ExternalDocumentation>
+          <no description>
+
+        format	<string>
+          format is an OpenAPI v3 format string. Unknown formats are ignored. The
+          following formats are validated:
+          
+          - bsonobjectid: a bson object ID, i.e. a 24 characters hex string - uri: an
+          URI as parsed by Golang net/url.ParseRequestURI - email: an email address as
+          parsed by Golang net/mail.ParseAddress - hostname: a valid representation
+          for an Internet host name, as defined by RFC 1034, section 3.1 [RFC1034]. -
+          ipv4: an IPv4 IP as parsed by Golang net.ParseIP - ipv6: an IPv6 IP as
+          parsed by Golang net.ParseIP - cidr: a CIDR as parsed by Golang
+          net.ParseCIDR - mac: a MAC address as parsed by Golang net.ParseMAC - uuid:
+          an UUID that allows uppercase defined by the regex
+          (?i)^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$ -
+          uuid3: an UUID3 that allows uppercase defined by the regex
+          (?i)^[0-9a-f]{8}-?[0-9a-f]{4}-?3[0-9a-f]{3}-?[0-9a-f]{4}-?[0-9a-f]{12}$ -
+          uuid4: an UUID4 that allows uppercase defined by the regex
+          (?i)^[0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12}$
+          - uuid5: an UUID5 that allows uppercase defined by the regex
+          (?i)^[0-9a-f]{8}-?[0-9a-f]{4}-?5[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12}$
+          - isbn: an ISBN10 or ISBN13 number string like "0321751043" or
+          "978-0321751041" - isbn10: an ISBN10 number string like "0321751043" -
+          isbn13: an ISBN13 number string like "978-0321751041" - creditcard: a credit
+          card number defined by the regex
+          ^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\d{3})\\d{11})$
+          with any non digit characters mixed in - ssn: a U.S. social security number
+          following the regex ^\\d{3}[- ]?\\d{2}[- ]?\\d{4}$ - hexcolor: an
+          hexadecimal color code like "#FFFFFF: following the regex
+          ^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$ - rgbcolor: an RGB color code like rgb
+          like "rgb(255,255,2559" - byte: base64 encoded binary data - password: any
+          kind of string - date: a date string like "2006-01-02" as defined by
+          full-date in RFC3339 - duration: a duration string like "22 ns" as parsed by
+          Golang time.ParseDuration or compatible with Scala duration format -
+          datetime: a date time string like "<<time>>" as defined by
+          date-time in RFC3339.
+
+        id	<string>
+          <no description>
+
+        items	<JSONSchemaPropsOrArray>
+          <no description>
+
+        maxItems	<integer>
+          <no description>
+
+        maxLength	<integer>
+          <no description>
+
+        maxProperties	<integer>
+          <no description>
+
+        maximum	<number>
+          <no description>
+
+        minItems	<integer>
+          <no description>
+
+        minLength	<integer>
+          <no description>
+
+        minProperties	<integer>
+          <no description>
+
+        minimum	<number>
+          <no description>
+
+        multipleOf	<number>
+          <no description>
+
+        not	<JSONSchemaProps>
+          <no description>
+
+        nullable	<boolean>
+          <no description>
+
+        oneOf	<[]JSONSchemaProps>
+          <no description>
+
+        pattern	<string>
+          <no description>
+
+        patternProperties	<map[string]JSONSchemaProps>
+          <no description>
+
+        properties	<map[string]JSONSchemaProps>
+          <no description>
+
+        required	<[]string>
+          <no description>
+
+        title	<string>
+          <no description>
+
+        type	<string>
+          <no description>
+
+        uniqueItems	<boolean>
+          <no description>
+
+        x-kubernetes-embedded-resource	<boolean>
+          x-kubernetes-embedded-resource defines that the value is an embedded
+          Kubernetes runtime.Object, with TypeMeta and ObjectMeta. The type must be
+          object. It is allowed to further restrict the embedded object. kind,
+          apiVersion and metadata are validated automatically.
+          x-kubernetes-preserve-unknown-fields is allowed to be true, but does not
+          have to be if the object is fully specified (up to kind, apiVersion,
+          metadata).
+
+        x-kubernetes-int-or-string	<boolean>
+          x-kubernetes-int-or-string specifies that this value is either an integer or
+          a string. If this is true, an empty type is allowed and type as child of
+          anyOf is permitted if following one of the following patterns:
+          
+          1) anyOf:
+             - type: integer
+             - type: string
+          2) allOf:
+             - anyOf:
+               - type: integer
+               - type: string
+             - ... zero or more
+
+        x-kubernetes-list-map-keys	<[]string>
+          x-kubernetes-list-map-keys annotates an array with the
+          x-kubernetes-list-type `map` by specifying the keys used as the index of the
+          map.
+          
+          This tag MUST only be used on lists that have the "x-kubernetes-list-type"
+          extension set to "map". Also, the values specified for this attribute must
+          be a scalar typed field of the child structure (no nesting is supported).
+          
+          The properties specified must either be required or have a default value, to
+          ensure those properties are present for all list items.
+
+        x-kubernetes-list-type	<string>
+          x-kubernetes-list-type annotates an array to further describe its topology.
+          This extension must only be used on lists and may have 3 possible values:
+          
+          1) `atomic`: the list is treated as a single entity, like a scalar.
+               Atomic lists will be entirely replaced when updated. This extension
+               may be used on any type of list (struct, scalar, ...).
+          2) `set`:
+               Sets are lists that must not have multiple items with the same value.
+          Each
+               value must be a scalar, an object with x-kubernetes-map-type `atomic`
+          or an
+               array with x-kubernetes-list-type `atomic`.
+          3) `map`:
+               These lists are like maps in that their elements have a non-index key
+               used to identify them. Order is preserved upon merge. The map tag
+               must only be used on a list with elements of type object.
+          Defaults to atomic for arrays.
+
+        x-kubernetes-map-type	<string>
+          x-kubernetes-map-type annotates an object to further describe its topology.
+          This extension must only be used when type is object and may have 2 possible
+          values:
+          
+          1) `granular`:
+               These maps are actual maps (key-value pairs) and each fields are
+          independent
+               from each other (they can each be manipulated by separate actors). This
+          is
+               the default behaviour for all maps.
+          2) `atomic`: the list is treated as a single entity, like a scalar.
+               Atomic maps will be entirely replaced when updated.
+
+        x-kubernetes-preserve-unknown-fields	<boolean>
+          x-kubernetes-preserve-unknown-fields stops the API server decoding step from
+          pruning fields which are not specified in the validation schema. This
+          affects fields recursively, but switches back to normal pruning behaviour if
+          nested properties or additionalProperties are specified in the schema. This
+          can either be true or undefined. False is forbidden.
+
+        x-kubernetes-validations	<[]ValidationRule>
+          x-kubernetes-validations describes a list of validation rules written in the
+          CEL expression language.
+
+
+    stderr: ""
+  - run: kubectl explain pods.spec.containers.name
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: name <string>
+
+
+      DESCRIPTION:
+          Name of the container specified as a DNS_LABEL. Each container in a pod must
+          have a unique name (DNS_LABEL). Cannot be updated.
+          
+
+    stderr: ""
+  - run: kubectl explain pods.
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      DESCRIPTION:
+          Pod is a collection of containers that can run on a host. This resource is
+          created by clients and scheduled onto hosts.
+          
+      FIELDS:
+        apiVersion	<string>
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+        kind	<string>
+          Kind is a string value representing the REST resource this object
+          represents. Servers may infer this from the endpoint the client submits
+          requests to. Cannot be updated. In CamelCase. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+        metadata	<ObjectMeta>
+          Standard object's metadata. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+        spec	<PodSpec>
+          Specification of the desired behavior of the pod. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+        status	<PodStatus>
+          Most recently observed status of the pod. This data may not be up to date.
+          Populated by the system. Read-only. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+
+    stderr: ""
+  - run: kubectl explain deployments.appsfoo.spec
+    exit: 0
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+      FIELD: spec <DeploymentSpec>
+
+
+      DESCRIPTION:
+          Specification of the desired behavior of the Deployment.
+          DeploymentSpec is the specification of the desired behavior of the
+          Deployment.
+          
+      FIELDS:
+        minReadySeconds	<integer>
+          Minimum number of seconds for which a newly created pod should be ready
+          without any of its container crashing, for it to be considered available.
+          Defaults to 0 (pod will be considered available as soon as it is ready)
+
+        paused	<boolean>
+          Indicates that the deployment is paused.
+
+        progressDeadlineSeconds	<integer>
+          The maximum time in seconds for a deployment to make progress before it is
+          considered to be failed. The deployment controller will continue to process
+          failed deployments and a condition with a ProgressDeadlineExceeded reason
+          will be surfaced in the deployment status. Note that progress will not be
+          estimated during the time a deployment is paused. Defaults to 600s.
+
+        replicas	<integer>
+          Number of desired pods. This is a pointer to distinguish between explicit
+          zero and not specified. Defaults to 1.
+
+        revisionHistoryLimit	<integer>
+          The number of old ReplicaSets to retain to allow rollback. This is a pointer
+          to distinguish between explicit zero and not specified. Defaults to 10.
+
+        selector	<LabelSelector> -required-
+          Label selector for pods. Existing ReplicaSets whose pods are selected by
+          this will be the ones affected by this deployment. It must match the pod
+          template's labels.
+
+        strategy	<DeploymentStrategy>
+          The deployment strategy to use to replace existing pods with new ones.
+
+        template	<PodTemplateSpec> -required-
+          Template describes the pods that will be created. The only allowed
+          template.spec.restartPolicy value is "Always".
+
+
+    stderr: ""
+  - run: kubectl explain ns
+    exit: 0
+    stdout: |+
+      KIND:       Namespace
+      VERSION:    v1
+
+      DESCRIPTION:
+          Namespace provides a scope for Names. Use of multiple namespaces is
+          optional.
+          
+      FIELDS:
+        apiVersion	<string>
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+        kind	<string>
+          Kind is a string value representing the REST resource this object
+          represents. Servers may infer this from the endpoint the client submits
+          requests to. Cannot be updated. In CamelCase. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+        metadata	<ObjectMeta>
+          Standard object's metadata. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+        spec	<NamespaceSpec>
+          Spec defines the behavior of the Namespace. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+        status	<NamespaceStatus>
+          Status describes the current status of a Namespace. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+
+    stderr: ""
+  - run: kubectl explain pod.status
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: status <PodStatus>
+
+
+      DESCRIPTION:
+          Most recently observed status of the pod. This data may not be up to date.
+          Populated by the system. Read-only. More info:
+          https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+          PodStatus represents information about the status of a pod. Status may trail
+          the actual state of a system, especially if the node that hosts the pod
+          cannot contact the control plane.
+          
+      FIELDS:
+        allocatedResources	<map[string]Quantity>
+          AllocatedResources is the total requests allocated for this pod by the node.
+          If pod-level requests are not set, this will be the total requests
+          aggregated across containers in the pod.
+
+        conditions	<[]PodCondition>
+          Current service state of pod. More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
+
+        containerStatuses	<[]ContainerStatus>
+          Statuses of containers in this pod. Each container in the pod should have at
+          most one status in this list, and all statuses should be for containers in
+          the pod. However this is not enforced. If a status for a non-existent
+          container is present in the list, or the list has duplicate names, the
+          behavior of various Kubernetes components is not defined and those statuses
+          might be ignored. More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status
+
+        ephemeralContainerStatuses	<[]ContainerStatus>
+          Statuses for any ephemeral containers that have run in this pod. Each
+          ephemeral container in the pod should have at most one status in this list,
+          and all statuses should be for containers in the pod. However this is not
+          enforced. If a status for a non-existent container is present in the list,
+          or the list has duplicate names, the behavior of various Kubernetes
+          components is not defined and those statuses might be ignored. More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-and-container-status
+
+        extendedResourceClaimStatus	<PodExtendedResourceClaimStatus>
+          Status of extended resource claim backed by DRA.
+
+        hostIP	<string>
+          hostIP holds the IP address of the host to which the pod is assigned. Empty
+          if the pod has not started yet. A pod can be assigned to a node that has a
+          problem in kubelet which in turns mean that HostIP will not be updated even
+          if there is a node is assigned to pod
+
+        hostIPs	<[]HostIP>
+          hostIPs holds the IP addresses allocated to the host. If this field is
+          specified, the first entry must match the hostIP field. This list is empty
+          if the pod has not started yet. A pod can be assigned to a node that has a
+          problem in kubelet which in turns means that HostIPs will not be updated
+          even if there is a node is assigned to this pod.
+
+        initContainerStatuses	<[]ContainerStatus>
+          Statuses of init containers in this pod. The most recent successful
+          non-restartable init container will have ready = true, the most recently
+          started container will have startTime set. Each init container in the pod
+          should have at most one status in this list, and all statuses should be for
+          containers in the pod. However this is not enforced. If a status for a
+          non-existent container is present in the list, or the list has duplicate
+          names, the behavior of various Kubernetes components is not defined and
+          those statuses might be ignored. More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-and-container-status
+
+        message	<string>
+          A human readable message indicating details about why the pod is in this
+          condition.
+
+        nodeAllocatableResourceClaimStatuses	<[]NodeAllocatableResourceClaimStatus>
+          NodeAllocatableResourceClaimStatuses contains the status of node-allocatable
+          resources that were allocated for this pod through DRA claims. This includes
+          resources currently reported in v1.Node `status.allocatable` that are not
+          extended resources (see
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#extended-resources).
+          Examples include "cpu", "memory", "ephemeral-storage", and hugepages.
+
+        nominatedNodeName	<string>
+          nominatedNodeName is set only when this pod preempts other pods on the node,
+          but it cannot be scheduled right away as preemption victims receive their
+          graceful termination periods. This field does not guarantee that the pod
+          will be scheduled on this node. Scheduler may decide to place the pod
+          elsewhere if other nodes become available sooner. Scheduler may also decide
+          to give the resources on this node to a higher priority pod that is created
+          after preemption. As a result, this field may be different than
+          PodSpec.nodeName when the pod is scheduled.
+
+        observedGeneration	<integer>
+          If set, this represents the .metadata.generation that the pod status was set
+          based upon. The PodObservedGenerationTracking feature gate must be enabled
+          to use this field.
+
+        phase	<string>
+        enum: Failed, Pending, Running, Succeeded, ....
+          The phase of a Pod is a simple, high-level summary of where the Pod is in
+          its lifecycle. The conditions array, the reason and message fields, and the
+          individual container status arrays contain more detail about the pod's
+          status. There are five possible phase values:
+          
+          Pending: The pod has been accepted by the Kubernetes system, but one or more
+          of the container images has not been created. This includes time before
+          being scheduled as well as time spent downloading images over the network,
+          which could take a while. Running: The pod has been bound to a node, and all
+          of the containers have been created. At least one container is still
+          running, or is in the process of starting or restarting. Succeeded: All
+          containers in the pod have terminated in success, and will not be restarted.
+          Failed: All containers in the pod have terminated, and at least one
+          container has terminated in failure. The container either exited with
+          non-zero status or was terminated by the system. Unknown: For some reason
+          the state of the pod could not be obtained, typically due to an error in
+          communicating with the host of the pod.
+          
+          More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-phase
+          
+          Possible enum values:
+           - `"Failed"` means that all containers in the pod have terminated, and at
+          least one container has terminated in a failure (exited with a non-zero exit
+          code or was stopped by the system).
+           - `"Pending"` means the pod has been accepted by the system, but one or
+          more of the containers has not been started. This includes time before being
+          bound to a node, as well as time spent pulling images onto the host.
+           - `"Running"` means the pod has been bound to a node and all of the
+          containers have been started. At least one container is still running or is
+          in the process of being restarted.
+           - `"Succeeded"` means that all containers in the pod have voluntarily
+          terminated with a container exit code of 0, and the system is not going to
+          restart any of these containers.
+           - `"Unknown"` means that for some reason the state of the pod could not be
+          obtained, typically due to an error in communicating with the host of the
+          pod. Deprecated: It isn't being set since 2015
+          (74da3b14b0c0f658b3bb8d2def5094686d0e9095)
+
+        podIP	<string>
+          podIP address allocated to the pod. Routable at least within the cluster.
+          Empty if not yet allocated.
+
+        podIPs	<[]PodIP>
+          podIPs holds the IP addresses allocated to the pod. If this field is
+          specified, the 0th entry must match the podIP field. Pods may be allocated
+          at most 1 value for each of IPv4 and IPv6. This list is empty if no IPs have
+          been allocated yet.
+
+        qosClass	<string>
+        enum: BestEffort, Burstable, Guaranteed
+          The Quality of Service (QOS) classification assigned to the pod based on
+          resource requirements See PodQOSClass type for available QOS classes More
+          info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/#quality-of-service-classes
+          
+          Possible enum values:
+           - `"BestEffort"` is the BestEffort qos class.
+           - `"Burstable"` is the Burstable qos class.
+           - `"Guaranteed"` is the Guaranteed qos class.
+
+        reason	<string>
+          A brief CamelCase message indicating details about why the pod is in this
+          state. e.g. 'Evicted'
+
+        resize	<string>
+          Status of resources resize desired for pod's containers. It is empty if no
+          resources resize is pending. Any changes to container resources will
+          automatically set this to "Proposed" Deprecated: Resize status is moved to
+          two pod conditions PodResizePending and PodResizeInProgress.
+          PodResizePending will track states where the spec has been resized, but the
+          Kubelet has not yet allocated the resources. PodResizeInProgress will track
+          in-progress resizes, and should be present whenever allocated resources !=
+          acknowledged resources.
+
+        resourceClaimStatuses	<[]PodResourceClaimStatus>
+          Status of resource claims.
+
+        resources	<ResourceRequirements>
+          Resources represents the compute resource requests and limits that have been
+          applied at the pod level if pod-level requests or limits are set in
+          PodSpec.Resources
+
+        startTime	<string>
+          RFC 3339 date and time at which the object was acknowledged by the Kubelet.
+          This is before the Kubelet pulled the container image(s) for the pod.
+
+        volumeHealth	<[]PodVolumeHealth>
+          volumeHealth contains node-reported health for each volume the pod is using.
+          Populated by the kubelet on the pod's node.
+
+
+    stderr: ""
+  - run: kubectl explain pod.status.phase
+    exit: 0
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+      FIELD: phase <string>
+      ENUM:
+          Failed
+          Pending
+          Running
+          Succeeded
+          Unknown
+
+      DESCRIPTION:
+          The phase of a Pod is a simple, high-level summary of where the Pod is in
+          its lifecycle. The conditions array, the reason and message fields, and the
+          individual container status arrays contain more detail about the pod's
+          status. There are five possible phase values:
+          
+          Pending: The pod has been accepted by the Kubernetes system, but one or more
+          of the container images has not been created. This includes time before
+          being scheduled as well as time spent downloading images over the network,
+          which could take a while. Running: The pod has been bound to a node, and all
+          of the containers have been created. At least one container is still
+          running, or is in the process of starting or restarting. Succeeded: All
+          containers in the pod have terminated in success, and will not be restarted.
+          Failed: All containers in the pod have terminated, and at least one
+          container has terminated in failure. The container either exited with
+          non-zero status or was terminated by the system. Unknown: For some reason
+          the state of the pod could not be obtained, typically due to an error in
+          communicating with the host of the pod.
+          
+          More info:
+          https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-phase
+          
+          Possible enum values:
+           - `"Failed"` means that all containers in the pod have terminated, and at
+          least one container has terminated in a failure (exited with a non-zero exit
+          code or was stopped by the system).
+           - `"Pending"` means the pod has been accepted by the system, but one or
+          more of the containers has not been started. This includes time before being
+          bound to a node, as well as time spent pulling images onto the host.
+           - `"Running"` means the pod has been bound to a node and all of the
+          containers have been started. At least one container is still running or is
+          in the process of being restarted.
+           - `"Succeeded"` means that all containers in the pod have voluntarily
+          terminated with a container exit code of 0, and the system is not going to
+          restart any of these containers.
+           - `"Unknown"` means that for some reason the state of the pod could not be
+          obtained, typically due to an error in communicating with the host of the
+          pod. Deprecated: It isn't being set since 2015
+          (74da3b14b0c0f658b3bb8d2def5094686d0e9095)
+          
+
+    stderr: ""
+  - run: kubectl explain pv.spec.capacity
+    exit: 0
+    stdout: |+
+      KIND:       PersistentVolume
+      VERSION:    v1
+
+      FIELD: capacity <map[string]Quantity>
+
+
+      DESCRIPTION:
+          capacity is the description of the persistent volume's resources and
+          capacity. More info:
+          https://kubernetes.io/docs/concepts/storage/persistent-volumes#capacity
+          Quantity is a fixed-point representation of a number. It provides convenient
+          marshaling/unmarshaling in JSON and YAML, in addition to String() and
+          AsInt64() accessors.
+          
+          The serialization format is:
+          
+          ``` <quantity>        ::= <signedNumber><suffix>
+          
+          	(Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+          
+          <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> |
+          <digit><digits> <number>          ::= <digits> | <digits>.<digits> |
+          <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::=
+          <number> | <sign><number> <suffix>          ::= <binarySI> |
+          <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi
+          | Ei
+          
+          	(International System of units; See:
+          http://physics.nist.gov/cuu/Units/binary.html)
+          
+          <decimalSI>       ::= m | "" | k | M | G | T | P | E
+          
+          	(Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+          
+          <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber> ```
+          
+          No matter which of the three exponent forms is used, no quantity may
+          represent a number greater than 2^63-1 in magnitude, nor may it have more
+          than 3 decimal places. Numbers larger or more precise will be capped or
+          rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the
+          future if we require larger or smaller quantities.
+          
+          When a Quantity is parsed from a string, it will remember the type of suffix
+          it had, and will use the same type again when it is serialized.
+          
+          Before serializing, Quantity will be put in "canonical form". This means
+          that Exponent/suffix will be adjusted up or down (with a corresponding
+          increase or decrease in Mantissa) such that:
+          
+          - No precision is lost - No fractional digits will be emitted - The exponent
+          (or suffix) is as large as possible.
+          
+          The sign will be omitted unless the number is negative.
+          
+          Examples:
+          
+          - 1.5 will be serialized as "1500m" - 1.5Gi will be serialized as "1536Mi"
+          
+          Note that the quantity will NEVER be internally represented by a floating
+          point number. That is the whole point of this exercise.
+          
+          Non-canonical values will still parse as long as they are well formed, but
+          will be re-emitted in their canonical form. (So always use canonical form,
+          or don't diff.)
+          
+          This format is intended to make it difficult to use these numbers without
+          writing some sort of special handling code in the hopes that that will cause
+          implementors to also use a fixed point implementation.
+          
+
+    stderr: ""
+  - run: kubectl explain statefulsets.spec.volumeClaimTemplates.spec.resources
+    exit: 0
+    stdout: |+
+      GROUP:      apps
+      KIND:       StatefulSet
+      VERSION:    v1
+
+      FIELD: resources <VolumeResourceRequirements>
+
+
+      DESCRIPTION:
+          resources represents the minimum resources the volume should have. Users are
+          allowed to specify resource requirements that are lower than previous value
+          but must still be higher than capacity recorded in the status field of the
+          claim. More info:
+          https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+          VolumeResourceRequirements describes the storage resource requirements for a
+          volume.
+          
+      FIELDS:
+        limits	<map[string]Quantity>
+          Limits describes the maximum amount of compute resources allowed. More info:
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+        requests	<map[string]Quantity>
+          Requests describes the minimum amount of compute resources required. If
+          Requests is omitted for a container, it defaults to Limits if that is
+          explicitly specified, otherwise to an implementation-defined value. Requests
+          cannot exceed Limits. More info:
+          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+
+    stderr: ""

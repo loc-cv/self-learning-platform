@@ -91,7 +91,7 @@ function* printWarning(p: ProcApi, message: string): Op<void> {
 }
 
 /** parseCascadingFlag */
-function* parseCascade(p: ProcApi, flag: string): Op<Propagation | KubectlError> {
+export function* parseCascade(p: ProcApi, flag: string): Op<Propagation | KubectlError> {
   const b = parseGoBool(flag);
   if (b === undefined) {
     if (flag === 'orphan') return 'Orphan';
@@ -237,7 +237,7 @@ function* run(inv: Invocation): Op<number> {
 type Source = { kind: 'plan'; plan: Plan } | { kind: 'files'; items: FileItem[] };
 
 /** visitByPaths: the argument errors with -f (after normalizeMultipleResourcesArgs). */
-function pathArgumentError(args: readonly string[]): KubectlError | undefined {
+export function pathArgumentError(args: readonly string[]): KubectlError | undefined {
   if (args.length === 0) return undefined;
   const combined = args.length >= 2 && splitResourceArgument(args[0] as string).length > 1;
   if (!combined && !args.every((a) => a.includes('/'))) return messageError('when paths, URLs, or stdin is provided as input, you may not specify resource arguments as well');

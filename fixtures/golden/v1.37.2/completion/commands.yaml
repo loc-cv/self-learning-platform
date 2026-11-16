@@ -1,0 +1,1532 @@
+# Captured from fixtures/golden/cases/completion/commands.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: completion/commands
+description: "kubectl __complete for the first argument of every command: subcommands with their descriptions, the completion function each command registers (resource types, allowed types, names, pods, nodes, contexts) or none, and the directive."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl __complete annotate ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete api-resources ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete api-versions ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply ''
+    exit: 0
+    stdout: |
+      edit-last-applied	Edit latest last-applied-configuration annotations of a resource/object
+      set-last-applied	Set the last-applied-configuration annotation on a live object to match the contents of a file
+      view-last-applied	View the latest last-applied-configuration annotations of a resource/object
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete apply edit-last-applied ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete apply set-last-applied ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete apply view-last-applied ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete attach ''
+    exit: 0
+    stdout: |
+      web
+      daemonsets/
+      deployments/
+      pods/
+      jobs/
+      replicasets/
+      replicationcontrollers/
+      services/
+      statefulsets/
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete auth ''
+    exit: 0
+    stdout: |
+      can-i	Check whether an action is allowed
+      reconcile	Reconciles rules for RBAC role, role binding, cluster role, and cluster role binding objects
+      whoami	Experimental: Check self subject attributes
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete auth can-i ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth reconcile ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete auth whoami ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete autoscale ''
+    exit: 0
+    stdout: |
+      --max	The upper limit for the number of pods that can be set by the autoscaler. Required.
+      deployment
+      replicaset
+      replicationcontroller
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete certificate ''
+    exit: 0
+    stdout: |
+      approve	Approve a certificate signing request
+      deny	Deny a certificate signing request
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete certificate approve ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete certificate deny ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cluster-info ''
+    exit: 0
+    stdout: |
+      dump	Dump relevant information for debugging and diagnosis
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete cluster-info dump ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete completion z
+    exit: 0
+    stdout: |
+      zsh
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config ''
+    exit: 0
+    stdout: |
+      current-context	Display the current-context
+      delete-cluster	Delete the specified cluster from the kubeconfig
+      delete-context	Delete the specified context from the kubeconfig
+      delete-user	Delete the specified user from the kubeconfig
+      get-clusters	Display clusters defined in the kubeconfig
+      get-contexts	Describe one or many contexts
+      get-users	Display users defined in the kubeconfig
+      rename-context	Rename a context from the kubeconfig file
+      set	Set an individual value in a kubeconfig file
+      set-cluster	Set a cluster entry in kubeconfig
+      set-context	Set a context entry in kubeconfig
+      set-credentials	Set a user entry in kubeconfig
+      unset	Unset an individual value in a kubeconfig file
+      use-context	Set the current-context in a kubeconfig file
+      view	Display merged kubeconfig settings or a specified kubeconfig file
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config current-context ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config delete-cluster ''
+    exit: 0
+    stdout: |
+      kubernetes
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config delete-context ''
+    exit: 0
+    stdout: |
+      kubernetes-admin@kubernetes
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config delete-user ''
+    exit: 0
+    stdout: |
+      kubernetes-admin
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config get-clusters ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config get-contexts ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config get-users ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config rename-context ''
+    exit: 0
+    stdout: |
+      kubernetes-admin@kubernetes
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config set ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-cluster ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config set-context ''
+    exit: 0
+    stdout: |
+      kubernetes-admin@kubernetes
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config set-credentials ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config unset ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete config use-context ''
+    exit: 0
+    stdout: |
+      kubernetes-admin@kubernetes
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete config view ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete cordon ''
+    exit: 0
+    stdout: |
+      controlplane
+      node01
+      node02
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete cp ''
+    exit: 0
+    stdout: |
+      default/
+      kube-node-lease/
+      kube-public/
+      kube-system/
+      web:
+      ./
+      /
+      :2
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoSpace
+  - run: kubectl __complete create ''
+    exit: 0
+    stdout: |
+      clusterrole	Create a cluster role
+      clusterrolebinding	Create a cluster role binding for a particular cluster role
+      configmap	Create a config map from a local file, directory or literal value
+      cronjob	Create a cron job with the specified name
+      deployment	Create a deployment with the specified name
+      ingress	Create an ingress with the specified name
+      job	Create a job with the specified name
+      namespace	Create a namespace with the specified name
+      poddisruptionbudget	Create a pod disruption budget with the specified name
+      priorityclass	Create a priority class with the specified name
+      quota	Create a quota with the specified name
+      role	Create a role with single rule
+      rolebinding	Create a role binding for a particular role or cluster role
+      secret	Create a secret using a specified subcommand
+      service	Create a service using a specified subcommand
+      serviceaccount	Create a service account with the specified name
+      token	Request a service account token
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete create clusterrole ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create clusterrolebinding ''
+    exit: 0
+    stdout: |
+      --clusterrole	ClusterRole this ClusterRoleBinding should reference
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create configmap ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create cronjob ''
+    exit: 0
+    stdout: |
+      --image	Image name to run.
+      --schedule	A schedule in the Cron format the job should be run with.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create deployment ''
+    exit: 0
+    stdout: |
+      --image	Image names to run. A deployment can have multiple images set for multi-container pod.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create ingress ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create job ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create namespace ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create poddisruptionbudget ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create priorityclass ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create quota ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create role ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create rolebinding ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret ''
+    exit: 0
+    stdout: |
+      docker-registry	Create a secret for use with a Docker registry
+      generic	Create a secret from a local file, directory, or literal value
+      tls	Create a TLS secret
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete create secret docker-registry ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret generic ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create secret tls ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service ''
+    exit: 0
+    stdout: |
+      clusterip	Create a ClusterIP service
+      externalname	Create an ExternalName service
+      loadbalancer	Create a LoadBalancer service
+      nodeport	Create a NodePort service
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete create service clusterip ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service externalname ''
+    exit: 0
+    stdout: |
+      --external-name	External name of service
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service loadbalancer ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create service nodeport ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create serviceaccount ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete create token ''
+    exit: 0
+    stdout: |
+      default
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete debug ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete delete ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete describe ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete diff ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete drain ''
+    exit: 0
+    stdout: |
+      controlplane
+      node01
+      node02
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete edit ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete events ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete exec ''
+    exit: 0
+    stdout: |
+      web
+      daemonsets/
+      deployments/
+      pods/
+      jobs/
+      replicasets/
+      replicationcontrollers/
+      services/
+      statefulsets/
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete explain ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete expose ''
+    exit: 0
+    stdout: |
+      pod
+      service
+      replicationcontroller
+      deployment
+      replicaset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete get ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete help ''
+    exit: 0
+    stdout: |
+      annotate	Update the annotations on a resource
+      api-resources	Print the supported API resources on the server
+      api-versions	Print the supported API versions on the server, in the form of "group/version"
+      apply	Apply a configuration to a resource by file name or stdin
+      attach	Attach to a running container
+      auth	Inspect authorization
+      autoscale	Auto-scale a deployment, replica set, stateful set, or replication controller
+      certificate	Modify certificate resources
+      cluster-info	Display cluster information
+      completion	Output shell completion code for the specified shell (bash, zsh, fish, or powershell)
+      config	Modify kubeconfig files
+      cordon	Mark node as unschedulable
+      cp	Copy files and directories to and from containers
+      create	Create a resource from a file or from stdin
+      debug	Create debugging sessions for troubleshooting workloads and nodes
+      delete	Delete resources by file names, stdin, resources and names, or by resources and label selector
+      describe	Show details of a specific resource or group of resources
+      diff	Diff the live version against a would-be applied version
+      drain	Drain node in preparation for maintenance
+      edit	Edit a resource on the server
+      events	List events
+      exec	Execute a command in a container
+      explain	Get documentation for a resource
+      expose	Take a replication controller, service, deployment or pod and expose it as a new Kubernetes service
+      get	Display one or many resources
+      help	Help about any command
+      kuberc	Manage kuberc configuration files
+      kustomize	Build a kustomization target from a directory or URL
+      label	Update the labels on a resource
+      logs	Print the logs for a container in a pod
+      options	Print the list of flags inherited by all commands
+      patch	Update fields of a resource
+      plugin	Provides utilities for interacting with plugins
+      port-forward	Forward one or more local ports to a pod
+      proxy	Run a proxy to the Kubernetes API server
+      replace	Replace a resource by file name or stdin
+      rollout	Manage the rollout of a resource
+      run	Run a particular image on the cluster
+      scale	Set a new size for a deployment, replica set, or replication controller
+      set	Set specific features on objects
+      taint	Update the taints on one or more nodes
+      top	Display resource (CPU/memory) usage
+      uncordon	Mark node as schedulable
+      version	Print the client and server version information
+      wait	Wait for a specific condition on one or many resources
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete kuberc ''
+    exit: 0
+    stdout: |
+      set	Set values in the kuberc configuration
+      view	Display the current kuberc configuration
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete kuberc set ''
+    exit: 0
+    stdout: |
+      --section	Section to modify: 'defaults', 'aliases', or 'credentialplugin'
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kuberc view ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete kustomize ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete label ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete logs ''
+    exit: 0
+    stdout: |
+      web
+      daemonsets/
+      deployments/
+      pods/
+      jobs/
+      replicasets/
+      replicationcontrollers/
+      services/
+      statefulsets/
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete options ''
+    exit: 0
+    stdout: |
+      :0
+      Completion ended with directive: ShellCompDirectiveDefault
+    stderr: ""
+  - run: kubectl __complete patch ''
+    exit: 0
+    stdout: |
+      componentstatuses
+      configmaps
+      endpoints
+      events
+      limitranges
+      namespaces
+      nodes
+      persistentvolumeclaims
+      persistentvolumes
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      mutatingadmissionpolicies.admissionregistration.k8s.io
+      mutatingadmissionpolicybindings.admissionregistration.k8s.io
+      mutatingwebhookconfigurations.admissionregistration.k8s.io
+      validatingadmissionpolicies.admissionregistration.k8s.io
+      validatingadmissionpolicybindings.admissionregistration.k8s.io
+      validatingwebhookconfigurations.admissionregistration.k8s.io
+      customresourcedefinitions.apiextensions.k8s.io
+      apiservices.apiregistration.k8s.io
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      certificatesigningrequests.certificates.k8s.io
+      clustertrustbundles.certificates.k8s.io
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      flowschemas.flowcontrol.apiserver.k8s.io
+      prioritylevelconfigurations.flowcontrol.apiserver.k8s.io
+      ingressclasses.networking.k8s.io
+      ingresses.networking.k8s.io
+      ipaddresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      servicecidrs.networking.k8s.io
+      runtimeclasses.node.k8s.io
+      poddisruptionbudgets.policy
+      clusterrolebindings.rbac.authorization.k8s.io
+      clusterroles.rbac.authorization.k8s.io
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      deviceclasses.resource.k8s.io
+      devicetaintrules.resource.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      resourceslices.resource.k8s.io
+      priorityclasses.scheduling.k8s.io
+      csidrivers.storage.k8s.io
+      csinodes.storage.k8s.io
+      csistoragecapacities.storage.k8s.io
+      storageclasses.storage.k8s.io
+      volumeattachments.storage.k8s.io
+      volumeattributesclasses.storage.k8s.io
+      storageversionmigrations.storagemigration.k8s.io
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete plugin ''
+    exit: 0
+    stdout: |
+      list	List all visible plugin executables on a user's PATH
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete plugin list ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete port-forward ''
+    exit: 0
+    stdout: |
+      web
+      daemonsets/
+      deployments/
+      pods/
+      jobs/
+      replicasets/
+      replicationcontrollers/
+      services/
+      statefulsets/
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete proxy ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete replace ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete rollout ''
+    exit: 0
+    stdout: |
+      history	View rollout history
+      pause	Mark the provided resource as paused
+      restart	Restart a resource
+      resume	Resume a paused resource
+      status	Show the status of the rollout
+      undo	Undo a previous rollout
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout history ''
+    exit: 0
+    stdout: |
+      deployment
+      daemonset
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout pause ''
+    exit: 0
+    stdout: |
+      deployment
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout restart ''
+    exit: 0
+    stdout: |
+      deployment
+      daemonset
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout resume ''
+    exit: 0
+    stdout: |
+      deployment
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout status ''
+    exit: 0
+    stdout: |
+      deployment
+      daemonset
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete rollout undo ''
+    exit: 0
+    stdout: |
+      deployment
+      daemonset
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete run ''
+    exit: 0
+    stdout: |
+      --image	The image for the container to run.
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete scale ''
+    exit: 0
+    stdout: |
+      --replicas	The new desired number of replicas. Required.
+      deployment
+      replicaset
+      replicationcontroller
+      statefulset
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete set ''
+    exit: 0
+    stdout: |
+      env	Update environment variables on a pod template
+      image	Update the image of a pod template
+      resources	Update resource requests/limits on objects with pod templates
+      selector	Set the selector on a resource
+      serviceaccount	Update the service account of a resource
+      subject	Update the user, group, or service account in a role binding or cluster role binding
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete set env ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set image ''
+    exit: 0
+    stdout: |
+      daemonsets
+      deployments
+      pods
+      cronjobs
+      replicasets
+      replicationcontrollers
+      statefulsets
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete set resources ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set selector ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set serviceaccount ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete set subject ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete taint ''
+    exit: 0
+    stdout: |
+      node
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete top ''
+    exit: 0
+    stdout: |
+      node	Display resource (CPU/memory) usage of nodes
+      pod	Display resource (CPU/memory) usage of pods
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete top node ''
+    exit: 0
+    stdout: |
+      controlplane
+      node01
+      node02
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete top pod ''
+    exit: 0
+    stdout: |
+      web
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete uncordon ''
+    exit: 0
+    stdout: |
+      controlplane
+      node01
+      node02
+      :4
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveNoFileComp
+  - run: kubectl __complete version ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault
+  - run: kubectl __complete wait ''
+    exit: 0
+    stdout: |
+      :0
+    stderr: |
+      Completion ended with directive: ShellCompDirectiveDefault

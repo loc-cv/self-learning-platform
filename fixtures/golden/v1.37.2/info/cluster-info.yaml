@@ -1,0 +1,55 @@
+# Captured from fixtures/golden/cases/info/cluster-info.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: info/cluster-info
+description: "kubectl cluster-info: the control plane and the Services labelled as cluster services in kube-system (or -n), with and without named and https ports."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl cluster-info
+    exit: 0
+    stdout: |
+      Kubernetes control plane is running at https://172.16.0.10:6443
+
+      To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+    stderr: ""
+  - run: kubectl cluster-info
+    exit: 0
+    stdout: |
+      Kubernetes control plane is running at https://172.16.0.10:6443
+      dashboard is running at https://172.16.0.10:6443/api/v1/namespaces/kube-system/services/https:dashboard:/proxy
+      CoreDNS is running at https://172.16.0.10:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+      To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+    stderr: ""
+  - run: kubectl cluster-info -n default
+    exit: 0
+    stdout: |
+      Kubernetes control plane is running at https://172.16.0.10:6443
+      metrics is running at https://172.16.0.10:6443/api/v1/namespaces/default/services/https:metrics:https/proxy
+      noports is running at https://172.16.0.10:6443/api/v1/namespaces/default/services/noports/proxy
+
+      To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+    stderr: ""
+  - run: kubectl cluster-info -n empty
+    exit: 0
+    stdout: |
+      Kubernetes control plane is running at https://172.16.0.10:6443
+
+      To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+    stderr: ""
+  - run: kubectl cluster-info extra
+    exit: 0
+    stdout: |
+      Kubernetes control plane is running at https://172.16.0.10:6443
+      dashboard is running at https://172.16.0.10:6443/api/v1/namespaces/kube-system/services/https:dashboard:/proxy
+      CoreDNS is running at https://172.16.0.10:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+
+      To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+    stderr: ""

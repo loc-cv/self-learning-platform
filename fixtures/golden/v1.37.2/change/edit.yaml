@@ -1,0 +1,535 @@
+# Captured from fixtures/golden/cases/change/edit.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: change/edit
+description: "kubectl edit with KUBE_EDITOR set to scripts from the case (the real binary then runs without a terminal) - the file kubectl writes (cat as the editor: the header, YAML or JSON, a List for several objects, CRLF line endings), a change sent as a patch (--output-patch), --save-config (the annotation it writes holds managedFields, DIV-015: not compared), an edit that only removes what kubectl fills back in (skipped), a file that fails validation and is fixed on the second open (the error and the reasons in the reopened file), an object the server refuses and an editor that then quits unchanged (the copy kept), a changed name, an empty file (TMPDIR=$HOME where kubectl prints the kept file's path: os.TempDir reads it, and the path stays inside the case's directory); and the errors - an editor that is not there or fails, no object, no argument, a bad -o, a bad --validate."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: KUBE_EDITOR=cat kubectl edit deployment web
+    exit: 0
+    stdout: |
+      # Please edit the object below. Lines beginning with a '#' will be ignored,
+      # and an empty file will abort the edit. If an error occurs while saving this file will be
+      # reopened with the relevant failures.
+      #
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        annotations:
+          deployment.kubernetes.io/revision: "1"
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: web
+          tier: web
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 1
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: web
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.27
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status:
+        availableReplicas: 1
+        conditions:
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: Deployment has minimum availability.
+          reason: MinimumReplicasAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+          reason: NewReplicaSetAvailable
+          status: "True"
+          type: Progressing
+        observedGeneration: 1
+        readyReplicas: 1
+        replicas: 1
+        terminatingReplicas: 0
+        updatedReplicas: 1
+    stderr: |
+      Edit cancelled, no changes made.
+  - run: KUBE_EDITOR=cat kubectl edit configmap a -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "data": {
+              "k": "v"
+          },
+          "kind": "ConfigMap",
+          "metadata": {
+              "creationTimestamp": "<<time>>",
+              "name": "a",
+              "namespace": "default",
+              "resourceVersion": "<<rv>>",
+              "uid": "<<uid:2>>"
+          }
+      }
+    stderr: |
+      Edit cancelled, no changes made.
+  - run: KUBE_EDITOR=cat kubectl edit configmap a b
+    exit: 0
+    stdout: |
+      # Please edit the object below. Lines beginning with a '#' will be ignored,
+      # and an empty file will abort the edit. If an error occurs while saving this file will be
+      # reopened with the relevant failures.
+      #
+      apiVersion: v1
+      items:
+      - apiVersion: v1
+        data:
+          k: v
+        kind: ConfigMap
+        metadata:
+          creationTimestamp: "<<time>>"
+          name: a
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:2>>
+      - apiVersion: v1
+        data:
+          k: v
+        kind: ConfigMap
+        metadata:
+          creationTimestamp: "<<time>>"
+          name: b
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:3>>
+      kind: List
+      metadata: {}
+    stderr: |
+      Edit cancelled, no changes made.
+  - run: KUBE_EDITOR=cat kubectl edit -f cm.yaml
+    exit: 0
+    stdout: |
+      # Please edit the object below. Lines beginning with a '#' will be ignored,
+      # and an empty file will abort the edit. If an error occurs while saving this file will be
+      # reopened with the relevant failures.
+      #
+      apiVersion: v1
+      data:
+        k: v
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: a
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+    stderr: |
+      Edit cancelled, no changes made.
+  - run: KUBE_EDITOR=cat kubectl edit configmap a --windows-line-endings | tr -d -c '\r' | wc -c
+    exit: 0
+    stdout: |
+      14
+    stderr: |
+      Edit cancelled, no changes made.
+  - run: KUBE_EDITOR='bash drop-namespace.sh' kubectl edit configmap a --output-patch
+    exit: 0
+    stdout: |
+      configmap/a skipped
+    stderr: ""
+  - run: KUBE_EDITOR='bash drop-tier.sh' kubectl edit deployment web --output-patch
+    exit: 0
+    stdout: |
+      Patch: {"metadata":{"labels":{"tier":null}}}
+      deployment.apps/web edited
+    stderr: ""
+  - run: KUBE_EDITOR='bash drop-tier.sh' kubectl edit deployment web
+    exit: 0
+    stdout: ""
+    stderr: |
+      Edit cancelled, no changes made.
+  - run: TMPDIR=$HOME KUBE_EDITOR='bash drop-name.sh' kubectl edit configmap a
+    exit: 1
+    stdout: ""
+    stderr: |
+      A copy of your changes has been stored to "/home/student/kubectl-edit-<<tmp>>.yaml"
+      error: At least one of apiVersion, kind and name was changed
+  - run: KUBE_EDITOR='bash bad-then-fix.sh' kubectl edit deployment api
+    exit: 0
+    stdout: |
+      # Please edit the object below. Lines beginning with a '#' will be ignored,
+      # and an empty file will abort the edit. If an error occurs while saving this file will be
+      # reopened with the relevant failures.
+      #
+      # deployments.apps "api" was not valid:
+      # * <nil>: Invalid value: "The edited file failed validation": yaml: line 64: did not find expected node content
+      #
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        annotations:
+          deployment.kubernetes.io/revision: "1"
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: api
+          tier: api
+        name: api
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:4>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 1
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: api
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: api
+          spec:
+            containers:
+            - image: nginx:1.27
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status:
+        availableReplicas: 1
+        conditions:
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: Deployment has minimum availability.
+          reason: MinimumReplicasAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: ReplicaSet "api-<<hash:2>>" has successfully progressed.
+          reason: NewReplicaSetAvailable
+          status: "True"
+          type: Progressing
+        observedGeneration: 1
+        readyReplicas: 1
+        replicas: 1
+        terminatingReplicas: 0
+        updatedReplicas: 1
+      foo: [
+      deployment.apps/api edited
+    stderr: |
+      error: deployments.apps "api" is invalid
+  - run: TMPDIR=$HOME KUBE_EDITOR='bash invalid-then-quit.sh' kubectl edit deployment web
+    exit: 1
+    stdout: |
+      # Please edit the object below. Lines beginning with a '#' will be ignored,
+      # and an empty file will abort the edit. If an error occurs while saving this file will be
+      # reopened with the relevant failures.
+      #
+      # deployments.apps "web" was not valid:
+      # * patch: Invalid value: "map[spec:map[template:map[spec:map[containers:map[imagePullPolicy:IfNotPresent name:nginx resources:map[] terminationMessagePath:/dev/termination-log terminationMessagePolicy:File]]]]]": cannot restore slice from map
+      #
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        annotations:
+          deployment.kubernetes.io/revision: "1"
+        creationTimestamp: "<<time>>"
+        generation: 1
+        labels:
+          app: web
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        progressDeadlineSeconds: 600
+        replicas: 1
+        revisionHistoryLimit: 10
+        selector:
+          matchLabels:
+            app: web
+        strategy:
+          rollingUpdate:
+            maxSurge: 25%
+            maxUnavailable: 25%
+          type: RollingUpdate
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status:
+        availableReplicas: 1
+        conditions:
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: Deployment has minimum availability.
+          reason: MinimumReplicasAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "<<time>>"
+          lastUpdateTime: "<<time>>"
+          message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+          reason: NewReplicaSetAvailable
+          status: "True"
+          type: Progressing
+        observedGeneration: 1
+        readyReplicas: 1
+        replicas: 1
+        terminatingReplicas: 0
+        updatedReplicas: 1
+    stderr: |
+      error: deployments.apps "web" is invalid
+      A copy of your changes has been stored to "/home/student/kubectl-edit-<<tmp>>.yaml"
+      error: Edit cancelled, no valid changes were saved.
+  - run: KUBE_EDITOR='bash drop-k.sh' kubectl edit configmap b --save-config
+    exit: 0
+    stdout: |
+      configmap/b edited
+    stderr: ""
+  - run: TMPDIR=$HOME KUBE_EDITOR='cp /dev/null' kubectl edit configmap b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: configmaps "b" is invalid
+      A copy of your changes has been stored to "/home/student/kubectl-edit-<<tmp>>.yaml"
+      error: Edit cancelled, no valid changes were saved.
+  - run: KUBE_EDITOR=nope kubectl edit configmap a
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to launch the editor "nope"
+  - run: KUBE_EDITOR=false kubectl edit configmap a
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: there was a problem with the editor "false"
+  - run: EDITOR=false kubectl edit configmap a
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: there was a problem with the editor "false"
+  - run: KUBE_EDITOR=cat kubectl edit configmap nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): configmaps "nope" not found
+  - run: KUBE_EDITOR=cat kubectl edit
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must provide one or more resources by argument or filename.
+      Example resource specifications include:
+         '-f rsrc.yaml'
+         '--filename=rsrc.json'
+         '<resource> <name>'
+         '<resource>'
+  - run: KUBE_EDITOR=cat kubectl edit configmap a -o name
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "name", allowed formats are: json,kyaml,yaml
+  - run: KUBE_EDITOR=cat kubectl edit configmap a -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: json,kyaml,yaml
+  - run: KUBE_EDITOR=cat kubectl edit configmap a --validate=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid - validate option "bogus"; must be one of: strict (or true), warn, ignore (or false)
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+            creationTimestamp: <<time>>
+            generation: 1
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 1
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 1
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 1
+            readyReplicas: 1
+            replicas: 1
+            terminatingReplicas: 0
+            updatedReplicas: 1
+      - ref: deployment/api
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+            creationTimestamp: <<time>>
+            generation: 1
+            labels:
+              app: api
+            name: api
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:4>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 1
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: api
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: api
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 1
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "api-<<hash:2>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 1
+            readyReplicas: 1
+            replicas: 1
+            terminatingReplicas: 0
+            updatedReplicas: 1
+      - ref: configmap/a
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            name: a
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>

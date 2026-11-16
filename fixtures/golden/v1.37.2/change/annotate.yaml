@@ -1,0 +1,290 @@
+# Captured from fixtures/golden/cases/change/annotate.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: change/annotate
+description: "kubectl annotate - add, overwrite (the error lists every declared annotation that would change; kubernetes.io/change-cause may always change), remove, --list, values with spaces and JSON, selectors, --all, -f with a directory (-R is on by default), --local, client and server dry runs with -o (one printer: YAML documents separated), --resource-version; and the errors - a bad pair, a key both set and removed, no change, the --local and --list mistakes, an invalid key the server refuses, a missing object."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl annotate configmap a note=hello
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate configmap a note=bye
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --overwrite is false but found the following declared annotation(s): 'note' already has a value (hello)
+  - run: kubectl annotate configmap a note=bye other=x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --overwrite is false but found the following declared annotation(s): 'note' already has a value (hello)
+  - run: kubectl annotate configmap a note=hello
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate configmap a note=bye --overwrite
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate configmap a kubernetes.io/change-cause=first
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate configmap a kubernetes.io/change-cause=second
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: "kubectl annotate configmap a 'desc=my frontend' 'json={\"a\": 1}'"
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate configmap a note-
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate configmap a note-
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate configmap a x=1 x-
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: can not both modify and remove the following annotation(s) in the same command: x
+  - run: kubectl annotate configmap a x=1 y=2 x- y-
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: can not both modify and remove the following annotation(s) in the same command: x, y
+  - run: kubectl annotate configmap a =x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: at least one annotation update is required
+  - run: kubectl annotate configmap a x=1 foo
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: all resources must be specified before annotation changes: foo
+  - run: kubectl annotate configmap a
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: at least one annotation update is required
+  - run: kubectl annotate configmap a 'bad key!=v'
+    exit: 1
+    stdout: ""
+    stderr: |
+      The ConfigMap "a" is invalid: metadata.annotations: Invalid value: "bad key!": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')
+  - run: kubectl annotate configmap a --list | sort
+    exit: 0
+    stdout: |
+      desc=my frontend
+      json={"a": 1}
+      kubernetes.io/change-cause=second
+    stderr: ""
+  - run: kubectl annotate configmap a b --list
+    exit: 0
+    stdout: |
+      Listing annotations for ConfigMap./a:
+       desc=my frontend
+       json={"a": 1}
+       kubernetes.io/change-cause=second
+      Listing annotations for ConfigMap./b:
+    stderr: ""
+    unorderedLines: true
+  - run: kubectl annotate configmap -l app=ann tier=sel
+    exit: 0
+    stdout: |
+      configmap/a annotated
+      configmap/b annotated
+    stderr: ""
+  - run: kubectl annotate configmap -l app=none tier=sel
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl annotate configmap --field-selector metadata.name=b only=b
+    exit: 0
+    stdout: |
+      configmap/b annotated
+    stderr: ""
+  - run: kubectl annotate configmap a b x=1 -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        k: v
+      kind: ConfigMap
+      metadata:
+        annotations:
+          desc: my frontend
+          json: '{"a": 1}'
+          kubernetes.io/change-cause: second
+          tier: sel
+          x: "1"
+        creationTimestamp: "<<time>>"
+        labels:
+          app: ann
+        name: a
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      ---
+      apiVersion: v1
+      data:
+        k: v
+      kind: ConfigMap
+      metadata:
+        annotations:
+          only: b
+          tier: sel
+          x: "1"
+        creationTimestamp: "<<time>>"
+        labels:
+          app: ann
+        name: b
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+    stderr: ""
+  - run: kubectl annotate configmap a x=2 --dry-run=client -o name
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --overwrite is false but found the following declared annotation(s): 'x' already has a value (1)
+  - run: kubectl annotate configmap a x=3 --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --overwrite is false but found the following declared annotation(s): 'x' already has a value (1)
+  - run: kubectl annotate configmap a x=4 --resource-version=1 --overwrite
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (Conflict): Operation cannot be fulfilled on configmaps "a": the object has been modified; please apply your changes to the latest version and try again
+  - run: kubectl annotate configmap a b x=4 --resource-version=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --resource-version may only be used with a single resource
+  - run: kubectl annotate configmap nope a z=1
+    exit: 1
+    stdout: |
+      configmap/a annotated
+    stderr: |
+      Error from server (NotFound): configmaps "nope" not found
+  - run: kubectl annotate -f dir from=dir
+    exit: 0
+    stdout: |
+      configmap/a annotated
+      configmap/b annotated
+    stderr: ""
+  - run: kubectl annotate -f dir -R=false from=top --overwrite
+    exit: 0
+    stdout: |
+      configmap/a annotated
+    stderr: ""
+  - run: kubectl annotate --local -f local.yaml l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        annotations:
+          keep: "yes"
+          l: v
+        name: loc
+    stderr: ""
+  - run: kubectl annotate --local -f local.yaml keep-
+    exit: 0
+    stdout: |
+      configmap/loc annotated
+    stderr: ""
+  - run: kubectl annotate --local configmap a x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: can only use local files by -f rsrc.yaml or --filename=rsrc.json when --local=true is set
+  - run: kubectl annotate --local x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: one or more files must be specified as -f rsrc.yaml or --filename=rsrc.json
+  - run: kubectl annotate --local -f local.yaml x=1 --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot specify --local and --dry-run=server - did you mean --dry-run=client?
+  - run: kubectl annotate x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: one or more resources must be specified as <resource> <name> or <resource>/<name>
+  - run: kubectl annotate configmap a x=1 --list -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --list and --output may not be specified together
+  - run: kubectl annotate configmap --all -l app=ann x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot set --all and --selector at the same time
+  - objects:
+      - ref: configmap/a
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            annotations:
+              desc: my frontend
+              from: top
+              json: '{"a": 1}'
+              kubernetes.io/change-cause: second
+              tier: sel
+              x: "1"
+              z: "1"
+            creationTimestamp: <<time>>
+            labels:
+              app: ann
+            name: a
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+      - ref: configmap/b
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            annotations:
+              from: dir
+              only: b
+              tier: sel
+              x: "1"
+            creationTimestamp: <<time>>
+            labels:
+              app: ann
+            name: b
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>

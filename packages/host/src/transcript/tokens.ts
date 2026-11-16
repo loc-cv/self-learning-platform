@@ -54,6 +54,11 @@ export const TOKENS = {
     pattern: '[A-Za-z0-9+/=\\n]+',
     indexed: false,
   },
+  tmp: {
+    meaning: "the random part of a temporary file's name (Go's os.CreateTemp: a decimal uint32), as in /tmp/kubectl-edit-<<tmp>>.yaml",
+    pattern: '[0-9]{1,10}',
+    indexed: false,
+  },
   node: {
     meaning: 'a worker node the scheduler chose among equally good ones (a random tie-break), node01 or node02',
     pattern: 'node0[12]',

@@ -1,0 +1,578 @@
+# Captured from fixtures/golden/cases/api/json-patch.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: api/json-patch
+description: JSON patches (application/json-patch+json, RFC 6902) through the raw API, as kubectl rollout undo sends one - add, remove, replace, move, copy and test on a ConfigMap; pointer escapes, "-" and negative indices; the errors - an operation that does not apply, a failed test, an unknown op, a body that is not a list, an operation with an unknown field or a field of the wrong type per field validation mode (an Invalid on `patch` quotes the whole patched object with its managedFields and resourceVersion, which no replay can match, so it is left out), a missing object; and the replacement of a Deployment's template and annotations as undo does it.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cfg
+        labels:
+          app: cfg
+      data:
+        b: two
+        a: one
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:b: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: one
+        b: two
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/c","value":"three"},{"op":"replace","path":"/data/a","value":"uno"},{"op":"remove","path":"/data/b"}]'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/metadata/labels/example.com~1tier","value":"x"},{"op":"add","path":"/metadata/annotations","value":{"z":"1","a~b":"2"}},{"op":"copy","from":"/data/c","path":"/data/d"},{"op":"move","from":"/data/a","path":"/data/e"}]'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "ConfigMap \"cfg\" is invalid: metadata.annotations: Invalid value: \"a~b\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"
+      reason: Invalid
+      details:
+        name: cfg
+        kind: ConfigMap
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"a~b\": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')"
+            field: metadata.annotations
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"test","path":"/data/c","value":"three"},{"op":"add","path":"/metadata/finalizers","value":["a.example/x"]},{"op":"add","path":"/metadata/finalizers/-","value":"b.example/y"},{"op":"add","path":"/metadata/finalizers/0","value":"c.example/z"},{"op":"remove","path":"/metadata/finalizers/-1"}]'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        finalizers:
+          - c.example/z
+          - a.example/x
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+              f:metadata:
+                f:finalizers:
+                  .: {}
+                  v:"a.example/x": {}
+                  v:"c.example/z": {}
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"remove","path":"/metadata/finalizers"}]'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"test","path":"/data/c","value":"four"}]'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the server rejected our request due to an error in our request
+      reason: Invalid
+      details: {}
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"remove","path":"/data/nope"}]'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the server rejected our request due to an error in our request
+      reason: Invalid
+      details: {}
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"replace","path":"/spec/x","value":1}]'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the server rejected our request due to an error in our request
+      reason: Invalid
+      details: {}
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/metadata/finalizers/5","value":"x"}]'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the server rejected our request due to an error in our request
+      reason: Invalid
+      details: {}
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"frobnicate","path":"/data/c"}]'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the server rejected our request due to an error in our request
+      reason: Invalid
+      details: {}
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '{"op":"add","path":"/data/c","value":"x"}'
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "error decoding patch: json: cannot unmarshal object into Go value of type []handlers.jsonPatchOp"
+      reason: BadRequest
+      code: 400
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/f","value":"x","extra":true},{"op":"test","path":"/data/f","value":"x","more":1}]'
+    code: 200
+    warnings:
+      - json patch unknown field "[0].extra"
+      - json patch unknown field "[1].more"
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+                f:f: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+        f: x
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg?fieldValidation=Ignore
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/h","value":"x","extra":true}]'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+                f:f: {}
+                f:h: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+        f: x
+        h: x
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":1,"path":"/data/c"}]'
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "error decoding patch: json: cannot unmarshal number into Go struct field jsonPatchOp.op of type string"
+      reason: BadRequest
+      code: 400
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/bogus","value":5}]'
+    code: 200
+    warnings:
+      - unknown field "bogus"
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+                f:f: {}
+                f:h: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+        f: x
+        h: x
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg
+    contentType: application/json-patch+json
+    body: '[{"op":"test","path":"/metadata/labels","value":[null]}]'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: the server rejected our request due to an error in our request
+      reason: Invalid
+      details: {}
+      code: 422
+  - request: PATCH /api/v1/namespaces/default/configmaps/missing
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/c","value":"x"}]'
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "missing" not found
+      reason: NotFound
+      details:
+        name: missing
+        kind: configmaps
+      code: 404
+  - request: PATCH /api/v1/namespaces/default/configmaps/cfg?dryRun=All
+    contentType: application/json-patch+json
+    body: '[{"op":"add","path":"/data/dry","value":"x"}]'
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+                f:dry: {}
+                f:f: {}
+                f:h: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+        dry: x
+        f: x
+        h: x
+  - request: GET /api/v1/namespaces/default/configmaps/cfg
+    code: 200
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: cfg
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+        labels:
+          app: cfg
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:data:
+                .: {}
+                f:a: {}
+                f:c: {}
+                f:f: {}
+                f:h: {}
+              f:metadata:
+                f:labels:
+                  .: {}
+                  f:app: {}
+      data:
+        a: uno
+        c: three
+        f: x
+        h: x
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: web
+        annotations:
+          kubernetes.io/change-cause: first
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 201
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/json-patch+json
+    body: '[{"op":"replace","path":"/spec/template","value":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"name":"app","image":"nginx:1.28","resources":{}}]}}},{"op":"replace","path":"/metadata/annotations","value":{"kubernetes.io/change-cause":"second"}}]'
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600

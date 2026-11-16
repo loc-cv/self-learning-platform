@@ -1,0 +1,136 @@
+description: >-
+  kubectl config get-contexts, current-context, use-context, set-context, get-clusters, get-users
+  and delete-context with no server, and the kubeconfig files as clientcmd rewrites them: the
+  file ModifyConfig chooses (~/.kube/config, the KUBECONFIG list, --kubeconfig), its
+  serialization, mode and messages.
+server: false
+files:
+  .kube/config: |
+    # a comment kubectl drops
+    apiVersion: v1
+    kind: Config
+    preferences: {}
+    clusters:
+    - cluster:
+        certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+        server: https://172.16.0.10:6443
+        unknown-field: dropped
+      name: kubernetes
+    - cluster:
+        server: https://10.0.0.5:6443
+      name: staging
+    contexts:
+    - context:
+        cluster: kubernetes
+        user: kubernetes-admin
+      name: kubernetes-admin@kubernetes
+    - context:
+        cluster: staging
+        user: dev
+        namespace: team-a
+      name: dev@staging
+    current-context: kubernetes-admin@kubernetes
+    users:
+    - name: kubernetes-admin
+      user:
+        client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+        client-key-data: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==
+    - name: dev
+      user:
+        token: abc123
+  a.yaml: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - name: ca
+      cluster:
+        server: https://a.example:6443
+    contexts:
+    - name: ctx-a
+      context:
+        cluster: ca
+        user: ua
+    users:
+    - name: ua
+      user:
+        token: from-a
+  b.yaml: |
+    apiVersion: v1
+    kind: Config
+    current-context: ctx-b
+    clusters:
+    - name: cb
+      cluster:
+        server: https://b.example:6443
+    contexts:
+    - name: ctx-b
+      context:
+        cluster: cb
+        user: ub
+    users:
+    - name: ub
+      user:
+        token: from-b
+  nocurrent.yaml: |
+    apiVersion: v1
+    kind: Config
+    contexts:
+    - name: only
+      context:
+        cluster: c
+        user: u
+steps:
+  - run: kubectl config get-contexts
+  - run: kubectl config get-contexts -o name
+  - run: kubectl config get-contexts --no-headers
+  - run: kubectl config get-contexts dev@staging nope other
+  - run: kubectl config get-contexts -o wide
+  - run: kubectl config get-clusters
+    unorderedLines: true
+  - run: kubectl config get-users
+  - run: kubectl config current-context
+  - run: kubectl config use-context dev@staging
+  - run: cat .kube/config
+  - run: kubectl config use dev@staging
+  - run: kubectl config use-context nope
+  - run: kubectl config use-context ''
+  - run: kubectl config use-context a b
+  - run: kubectl config set-context --current --namespace=team-b
+  - run: cat .kube/config
+  - run: kubectl config set-context --current --namespace=team-b
+  - run: kubectl config set-context new --cluster=kubernetes --user=dev -n ns1
+  - run: cat .kube/config
+  - run: kubectl config set-context new --namespace= --cluster=staging
+  - run: kubectl config get-contexts new
+  - run: kubectl config set-context
+  - run: kubectl config set-context x --current
+  - run: kubectl config set-context a b
+  - run: kubectl config delete-context nope
+  - run: kubectl config delete-context new
+  - run: kubectl config delete-context dev@staging
+  - run: cat .kube/config
+  - run: kubectl config current-context
+  - run: kubectl config get-contexts
+  - run: kubectl config use-context kubernetes-admin@kubernetes
+  - run: touch .kube/config.lock; kubectl config use-context kubernetes-admin@kubernetes; kubectl config set-context lock-test; rm .kube/config.lock
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config get-contexts
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config current-context
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config use-context ctx-a
+  - run: cat a.yaml; echo ---; cat b.yaml
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config set-context ctx-b --namespace=nb
+  - run: cat a.yaml; echo ---; cat b.yaml
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config set-context fresh --user=ub
+  - run: cat a.yaml
+  - run: KUBECONFIG=new1.yaml:new2.yaml kubectl config set-context fresh
+  - run: ls new1.yaml; cat new2.yaml; ls -l new2.yaml | cut -d' ' -f1
+  - run: KUBECONFIG=nocurrent.yaml kubectl config current-context
+  - run: KUBECONFIG=nocurrent.yaml kubectl config set-context --current -n x
+  - run: KUBECONFIG=nocurrent.yaml kubectl config use-context only
+  - run: cat nocurrent.yaml
+  - run: kubectl config set-context e --kubeconfig newdir/explicit.yaml --cluster=c
+  - run: cat newdir/explicit.yaml; ls -ld newdir | cut -d' ' -f1
+  - run: kubectl config use-context e --kubeconfig newdir/explicit.yaml
+  - run: kubectl config delete-context e --kubeconfig newdir/explicit.yaml
+  - run: cat newdir/explicit.yaml
+  - run: kubectl config current-context --kubeconfig missing.yaml
+  - run: kubectl config get-contexts --kubeconfig missing.yaml

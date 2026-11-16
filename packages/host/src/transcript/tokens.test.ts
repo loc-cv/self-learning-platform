@@ -16,6 +16,7 @@ describe('normalization tokens', () => {
       node: ['node01', 'node02'],
       pid: ['210912'],
       cert: ['MIIBfzCCASWgAwIBAgIU\nFTETMBEGA1UEAwwK'],
+      tmp: ['2132810196', '7'],
     };
     for (const [kind, values] of Object.entries(examples)) {
       const re = new RegExp(`^${TOKENS[kind as keyof typeof TOKENS].pattern}$`);

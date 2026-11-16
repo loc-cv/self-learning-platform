@@ -1,0 +1,1098 @@
+# Captured from fixtures/golden/cases/generate/client.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: generate/client
+description: "The generators without a server: create deployment, namespace, configmap, secret generic and service with --dry-run=client across their flags (sources from files, directories and env files, --append-hash, --save-config, -n, -o json|yaml|name), every client-side error, kubectl run's checks before it needs discovery, and the refused POST of a real create."
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl create deployment web --image=nginx:1.27 --image=busybox:1.37 --port=8080 -r 2 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        replicas: 2
+        selector:
+          matchLabels:
+            app: web
+        strategy: {}
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: nginx:1.27
+              name: nginx
+              ports:
+              - containerPort: 8080
+              resources: {}
+            - image: busybox:1.37
+              name: busybox
+              resources: {}
+      status: {}
+    stderr: ""
+  - run: kubectl create deploy web --image=busybox:1.37 --dry-run=client -o json -- sleep 3600
+    exit: 0
+    stdout: |
+      {
+          "kind": "Deployment",
+          "apiVersion": "apps/v1",
+          "metadata": {
+              "name": "web",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "replicas": 1,
+              "selector": {
+                  "matchLabels": {
+                      "app": "web"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "labels": {
+                          "app": "web"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "name": "busybox",
+                              "image": "busybox:1.37",
+                              "command": [
+                                  "sleep",
+                                  "3600"
+                              ],
+                              "resources": {}
+                          }
+                      ]
+                  }
+              },
+              "strategy": {}
+          },
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl create deployment web --image=registry.k8s.io/pause:3.10 --image=docker.io/library/redis@sha256:0123456789abcdef0123456789abcdef --port=0 --replicas=0 -n team --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: web
+        name: web
+        namespace: team
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: web
+        strategy: {}
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - image: registry.k8s.io/pause:3.10
+              name: pause
+              ports:
+              - containerPort: 0
+              resources: {}
+            - image: docker.io/library/redis@sha256:0123456789abcdef0123456789abcdef
+              name: redis
+              resources: {}
+      status: {}
+    stderr: ""
+  - run: kubectl create deployment web --image=nginx:1.27 --save-config --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Deployment",
+          "apiVersion": "apps/v1",
+          "metadata": {
+              "name": "web",
+              "labels": {
+                  "app": "web"
+              },
+              "annotations": {
+                  "kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Deployment\",\"apiVersion\":\"apps/v1\",\"metadata\":{\"name\":\"web\",\"labels\":{\"app\":\"web\"}},\"spec\":{\"replicas\":1,\"selector\":{\"matchLabels\":{\"app\":\"web\"}},\"template\":{\"metadata\":{\"labels\":{\"app\":\"web\"}},\"spec\":{\"containers\":[{\"name\":\"nginx\",\"image\":\"nginx:1.27\",\"resources\":{}}]}},\"strategy\":{}},\"status\":{}}\n"
+              }
+          },
+          "spec": {
+              "replicas": 1,
+              "selector": {
+                  "matchLabels": {
+                      "app": "web"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "labels": {
+                          "app": "web"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "name": "nginx",
+                              "image": "nginx:1.27",
+                              "resources": {}
+                          }
+                      ]
+                  }
+              },
+              "strategy": {}
+          },
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=client -o name
+    exit: 0
+    stdout: |
+      deployment.apps/web
+    stderr: ""
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run
+    exit: 0
+    stdout: |
+      deployment.apps/web created (dry run)
+    stderr: |
+      W<<time>> <<pid>> helpers.go:714] --dry-run is deprecated and can be replaced with --dry-run=client.
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=true -o name
+    exit: 0
+    stdout: |
+      deployment.apps/web
+    stderr: |
+      W<<time>> <<pid>> helpers.go:728] --dry-run=true is deprecated (boolean value) and can be replaced with --dry-run=client.
+  - run: kubectl create deployment web --image=a --image=b --dry-run=client -o yaml -- sleep 1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot specify multiple --image options and command
+  - run: kubectl create deployment a b --image=x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: exactly one NAME is required, got 2
+      See 'kubectl create deployment -h' for help and examples
+  - run: kubectl create deployment --image=x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: exactly one NAME is required, got 0
+      See 'kubectl create deployment -h' for help and examples
+  - run: kubectl create deployment web --image=nginx --replicas=abc
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid argument "abc" for "-r, --replicas" flag: strconv.ParseInt: parsing "abc": invalid syntax
+      See 'kubectl create deployment --help' for usage.
+  - run: kubectl create deployment web --image=nginx --dry-run=maybe
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid dry-run value (maybe). Must be "none", "server", or "client".
+  - run: kubectl create deployment web --image=nginx --dry-run=client -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: kubectl create deployment web --image=nginx --dry-run=client --validate=sometimes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid - validate option "sometimes"; must be one of: strict (or true), warn, ignore (or false)
+  - run: kubectl create deployment web --image=nginx
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: Post "http://localhost:8080/apis/apps/v1/namespaces/default/deployments?fieldManager=kubectl-create&fieldValidation=Strict": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create deployment web --image=nginx --dry-run=server -n x --field-manager=me
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: Post "http://localhost:8080/apis/apps/v1/namespaces/x/deployments?dryRun=All&fieldManager=me&fieldValidation=Strict": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create deployment web --image=nginx --field-manager= --validate=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create deployment: Post "http://localhost:8080/apis/apps/v1/namespaces/default/deployments?fieldValidation=Ignore": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create namespace dev --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Namespace",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "dev"
+          },
+          "spec": {},
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl create ns dev --save-config --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"kind":"Namespace","apiVersion":"v1","metadata":{"name":"dev"},"spec":{},"status":{}}
+        name: dev
+      spec: {}
+      status: {}
+    stderr: ""
+  - run: kubectl create namespace dev -n other --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: dev
+      spec: {}
+      status: {}
+    stderr: ""
+  - run: kubectl create namespace dev --dry-run=client -o name
+    exit: 0
+    stdout: |
+      namespace/dev
+    stderr: ""
+  - run: kubectl create namespace
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: exactly one NAME is required, got 0
+      See 'kubectl create namespace -h' for help and examples
+  - run: kubectl create namespace a b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: exactly one NAME is required, got 2
+      See 'kubectl create namespace -h' for help and examples
+  - run: kubectl create namespace ''
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: name must be specified
+  - run: kubectl create namespace dev
+    exit: 1
+    stdout: ""
+    stderr: |
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl create serviceaccount builder --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: builder
+    stderr: ""
+  - run: kubectl create sa builder -n team --save-config --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "ServiceAccount",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "builder",
+              "namespace": "team",
+              "annotations": {
+                  "kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"ServiceAccount\",\"apiVersion\":\"v1\",\"metadata\":{\"name\":\"builder\",\"namespace\":\"team\"}}\n"
+              }
+          }
+      }
+    stderr: ""
+  - run: kubectl create serviceaccount builder
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create serviceaccount: Post "http://localhost:8080/api/v1/namespaces/default/serviceaccounts?fieldManager=kubectl-create&fieldValidation=Strict": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create serviceaccount
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: exactly one NAME is required, got 0
+      See 'kubectl create serviceaccount -h' for help and examples
+  - run: kubectl create configmap files --from-file=app.properties --from-file=renamed=conf/a.txt --from-literal=lit=x --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        app.properties: |
+          color=blue
+          size=10
+        lit: x
+        renamed: |
+          alpha
+      kind: ConfigMap
+      metadata:
+        name: files
+    stderr: ""
+  - run: kubectl create configmap dir --from-file=ok --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "ConfigMap",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "dir"
+          },
+          "data": {
+              "one": "1\n",
+              "two.txt": "two\n"
+          }
+      }
+    stderr: ""
+  - run: kubectl create configmap dir --from-file=ok/ --from-file=conf/b.conf -n team --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        b.conf: bravo
+        one: |
+          1
+        two.txt: |
+          two
+      kind: ConfigMap
+      metadata:
+        name: dir
+        namespace: team
+    stderr: ""
+  - run: kubectl create cm env --from-env-file=app.env --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        A: "1"
+        B: 'spaced value '
+        C: with=equals
+        D: ""
+        E: crlf
+        G: last line without a newline
+        UNSET_IN_ENV: ""
+      kind: ConfigMap
+      metadata:
+        name: env
+    stderr: ""
+  - run: kubectl create configmap env --from-env-file=app.env,ok/one --dry-run=client -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "1" is not a valid key name: a valid environment variable name must consist of alphabetic characters, digits, '_', '-', or '.', and must not start with a digit (e.g. 'my.env-name',  or 'MY_ENV.NAME',  or 'MyEnvName1', regex used for validation is '[-._a-zA-Z][-._a-zA-Z0-9]*')
+  - run: kubectl create configmap hashed --from-literal=a=1 --from-literal=b=2 --append-hash --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "1"
+        b: "2"
+      kind: ConfigMap
+      metadata:
+        name: hashed-b8cfdm67ft
+    stderr: ""
+  - run: kubectl create configmap hashed --append-hash --dry-run=client -o name
+    exit: 0
+    stdout: |
+      configmap/hashed-47gf8288c4
+    stderr: ""
+  - run: kubectl create configmap saved --from-literal=a=1 --save-config --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "1"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"kind":"ConfigMap","apiVersion":"v1","metadata":{"name":"saved"},"data":{"a":"1"}}
+        name: saved
+    stderr: ""
+  - run: kubectl create configmap empty --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "ConfigMap",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "empty"
+          }
+      }
+    stderr: ""
+  - run: kubectl create configmap x --from-file=conf
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "bad key.txt" is not a valid key name for a ConfigMap: a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')
+  - run: kubectl create configmap x --from-literal=bad
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid literal source bad, expected key=value
+  - run: kubectl create configmap x --from-literal==v
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid literal source =v, expected key=value
+  - run: kubectl create configmap x --from-literal=a=1 --from-literal=a=2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot add key "a", another key by that name already exists in Data for ConfigMap "x"
+  - run: kubectl create configmap x --from-literal='a b=1'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "a b" is not a valid key name for a ConfigMap: a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')
+  - run: kubectl create configmap x --from-file=app.properties --from-file=app.properties
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot add key "app.properties", another key by that name already exists in Data for ConfigMap "x"
+  - run: kubectl create configmap x --from-file=missing.txt
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error reading missing.txt: no such file or directory
+  - run: kubectl create configmap x --from-file==missing.txt
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: key name for file path missing.txt missing
+  - run: kubectl create configmap x --from-file=k=
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: file path for key name k missing
+  - run: kubectl create configmap x --from-file=a=b=c
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: key names or file paths cannot contain '='
+  - run: kubectl create configmap x --from-file=k=ok
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot give a key name for a directory path
+  - run: kubectl create configmap x --from-env-file=app.env --from-literal=a=b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: from-env-file cannot be combined with from-file or from-literal
+  - run: kubectl create configmap x --from-env-file=ok
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: env config file cannot be a directory
+  - run: kubectl create configmap x --from-env-file=missing.env
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error reading missing.env: no such file or directory
+  - run: kubectl create configmap x --from-env-file=bad.env
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "1BAD" is not a valid key name: a valid environment variable name must consist of alphabetic characters, digits, '_', '-', or '.', and must not start with a digit (e.g. 'my.env-name',  or 'MY_ENV.NAME',  or 'MyEnvName1', regex used for validation is '[-._a-zA-Z][-._a-zA-Z0-9]*')
+  - run: kubectl create configmap x --from-env-file=space.env
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "A B" is not a valid key name: a valid environment variable name must consist of alphabetic characters, digits, '_', '-', or '.', and must not start with a digit (e.g. 'my.env-name',  or 'MY_ENV.NAME',  or 'MyEnvName1', regex used for validation is '[-._a-zA-Z][-._a-zA-Z0-9]*')
+  - run: kubectl create configmap
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: exactly one NAME is required, got 0
+      See 'kubectl create configmap -h' for help and examples
+  - run: kubectl create configmap x --from-literal=a=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create configmap: Post "http://localhost:8080/api/v1/namespaces/default/configmaps?fieldManager=kubectl-create&fieldValidation=Strict": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create secret generic creds --from-literal=user=admin --from-literal=pass='s3cr3t!' --from-file=app.properties --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        app.properties: Y29sb3I9Ymx1ZQpzaXplPTEwCg==
+        pass: czNjcjN0IQ==
+        user: YWRtaW4=
+      kind: Secret
+      metadata:
+        name: creds
+    stderr: ""
+  - run: kubectl create secret generic tls --type=kubernetes.io/tls --from-literal=tls.crt=x --from-literal=tls.key=y -n team --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Secret",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "tls",
+              "namespace": "team"
+          },
+          "data": {
+              "tls.crt": "eA==",
+              "tls.key": "eQ=="
+          },
+          "type": "kubernetes.io/tls"
+      }
+    stderr: ""
+  - run: kubectl create secret generic dir --from-file=ok --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        one: MQo=
+        two.txt: dHdvCg==
+      kind: Secret
+      metadata:
+        name: dir
+    stderr: ""
+  - run: kubectl create secret generic env --from-env-file=app.env --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        A: MQ==
+        B: c3BhY2VkIHZhbHVlIA==
+        C: d2l0aD1lcXVhbHM=
+        D: ""
+        E: Y3JsZg==
+        G: bGFzdCBsaW5lIHdpdGhvdXQgYSBuZXdsaW5l
+        UNSET_IN_ENV: ""
+      kind: Secret
+      metadata:
+        name: env
+    stderr: ""
+  - run: kubectl create secret generic hashed --from-literal=a=b --append-hash --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: Yg==
+      kind: Secret
+      metadata:
+        name: hashed-cgm2t8ff2d
+    stderr: ""
+  - run: kubectl create secret generic hashed --type=Opaque --append-hash --dry-run=client -o name
+    exit: 0
+    stdout: |
+      secret/hashed-475mt6fg66
+    stderr: ""
+  - run: kubectl create secret generic saved --from-literal=a=b --save-config --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Secret",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "saved",
+              "annotations": {
+                  "kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Secret\",\"apiVersion\":\"v1\",\"metadata\":{\"name\":\"saved\"},\"data\":{\"a\":\"Yg==\"}}\n"
+              }
+          },
+          "data": {
+              "a": "Yg=="
+          }
+      }
+    stderr: ""
+  - run: kubectl create secret generic x --from-literal='a b=1'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "a b" is not valid key name for a Secret a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')
+  - run: kubectl create secret generic x --from-literal=a=1 --from-file=a=app.properties
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot add key a, another key by that name already exists
+  - run: kubectl create secret generic x --from-file=conf
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "bad key.txt" is not valid key name for a Secret a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name',  or 'KEY_NAME',  or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+')
+  - run: kubectl create secret generic x --from-env-file=ok
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: env secret file cannot be a directory
+  - run: kubectl create secret generic x --from-env-file=bad.env
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: "1BAD" is not a valid key name: a valid environment variable name must consist of alphabetic characters, digits, '_', '-', or '.', and must not start with a digit (e.g. 'my.env-name',  or 'MY_ENV.NAME',  or 'MyEnvName1', regex used for validation is '[-._a-zA-Z][-._a-zA-Z0-9]*')
+  - run: kubectl create secret generic x --from-env-file=app.env --from-file=ok
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: from-env-file cannot be combined with from-file or from-literal
+  - run: kubectl create secret generic
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: exactly one NAME is required, got 0
+      See 'kubectl create secret generic -h' for help and examples
+  - run: kubectl create secret generic x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create secret Post "http://localhost:8080/api/v1/namespaces/default/secrets?fieldManager=kubectl-create&fieldValidation=Strict": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create service clusterip web --tcp=80:8080 --tcp=443 --tcp=53:dns --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - name: 80-8080
+          port: 80
+          protocol: TCP
+          targetPort: 8080
+        - name: "443"
+          port: 443
+          protocol: TCP
+          targetPort: 443
+        - name: 53-dns
+          port: 53
+          protocol: TCP
+          targetPort: dns
+        selector:
+          app: web
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create svc clusterip web --tcp=80,8080:http -n team --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "web",
+              "namespace": "team",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "ports": [
+                  {
+                      "name": "80",
+                      "protocol": "TCP",
+                      "port": 80,
+                      "targetPort": 80
+                  },
+                  {
+                      "name": "8080-http",
+                      "protocol": "TCP",
+                      "port": 8080,
+                      "targetPort": "http"
+                  }
+              ],
+              "selector": {
+                  "app": "web"
+              },
+              "type": "ClusterIP"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl create service clusterip headless --clusterip=None --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: headless
+        name: headless
+      spec:
+        clusterIP: None
+        selector:
+          app: headless
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service clusterip fixed --clusterip=10.96.0.50 --tcp=80 --save-config --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: fixed
+        name: fixed
+      spec:
+        clusterIP: <<ip>>
+        ports:
+        - name: "80"
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: fixed
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service nodeport web --tcp=80:8080 --node-port=30080 --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "web",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "ports": [
+                  {
+                      "name": "80-8080",
+                      "protocol": "TCP",
+                      "port": 80,
+                      "targetPort": 8080,
+                      "nodePort": 30080
+                  }
+              ],
+              "selector": {
+                  "app": "web"
+              },
+              "type": "NodePort"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl create service nodeport web --tcp=80 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - name: "80"
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+        type: NodePort
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service loadbalancer web --tcp=80:8080 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - name: 80-8080
+          port: 80
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: web
+        type: LoadBalancer
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service externalname ext --external-name=db.example.com --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: ext
+        name: ext
+      spec:
+        externalName: db.example.com
+        selector:
+          app: ext
+        type: ExternalName
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl create service externalname ext --external-name=db.example.com --tcp=5432 --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "ext",
+              "labels": {
+                  "app": "ext"
+              }
+          },
+          "spec": {
+              "ports": [
+                  {
+                      "name": "5432",
+                      "protocol": "TCP",
+                      "port": 5432,
+                      "targetPort": 5432
+                  }
+              ],
+              "selector": {
+                  "app": "ext"
+              },
+              "type": "ExternalName",
+              "externalName": "db.example.com"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl create service clusterip x --tcp=0 --dry-run=client -o name
+    exit: 0
+    stdout: |
+      service/x
+    stderr: ""
+  - run: kubectl create service clusterip x --tcp=abc
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: strconv.ParseUint: parsing "abc": invalid syntax
+  - run: kubectl create service clusterip x --tcp=70000:80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: strconv.ParseUint: parsing "70000": value out of range
+  - run: kubectl create service clusterip x --tcp=80:abc_d
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: must contain only alpha-numeric characters (a-z, 0-9), and hyphens (-)
+  - run: kubectl create service clusterip x --tcp=80:0
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: must be between 1 and 65535, inclusive
+  - run: kubectl create service clusterip x --tcp=80:70000
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: must be between 1 and 65535, inclusive
+  - run: kubectl create service clusterip x --tcp=80:-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: must be between 1 and 65535, inclusive
+  - run: kubectl create service clusterip x --tcp=:80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: strconv.ParseUint: parsing "": invalid syntax
+  - run: kubectl create service clusterip x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: at least one tcp port specifier must be provided
+  - run: kubectl create service loadbalancer x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: at least one tcp port specifier must be provided
+  - run: kubectl create service nodeport x --clusterip=None
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown flag: --clusterip
+      See 'kubectl create service nodeport --help' for usage.
+  - run: kubectl create service externalname x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required flag(s) "external-name" not set
+  - run: kubectl create service externalname x --external-name=Bad_Name
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid service external name Bad_Name
+  - run: kubectl create service clusterip x --tcp=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create ClusterIP service: Post "http://localhost:8080/api/v1/namespaces/default/services?fieldManager=kubectl-create&fieldValidation=Strict": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create service nodeport x --tcp=80 --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: failed to create NodePort service: Post "http://localhost:8080/api/v1/namespaces/default/services?dryRun=All&fieldManager=kubectl-create&fieldValidation=Strict": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl run
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required flag(s) "image" not set
+  - run: kubectl run x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required flag(s) "image" not set
+  - run: kubectl run -- x --image=nginx
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required flag(s) "image" not set
+  - run: kubectl run --image=nginx
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: NAME is required for run
+  - run: kubectl run --image=nginx -- x
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl run x --image=
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --image is required
+  - run: kubectl run x --image='Bad Image'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid image name "Bad Image": invalid reference format
+  - run: kubectl run x --image=Nginx
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid image name "Nginx": invalid reference format
+  - run: kubectl run x --image=nginx -t
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: -i/--stdin is required for containers with -t/--tty=true
+  - run: kubectl run x --image=nginx --expose
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --port must be set when exposing a service
+  - run: kubectl run x --image=nginx --port=abc
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --port must be a number
+  - run: kubectl run x --image=nginx --rm
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --rm should only be used for attached containers
+  - run: kubectl run x --image=nginx -i --dry-run=client
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --dry-run=[server|client] can't be used with attached containers options (--attach, --stdin, or --tty)
+  - run: kubectl run x --image=nginx --attach --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --dry-run=[server|client] can't be used with attached containers options (--attach, --stdin, or --tty)
+  - run: kubectl run x --image=nginx --restart=Sometimes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid restart policy: Sometimes, valid values are: Always, OnFailure, Never
+  - run: kubectl run x --image=nginx --image-pull-policy=Maybe
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid image pull policy: Maybe, valid values are: Always, IfNotPresent, Never
+  - run: kubectl run x --image=nginx --env=A
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid env: A
+  - run: kubectl run x --image=nginx --env==1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid env: =1
+  - run: kubectl run x --image=nginx --env=1A=b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid env: 1A=b
+  - run: kubectl run x --image=nginx --labels=a
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected label spec: a
+  - run: kubectl run x --image=nginx --labels==b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected empty label key
+  - run: kubectl run x --image=nginx --labels=a=b=c
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected label spec: a=b=c
+  - run: kubectl run x --image=nginx --annotations=a --annotations==b --annotations=ok=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid annotations format: a, =b
+  - run: kubectl run x --image=nginx --cascade=bad
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid cascade value (bad). Must be "background", "foreground", or "orphan"
+  - run: kubectl run x --image=nginx --pod-running-timeout=0s
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --pod-running-timeout must be higher than zero
+  - run: kubectl run x --image=nginx --dry-run=bad
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid dry-run value (bad). Must be "none", "server", or "client".
+  - run: kubectl run x --image=nginx -o bad
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "bad", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: kubectl run x --image=nginx --dry-run=client -o yaml -- sleep 1
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?

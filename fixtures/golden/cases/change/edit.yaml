@@ -1,0 +1,65 @@
+description: >-
+  kubectl edit with KUBE_EDITOR set to scripts from the case (the real binary then runs without a
+  terminal) - the file kubectl writes (cat as the editor: the header, YAML or JSON, a List for
+  several objects, CRLF line endings), a change sent as a patch (--output-patch), --save-config (the annotation it writes holds managedFields, DIV-015: not compared), an
+  edit that only removes what kubectl fills back in (skipped), a file that fails validation and is
+  fixed on the second open (the error and the reasons in the reopened file), an object the server
+  refuses and an editor that then quits unchanged (the copy kept), a changed name, an empty file (TMPDIR=$HOME where kubectl prints the kept file's path: os.TempDir reads it, and the path stays inside the case's directory);
+  and the errors - an editor that is not there or fails, no object, no argument, a bad -o, a bad
+  --validate.
+files:
+  drop-tier.sh: |
+    grep -v "tier: web" "$1" > "$1.new"; cp "$1.new" "$1"
+  drop-namespace.sh: |
+    grep -v "^  namespace: default$" "$1" > "$1.new"; cp "$1.new" "$1"
+  drop-name.sh: |
+    grep -v "^  name: a$" "$1" > "$1.new"; cp "$1.new" "$1"
+  bad-then-fix.sh: |
+    test -e "$HOME/fix-marker" && cat "$1" && grep -v -e "foo: \[" -e "tier: api" "$1" > "$1.new" && cp "$1.new" "$1" && exit 0
+    touch "$HOME/fix-marker"
+    printf 'foo: [\n' >> "$1"
+  invalid-then-quit.sh: |
+    test -e "$HOME/quit-marker" && cat "$1" && exit 0
+    touch "$HOME/quit-marker"
+    grep -v "image: nginx" "$1" > "$1.new"; cp "$1.new" "$1"
+  drop-k.sh: |
+    grep -v "^  k: v$" "$1" > "$1.new"; cp "$1.new" "$1"
+  cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: a
+    data:
+      k: v
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27
+  - do: kubectl create deployment api --image=nginx:1.27
+  - do: kubectl label deployment web tier=web
+  - do: kubectl label deployment api tier=api
+  - do: kubectl create configmap a --from-literal=k=v
+  - do: kubectl create configmap b --from-literal=k=v
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/api --timeout=60s
+steps:
+  - run: KUBE_EDITOR=cat kubectl edit deployment web
+  - run: KUBE_EDITOR=cat kubectl edit configmap a -o json
+  - run: KUBE_EDITOR=cat kubectl edit configmap a b
+  - run: KUBE_EDITOR=cat kubectl edit -f cm.yaml
+  - run: KUBE_EDITOR=cat kubectl edit configmap a --windows-line-endings | tr -d -c '\r' | wc -c
+  - run: KUBE_EDITOR='bash drop-namespace.sh' kubectl edit configmap a --output-patch
+  - run: KUBE_EDITOR='bash drop-tier.sh' kubectl edit deployment web --output-patch
+  - run: KUBE_EDITOR='bash drop-tier.sh' kubectl edit deployment web
+  - run: TMPDIR=$HOME KUBE_EDITOR='bash drop-name.sh' kubectl edit configmap a
+  - run: KUBE_EDITOR='bash bad-then-fix.sh' kubectl edit deployment api
+  - run: TMPDIR=$HOME KUBE_EDITOR='bash invalid-then-quit.sh' kubectl edit deployment web
+  - run: KUBE_EDITOR='bash drop-k.sh' kubectl edit configmap b --save-config
+  - run: TMPDIR=$HOME KUBE_EDITOR='cp /dev/null' kubectl edit configmap b
+  - run: KUBE_EDITOR=nope kubectl edit configmap a
+  - run: KUBE_EDITOR=false kubectl edit configmap a
+  - run: EDITOR=false kubectl edit configmap a
+  - run: KUBE_EDITOR=cat kubectl edit configmap nope
+  - run: KUBE_EDITOR=cat kubectl edit
+  - run: KUBE_EDITOR=cat kubectl edit configmap a -o name
+  - run: KUBE_EDITOR=cat kubectl edit configmap a -o wide
+  - run: KUBE_EDITOR=cat kubectl edit configmap a --validate=bogus
+  - objects: [deployment/web, deployment/api, configmap/a]

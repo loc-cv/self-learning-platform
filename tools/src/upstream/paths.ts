@@ -115,6 +115,13 @@ export const KUBERNETES_CHECKOUT: UpstreamCheckout = {
     'staging/src/k8s.io/client-go/rest',
     'staging/src/k8s.io/client-go/discovery',
     'staging/src/k8s.io/client-go/restmapper',
+    // UntilWithSync and ContextWithOptionalTimeout: how `rollout status` watches and times out (08)
+    'staging/src/k8s.io/client-go/tools/watch',
+    // RFC 6902 JSON patch as the API server applies it, with its errors (`rollout undo`) (08)
+    'vendor/gopkg.in/evanphx/json-patch.v4',
+    // explain: the field path parser (jsonpath) and the OpenAPI v3 client (Paths, Schema) (08)
+    'staging/src/k8s.io/client-go/util/jsonpath',
+    'staging/src/k8s.io/client-go/openapi',
     // admission plugins, RBAC authorizer and bootstrap policy (20a, 20b)
     'plugin/pkg',
     // Pod Security admission checks and messages (20b)

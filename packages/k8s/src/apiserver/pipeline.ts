@@ -35,6 +35,7 @@ import {
 import { invalid, newPath, notSupported, type FieldError } from '../apimachinery/field.ts';
 import { cloneJson, isObject, jsonEqual, type Json, type JsonObject } from '../apimachinery/json.ts';
 import { mergePatch, mergePatchError } from '../apimachinery/mergepatch.ts';
+import { applyJsonPatchRequest } from './jsonpatch.ts';
 import { applyStrategicPatchInPlace } from '../apimachinery/strategicpatch/index.ts';
 import { fromUnstructured } from '../apimachinery/converter.ts';
 import { goSprint } from '../kubectl/printers/gofmt.ts';
@@ -66,6 +67,7 @@ import {
 } from './store.ts';
 import type { ApiRequest, ApiResponse, RequestOptions, Strategy, StrategyCtx } from './types.ts';
 import { recordWarnings } from './warning.ts';
+import { writeScale } from './scale.ts';
 import { applyIncludeObject, convertToTable, type TableSource } from '../printers/tablegenerator.ts';
 
 type Result<T> = { ok: T } | { status: Status };
@@ -104,12 +106,11 @@ export function handle(ctx: Ctx, server: ApiServerConfig, req: ApiRequest): ApiR
   }
   const strategy = strategyFor(req.group, req.resource);
   if (!strategy) return gap(`${req.resource}${req.group ? `.${req.group}` : ''}`);
-  // The scale subresource is read-only so far: writing it must update spec.replicas through the
-  // main strategy and answer with a Scale, which is not built yet.
+  // The scale subresource: get, and update/patch through the main strategy (scale.ts).
   const binding = req.subresource === 'binding' && req.verb === 'create' && strategy.kind === 'Pod';
   // Subresources written through update with their own strategy (namespaces/finalize).
   const updateSub = req.subresource !== undefined && (req.verb === 'update' || req.verb === 'patch') && strategy.updateSubresources?.[req.subresource] !== undefined;
-  if (req.subresource && req.subresource !== 'status' && !binding && !updateSub && !(req.subresource === 'scale' && strategy.scale && req.verb === 'get')) {
+  if (req.subresource && req.subresource !== 'status' && !binding && !updateSub && !(req.subresource === 'scale' && strategy.scale && ['get', 'update', 'patch'].includes(req.verb))) {
     return gap(`the ${req.resource}/${req.subresource} subresource`);
   }
   // Authentication and authorization (phase 20a): every request is admitted as given.
@@ -141,6 +142,10 @@ export function handle(ctx: Ctx, server: ApiServerConfig, req: ApiRequest): ApiR
 
 function dispatch(served: Served, req: ApiRequest): ApiResponse {
   if (req.subresource === 'binding') return bindPod(served, req);
+  if (req.subresource === 'scale' && (req.verb === 'update' || req.verb === 'patch')) {
+    const existing = storeGet(served.etcd, served.strategy.storage, objectKey(namespaceFor(served, req), req.name ?? ''));
+    return writeScale(req, served.strategy, served.gr, { current: existing ? toResponse(served, existing) : undefined, update: (obj) => update(served, req, obj) });
+  }
   switch (req.verb) {
     case 'get':
       return get(served, req);
@@ -513,18 +518,26 @@ function update(sv: Served, req: ApiRequest, merged: JsonObject | undefined): Ap
 function patch(sv: Served, req: ApiRequest): ApiResponse {
   const type = req.options?.patchType ?? 'merge';
   if (type === 'strategic') return strategicPatch(sv, req);
-  if (type !== 'merge') return gap(`${type} patches (only JSON merge and strategic merge patches are simulated so far)`);
+  if (type !== 'merge' && type !== 'json') return gap(`${type} patches (only JSON, JSON merge and strategic merge patches are simulated so far)`);
   const optErr = checkFieldValidation(req.options, 'PatchOptions');
   if (optErr) return fail(optErr);
   // patch.go: json-patch v4 refuses a merge patch that is not an object or array.
-  const patchErr = req.body === undefined ? 'invalid JSON patch' : mergePatchError(req.body);
+  const patchErr = req.body === undefined ? 'invalid JSON patch' : type === 'json' ? null : mergePatchError(req.body);
   if (patchErr !== null) return fail(badRequestError(patchErr));
   const ns = namespaceFor(sv, req);
   const name = req.name ?? '';
   const existing = storeGet(sv.etcd, sv.strategy.storage, objectKey(ns, name));
   if (!existing) return fail(notFoundError(sv.gr, name));
   const current = toResponse(sv, existing);
-  const mergedJson = mergePatch(current, req.body as Json);
+  // A JSON patch (jsonpatch.ts) and its operations' strict decoding errors, or a merge patch.
+  let mergedJson: Json;
+  let strict: string[] = [];
+  if (type === 'json') {
+    const jp = applyJsonPatchRequest(current, req.body as Json, req.options?.fieldValidation ?? '');
+    if ('gap' in jp) return gap(jp.gap);
+    if ('status' in jp) return fail(jp.status);
+    ({ ok: mergedJson, strict } = jp);
+  } else mergedJson = mergePatch(current, req.body as Json);
   const t = schema().kind(sv.apiVersion, sv.strategy.kind);
   if (!t) throw new Error(`no schema for ${sv.apiVersion}`);
   if (!isObject(mergedJson)) return fail(badRequestError('invalid JSON patch'));
@@ -535,8 +548,8 @@ function patch(sv: Served, req: ApiRequest): ApiResponse {
   if (r.error !== undefined) return fail(patchInvalid(r.error));
   const convErr = isObject(r.value) ? sv.strategy.conversionError?.(r.value) : undefined;
   if (convErr !== undefined) return fail(patchInvalid(convErr));
-  if (r.unknown.length > 0) {
-    const items = r.unknown.map((p) => `unknown field ${JSON.stringify(p)}`);
+  if (strict.length + r.unknown.length > 0) {
+    const items = [...strict, ...r.unknown.map((p) => `unknown field ${JSON.stringify(p)}`)];
     const mode = req.options?.fieldValidation ?? '';
     if (mode === 'Strict') return fail(patchInvalid(`strict decoding error: ${items.join(', ')}`));
     if (mode !== 'Ignore') sv.warnings.push(...items);

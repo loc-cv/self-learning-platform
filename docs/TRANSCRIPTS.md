@@ -23,10 +23,25 @@ $ printf x
 x (no-eol)                                       ← output that does not end in a newline
 ```
 
-- Expected output is every line up to the next line starting with `$ `, `% ` or `#`, blank lines
-  included. Separate steps with comment lines.
-- An output line that starts with `$ `, `% `, `> `, `#`, `[exit ` or `\` is written with a leading
-  backslash.
+- Expected output is every line up to the next line starting with `$ `, `% `, `#` or `@editor`,
+  blank lines included. Separate steps with comment lines.
+- An output line that starts with `$ `, `% `, `> `, `#`, `[exit `, `@editor` or `\` is written
+  with a leading backslash.
+- Editors (`vim`, `nano`, the one `kubectl edit` runs) ask the front end for the file's new content
+  (the editor protocol, `docs/ARCHITECTURE.md` §3.8). A transcript answers them with directives
+  before the command that opens them; the answers queue up and each editor takes the oldest, so
+  `kubectl edit` that reopens the file takes two. An editor with no answer queued closes without
+  saving. The same directives work in `npm run sim` scripts.
+
+  ```
+  @editor <<EOF                                  ← the content the editor saves, up to the word
+  apiVersion: v1                                   (`<<'EOF'` works too); each line gets a newline
+  …
+  EOF
+  @editor :q!                                    ← the next editor closes without saving
+  $ kubectl edit configmap settings
+  configmap/settings edited
+  ```
 - Commands run in order in one interactive login shell (`-bash`) for user `student` on the machine
   `node01`, in a fresh world, in `/home/student`, on an 80-column terminal. State carries over
   between steps. Virtual time advances only as far as each command waits (`sleep 2` takes two
@@ -62,7 +77,7 @@ $ kubectl get pod web -o jsonpath='{.metadata.uid}{"\n"}{.metadata.creationTimes
 ```
 
 - `<<kind>>` matches any value of the kind (`uid`, `time`, `rv`, `age`, `ip`, `hash`, `suffix`,
-  `hex`, `port`, `pid`, `cert`, `node`); everything else in the step's output must be equal.
+  `hex`, `port`, `pid`, `cert`, `tmp`, `node`); everything else in the step's output must be equal.
 - `<<kind:N>>` binds: the same N must match the same value throughout the step, and two Ns of a
   kind must match different values.
 - A step whose expected output has no token is compared exactly, as before. Matching is

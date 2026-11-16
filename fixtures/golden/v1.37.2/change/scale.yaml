@@ -1,0 +1,249 @@
+# Captured from fixtures/golden/cases/change/scale.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: change/scale
+description: kubectl scale - one object, several, by selector, --all, from a file; the --current-replicas and --resource-version preconditions; client and server dry runs with -o; and the errors - the required flag, negative counts, a precondition that does not hold, a missing object among others, no objects, a kind without a scale subresource.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl scale deployment web --replicas=2
+    exit: 0
+    stdout: |
+      deployment.apps/web scaled
+    stderr: ""
+  - run: kubectl scale deployment web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required flag(s) "replicas" not set
+  - run: kubectl scale deployment web --replicas=-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: The --replicas=COUNT flag is required, and COUNT must be greater than or equal to 0
+  - run: kubectl scale deployment web --replicas=1 --current-replicas=-2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: The --current-replicas must specify an integer of -1 or greater
+  - run: kubectl scale deployment/web --replicas=3 --current-replicas=5
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Expected replicas to be 5, was 2
+  - run: kubectl scale deployment/web --replicas=3 --current-replicas=2
+    exit: 0
+    stdout: |
+      deployment.apps/web scaled
+    stderr: ""
+  - run: kubectl scale deploy web api --replicas=1 --resource-version=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot use --resource-version with multiple resources
+  - run: kubectl scale deploy web api --replicas=2 -o name
+    exit: 0
+    stdout: |
+      deployment.apps/web
+      deployment.apps/api
+    stderr: ""
+  - run: kubectl scale deploy web nope api --replicas=1
+    exit: 1
+    stdout: |
+      deployment.apps/web scaled
+      deployment.apps/api scaled
+    stderr: |
+      Error from server (NotFound): deployments.apps "nope" not found
+  - run: kubectl scale deploy -l app=api --replicas=2 --dry-run=client
+    exit: 0
+    stdout: |
+      deployment.apps/api scaled (dry run)
+    stderr: ""
+  - run: kubectl scale deploy --all --replicas=3 --dry-run=server
+    exit: 0
+    stdout: |
+      deployment.apps/api scaled (server dry run)
+      deployment.apps/web scaled (server dry run)
+    stderr: ""
+  - run: kubectl scale deploy -l app=none --replicas=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no objects passed to scale
+  - run: kubectl scale deploy --replicas=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource(s) were provided, but no name was specified
+  - run: kubectl scale --replicas=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must provide one or more resources by argument or filename.
+      Example resource specifications include:
+         '-f rsrc.yaml'
+         '--filename=rsrc.json'
+         '<resource> <name>'
+         '<resource>'
+  - run: kubectl scale deploy web --replicas=1 --dry-run=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid dry-run value (bogus). Must be "none", "server", or "client".
+  - run: kubectl scale deploy web --replicas=1 -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: kubectl scale pod solo --replicas=2
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): the server could not find the requested resource
+  - run: kubectl scale rs front --replicas=2
+    exit: 0
+    stdout: |
+      replicaset.apps/front scaled
+    stderr: ""
+  - run: kubectl scale -f rs.yaml --replicas=1 --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        labels:
+          app: front
+        name: front
+        namespace: default
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: front
+        template:
+          metadata:
+            labels:
+              app: front
+          spec:
+            containers:
+            - image: nginx:1.27
+              name: nginx
+    stderr: ""
+  - run: kubectl scale -f rs.yaml --replicas=1
+    exit: 0
+    stdout: |
+      replicaset.apps/front scaled
+    stderr: ""
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "1"
+            creationTimestamp: <<time>>
+            generation: 5
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 1
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 1
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+            observedGeneration: 5
+            readyReplicas: 1
+            replicas: 1
+            terminatingReplicas: 0
+            updatedReplicas: 1
+      - ref: rs/front
+        object:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 3
+            labels:
+              app: front
+            name: front
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: front
+            template:
+              metadata:
+                labels:
+                  app: front
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 1
+            fullyLabeledReplicas: 1
+            observedGeneration: 3
+            readyReplicas: 1
+            replicas: 1
+            terminatingReplicas: 0

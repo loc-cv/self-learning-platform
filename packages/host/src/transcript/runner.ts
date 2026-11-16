@@ -41,8 +41,12 @@ export function runTranscript(t: Transcript, world: (ports: Ports) => Transcript
   const gaps: GapEvent[] = [];
   const w = world({ ...capture.ports, gap: (g) => gaps.push(g) });
   const session = openSession(w.kernel, capture, { machine: w.machine, user: w.user, cols: t.cols });
+  // `@editor` answers, oldest first; an editor with none queued closes without saving.
+  const editors: (string | null)[] = [];
+  session.onEditor(() => editors.shift() ?? undefined);
   const results: StepResult[] = [];
   for (const step of t.steps) {
+    editors.push(...(step.editors ?? []));
     const r = session.run(step.command);
     results.push({ step, output: r.output, status: r.status, finished: r.finished });
     if (r.exited) break;

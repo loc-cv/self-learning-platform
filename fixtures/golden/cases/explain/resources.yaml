@@ -1,0 +1,31 @@
+description: kubectl explain of resources and nested fields from the server's OpenAPI v3 documents - groups, short names, arrays, maps, enums, required fields and refs to non-object types.
+kwok: false
+steps:
+  - run: kubectl explain deployment.spec.strategy
+  - run: kubectl explain pods
+  - run: kubectl explain deploy
+  - run: kubectl explain deployments.apps
+  - run: kubectl explain deployments.apps.spec.strategy.rollingUpdate
+  - run: kubectl explain deploy.spec.strategy.rollingUpdate.maxSurge
+  - run: kubectl explain pod.spec.containers
+  - run: kubectl explain pod.spec.containers.resources
+  - run: kubectl explain pods.spec.containers.resources.limits
+  - run: kubectl explain pod.spec.restartPolicy
+  - run: kubectl explain svc.spec.type
+  - run: kubectl explain svc.spec
+  - run: kubectl explain cm.data
+  - run: kubectl explain pods.metadata.labels
+  - run: kubectl explain node.status.conditions
+  - run: kubectl explain hpa
+  - run: kubectl explain events
+  - run: kubectl explain events.events.k8s.io
+  - run: kubectl explain cronjob.spec.jobTemplate.spec.template.spec.containers.livenessProbe.httpGet.port
+  - run: kubectl explain crd.spec.versions.schema.openAPIV3Schema
+  - run: kubectl explain pods.spec.containers.name
+  - run: kubectl explain pods.
+  - run: kubectl explain deployments.appsfoo.spec
+  - run: kubectl explain ns
+  - run: kubectl explain pod.status
+  - run: kubectl explain pod.status.phase
+  - run: kubectl explain pv.spec.capacity
+  - run: kubectl explain statefulsets.spec.volumeClaimTemplates.spec.resources

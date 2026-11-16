@@ -5,9 +5,10 @@
 //   @advance 30s          let 30 s of virtual time pass
 //   @keys \x03            type raw keys without Enter (\xHH, \e, \t, \r, \n, \\ escapes)
 //   @resize 100x30        resize the terminal
-//   @editor <<EOF         the content to save when the next editor (vim, nano) opens;
-//   ...                   without one, the editor closes without saving
+//   @editor <<EOF         the content to save when the next editor (vim, nano, kubectl
+//   ...                   edit's) opens; without one, the editor closes without saving
 //   EOF
+//   @editor :q!           the next editor closes without saving (as in a transcript)
 //
 // Output is the terminal's screen with its scrollback (`screen`), the bytes the terminal received
 // (`raw`), or transcript format (`transcript`: a plain session, see docs/TRANSCRIPTS.md).
@@ -72,11 +73,11 @@ export function runScript(lines: readonly string[], opts: ScriptOptions): Script
     terminal: opts.mode !== 'transcript',
   });
   const notes: string[] = [];
-  const editors: string[] = [];
+  const editors: (string | null)[] = [];
   s.onEditor((req) => {
     const content = editors.shift();
     if (content === undefined) notes.push(`editor for ${req.path} closed without saving (no @editor content)`);
-    return content;
+    return content ?? undefined;
   });
   const screen = createScreen(opts.cols, opts.rows);
   let raw = '';
@@ -104,9 +105,11 @@ export function runScript(lines: readonly string[], opts: ScriptOptions): Script
         if (!m) throw new UsageError(`line ${i + 1}: @resize COLSxROWS`);
         kernel.input({ kind: 'tty.resize', tty: s.tty, cols: Number(m[1]), rows: Number(m[2]) });
         screen.resize(Number(m[1]), Number(m[2]));
+      } else if (name === 'editor' && arg.trim() === ':q!') {
+        editors.push(null);
       } else if (name === 'editor') {
         const m = /^<<\s*'?(\w+)'?$/.exec(arg);
-        if (!m) throw new UsageError(`line ${i + 1}: @editor <<TAG, then the content, then TAG`);
+        if (!m) throw new UsageError(`line ${i + 1}: @editor <<TAG, then the content, then TAG (or @editor :q!)`);
         const body: string[] = [];
         for (i++; i < lines.length && lines[i] !== m[1]; i++) body.push(lines[i] as string);
         if (i >= lines.length) throw new UsageError(`@editor: no closing ${m[1]}`);

@@ -13,6 +13,14 @@ import { civilFromMillis } from '@simlab/kernel';
 
 export const POD_LOGS_ROOT = '/var/log/pods';
 
+/**
+ * Published when a container writes to its log, stops or is removed, and when a kubelet stops: a
+ * following log stream (`kubectl logs -f`, kubelet/logs.ts) reads again, as the kubelet's ReadLogs
+ * wakes on fsnotify and checks the container's state. One topic for the cluster: a follower of
+ * several Pods (`-l … -f`) waits on all of them at once.
+ */
+export const LOG_TOPIC = 'k8s.logs';
+
 export function podLogsDirectory(namespace: string, name: string, uid: string): string {
   return `${POD_LOGS_ROOT}/${namespace}_${name}_${uid}`;
 }
@@ -103,6 +111,7 @@ export function appendLogLines(ctx: Ctx, node: string, path: string, stream: 'st
   } catch {
     // The directory was removed (Pod deleted): containerd's write fails and the output is lost.
   }
+  ctx.publish(LOG_TOPIC);
   return c;
 }
 

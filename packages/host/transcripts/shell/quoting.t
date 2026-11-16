@@ -16,8 +16,23 @@ assigned
 assigned
 $ echo $'tab\there' "a\"b" 'it'\''s'
 tab	here a"b it's
+$ echo $'\u00e9 \u65e5\U0001F600 \x41\101 \u'
+é 日😀 AA \u
 $ echo ~ ~/x ~root "~" x~
 /home/student /home/student/x /root ~ x~
+$ X=~/a:~/b; echo $X; export X=~; echo $X; export X=~/a:~/b; echo $X
+/home/student/a:/home/student/b
+/home/student
+/home/student/a:/home/student/b
+$ echo X=~/a Y=a:~/b foo=~ x~/b a=b~
+X=/home/student/a Y=a:/home/student/b foo=/home/student x~/b a=b~
+$ export X="~/a"; echo $X; export Q=a~/b; echo $Q; export "P"=~/a; echo $P
+~/a
+a~/b
+~/a
+$ export ~/a; echo $?
+-bash: export: `/home/student/a': not a valid identifier
+1
 $ echo a{b,c,d}e {1..4} {a..c} {01..03} {3..1} x{}y {a}
 abe ace ade 1 2 3 4 a b c 01 02 03 3 2 1 x{}y {a}
 $ echo $(echo inner $(echo nested)) "$(printf 'two\nlines')"

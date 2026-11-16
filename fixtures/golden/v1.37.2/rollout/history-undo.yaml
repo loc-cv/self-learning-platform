@@ -1,0 +1,625 @@
+# Captured from fixtures/golden/cases/rollout/history-undo.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: rollout/history-undo
+description: "A Deployment applied three times (two images with a change-cause annotation, a third without), then rollout status once settled (--revision, --watch=false and their errors), rollout history (the table, --revision with the pod template and the change-cause, -o name/yaml, selectors, a type with no history viewer), rollout undo (client and server dry runs, --to-revision, the warning about the last-applied annotation, the skipped rollback, -o name, the errors) and the objects the rollbacks leave: the change-cause copied back onto the Deployment, revision-history on the ReplicaSet."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl apply -f web-2.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web configured
+    stderr: ""
+  - run: kubectl rollout status deployment/web
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl rollout status deployment web --revision=2
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl rollout status deploy/web --revision=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: desired revision (1) is different from the running revision (2)
+  - run: kubectl rollout status deploy/web --watch=false
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl rollout status deploy/web --revision=-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: revision must be a positive integer: -1
+  - run: kubectl rollout status
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required resource not specified
+  - run: kubectl rollout status deployments
+    exit: 0
+    stdout: |
+      deployment "solo" successfully rolled out
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl rollout status deployment -l app=nothing
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl rollout status deployment/nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "nope" not found
+  - run: kubectl rollout status service/kubernetes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no status viewer has been implemented for Service
+  - run: kubectl rollout status -f web-2.yaml
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl apply -f web-3.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web configured
+    stderr: ""
+  - run: kubectl rollout history deployment/web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      1         deploy nginx 1.27
+      2         update to nginx 1.28
+      3         <none>
+
+    stderr: ""
+  - run: kubectl rollout history deployment web --revision=1
+    exit: 0
+    stdout: |+
+      deployment.apps/web with revision #1
+      Pod Template:
+        Labels:	app=web
+      	pod-template-hash=<<hash:1>>
+        Annotations:	kubernetes.io/change-cause: deploy nginx 1.27
+        Containers:
+         nginx:
+          Image:	nginx:1.27
+          Port:	<none>
+          Host Port:	<none>
+          Environment:	<none>
+          Mounts:	<none>
+        Volumes:	<none>
+        Node-Selectors:	<none>
+        Tolerations:	<none>
+
+    stderr: ""
+  - run: kubectl rollout history deployment/web --revision=3
+    exit: 0
+    stdout: |+
+      deployment.apps/web with revision #3
+      Pod Template:
+        Labels:	app=web
+      	pod-template-hash=<<hash:2>>
+        Annotations:	team: blue
+        Containers:
+         nginx:
+          Image:	nginx:1.29
+          Port:	<none>
+          Host Port:	<none>
+          Environment:
+            MODE:	three
+          Mounts:	<none>
+        Volumes:	<none>
+        Node-Selectors:	<none>
+        Tolerations:	<none>
+
+    stderr: ""
+  - run: kubectl rollout history deployment/web --revision=7
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to find the specified revision
+  - run: kubectl rollout history deployment/web --revision=-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: revision must be a positive integer: -1
+  - run: kubectl rollout history deployment/web -o name
+    exit: 0
+    stdout: |
+      replicaset.apps/web-<<hash:1>>
+      replicaset.apps/web-<<hash:3>>
+      replicaset.apps/web-<<hash:2>>
+    stderr: ""
+  - run: kubectl rollout history deployment/web -o yaml --revision=1
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        annotations:
+          deployment.kubernetes.io/desired-replicas: "2"
+          deployment.kubernetes.io/max-replicas: "3"
+          deployment.kubernetes.io/revision: "1"
+          kubernetes.io/change-cause: deploy nginx 1.27
+        creationTimestamp: "<<time>>"
+        generation: 3
+        labels:
+          app: web
+          pod-template-hash: <<hash:1>>
+        name: web-<<hash:1>>
+        namespace: default
+        ownerReferences:
+        - apiVersion: apps/v1
+          blockOwnerDeletion: true
+          controller: true
+          kind: Deployment
+          name: web
+          uid: <<uid:1>>
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: web
+            pod-template-hash: <<hash:1>>
+        template:
+          metadata:
+            labels:
+              app: web
+              pod-template-hash: <<hash:1>>
+          spec:
+            containers:
+            - image: nginx:1.27
+              imagePullPolicy: IfNotPresent
+              name: nginx
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            terminationGracePeriodSeconds: 30
+      status:
+        observedGeneration: 3
+        replicas: 0
+        terminatingReplicas: 0
+    stderr: ""
+  - run: kubectl rollout history deployment/web -o json --revision=9
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to find the specified revision
+  - run: kubectl rollout history deployment/web -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: kubectl rollout history deployments
+    exit: 0
+    stdout: |+
+      deployment.apps/solo 
+      REVISION  CHANGE-CAUSE
+      1         <none>
+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      1         deploy nginx 1.27
+      2         update to nginx 1.28
+      3         <none>
+
+    stderr: ""
+  - run: kubectl rollout history deployment -l app=web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      1         deploy nginx 1.27
+      2         update to nginx 1.28
+      3         <none>
+
+    stderr: ""
+  - run: kubectl rollout history deployment/solo
+    exit: 0
+    stdout: |+
+      deployment.apps/solo 
+      REVISION  CHANGE-CAUSE
+      1         <none>
+
+    stderr: ""
+  - run: kubectl rollout history rs -l app=web
+    exit: 1
+    stdout: ""
+    stderr: |
+      no history viewer has been implemented for "ReplicaSet.apps"
+      no history viewer has been implemented for "ReplicaSet.apps"
+      no history viewer has been implemented for "ReplicaSet.apps"
+  - run: kubectl rollout history service kubernetes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error retrieving history for "Service", no visitor method exists for { Service}
+  - run: kubectl rollout history
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required resource not specified
+  - run: kubectl rollout undo deployment/web --dry-run=client
+    exit: 0
+    stdout: |
+      deployment.apps/web Pod Template:
+        Labels:	app=web
+      	pod-template-hash=<<hash:3>>
+        Containers:
+         nginx:
+          Image:	nginx:1.28
+          Port:	<none>
+          Host Port:	<none>
+          Environment:	<none>
+          Mounts:	<none>
+        Volumes:	<none>
+        Node-Selectors:	<none>
+        Tolerations:	<none>
+       (dry run)
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+  - run: kubectl rollout undo deployment/web --to-revision=1 --dry-run=server
+    exit: 0
+    stdout: |
+      deployment.apps/web rolled back (server dry run)
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+  - run: kubectl rollout history deployment/web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      1         deploy nginx 1.27
+      2         update to nginx 1.28
+      3         <none>
+
+    stderr: ""
+  - run: kubectl rollout undo deployment/web --to-revision=1
+    exit: 0
+    stdout: |
+      deployment.apps/web rolled back
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+  - run: kubectl rollout history deployment/web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      2         update to nginx 1.28
+      3         <none>
+      4         deploy nginx 1.27
+
+    stderr: ""
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "4"
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"web"},"name":"web","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"web"}},"template":{"metadata":{"annotations":{"team":"blue"},"labels":{"app":"web"}},"spec":{"containers":[{"env":[{"name":"MODE","value":"three"}],"image":"nginx:1.29","name":"nginx"}]}}}}
+              kubernetes.io/change-cause: deploy nginx 1.27
+            creationTimestamp: <<time>>
+            generation: 4
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 2
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 2
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 4
+            readyReplicas: 2
+            replicas: 2
+            terminatingReplicas: 0
+            updatedReplicas: 2
+  - objects:
+      - ref: rs -l app=web
+        object:
+          apiVersion: v1
+          items:
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "2"
+                  deployment.kubernetes.io/max-replicas: "3"
+                  deployment.kubernetes.io/revision: "2"
+                  kubernetes.io/change-cause: update to nginx 1.28
+                creationTimestamp: <<time>>
+                generation: 4
+                labels:
+                  app: web
+                  pod-template-hash: 6f9bcdc979
+                name: web-<<hash:3>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:4>>
+              spec:
+                replicas: 0
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 6f9bcdc979
+                template:
+                  metadata:
+                    labels:
+                      app: web
+                      pod-template-hash: 6f9bcdc979
+                  spec:
+                    containers:
+                      - image: nginx:1.28
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                observedGeneration: 4
+                replicas: 0
+                terminatingReplicas: 0
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "2"
+                  deployment.kubernetes.io/max-replicas: "3"
+                  deployment.kubernetes.io/revision: "3"
+                creationTimestamp: <<time>>
+                generation: 4
+                labels:
+                  app: web
+                  pod-template-hash: 6cfd58684c
+                name: web-<<hash:2>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:3>>
+              spec:
+                replicas: 0
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 6cfd58684c
+                template:
+                  metadata:
+                    annotations:
+                      team: blue
+                    labels:
+                      app: web
+                      pod-template-hash: 6cfd58684c
+                  spec:
+                    containers:
+                      - env:
+                          - name: MODE
+                            value: three
+                        image: nginx:1.29
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                observedGeneration: 4
+                replicas: 0
+                terminatingReplicas: 0
+            - apiVersion: apps/v1
+              kind: ReplicaSet
+              metadata:
+                annotations:
+                  deployment.kubernetes.io/desired-replicas: "2"
+                  deployment.kubernetes.io/max-replicas: "3"
+                  deployment.kubernetes.io/revision: "4"
+                  deployment.kubernetes.io/revision-history: "1"
+                  kubernetes.io/change-cause: deploy nginx 1.27
+                creationTimestamp: <<time>>
+                generation: 5
+                labels:
+                  app: web
+                  pod-template-hash: 69c6f74b8b
+                name: web-<<hash:1>>
+                namespace: default
+                ownerReferences:
+                  - apiVersion: apps/v1
+                    blockOwnerDeletion: true
+                    controller: true
+                    kind: Deployment
+                    name: web
+                    uid: <<uid:1>>
+                resourceVersion: <<rv>>
+                uid: <<uid:2>>
+              spec:
+                replicas: 2
+                selector:
+                  matchLabels:
+                    app: web
+                    pod-template-hash: 69c6f74b8b
+                template:
+                  metadata:
+                    labels:
+                      app: web
+                      pod-template-hash: 69c6f74b8b
+                  spec:
+                    containers:
+                      - image: nginx:1.27
+                        imagePullPolicy: IfNotPresent
+                        name: nginx
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                    dnsPolicy: ClusterFirst
+                    restartPolicy: Always
+                    schedulerName: default-scheduler
+                    securityContext: {}
+                    terminationGracePeriodSeconds: 30
+              status:
+                availableReplicas: 2
+                fullyLabeledReplicas: 2
+                observedGeneration: 5
+                readyReplicas: 2
+                replicas: 2
+                terminatingReplicas: 0
+          kind: List
+          metadata:
+            resourceVersion: ""
+  - run: kubectl rollout undo deployment/web --to-revision=4
+    exit: 0
+    stdout: |
+      deployment.apps/web skipped rollback (current template already matches revision 4)
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+  - run: kubectl rollout undo deployment/web --to-revision=-2
+    exit: 1
+    stdout: ""
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+      error: unable to find specified revision -2 in history
+  - run: kubectl rollout undo deployment/web --to-revision=8
+    exit: 1
+    stdout: ""
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+      error: unable to find specified revision 8 in history
+  - run: kubectl rollout undo deployment/web -o name
+    exit: 0
+    stdout: |
+      deployment.apps/web
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+  - run: kubectl rollout history deployment/web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      2         update to nginx 1.28
+      4         deploy nginx 1.27
+      5         <none>
+
+    stderr: ""
+  - run: kubectl rollout undo deployment/solo
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no rollout history found for deployment "solo"
+  - run: kubectl rollout undo deployment/solo --to-revision=1
+    exit: 0
+    stdout: |
+      deployment.apps/solo skipped rollback (current template already matches revision 1)
+    stderr: ""
+  - run: kubectl rollout undo deploy/nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "nope" not found
+  - run: kubectl rollout undo service/kubernetes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error retrieving rollbacker for "Service", no visitor method exists for { Service}
+  - run: kubectl rollout undo rs -l app=web
+    exit: 1
+    stdout: ""
+    stderr: |
+      no rollbacker has been implemented for "ReplicaSet.apps"
+      no rollbacker has been implemented for "ReplicaSet.apps"
+      no rollbacker has been implemented for "ReplicaSet.apps"
+  - run: kubectl rollout undo
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required resource not specified
+  - run: kubectl rollout undo deployment/web --dry-run=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid dry-run value (bogus). Must be "none", "server", or "client".

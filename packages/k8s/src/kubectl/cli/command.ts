@@ -14,6 +14,7 @@ import type { GapKind } from '@simlab/kernel';
 import type { ProcApi, Syscall } from '@simlab/host';
 import { manifest, type ManifestCommand, type ManifestFlag } from '../manifest.ts';
 import { flagSet, parseFlags, type FlagDef, type FlagKind, type FlagSet, type ParsedFlags } from './flagset.ts';
+import { completeCommand } from '../completion/run.ts';
 
 export type Op<T> = Generator<Syscall, T, unknown>;
 
@@ -221,6 +222,9 @@ function suggestions(node: Node, typed: string): string {
 
 export function* dispatch(p: ProcApi, d: Dispatch): Op<number> {
   const args = p.argv.slice(1);
+  // cobra's hidden completion command (completions.go initCompleteCmd), as the completion script
+  // calls it: first, with flag parsing off.
+  if (args[0] === '__complete' || args[0] === '__completeNoDesc') return yield* completeCommand(p, args.slice(1), args[0] === '__completeNoDesc');
   const verbs = new Map(d.verbs.map((v) => [v.path, v]));
   // Find
   let node = root();

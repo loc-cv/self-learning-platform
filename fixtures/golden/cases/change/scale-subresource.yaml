@@ -1,0 +1,127 @@
+description: Writes to the scale subresource of Deployments and ReplicaSets through the raw API - a JSON merge patch and a strategic merge patch of spec.replicas, a PUT of a Scale with and without resourceVersion, a stale resourceVersion, a UID that does not match, negative replicas, an unknown field, a server dry run, and objects that do not exist. Successes keep kind, apiVersion and spec (the controllers write status in the background).
+kwok: false
+steps:
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    keep: [kind, apiVersion, spec]
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: web
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  - request: GET /apis/apps/v1/namespaces/default/deployments/web/scale
+    keep: [kind, apiVersion, spec]
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"replicas":3}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/strategic-merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"replicas":4}}'
+  - request: GET /apis/apps/v1/namespaces/default/deployments/web
+    keep: [kind, spec]
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":-1}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"replicas":2,"bogus":1}}'
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    keep: [kind, apiVersion, spec]
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+      spec:
+        replicas: 5
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+        resourceVersion: "1"
+      spec:
+        replicas: 6
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+        uid: 00000000-0000-0000-0000-000000000000
+      spec:
+        replicas: 6
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/web/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: web
+        namespace: default
+      spec:
+        replicas: -2
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web/scale?dryRun=All
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"replicas":9}}'
+  - request: GET /apis/apps/v1/namespaces/default/deployments/web/scale
+    keep: [kind, apiVersion, spec]
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/nope/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":1}}'
+  - request: PUT /apis/apps/v1/namespaces/default/deployments/nope/scale
+    body: |
+      apiVersion: autoscaling/v1
+      kind: Scale
+      metadata:
+        name: nope
+        namespace: default
+      spec:
+        replicas: 1
+  - request: GET /apis/apps/v1/namespaces/default/deployments/nope/scale
+  - request: POST /apis/apps/v1/namespaces/default/replicasets
+    keep: [kind, apiVersion, spec]
+    body: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        name: rs
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: rs
+        template:
+          metadata:
+            labels:
+              app: rs
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  - request: PATCH /apis/apps/v1/namespaces/default/replicasets/rs/scale
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"replicas":2}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/replicasets/nope/scale
+    contentType: application/merge-patch+json
+    body: '{"spec":{"replicas":1}}'

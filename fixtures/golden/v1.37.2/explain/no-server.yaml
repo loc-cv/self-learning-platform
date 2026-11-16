@@ -1,0 +1,20 @@
+# Captured from fixtures/golden/cases/explain/no-server.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: explain/no-server
+description: kubectl explain with no kubeconfig and no server.
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl explain pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl explain
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must specify the type of resource to explain. Use "kubectl api-resources" for a complete list of supported resources.

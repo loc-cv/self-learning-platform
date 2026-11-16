@@ -1,0 +1,561 @@
+# Captured from fixtures/golden/cases/config/contexts.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: config/contexts
+description: "kubectl config get-contexts, current-context, use-context, set-context, get-clusters, get-users and delete-context with no server, and the kubeconfig files as clientcmd rewrites them: the file ModifyConfig chooses (~/.kube/config, the KUBECONFIG list, --kubeconfig), its serialization, mode and messages."
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl config get-contexts
+    exit: 0
+    stdout: |
+      CURRENT   NAME                          CLUSTER      AUTHINFO           NAMESPACE
+                dev@staging                   staging      dev                team-a
+      *         kubernetes-admin@kubernetes   kubernetes   kubernetes-admin   
+    stderr: ""
+  - run: kubectl config get-contexts -o name
+    exit: 0
+    stdout: |
+      dev@staging
+      kubernetes-admin@kubernetes
+    stderr: ""
+  - run: kubectl config get-contexts --no-headers
+    exit: 0
+    stdout: |2
+            dev@staging                   staging      dev                team-a
+      *     kubernetes-admin@kubernetes   kubernetes   kubernetes-admin   
+    stderr: ""
+  - run: kubectl config get-contexts dev@staging nope other
+    exit: 1
+    stdout: |
+      CURRENT   NAME          CLUSTER   AUTHINFO   NAMESPACE
+                dev@staging   staging   dev        team-a
+    stderr: |
+      context nope not found
+      context other not found
+  - run: kubectl config get-contexts -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --output wide is not available in kubectl config get-contexts; resetting to default output format
+  - run: kubectl config get-clusters
+    exit: 0
+    stdout: |
+      NAME
+      kubernetes
+      staging
+    stderr: ""
+    unorderedLines: true
+  - run: kubectl config get-users
+    exit: 0
+    stdout: |
+      NAME
+      dev
+      kubernetes-admin
+    stderr: ""
+  - run: kubectl config current-context
+    exit: 0
+    stdout: |
+      kubernetes-admin@kubernetes
+    stderr: ""
+  - run: kubectl config use-context dev@staging
+    exit: 0
+    stdout: |
+      Switched to context "dev@staging".
+    stderr: ""
+  - run: cat .kube/config
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      - cluster:
+          server: https://10.0.0.5:6443
+        name: staging
+      contexts:
+      - context:
+          cluster: staging
+          namespace: team-a
+          user: dev
+        name: dev@staging
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: dev@staging
+      kind: Config
+      users:
+      - name: dev
+        user:
+          token: abc123
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          client-key-data: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==
+    stderr: ""
+  - run: kubectl config use dev@staging
+    exit: 0
+    stdout: |
+      Switched to context "dev@staging".
+    stderr: ""
+  - run: kubectl config use-context nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no context exists with the name: "nope"
+  - run: kubectl config use-context ''
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: empty context names are not allowed
+  - run: kubectl config use-context a b
+    exit: 1
+    stdout: |
+      Set the current-context in a kubeconfig file.
+
+      Aliases:
+      use-context, use
+
+      Examples:
+        # Use the context for the minikube cluster
+        kubectl config use-context minikube
+
+      Usage:
+        kubectl config use-context CONTEXT_NAME [options]
+
+      Use "kubectl options" for a list of global command-line options (applies to all commands).
+    stderr: |
+      error: Unexpected args: [a b]
+  - run: kubectl config set-context --current --namespace=team-b
+    exit: 0
+    stdout: |
+      Context "dev@staging" modified.
+    stderr: ""
+  - run: cat .kube/config
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      - cluster:
+          server: https://10.0.0.5:6443
+        name: staging
+      contexts:
+      - context:
+          cluster: staging
+          namespace: team-b
+          user: dev
+        name: dev@staging
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: dev@staging
+      kind: Config
+      users:
+      - name: dev
+        user:
+          token: abc123
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          client-key-data: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==
+    stderr: ""
+  - run: kubectl config set-context --current --namespace=team-b
+    exit: 0
+    stdout: |
+      Context "dev@staging" modified.
+    stderr: ""
+  - run: kubectl config set-context new --cluster=kubernetes --user=dev -n ns1
+    exit: 0
+    stdout: |
+      Context "new" created.
+    stderr: ""
+  - run: cat .kube/config
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      - cluster:
+          server: https://10.0.0.5:6443
+        name: staging
+      contexts:
+      - context:
+          cluster: staging
+          namespace: team-b
+          user: dev
+        name: dev@staging
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      - context:
+          cluster: kubernetes
+          namespace: ns1
+          user: dev
+        name: new
+      current-context: dev@staging
+      kind: Config
+      users:
+      - name: dev
+        user:
+          token: abc123
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          client-key-data: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==
+    stderr: ""
+  - run: kubectl config set-context new --namespace= --cluster=staging
+    exit: 0
+    stdout: |
+      Context "new" modified.
+    stderr: ""
+  - run: kubectl config get-contexts new
+    exit: 0
+    stdout: |
+      CURRENT   NAME   CLUSTER   AUTHINFO   NAMESPACE
+                new    staging   dev        
+    stderr: ""
+  - run: kubectl config set-context
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: you must specify a non-empty context name or --current
+  - run: kubectl config set-context x --current
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: you cannot specify both a context name and --current
+  - run: kubectl config set-context a b
+    exit: 1
+    stdout: |
+      Set a context entry in kubeconfig.
+
+       Specifying a name that already exists will merge new fields on top of existing values for those fields.
+
+      Examples:
+        # Set the user field on the gce context entry without touching other values
+        kubectl config set-context gce --user=cluster-admin
+
+      Options:
+          --cluster='':
+      	cluster for the context entry in kubeconfig
+
+          --current=false:
+      	Modify the current context
+
+          -n, --namespace='':
+      	namespace for the context entry in kubeconfig
+
+          --user='':
+      	user for the context entry in kubeconfig
+
+      Usage:
+        kubectl config set-context [NAME | --current] [--cluster=cluster_nickname] [--user=user_nickname] [--namespace=namespace] [options]
+
+      Use "kubectl options" for a list of global command-line options (applies to all commands).
+    stderr: |
+      error: Unexpected args: [a b]
+  - run: kubectl config delete-context nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot delete context nope, not in /home/student/.kube/config
+  - run: kubectl config delete-context new
+    exit: 0
+    stdout: |
+      deleted context new from /home/student/.kube/config
+    stderr: ""
+  - run: kubectl config delete-context dev@staging
+    exit: 0
+    stdout: |
+      deleted context dev@staging from /home/student/.kube/config
+    stderr: |
+      warning: this removed your active context, use "kubectl config use-context" to select a different one
+  - run: cat .kube/config
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          server: https://172.16.0.10:6443
+        name: kubernetes
+      - cluster:
+          server: https://10.0.0.5:6443
+        name: staging
+      contexts:
+      - context:
+          cluster: kubernetes
+          user: kubernetes-admin
+        name: kubernetes-admin@kubernetes
+      current-context: dev@staging
+      kind: Config
+      users:
+      - name: dev
+        user:
+          token: abc123
+      - name: kubernetes-admin
+        user:
+          client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+          client-key-data: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==
+    stderr: ""
+  - run: kubectl config current-context
+    exit: 0
+    stdout: |
+      dev@staging
+    stderr: ""
+  - run: kubectl config get-contexts
+    exit: 0
+    stdout: |
+      CURRENT   NAME                          CLUSTER      AUTHINFO           NAMESPACE
+                kubernetes-admin@kubernetes   kubernetes   kubernetes-admin   
+    stderr: ""
+  - run: kubectl config use-context kubernetes-admin@kubernetes
+    exit: 0
+    stdout: |
+      Switched to context "kubernetes-admin@kubernetes".
+    stderr: ""
+  - run: touch .kube/config.lock; kubectl config use-context kubernetes-admin@kubernetes; kubectl config set-context lock-test; rm .kube/config.lock
+    exit: 0
+    stdout: ""
+    stderr: |
+      error: open /home/student/.kube/config.lock: file exists
+      error: open /home/student/.kube/config.lock: file exists
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config get-contexts
+    exit: 0
+    stdout: |
+      CURRENT   NAME    CLUSTER   AUTHINFO   NAMESPACE
+                ctx-a   ca        ua         
+      *         ctx-b   cb        ub         
+    stderr: ""
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config current-context
+    exit: 0
+    stdout: |
+      ctx-b
+    stderr: ""
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config use-context ctx-a
+    exit: 0
+    stdout: |
+      Switched to context "ctx-a".
+    stderr: ""
+  - run: cat a.yaml; echo ---; cat b.yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          server: https://a.example:6443
+        name: ca
+      contexts:
+      - context:
+          cluster: ca
+          user: ua
+        name: ctx-a
+      current-context: ctx-a
+      kind: Config
+      users:
+      - name: ua
+        user:
+          token: from-a
+      ---
+      apiVersion: v1
+      kind: Config
+      current-context: ctx-b
+      clusters:
+      - name: cb
+        cluster:
+          server: https://b.example:6443
+      contexts:
+      - name: ctx-b
+        context:
+          cluster: cb
+          user: ub
+      users:
+      - name: ub
+        user:
+          token: from-b
+    stderr: ""
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config set-context ctx-b --namespace=nb
+    exit: 0
+    stdout: |
+      Context "ctx-b" modified.
+    stderr: ""
+  - run: cat a.yaml; echo ---; cat b.yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          server: https://a.example:6443
+        name: ca
+      contexts:
+      - context:
+          cluster: ca
+          user: ua
+        name: ctx-a
+      current-context: ctx-a
+      kind: Config
+      users:
+      - name: ua
+        user:
+          token: from-a
+      ---
+      apiVersion: v1
+      clusters:
+      - cluster:
+          server: https://b.example:6443
+        name: cb
+      contexts:
+      - context:
+          cluster: cb
+          namespace: nb
+          user: ub
+        name: ctx-b
+      current-context: ctx-b
+      kind: Config
+      users:
+      - name: ub
+        user:
+          token: from-b
+    stderr: ""
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config set-context fresh --user=ub
+    exit: 0
+    stdout: |
+      Context "fresh" created.
+    stderr: ""
+  - run: cat a.yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          server: https://a.example:6443
+        name: ca
+      contexts:
+      - context:
+          cluster: ca
+          user: ua
+        name: ctx-a
+      - context:
+          cluster: ""
+          user: ub
+        name: fresh
+      current-context: ctx-a
+      kind: Config
+      users:
+      - name: ua
+        user:
+          token: from-a
+    stderr: ""
+  - run: KUBECONFIG=new1.yaml:new2.yaml kubectl config set-context fresh
+    exit: 0
+    stdout: |
+      Context "fresh" created.
+    stderr: ""
+  - run: ls new1.yaml; cat new2.yaml; ls -l new2.yaml | cut -d' ' -f1
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts:
+      - context:
+          cluster: ""
+          user: ""
+        name: fresh
+      current-context: ""
+      kind: Config
+      users: null
+      -rw-------
+    stderr: |
+      ls: cannot access 'new1.yaml': No such file or directory
+  - run: KUBECONFIG=nocurrent.yaml kubectl config current-context
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: current-context is not set
+  - run: KUBECONFIG=nocurrent.yaml kubectl config set-context --current -n x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no current context is set
+  - run: KUBECONFIG=nocurrent.yaml kubectl config use-context only
+    exit: 0
+    stdout: |
+      Switched to context "only".
+    stderr: ""
+  - run: cat nocurrent.yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts:
+      - context:
+          cluster: c
+          user: u
+        name: only
+      current-context: only
+      kind: Config
+      users: null
+    stderr: ""
+  - run: kubectl config set-context e --kubeconfig newdir/explicit.yaml --cluster=c
+    exit: 0
+    stdout: |
+      Context "e" created.
+    stderr: ""
+  - run: cat newdir/explicit.yaml; ls -ld newdir | cut -d' ' -f1
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts:
+      - context:
+          cluster: c
+          user: ""
+        name: e
+      current-context: ""
+      kind: Config
+      users: null
+      drwxr-xr-x
+    stderr: ""
+  - run: kubectl config use-context e --kubeconfig newdir/explicit.yaml
+    exit: 0
+    stdout: |
+      Switched to context "e".
+    stderr: ""
+  - run: kubectl config delete-context e --kubeconfig newdir/explicit.yaml
+    exit: 0
+    stdout: |
+      deleted context e from newdir/explicit.yaml
+    stderr: |
+      warning: this removed your active context, use "kubectl config use-context" to select a different one
+  - run: cat newdir/explicit.yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      clusters: null
+      contexts: null
+      current-context: e
+      kind: Config
+      users: null
+    stderr: ""
+  - run: kubectl config current-context --kubeconfig missing.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: current-context is not set
+  - run: kubectl config get-contexts --kubeconfig missing.yaml
+    exit: 0
+    stdout: |
+      CURRENT   NAME   CLUSTER   AUTHINFO   NAMESPACE
+    stderr: ""

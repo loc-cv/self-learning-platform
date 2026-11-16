@@ -1,0 +1,200 @@
+# Captured from fixtures/golden/cases/rollout/pause-restart.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: rollout/pause-restart
+description: "rollout pause, resume and restart: their outputs (-o name), the already-paused and not-paused errors, restart and undo refused while paused, restart's restartedAt annotation and the rollout it starts, selectors, -f, an empty selection, and kinds that cannot be paused or restarted."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl rollout pause deployment/web -o name
+    exit: 0
+    stdout: |
+      deployment.apps/web
+    stderr: ""
+  - run: kubectl rollout pause deployment/web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: deployments.apps "web" is already paused
+  - run: kubectl rollout restart deployment/web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: deployments.apps "web" can't restart paused deployment (run rollout resume first)
+  - run: kubectl rollout undo deployment/web
+    exit: 1
+    stdout: ""
+    stderr: |
+      Warning: resource deployments/web was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+      error: you cannot rollback a paused deployment; resume it first with 'kubectl rollout resume' and try again
+  - run: kubectl rollout status deployment/web --watch=false
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - run: kubectl rollout resume deployment/web
+    exit: 0
+    stdout: |
+      deployment.apps/web resumed
+    stderr: ""
+  - run: kubectl rollout resume deployment/web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: deployments.apps "web" is not paused
+  - run: kubectl rollout resume deployment/web -o name
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: deployments.apps "web" is not paused
+  - run: kubectl rollout restart deployment/web
+    exit: 0
+    stdout: |
+      deployment.apps/web restarted
+    stderr: ""
+  - run: kubectl rollout status deployment/web
+    exit: 0
+    stdout: |
+      deployment "web" successfully rolled out
+    stderr: ""
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "3"
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"web"},"name":"web","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"web"}},"template":{"metadata":{"labels":{"app":"web"}},"spec":{"containers":[{"image":"nginx:1.28","name":"nginx"}]}}}}
+            creationTimestamp: <<time>>
+            generation: 5
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 2
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                annotations:
+                  kubectl.kubernetes.io/restartedAt: <<time>>
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.28
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 2
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 5
+            readyReplicas: 2
+            replicas: 2
+            terminatingReplicas: 0
+            updatedReplicas: 2
+  - run: kubectl rollout history deployment/web
+    exit: 0
+    stdout: |+
+      deployment.apps/web 
+      REVISION  CHANGE-CAUSE
+      1         <none>
+      2         <none>
+      3         <none>
+
+    stderr: ""
+  - run: kubectl rollout pause deployment -l app=web
+    exit: 0
+    stdout: |
+      deployment.apps/web paused
+    stderr: ""
+  - run: kubectl rollout resume -f web.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web resumed
+    stderr: ""
+  - run: kubectl rollout pause deployment -l app=nothing
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl rollout resume deployment -l app=nothing
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl rollout restart deployment -l app=nothing
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl rollout pause service/kubernetes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: services "kubernetes" pausing is not supported
+  - run: kubectl rollout resume service/kubernetes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: services "kubernetes" resuming is not supported
+  - run: kubectl rollout restart service/kubernetes
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: services "kubernetes" restarting is not supported
+  - run: kubectl rollout restart deployment/nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "nope" not found
+  - run: kubectl rollout pause
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: required resource not specified
+  - run: kubectl rollout restart deployment/web -o yaml --dry-run=client
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown flag: --dry-run
+      See 'kubectl rollout restart --help' for usage.

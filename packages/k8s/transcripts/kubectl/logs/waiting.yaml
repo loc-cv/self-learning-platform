@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: typo
+spec:
+  containers:
+  - name: app
+    image: busybox:1.36-typo
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: once
+spec:
+  restartPolicy: Never
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh", "-c", "echo working; sleep 4; echo finished"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idle
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: idle
+  template:
+    metadata:
+      labels:
+        app: idle
+    spec:
+      containers:
+      - name: app
+        image: busybox:1.36

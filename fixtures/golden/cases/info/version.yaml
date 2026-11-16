@@ -1,0 +1,8 @@
+description: kubectl version against the server, in every output format.
+steps:
+  - run: kubectl version
+  - run: kubectl version -o yaml
+  - run: kubectl version -o json
+  - run: kubectl version --client
+  - run: kubectl version extra
+  - request: GET /version

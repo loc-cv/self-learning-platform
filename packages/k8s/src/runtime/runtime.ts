@@ -12,7 +12,7 @@ import { BEHAVIOR_MODEL, defaultSignalAction, type Executable, type ModelStep, t
 import { k8sSlice } from '../apiserver/store.ts';
 import { criReturned, plegEvent, podKey } from '../kubelet/pleg.ts';
 import { imageView } from './images/files.ts';
-import { appendLogLines, createLegacySymlink, createLogFile, legacyLogSymlink, removeLogFile } from './logs.ts';
+import { appendLogLines, createLegacySymlink, createLogFile, legacyLogSymlink, LOG_TOPIC, removeLogFile } from './logs.ts';
 import type { NodeRuntime, ProcessState, RuntimeContainer, RuntimeImage, Sandbox } from './types.ts';
 
 export const RUNTIME_EVENT = 'k8s.runtime.container';
@@ -333,6 +333,8 @@ function exited(ctx: Ctx, node: string, id: string, exitCode: number, cause: str
   delete next.killAt;
   setContainer(ctx, node, next);
   trace(ctx, node, 'runtime.container.exited', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} exited with ${exitCode}: ${cause}`, { container: id, exitCode });
+  // A log stream following this container ends once it has read what is left.
+  ctx.publish(LOG_TOPIC);
   plegEvent(ctx, node, podKey(c.namespace, c.podName, c.podUID), `container ${c.name} exited with ${exitCode}`);
   // The kubelet waits on StopContainer and hears about the exit directly.
   if (c.stopping) criReturned(ctx, node, podKey(c.namespace, c.podName, c.podUID), `StopContainer ${c.name} returned`);
@@ -441,6 +443,7 @@ export function removeContainer(ctx: Ctx, node: string, id: string): void {
     delete containers[id];
     return { ...rt, containers };
   });
+  ctx.publish(LOG_TOPIC);
 }
 
 export const runtimeHandlers: HandlerSpec[] = [

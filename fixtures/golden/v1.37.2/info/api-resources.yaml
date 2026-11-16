@@ -1,0 +1,500 @@
+# Captured from fixtures/golden/cases/info/api-resources.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: info/api-resources
+description: "kubectl api-resources and api-versions against the server: filters, sorting, output formats and errors."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl api-resources
+    exit: 0
+    stdout: |
+      NAME                                SHORTNAMES   APIVERSION                        NAMESPACED   KIND
+      bindings                                         v1                                true         Binding
+      componentstatuses                   cs           v1                                false        ComponentStatus
+      configmaps                          cm           v1                                true         ConfigMap
+      endpoints                           ep           v1                                true         Endpoints
+      events                              ev           v1                                true         Event
+      limitranges                         limits       v1                                true         LimitRange
+      namespaces                          ns           v1                                false        Namespace
+      nodes                               no           v1                                false        Node
+      persistentvolumeclaims              pvc          v1                                true         PersistentVolumeClaim
+      persistentvolumes                   pv           v1                                false        PersistentVolume
+      pods                                po           v1                                true         Pod
+      podtemplates                                     v1                                true         PodTemplate
+      replicationcontrollers              rc           v1                                true         ReplicationController
+      resourcequotas                      quota        v1                                true         ResourceQuota
+      secrets                                          v1                                true         Secret
+      serviceaccounts                     sa           v1                                true         ServiceAccount
+      services                            svc          v1                                true         Service
+      mutatingadmissionpolicies                        admissionregistration.k8s.io/v1   false        MutatingAdmissionPolicy
+      mutatingadmissionpolicybindings                  admissionregistration.k8s.io/v1   false        MutatingAdmissionPolicyBinding
+      mutatingwebhookconfigurations                    admissionregistration.k8s.io/v1   false        MutatingWebhookConfiguration
+      validatingadmissionpolicies                      admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicy
+      validatingadmissionpolicybindings                admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicyBinding
+      validatingwebhookconfigurations                  admissionregistration.k8s.io/v1   false        ValidatingWebhookConfiguration
+      customresourcedefinitions           crd,crds     apiextensions.k8s.io/v1           false        CustomResourceDefinition
+      apiservices                                      apiregistration.k8s.io/v1         false        APIService
+      controllerrevisions                              apps/v1                           true         ControllerRevision
+      daemonsets                          ds           apps/v1                           true         DaemonSet
+      deployments                         deploy       apps/v1                           true         Deployment
+      replicasets                         rs           apps/v1                           true         ReplicaSet
+      statefulsets                        sts          apps/v1                           true         StatefulSet
+      selfsubjectreviews                               authentication.k8s.io/v1          false        SelfSubjectReview
+      tokenreviews                                     authentication.k8s.io/v1          false        TokenReview
+      localsubjectaccessreviews                        authorization.k8s.io/v1           true         LocalSubjectAccessReview
+      selfsubjectaccessreviews                         authorization.k8s.io/v1           false        SelfSubjectAccessReview
+      selfsubjectrulesreviews                          authorization.k8s.io/v1           false        SelfSubjectRulesReview
+      subjectaccessreviews                             authorization.k8s.io/v1           false        SubjectAccessReview
+      horizontalpodautoscalers            hpa          autoscaling/v2                    true         HorizontalPodAutoscaler
+      cronjobs                            cj           batch/v1                          true         CronJob
+      jobs                                             batch/v1                          true         Job
+      certificatesigningrequests          csr          certificates.k8s.io/v1            false        CertificateSigningRequest
+      clustertrustbundles                              certificates.k8s.io/v1            false        ClusterTrustBundle
+      podcertificaterequests                           certificates.k8s.io/v1            true         PodCertificateRequest
+      leases                                           coordination.k8s.io/v1            true         Lease
+      endpointslices                                   discovery.k8s.io/v1               true         EndpointSlice
+      events                              ev           events.k8s.io/v1                  true         Event
+      flowschemas                                      flowcontrol.apiserver.k8s.io/v1   false        FlowSchema
+      prioritylevelconfigurations                      flowcontrol.apiserver.k8s.io/v1   false        PriorityLevelConfiguration
+      ingressclasses                                   networking.k8s.io/v1              false        IngressClass
+      ingresses                           ing          networking.k8s.io/v1              true         Ingress
+      ipaddresses                         ip           networking.k8s.io/v1              false        IPAddress
+      networkpolicies                     netpol       networking.k8s.io/v1              true         NetworkPolicy
+      servicecidrs                                     networking.k8s.io/v1              false        ServiceCIDR
+      runtimeclasses                                   node.k8s.io/v1                    false        RuntimeClass
+      poddisruptionbudgets                pdb          policy/v1                         true         PodDisruptionBudget
+      clusterrolebindings                              rbac.authorization.k8s.io/v1      false        ClusterRoleBinding
+      clusterroles                                     rbac.authorization.k8s.io/v1      false        ClusterRole
+      rolebindings                                     rbac.authorization.k8s.io/v1      true         RoleBinding
+      roles                                            rbac.authorization.k8s.io/v1      true         Role
+      deviceclasses                                    resource.k8s.io/v1                false        DeviceClass
+      devicetaintrules                                 resource.k8s.io/v1                false        DeviceTaintRule
+      resourceclaims                                   resource.k8s.io/v1                true         ResourceClaim
+      resourceclaimtemplates                           resource.k8s.io/v1                true         ResourceClaimTemplate
+      resourceslices                                   resource.k8s.io/v1                false        ResourceSlice
+      priorityclasses                     pc           scheduling.k8s.io/v1              false        PriorityClass
+      csidrivers                                       storage.k8s.io/v1                 false        CSIDriver
+      csinodes                                         storage.k8s.io/v1                 false        CSINode
+      csistoragecapacities                             storage.k8s.io/v1                 true         CSIStorageCapacity
+      storageclasses                      sc           storage.k8s.io/v1                 false        StorageClass
+      volumeattachments                                storage.k8s.io/v1                 false        VolumeAttachment
+      volumeattributesclasses             vac          storage.k8s.io/v1                 false        VolumeAttributesClass
+      storageversionmigrations                         storagemigration.k8s.io/v1        false        StorageVersionMigration
+    stderr: ""
+  - run: kubectl api-resources --namespaced=false
+    exit: 0
+    stdout: |
+      NAME                                SHORTNAMES   APIVERSION                        NAMESPACED   KIND
+      componentstatuses                   cs           v1                                false        ComponentStatus
+      namespaces                          ns           v1                                false        Namespace
+      nodes                               no           v1                                false        Node
+      persistentvolumes                   pv           v1                                false        PersistentVolume
+      mutatingadmissionpolicies                        admissionregistration.k8s.io/v1   false        MutatingAdmissionPolicy
+      mutatingadmissionpolicybindings                  admissionregistration.k8s.io/v1   false        MutatingAdmissionPolicyBinding
+      mutatingwebhookconfigurations                    admissionregistration.k8s.io/v1   false        MutatingWebhookConfiguration
+      validatingadmissionpolicies                      admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicy
+      validatingadmissionpolicybindings                admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicyBinding
+      validatingwebhookconfigurations                  admissionregistration.k8s.io/v1   false        ValidatingWebhookConfiguration
+      customresourcedefinitions           crd,crds     apiextensions.k8s.io/v1           false        CustomResourceDefinition
+      apiservices                                      apiregistration.k8s.io/v1         false        APIService
+      selfsubjectreviews                               authentication.k8s.io/v1          false        SelfSubjectReview
+      tokenreviews                                     authentication.k8s.io/v1          false        TokenReview
+      selfsubjectaccessreviews                         authorization.k8s.io/v1           false        SelfSubjectAccessReview
+      selfsubjectrulesreviews                          authorization.k8s.io/v1           false        SelfSubjectRulesReview
+      subjectaccessreviews                             authorization.k8s.io/v1           false        SubjectAccessReview
+      certificatesigningrequests          csr          certificates.k8s.io/v1            false        CertificateSigningRequest
+      clustertrustbundles                              certificates.k8s.io/v1            false        ClusterTrustBundle
+      flowschemas                                      flowcontrol.apiserver.k8s.io/v1   false        FlowSchema
+      prioritylevelconfigurations                      flowcontrol.apiserver.k8s.io/v1   false        PriorityLevelConfiguration
+      ingressclasses                                   networking.k8s.io/v1              false        IngressClass
+      ipaddresses                         ip           networking.k8s.io/v1              false        IPAddress
+      servicecidrs                                     networking.k8s.io/v1              false        ServiceCIDR
+      runtimeclasses                                   node.k8s.io/v1                    false        RuntimeClass
+      clusterrolebindings                              rbac.authorization.k8s.io/v1      false        ClusterRoleBinding
+      clusterroles                                     rbac.authorization.k8s.io/v1      false        ClusterRole
+      deviceclasses                                    resource.k8s.io/v1                false        DeviceClass
+      devicetaintrules                                 resource.k8s.io/v1                false        DeviceTaintRule
+      resourceslices                                   resource.k8s.io/v1                false        ResourceSlice
+      priorityclasses                     pc           scheduling.k8s.io/v1              false        PriorityClass
+      csidrivers                                       storage.k8s.io/v1                 false        CSIDriver
+      csinodes                                         storage.k8s.io/v1                 false        CSINode
+      storageclasses                      sc           storage.k8s.io/v1                 false        StorageClass
+      volumeattachments                                storage.k8s.io/v1                 false        VolumeAttachment
+      volumeattributesclasses             vac          storage.k8s.io/v1                 false        VolumeAttributesClass
+      storageversionmigrations                         storagemigration.k8s.io/v1        false        StorageVersionMigration
+    stderr: ""
+  - run: kubectl api-resources --namespaced -o name
+    exit: 0
+    stdout: |
+      bindings
+      configmaps
+      endpoints
+      events
+      limitranges
+      persistentvolumeclaims
+      pods
+      podtemplates
+      replicationcontrollers
+      resourcequotas
+      secrets
+      serviceaccounts
+      services
+      controllerrevisions.apps
+      daemonsets.apps
+      deployments.apps
+      replicasets.apps
+      statefulsets.apps
+      localsubjectaccessreviews.authorization.k8s.io
+      horizontalpodautoscalers.autoscaling
+      cronjobs.batch
+      jobs.batch
+      podcertificaterequests.certificates.k8s.io
+      leases.coordination.k8s.io
+      endpointslices.discovery.k8s.io
+      events.events.k8s.io
+      ingresses.networking.k8s.io
+      networkpolicies.networking.k8s.io
+      poddisruptionbudgets.policy
+      rolebindings.rbac.authorization.k8s.io
+      roles.rbac.authorization.k8s.io
+      resourceclaims.resource.k8s.io
+      resourceclaimtemplates.resource.k8s.io
+      csistoragecapacities.storage.k8s.io
+    stderr: ""
+  - run: kubectl api-resources --api-group=apps
+    exit: 0
+    stdout: |
+      NAME                  SHORTNAMES   APIVERSION   NAMESPACED   KIND
+      controllerrevisions                apps/v1      true         ControllerRevision
+      daemonsets            ds           apps/v1      true         DaemonSet
+      deployments           deploy       apps/v1      true         Deployment
+      replicasets           rs           apps/v1      true         ReplicaSet
+      statefulsets          sts          apps/v1      true         StatefulSet
+    stderr: ""
+  - run: kubectl api-resources --api-group= --no-headers
+    exit: 0
+    stdout: |
+      bindings                          v1    true    Binding
+      componentstatuses        cs       v1    false   ComponentStatus
+      configmaps               cm       v1    true    ConfigMap
+      endpoints                ep       v1    true    Endpoints
+      events                   ev       v1    true    Event
+      limitranges              limits   v1    true    LimitRange
+      namespaces               ns       v1    false   Namespace
+      nodes                    no       v1    false   Node
+      persistentvolumeclaims   pvc      v1    true    PersistentVolumeClaim
+      persistentvolumes        pv       v1    false   PersistentVolume
+      pods                     po       v1    true    Pod
+      podtemplates                      v1    true    PodTemplate
+      replicationcontrollers   rc       v1    true    ReplicationController
+      resourcequotas           quota    v1    true    ResourceQuota
+      secrets                           v1    true    Secret
+      serviceaccounts          sa       v1    true    ServiceAccount
+      services                 svc      v1    true    Service
+    stderr: ""
+  - run: kubectl api-resources --api-group=batch --verbs=list,watch -o wide
+    exit: 0
+    stdout: |
+      NAME       SHORTNAMES   APIVERSION   NAMESPACED   KIND      VERBS                                                        CATEGORIES
+      cronjobs   cj           batch/v1     true         CronJob   create,delete,deletecollection,get,list,patch,update,watch   all
+      jobs                    batch/v1     true         Job       create,delete,deletecollection,get,list,patch,update,watch   all
+    stderr: ""
+  - run: kubectl api-resources --verbs=create --verbs=get --namespaced=false
+    exit: 0
+    stdout: |
+      NAME                                SHORTNAMES   APIVERSION                        NAMESPACED   KIND
+      namespaces                          ns           v1                                false        Namespace
+      nodes                               no           v1                                false        Node
+      persistentvolumes                   pv           v1                                false        PersistentVolume
+      mutatingadmissionpolicies                        admissionregistration.k8s.io/v1   false        MutatingAdmissionPolicy
+      mutatingadmissionpolicybindings                  admissionregistration.k8s.io/v1   false        MutatingAdmissionPolicyBinding
+      mutatingwebhookconfigurations                    admissionregistration.k8s.io/v1   false        MutatingWebhookConfiguration
+      validatingadmissionpolicies                      admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicy
+      validatingadmissionpolicybindings                admissionregistration.k8s.io/v1   false        ValidatingAdmissionPolicyBinding
+      validatingwebhookconfigurations                  admissionregistration.k8s.io/v1   false        ValidatingWebhookConfiguration
+      customresourcedefinitions           crd,crds     apiextensions.k8s.io/v1           false        CustomResourceDefinition
+      apiservices                                      apiregistration.k8s.io/v1         false        APIService
+      certificatesigningrequests          csr          certificates.k8s.io/v1            false        CertificateSigningRequest
+      clustertrustbundles                              certificates.k8s.io/v1            false        ClusterTrustBundle
+      flowschemas                                      flowcontrol.apiserver.k8s.io/v1   false        FlowSchema
+      prioritylevelconfigurations                      flowcontrol.apiserver.k8s.io/v1   false        PriorityLevelConfiguration
+      ingressclasses                                   networking.k8s.io/v1              false        IngressClass
+      ipaddresses                         ip           networking.k8s.io/v1              false        IPAddress
+      servicecidrs                                     networking.k8s.io/v1              false        ServiceCIDR
+      runtimeclasses                                   node.k8s.io/v1                    false        RuntimeClass
+      clusterrolebindings                              rbac.authorization.k8s.io/v1      false        ClusterRoleBinding
+      clusterroles                                     rbac.authorization.k8s.io/v1      false        ClusterRole
+      deviceclasses                                    resource.k8s.io/v1                false        DeviceClass
+      devicetaintrules                                 resource.k8s.io/v1                false        DeviceTaintRule
+      resourceslices                                   resource.k8s.io/v1                false        ResourceSlice
+      priorityclasses                     pc           scheduling.k8s.io/v1              false        PriorityClass
+      csidrivers                                       storage.k8s.io/v1                 false        CSIDriver
+      csinodes                                         storage.k8s.io/v1                 false        CSINode
+      storageclasses                      sc           storage.k8s.io/v1                 false        StorageClass
+      volumeattachments                                storage.k8s.io/v1                 false        VolumeAttachment
+      volumeattributesclasses             vac          storage.k8s.io/v1                 false        VolumeAttributesClass
+      storageversionmigrations                         storagemigration.k8s.io/v1        false        StorageVersionMigration
+    stderr: ""
+  - run: kubectl api-resources --sort-by=kind --api-group=rbac.authorization.k8s.io
+    exit: 0
+    stdout: |
+      NAME                  SHORTNAMES   APIVERSION                     NAMESPACED   KIND
+      clusterroles                       rbac.authorization.k8s.io/v1   false        ClusterRole
+      clusterrolebindings                rbac.authorization.k8s.io/v1   false        ClusterRoleBinding
+      roles                              rbac.authorization.k8s.io/v1   true         Role
+      rolebindings                       rbac.authorization.k8s.io/v1   true         RoleBinding
+    stderr: ""
+  - run: kubectl api-resources --sort-by=name --categories=all
+    exit: 0
+    stdout: |
+      NAME                       SHORTNAMES   APIVERSION       NAMESPACED   KIND
+      cronjobs                   cj           batch/v1         true         CronJob
+      daemonsets                 ds           apps/v1          true         DaemonSet
+      deployments                deploy       apps/v1          true         Deployment
+      horizontalpodautoscalers   hpa          autoscaling/v2   true         HorizontalPodAutoscaler
+      jobs                                    batch/v1         true         Job
+      pods                       po           v1               true         Pod
+      replicasets                rs           apps/v1          true         ReplicaSet
+      replicationcontrollers     rc           v1               true         ReplicationController
+      services                   svc          v1               true         Service
+      statefulsets               sts          apps/v1          true         StatefulSet
+    stderr: ""
+  - run: kubectl api-resources --categories=api-extensions,all
+    exit: 0
+    stdout: |
+      NAME   SHORTNAMES   APIVERSION   NAMESPACED   KIND
+    stderr: ""
+  - run: kubectl api-resources --api-group=nope
+    exit: 0
+    stdout: |
+      NAME   SHORTNAMES   APIVERSION   NAMESPACED   KIND
+    stderr: ""
+  - run: kubectl api-resources --cached --api-group=autoscaling -o wide
+    exit: 0
+    stdout: |
+      NAME                       SHORTNAMES   APIVERSION       NAMESPACED   KIND                      VERBS                                                        CATEGORIES
+      horizontalpodautoscalers   hpa          autoscaling/v2   true         HorizontalPodAutoscaler   create,delete,deletecollection,get,list,patch,update,watch   all
+    stderr: ""
+  - run: kubectl api-resources --api-group=apps -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "APIResourceList",
+          "apiVersion": "v1",
+          "groupVersion": "",
+          "resources": [
+              {
+                  "name": "controllerrevisions",
+                  "singularName": "controllerrevision",
+                  "namespaced": true,
+                  "group": "apps",
+                  "version": "v1",
+                  "kind": "ControllerRevision",
+                  "verbs": [
+                      "create",
+                      "delete",
+                      "deletecollection",
+                      "get",
+                      "list",
+                      "patch",
+                      "update",
+                      "watch"
+                  ]
+              },
+              {
+                  "name": "daemonsets",
+                  "singularName": "daemonset",
+                  "namespaced": true,
+                  "group": "apps",
+                  "version": "v1",
+                  "kind": "DaemonSet",
+                  "verbs": [
+                      "create",
+                      "delete",
+                      "deletecollection",
+                      "get",
+                      "list",
+                      "patch",
+                      "update",
+                      "watch"
+                  ],
+                  "shortNames": [
+                      "ds"
+                  ],
+                  "categories": [
+                      "all"
+                  ]
+              },
+              {
+                  "name": "deployments",
+                  "singularName": "deployment",
+                  "namespaced": true,
+                  "group": "apps",
+                  "version": "v1",
+                  "kind": "Deployment",
+                  "verbs": [
+                      "create",
+                      "delete",
+                      "deletecollection",
+                      "get",
+                      "list",
+                      "patch",
+                      "update",
+                      "watch"
+                  ],
+                  "shortNames": [
+                      "deploy"
+                  ],
+                  "categories": [
+                      "all"
+                  ]
+              },
+              {
+                  "name": "replicasets",
+                  "singularName": "replicaset",
+                  "namespaced": true,
+                  "group": "apps",
+                  "version": "v1",
+                  "kind": "ReplicaSet",
+                  "verbs": [
+                      "create",
+                      "delete",
+                      "deletecollection",
+                      "get",
+                      "list",
+                      "patch",
+                      "update",
+                      "watch"
+                  ],
+                  "shortNames": [
+                      "rs"
+                  ],
+                  "categories": [
+                      "all"
+                  ]
+              },
+              {
+                  "name": "statefulsets",
+                  "singularName": "statefulset",
+                  "namespaced": true,
+                  "group": "apps",
+                  "version": "v1",
+                  "kind": "StatefulSet",
+                  "verbs": [
+                      "create",
+                      "delete",
+                      "deletecollection",
+                      "get",
+                      "list",
+                      "patch",
+                      "update",
+                      "watch"
+                  ],
+                  "shortNames": [
+                      "sts"
+                  ],
+                  "categories": [
+                      "all"
+                  ]
+              }
+          ]
+      }
+    stderr: ""
+  - run: kubectl api-resources --api-group=batch -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      groupVersion: ""
+      kind: APIResourceList
+      resources:
+      - categories:
+        - all
+        group: batch
+        kind: CronJob
+        name: cronjobs
+        namespaced: true
+        shortNames:
+        - cj
+        singularName: cronjob
+        verbs:
+        - create
+        - delete
+        - deletecollection
+        - get
+        - list
+        - patch
+        - update
+        - watch
+        version: v1
+      - categories:
+        - all
+        group: batch
+        kind: Job
+        name: jobs
+        namespaced: true
+        singularName: job
+        verbs:
+        - create
+        - delete
+        - deletecollection
+        - get
+        - list
+        - patch
+        - update
+        - watch
+        version: v1
+    stderr: ""
+  - run: kubectl api-resources --api-group=nope -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "APIResourceList",
+          "apiVersion": "v1",
+          "groupVersion": "",
+          "resources": null
+      }
+    stderr: ""
+  - run: kubectl api-resources -o custom
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "custom", allowed formats are: json,kyaml,name,wide,yaml
+  - run: kubectl api-resources --sort-by=foo
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --sort-by accepts only name or kind
+  - run: kubectl api-versions
+    exit: 0
+    stdout: |
+      admissionregistration.k8s.io/v1
+      apiextensions.k8s.io/v1
+      apiregistration.k8s.io/v1
+      apps/v1
+      authentication.k8s.io/v1
+      authorization.k8s.io/v1
+      autoscaling/v1
+      autoscaling/v2
+      batch/v1
+      certificates.k8s.io/v1
+      coordination.k8s.io/v1
+      discovery.k8s.io/v1
+      events.k8s.io/v1
+      flowcontrol.apiserver.k8s.io/v1
+      networking.k8s.io/v1
+      node.k8s.io/v1
+      policy/v1
+      rbac.authorization.k8s.io/v1
+      resource.k8s.io/v1
+      scheduling.k8s.io/v1
+      storage.k8s.io/v1
+      storagemigration.k8s.io/v1
+      v1
+    stderr: ""

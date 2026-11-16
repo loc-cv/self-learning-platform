@@ -1,0 +1,134 @@
+description: >-
+  A Deployment applied three times (two images with a change-cause annotation, a third without), then
+  rollout status once settled (--revision, --watch=false and their errors), rollout history (the
+  table, --revision with the pod template and the change-cause, -o name/yaml, selectors, a type with
+  no history viewer), rollout undo (client and server dry runs, --to-revision, the warning about the
+  last-applied annotation, the skipped rollback, -o name, the errors) and the objects the rollbacks
+  leave: the change-cause copied back onto the Deployment, revision-history on the ReplicaSet.
+files:
+  web-1.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+      labels:
+        app: web
+      annotations:
+        kubernetes.io/change-cause: deploy nginx 1.27
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.27
+  web-2.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+      labels:
+        app: web
+      annotations:
+        kubernetes.io/change-cause: update to nginx 1.28
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.28
+  web-3.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+      labels:
+        app: web
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+          annotations:
+            team: blue
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.29
+              env:
+                - name: MODE
+                  value: three
+setup:
+  - do: kubectl apply -f web-1.yaml
+  - do: kubectl create deployment solo --image=nginx:1.27
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/solo --timeout=60s
+steps:
+  - run: kubectl apply -f web-2.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout status deployment/web
+  - run: kubectl rollout status deployment web --revision=2
+  - run: kubectl rollout status deploy/web --revision=1
+  - run: kubectl rollout status deploy/web --watch=false
+  - run: kubectl rollout status deploy/web --revision=-1
+  - run: kubectl rollout status
+  - run: kubectl rollout status deployments
+  - run: kubectl rollout status deployment -l app=nothing
+  - run: kubectl rollout status deployment/nope
+  - run: kubectl rollout status service/kubernetes
+  - run: kubectl rollout status -f web-2.yaml
+  - run: kubectl apply -f web-3.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout history deployment/web
+  - run: kubectl rollout history deployment web --revision=1
+  - run: kubectl rollout history deployment/web --revision=3
+  - run: kubectl rollout history deployment/web --revision=7
+  - run: kubectl rollout history deployment/web --revision=-1
+  - run: kubectl rollout history deployment/web -o name
+  - run: kubectl rollout history deployment/web -o yaml --revision=1
+  - run: kubectl rollout history deployment/web -o json --revision=9
+  - run: kubectl rollout history deployment/web -o wide
+  - run: kubectl rollout history deployments
+  - run: kubectl rollout history deployment -l app=web
+  - run: kubectl rollout history deployment/solo
+  - run: kubectl rollout history rs -l app=web
+  - run: kubectl rollout history service kubernetes
+  - run: kubectl rollout history
+  - run: kubectl rollout undo deployment/web --dry-run=client
+  - run: kubectl rollout undo deployment/web --to-revision=1 --dry-run=server
+  - run: kubectl rollout history deployment/web
+  - run: kubectl rollout undo deployment/web --to-revision=1
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout history deployment/web
+  - objects: [deployment/web]
+  - objects: [rs -l app=web]
+  - run: kubectl rollout undo deployment/web --to-revision=4
+  - run: kubectl rollout undo deployment/web --to-revision=-2
+  - run: kubectl rollout undo deployment/web --to-revision=8
+  - run: kubectl rollout undo deployment/web -o name
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout history deployment/web
+  - run: kubectl rollout undo deployment/solo
+  - run: kubectl rollout undo deployment/solo --to-revision=1
+  - run: kubectl rollout undo deploy/nope
+  - run: kubectl rollout undo service/kubernetes
+  - run: kubectl rollout undo rs -l app=web
+  - run: kubectl rollout undo
+  - run: kubectl rollout undo deployment/web --dry-run=bogus

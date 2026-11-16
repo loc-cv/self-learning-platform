@@ -1,0 +1,31 @@
+description: >-
+  kubectl api-resources and api-versions against the server: filters, sorting, output formats and
+  errors.
+steps:
+  - run: kubectl api-resources
+    table: none
+  - run: kubectl api-resources --namespaced=false
+    table: none
+  - run: kubectl api-resources --namespaced -o name
+  - run: kubectl api-resources --api-group=apps
+    table: none
+  - run: kubectl api-resources --api-group= --no-headers
+    table: none
+  - run: kubectl api-resources --api-group=batch --verbs=list,watch -o wide
+    table: none
+  - run: kubectl api-resources --verbs=create --verbs=get --namespaced=false
+    table: none
+  - run: kubectl api-resources --sort-by=kind --api-group=rbac.authorization.k8s.io
+    table: none
+  - run: kubectl api-resources --sort-by=name --categories=all
+    table: none
+  - run: kubectl api-resources --categories=api-extensions,all
+  - run: kubectl api-resources --api-group=nope
+  - run: kubectl api-resources --cached --api-group=autoscaling -o wide
+    table: none
+  - run: kubectl api-resources --api-group=apps -o json
+  - run: kubectl api-resources --api-group=batch -o yaml
+  - run: kubectl api-resources --api-group=nope -o json
+  - run: kubectl api-resources -o custom
+  - run: kubectl api-resources --sort-by=foo
+  - run: kubectl api-versions

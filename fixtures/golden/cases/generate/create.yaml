@@ -1,0 +1,66 @@
+description: >-
+  The create generators against a server: real creates printed as the typed client returns them
+  (-o json keeps struct order), server dry runs, --save-config, -n, objects read back with
+  get -o yaml, and the API server's errors behind each command's own prefix (AlreadyExists,
+  invalid names and values, a missing namespace, a taken node port).
+files:
+  app.properties: "color=blue\nsize=10\n"
+setup:
+  - do: kubectl create namespace team
+steps:
+  - run: kubectl create deployment web --image=nginx:1.27 --replicas=2 --port=80
+  - run: kubectl create deployment api --image=nginx:1.27 -n team -o json
+  - run: kubectl create deployment saved --image=busybox:1.37 --save-config -o yaml -- sleep 3600
+  - run: kubectl create deployment sdr --image=nginx:1.27 --dry-run=server -o yaml
+  - run: kubectl create deployment sdr --image=nginx:1.27 --dry-run=server
+  - run: kubectl create deployment web --image=nginx:1.27
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=server
+  - run: kubectl create deployment Bad --image=nginx:1.27
+  - run: kubectl create deployment lost --image=nginx:1.27 -n missing
+  - run: kubectl create deployment empty --image=
+  - run: kubectl create namespace dev
+  - run: kubectl create namespace saved --save-config -o yaml
+  - run: kubectl create namespace sdr --dry-run=server -o json
+  - run: kubectl create namespace dev
+  - run: kubectl create namespace Dev
+  - run: kubectl create serviceaccount builder -o yaml
+  - run: kubectl create serviceaccount builder
+  - run: kubectl create sa builder -n team --dry-run=server -o json
+  - run: kubectl create serviceaccount Bad
+  - run: kubectl create serviceaccount lost -n missing
+  - run: kubectl create configmap app --from-file=app.properties --from-literal=mode=prod
+  - run: kubectl create configmap app --from-literal=a=b
+  - run: kubectl create configmap hashed --from-literal=a=1 --append-hash -n team -o json
+  - run: kubectl create configmap saved --from-literal=a=1 --save-config -o yaml
+  - run: kubectl create configmap sdr --from-literal=a=1 --dry-run=server -o yaml
+  - run: kubectl create configmap Bad --from-literal=a=1
+  - run: kubectl create configmap lost --from-literal=a=1 -n missing
+  - run: kubectl create secret generic creds --from-literal=user=admin --from-file=app.properties -o yaml
+  - run: kubectl create secret generic creds --from-literal=a=b
+  - run: kubectl create secret generic typed --type=kubernetes.io/basic-auth --from-literal=username=u --from-literal=password=p -o json
+  - run: kubectl create secret generic badtls --type=kubernetes.io/tls --from-literal=a=b
+  - run: kubectl create secret generic sdr --from-literal=a=b --dry-run=server -o name
+  - run: kubectl create secret generic lost --from-literal=a=b -n missing
+  - run: kubectl create service clusterip web --tcp=80:8080 -o yaml
+  - run: kubectl create service clusterip web --tcp=80
+  - run: kubectl create service clusterip headless --clusterip=None -o json
+  - run: kubectl create service clusterip badip --clusterip=1.2.3.4 --tcp=80
+  - run: kubectl create service nodeport np --tcp=80:8080 --node-port=30080 -o yaml
+  - run: kubectl create service nodeport np2 --tcp=80 --node-port=30080
+  - run: kubectl create service nodeport np3 --tcp=80 --node-port=80
+  - run: kubectl create service loadbalancer lb --tcp=80:8080 --save-config
+  - run: kubectl create service externalname ext --external-name=db.example.com -o yaml
+  - run: kubectl create service clusterip sdr --tcp=80 --dry-run=server -o yaml
+  - run: kubectl create service clusterip lost --tcp=80 -n missing
+  - run: kubectl create service clusterip Bad --tcp=80
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/saved --timeout=60s
+  - run: kubectl get deployments,secrets,services
+  - run: kubectl get configmaps app saved
+  - run: kubectl get deployment web -o yaml
+    kwok: true
+  - run: kubectl get configmap app -o yaml
+  - run: kubectl get secret creds -o yaml
+  - run: kubectl get namespace saved -o yaml
+  - run: kubectl get service np -o yaml
+  - run: kubectl get service lb -o json

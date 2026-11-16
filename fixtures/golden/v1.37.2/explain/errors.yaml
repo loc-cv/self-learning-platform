@@ -1,0 +1,96 @@
+# Captured from fixtures/golden/cases/explain/errors.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: explain/errors
+description: kubectl explain errors - arguments, unknown resource types and fields, flag validation, output formats and path syntax.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - run: kubectl explain
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must specify the type of resource to explain. Use "kubectl api-resources" for a complete list of supported resources.
+  - run: kubectl explain pods services
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: We accept only this format: explain RESOURCE
+  - run: kubectl explain foo
+    exit: 1
+    stdout: ""
+    stderr: |
+      the server doesn't have a resource type "foo"
+  - run: kubectl explain foo.bar
+    exit: 1
+    stdout: ""
+    stderr: |
+      the server doesn't have a resource type "foo"
+  - run: kubectl explain pods.spec.foo
+    exit: 1
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+    stderr: |
+      error: field "foo" does not exist
+  - run: kubectl explain pods.spec.foo.bar
+    exit: 1
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+    stderr: |
+      error: field "bar" does not exist
+  - run: kubectl explain pods.foo.spec
+    exit: 1
+    stdout: |+
+      KIND:       Pod
+      VERSION:    v1
+
+    stderr: |
+      error: field "spec" does not exist
+  - run: kubectl explain deployment.spec.strategy.type.foo
+    exit: 1
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+    stderr: |
+      error: field "foo" does not exist
+  - run: kubectl explain pods --max-depth=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --max-depth requires --recursive
+  - run: kubectl explain pods -R --max-depth=-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --max-depth must be non-negative
+  - run: kubectl explain pods -o json
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unrecognized format: json
+  - run: kubectl explain foo -o json
+    exit: 1
+    stdout: ""
+    stderr: |
+      the server doesn't have a resource type "foo"
+  - run: kubectl explain .pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid jsonpath syntax, first node must be field node
+  - run: kubectl explain deployments.foo
+    exit: 1
+    stdout: |+
+      GROUP:      apps
+      KIND:       Deployment
+      VERSION:    v1
+
+    stderr: |
+      error: field "foo" does not exist

@@ -1,0 +1,152 @@
+description: >-
+  kubectl logs up to the point where the API server would contact a kubelet: argument and flag
+  validation, the builder's errors, LogsForObject's container choice and its messages (the default
+  container annotation, "Defaulted container", "Found N pods"), the --max-log-requests check, the
+  API server's PodLogOptions validation, and the empty answer for Pods with no node.
+files:
+  pods.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pending
+      labels:
+        app: pending
+    spec:
+      nodeSelector:
+        disktype: nvme
+      initContainers:
+      - name: init
+        image: busybox:1.36
+      containers:
+      - name: app
+        image: nginx:1.27
+      - name: sidecar
+        image: busybox:1.36
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: chosen
+      labels:
+        app: chosen
+      annotations:
+        kubectl.kubernetes.io/default-container: sidecar
+    spec:
+      nodeSelector:
+        disktype: nvme
+      containers:
+      - name: app
+        image: nginx:1.27
+      - name: sidecar
+        image: busybox:1.36
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: stale
+      annotations:
+        kubectl.kubernetes.io/default-container: gone
+    spec:
+      nodeSelector:
+        disktype: nvme
+      containers:
+      - name: app
+        image: nginx:1.27
+      - name: sidecar
+        image: busybox:1.36
+    ---
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: queue
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: queue
+      template:
+        metadata:
+          labels:
+            app: queue
+        spec:
+          nodeSelector:
+            disktype: nvme
+          containers:
+          - name: worker
+            image: busybox:1.36
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: settings
+    data:
+      mode: fast
+    ---
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: idle
+    spec:
+      replicas: 0
+      selector:
+        matchLabels:
+          app: idle
+      template:
+        metadata:
+          labels:
+            app: idle
+        spec:
+          containers:
+          - name: worker
+            image: busybox:1.36
+setup:
+  - do: kubectl create -f pods.yaml
+  - until: kubectl get pods -l app=queue -o name
+    match: "(pod/queue-.*\\n){2}pod/queue-"
+steps:
+  # Arguments and flags, checked before or right after the object is read.
+  - run: kubectl logs
+  - run: kubectl logs a b c
+  - run: kubectl logs -l app=pending pending
+  - run: kubectl logs rs -l app=queue
+  - run: kubectl logs pending app -c app
+  - run: kubectl logs pending -c app --all-containers
+  - run: kubectl logs pending --limit-bytes=-1
+  - run: kubectl logs pending --tail=-2
+  - run: kubectl logs pending --since=-1s
+  - run: kubectl logs pending --since=1s --since-time=2026-01-01T00:00:00Z
+  - run: kubectl logs missing --since-time=yesterday
+  - run: kubectl logs pending --pod-running-timeout=0
+  # The builder.
+  - run: kubectl logs missing
+  - run: kubectl logs pods
+  - run: kubectl logs deploy/missing
+  - run: kubectl logs a/b/c
+  - run: kubectl logs foo/bar
+  - run: kubectl logs cm/settings
+  - run: kubectl logs -l app=nothing
+  - run: kubectl logs -l 'app in ('
+  # LogsForObject: which container, and what it says about it. A Pod with no node answers with
+  # no content (LogLocation returns no location: 204).
+  - run: kubectl logs pending
+  - run: kubectl logs pending -c sidecar
+  - run: kubectl logs pending -c init --timestamps
+  - run: kubectl logs pending -c nope
+  - run: kubectl logs pod/pending pod/chosen
+  - run: kubectl logs pending --all-containers --prefix
+  - run: kubectl logs pending --all-pods
+  - run: kubectl logs pending -p --limit-bytes=10 --since-time=2026-01-01T00:00:00.5Z
+  - run: kubectl logs chosen
+  - run: kubectl logs chosen --prefix --tail=5
+  - run: kubectl logs stale
+  - run: kubectl logs stale --all-pods -f
+  - run: kubectl logs -l app=pending --max-log-requests=0 -f
+  # Workloads: the first Pod by kubectl's logging order, the stream limit for -f.
+  - run: kubectl logs deploy/queue
+  - run: kubectl logs deployment.apps/queue --all-pods --since=2h
+  - run: kubectl logs deploy/queue -f --all-pods --max-log-requests=2
+  - run: kubectl logs -l app=queue -f --max-log-requests=2
+  - run: kubectl logs deploy/queue --all-pods --all-containers -c worker
+  - run: kubectl logs deploy/idle --pod-running-timeout=1s
+  # The API server's PodLogOptions validation: --since rounds to whole seconds.
+  - run: kubectl logs pending -c app --since=400ms

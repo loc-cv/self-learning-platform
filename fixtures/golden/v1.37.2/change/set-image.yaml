@@ -1,0 +1,381 @@
+# Captured from fixtures/golden/cases/change/set-image.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: change/set-image
+description: "kubectl set image - one container, init containers (--local: the simulated kubelet runs none yet), `*`, several pairs, a Pod, selectors and --all, an unchanged image (nothing printed), client and server dry runs, --local with -o yaml and -o json, -f against the server; and the errors - a container that is not there (alone and next to one that is), a kind without a Pod template, `*` with other pairs, no image, no resource, pairs before resources, a bad pair, a missing object, the --local mistakes."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl set image deployment/web nginx=nginx:1.28
+    exit: 0
+    stdout: |
+      deployment.apps/web image updated
+    stderr: ""
+  - run: kubectl set image deployment/web nginx=nginx:1.28
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl set image deployment/web nope=nginx:1.28
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to find container named "nope"
+  - run: kubectl set image deployment/web nginx=nginx:1.29 nope=busybox
+    exit: 1
+    stdout: |
+      deployment.apps/web image updated
+    stderr: |
+      error: unable to find container named "nope"
+  - run: kubectl set image deployment/web sidecar=busybox:1.37
+    exit: 0
+    stdout: |
+      deployment.apps/web image updated
+    stderr: ""
+  - run: kubectl set image deployment/web '*=nginx:1.27' sidecar=busybox
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: all containers are already specified by *, but saw more than one container_name=container_image pairs
+  - run: kubectl set image deployment/web nginx=nginx:1.30 --dry-run=client
+    exit: 0
+    stdout: |
+      deployment.apps/web image updated (dry run)
+    stderr: ""
+  - run: kubectl set image deployment/web nginx=nginx:1.30 --dry-run=server -o name
+    exit: 0
+    stdout: |
+      deployment.apps/web
+    stderr: ""
+  - run: kubectl set image deployment web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: at least one image update is required
+  - run: kubectl set image nginx=nginx:1.30
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must provide one or more resources by argument or filename.
+      Example resource specifications include:
+         '-f rsrc.yaml'
+         '--filename=rsrc.json'
+         '<resource> <name>'
+         '<resource>'
+  - run: kubectl set image deployment/web nginx=nginx:1.30 api
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: all resources must be specified before image changes: api
+  - run: kubectl set image deployment/web =nginx:1.30
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: there is no need to specify a resource type as a separate argument when passing arguments in resource/name form (e.g. 'kubectl get resource/<resource_name>' instead of 'kubectl get resource resource/<resource_name>'
+  - run: kubectl set image deployment/web nginx- other
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: all resources must be specified before image changes: other
+  - run: kubectl set image pod solo solo=nginx:1.28
+    exit: 0
+    stdout: |
+      pod/solo image updated
+    stderr: ""
+  - run: kubectl set image configmap/settings a=b
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: configmaps/settings the object is not a pod or does not have a pod template: *v1.ConfigMap
+  - run: kubectl set image configmap/settings deployment/api a=b
+    exit: 1
+    stdout: ""
+    stderr: |+
+      error: unable to find container named "a"
+      error: configmaps/settings the object is not a pod or does not have a pod template: *v1.ConfigMap
+
+  - run: kubectl set image deploy -l app=web nginx=nginx:1.27
+    exit: 0
+    stdout: |
+      deployment.apps/web image updated
+    stderr: ""
+  - run: kubectl set image deploy --all nginx=nginx:1.28
+    exit: 0
+    stdout: |
+      deployment.apps/api image updated
+      deployment.apps/web image updated
+    stderr: ""
+  - run: kubectl set image deploy --all -l app=web nginx=nginx:1.27
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot set --all and --selector at the same time
+  - run: kubectl set image deploy/web deploy/nope nginx=nginx:1.27
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "nope" not found
+  - run: kubectl set image --local -f local.yaml nginx=nginx:2 -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: loc
+        name: loc
+      spec:
+        selector:
+          matchLabels:
+            app: loc
+        strategy: {}
+        template:
+          metadata:
+            labels:
+              app: loc
+          spec:
+            containers:
+            - image: nginx:2
+              name: nginx
+              resources: {}
+            initContainers:
+            - command:
+              - "true"
+              image: busybox:1.36
+              name: init
+              resources: {}
+      status: {}
+    stderr: ""
+  - run: kubectl set image --local -f local.yaml nginx=nginx:2 -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Deployment",
+          "apiVersion": "apps/v1",
+          "metadata": {
+              "name": "loc",
+              "labels": {
+                  "app": "loc"
+              }
+          },
+          "spec": {
+              "selector": {
+                  "matchLabels": {
+                      "app": "loc"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "labels": {
+                          "app": "loc"
+                      }
+                  },
+                  "spec": {
+                      "initContainers": [
+                          {
+                              "name": "init",
+                              "image": "busybox:1.36",
+                              "command": [
+                                  "true"
+                              ],
+                              "resources": {}
+                          }
+                      ],
+                      "containers": [
+                          {
+                              "name": "nginx",
+                              "image": "nginx:2",
+                              "resources": {}
+                          }
+                      ]
+                  }
+              },
+              "strategy": {}
+          },
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl set image --local -f local.yaml init=busybox:1.37 -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: loc
+        name: loc
+      spec:
+        selector:
+          matchLabels:
+            app: loc
+        strategy: {}
+        template:
+          metadata:
+            labels:
+              app: loc
+          spec:
+            containers:
+            - image: nginx:1.27
+              name: nginx
+              resources: {}
+            initContainers:
+            - command:
+              - "true"
+              image: busybox:1.37
+              name: init
+              resources: {}
+      status: {}
+    stderr: ""
+  - run: kubectl set image --local -f local.yaml '*=busybox:1.37' -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app: loc
+        name: loc
+      spec:
+        selector:
+          matchLabels:
+            app: loc
+        strategy: {}
+        template:
+          metadata:
+            labels:
+              app: loc
+          spec:
+            containers:
+            - image: busybox:1.37
+              name: nginx
+              resources: {}
+            initContainers:
+            - command:
+              - "true"
+              image: busybox:1.37
+              name: init
+              resources: {}
+      status: {}
+    stderr: ""
+  - run: kubectl set image --local -f local.yaml nginx=nginx:2
+    exit: 0
+    stdout: |
+      deployment.apps/loc image updated
+    stderr: ""
+  - run: kubectl set image --local -f local.yaml nginx=nginx:2 --dry-run=client
+    exit: 0
+    stdout: |
+      deployment.apps/loc image updated (dry run)
+    stderr: ""
+  - run: kubectl set image --local deploy/web nginx=nginx:2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: you must specify resources by --filename when --local is set.
+      Example resource specifications include:
+         '-f rsrc.yaml'
+         '--filename=rsrc.json'
+  - run: kubectl set image --local nginx=nginx:2
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must provide one or more resources by argument or filename.
+      Example resource specifications include:
+         '-f rsrc.yaml'
+         '--filename=rsrc.json'
+         '<resource> <name>'
+         '<resource>'
+  - run: kubectl set image --local -f local.yaml nginx=nginx:2 --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot specify --local and --dry-run=server - did you mean --dry-run=client?
+  - run: kubectl set image -f local.yaml nginx=nginx:2
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "loc" not found
+  - run: kubectl set image deployment/web nginx=nginx:1.27 -o bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "bogus", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - objects:
+      - ref: deployment/web
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "6"
+            creationTimestamp: <<time>>
+            generation: 6
+            labels:
+              app: web
+            name: web
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 1
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: web
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: web
+              spec:
+                containers:
+                  - image: nginx:1.28
+                    imagePullPolicy: IfNotPresent
+                    name: nginx
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                  - command:
+                      - sleep
+                      - "3600"
+                    image: busybox:1.37
+                    imagePullPolicy: IfNotPresent
+                    name: sidecar
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            availableReplicas: 1
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "web-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 6
+            readyReplicas: 1
+            replicas: 1
+            terminatingReplicas: 0
+            updatedReplicas: 1

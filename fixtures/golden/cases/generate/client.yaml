@@ -1,0 +1,148 @@
+description: >-
+  The generators without a server: create deployment, namespace, configmap, secret generic and
+  service with --dry-run=client across their flags (sources from files, directories and env files,
+  --append-hash, --save-config, -n, -o json|yaml|name), every client-side error, kubectl run's
+  checks before it needs discovery, and the refused POST of a real create.
+server: false
+files:
+  app.properties: "color=blue\nsize=10\n"
+  conf/a.txt: "alpha\n"
+  conf/b.conf: "bravo"
+  conf/sub/c.txt: "nested, skipped\n"
+  conf/bad key.txt: "not a valid key\n"
+  ok/one: "1\n"
+  ok/two.txt: "two\n"
+  app.env: "\ufeff# a comment\nA=1\n  B=spaced value \nC=with=equals\n\n\t# indented comment\nD=\nUNSET_IN_ENV\nE=crlf\r\n#F=no\nG=last line without a newline"
+  bad.env: "GOOD=1\n1BAD=x\n"
+  space.env: "A B=1\n"
+steps:
+  # create deployment
+  - run: kubectl create deployment web --image=nginx:1.27 --image=busybox:1.37 --port=8080 -r 2 --dry-run=client -o yaml
+  - run: kubectl create deploy web --image=busybox:1.37 --dry-run=client -o json -- sleep 3600
+  - run: kubectl create deployment web --image=registry.k8s.io/pause:3.10 --image=docker.io/library/redis@sha256:0123456789abcdef0123456789abcdef --port=0 --replicas=0 -n team --dry-run=client -o yaml
+  - run: kubectl create deployment web --image=nginx:1.27 --save-config --dry-run=client -o json
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=client -o name
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run
+  - run: kubectl create deployment web --image=nginx:1.27 --dry-run=true -o name
+  - run: kubectl create deployment web --image=a --image=b --dry-run=client -o yaml -- sleep 1
+  - run: kubectl create deployment a b --image=x
+  - run: kubectl create deployment --image=x
+  - run: kubectl create deployment web --image=nginx --replicas=abc
+  - run: kubectl create deployment web --image=nginx --dry-run=maybe
+  - run: kubectl create deployment web --image=nginx --dry-run=client -o wide
+  - run: kubectl create deployment web --image=nginx --dry-run=client --validate=sometimes
+  - run: kubectl create deployment web --image=nginx
+  - run: kubectl create deployment web --image=nginx --dry-run=server -n x --field-manager=me
+  - run: kubectl create deployment web --image=nginx --field-manager= --validate=false
+  # create namespace
+  - run: kubectl create namespace dev --dry-run=client -o json
+  - run: kubectl create ns dev --save-config --dry-run=client -o yaml
+  - run: kubectl create namespace dev -n other --dry-run=client -o yaml
+  - run: kubectl create namespace dev --dry-run=client -o name
+  - run: kubectl create namespace
+  - run: kubectl create namespace a b
+  - run: kubectl create namespace ''
+  - run: kubectl create namespace dev
+  # create serviceaccount
+  - run: kubectl create serviceaccount builder --dry-run=client -o yaml
+  - run: kubectl create sa builder -n team --save-config --dry-run=client -o json
+  - run: kubectl create serviceaccount builder
+  - run: kubectl create serviceaccount
+  # create configmap
+  - run: kubectl create configmap files --from-file=app.properties --from-file=renamed=conf/a.txt --from-literal=lit=x --dry-run=client -o yaml
+  - run: kubectl create configmap dir --from-file=ok --dry-run=client -o json
+  - run: kubectl create configmap dir --from-file=ok/ --from-file=conf/b.conf -n team --dry-run=client -o yaml
+  - run: kubectl create cm env --from-env-file=app.env --dry-run=client -o yaml
+  - run: kubectl create configmap env --from-env-file=app.env,ok/one --dry-run=client -o yaml
+  - run: kubectl create configmap hashed --from-literal=a=1 --from-literal=b=2 --append-hash --dry-run=client -o yaml
+  - run: kubectl create configmap hashed --append-hash --dry-run=client -o name
+  - run: kubectl create configmap saved --from-literal=a=1 --save-config --dry-run=client -o yaml
+  - run: kubectl create configmap empty --dry-run=client -o json
+  - run: kubectl create configmap x --from-file=conf
+  - run: kubectl create configmap x --from-literal=bad
+  - run: kubectl create configmap x --from-literal==v
+  - run: kubectl create configmap x --from-literal=a=1 --from-literal=a=2
+  - run: kubectl create configmap x --from-literal='a b=1'
+  - run: kubectl create configmap x --from-file=app.properties --from-file=app.properties
+  - run: kubectl create configmap x --from-file=missing.txt
+  - run: kubectl create configmap x --from-file==missing.txt
+  - run: kubectl create configmap x --from-file=k=
+  - run: kubectl create configmap x --from-file=a=b=c
+  - run: kubectl create configmap x --from-file=k=ok
+  - run: kubectl create configmap x --from-env-file=app.env --from-literal=a=b
+  - run: kubectl create configmap x --from-env-file=ok
+  - run: kubectl create configmap x --from-env-file=missing.env
+  - run: kubectl create configmap x --from-env-file=bad.env
+  - run: kubectl create configmap x --from-env-file=space.env
+  - run: kubectl create configmap
+  - run: kubectl create configmap x --from-literal=a=1
+  # create secret generic
+  - run: kubectl create secret generic creds --from-literal=user=admin --from-literal=pass='s3cr3t!' --from-file=app.properties --dry-run=client -o yaml
+  - run: kubectl create secret generic tls --type=kubernetes.io/tls --from-literal=tls.crt=x --from-literal=tls.key=y -n team --dry-run=client -o json
+  - run: kubectl create secret generic dir --from-file=ok --dry-run=client -o yaml
+  - run: kubectl create secret generic env --from-env-file=app.env --dry-run=client -o yaml
+  - run: kubectl create secret generic hashed --from-literal=a=b --append-hash --dry-run=client -o yaml
+  - run: kubectl create secret generic hashed --type=Opaque --append-hash --dry-run=client -o name
+  - run: kubectl create secret generic saved --from-literal=a=b --save-config --dry-run=client -o json
+  - run: kubectl create secret generic x --from-literal='a b=1'
+  - run: kubectl create secret generic x --from-literal=a=1 --from-file=a=app.properties
+  - run: kubectl create secret generic x --from-file=conf
+  - run: kubectl create secret generic x --from-env-file=ok
+  - run: kubectl create secret generic x --from-env-file=bad.env
+  - run: kubectl create secret generic x --from-env-file=app.env --from-file=ok
+  - run: kubectl create secret generic
+  - run: kubectl create secret generic x
+  # create service
+  - run: kubectl create service clusterip web --tcp=80:8080 --tcp=443 --tcp=53:dns --dry-run=client -o yaml
+  - run: kubectl create svc clusterip web --tcp=80,8080:http -n team --dry-run=client -o json
+  - run: kubectl create service clusterip headless --clusterip=None --dry-run=client -o yaml
+  - run: kubectl create service clusterip fixed --clusterip=10.96.0.50 --tcp=80 --save-config --dry-run=client -o yaml
+  - run: kubectl create service nodeport web --tcp=80:8080 --node-port=30080 --dry-run=client -o json
+  - run: kubectl create service nodeport web --tcp=80 --dry-run=client -o yaml
+  - run: kubectl create service loadbalancer web --tcp=80:8080 --dry-run=client -o yaml
+  - run: kubectl create service externalname ext --external-name=db.example.com --dry-run=client -o yaml
+  - run: kubectl create service externalname ext --external-name=db.example.com --tcp=5432 --dry-run=client -o json
+  - run: kubectl create service clusterip x --tcp=0 --dry-run=client -o name
+  - run: kubectl create service clusterip x --tcp=abc
+  - run: kubectl create service clusterip x --tcp=70000:80
+  - run: kubectl create service clusterip x --tcp=80:abc_d
+  - run: kubectl create service clusterip x --tcp=80:0
+  - run: kubectl create service clusterip x --tcp=80:70000
+  - run: kubectl create service clusterip x --tcp=80:-1
+  - run: kubectl create service clusterip x --tcp=:80
+  - run: kubectl create service clusterip x
+  - run: kubectl create service loadbalancer x
+  - run: kubectl create service nodeport x --clusterip=None
+  - run: kubectl create service externalname x
+  - run: kubectl create service externalname x --external-name=Bad_Name
+  - run: kubectl create service clusterip x --tcp=80
+  - run: kubectl create service nodeport x --tcp=80 --dry-run=server
+  # run, before it needs discovery
+  - run: kubectl run
+  - run: kubectl run x
+  - run: kubectl run -- x --image=nginx
+  - run: kubectl run --image=nginx
+  - run: kubectl run --image=nginx -- x
+  - run: kubectl run x --image=
+  - run: kubectl run x --image='Bad Image'
+  - run: kubectl run x --image=Nginx
+  - run: kubectl run x --image=nginx -t
+  - run: kubectl run x --image=nginx --expose
+  - run: kubectl run x --image=nginx --port=abc
+  - run: kubectl run x --image=nginx --rm
+  - run: kubectl run x --image=nginx -i --dry-run=client
+  - run: kubectl run x --image=nginx --attach --dry-run=server
+  - run: kubectl run x --image=nginx --restart=Sometimes
+  - run: kubectl run x --image=nginx --image-pull-policy=Maybe
+  - run: kubectl run x --image=nginx --env=A
+  - run: kubectl run x --image=nginx --env==1
+  - run: kubectl run x --image=nginx --env=1A=b
+  - run: kubectl run x --image=nginx --labels=a
+  - run: kubectl run x --image=nginx --labels==b
+  - run: kubectl run x --image=nginx --labels=a=b=c
+  - run: kubectl run x --image=nginx --annotations=a --annotations==b --annotations=ok=1
+  - run: kubectl run x --image=nginx --cascade=bad
+  - run: kubectl run x --image=nginx --pod-running-timeout=0s
+  - run: kubectl run x --image=nginx --dry-run=bad
+  - run: kubectl run x --image=nginx -o bad
+  - run: kubectl run x --image=nginx --dry-run=client -o yaml -- sleep 1

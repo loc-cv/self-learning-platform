@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+  annotations:
+    kubernetes.io/change-cause: try nginx 1.99
+spec:
+  replicas: 3
+  progressDeadlineSeconds: 120
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.99

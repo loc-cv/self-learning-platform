@@ -9,9 +9,14 @@
 //   upstream: staging/src/k8s.io/cli-runtime/pkg/genericclioptions/config_flags.go
 //             toRawKubeConfigLoader (ClusterDefaults: clientcmd.ClusterDefaults, whose server is
 //             http://localhost:8080 unless KUBERNETES_MASTER is set: clientcmd getDefaultServer)
+//   upstream: loader.go LoadFromFile (os.ReadFile: every error but IsNotExist is reported, so a
+//             path under a regular file, ENOTDIR, is `open <f>: not a directory`), Load
+// Files are decoded by `kubectl config`'s model (client/kubeconfigmodel.ts, D-086): Go's type
+// errors, a wrong kind or version, and a repeated name in a list are the binary's errors.
 // Behavior checked against the real kubectl v1.37.2 on this workstation (2026-11-16): --context,
 // --cluster and --user naming nothing, with and without -n, a context whose cluster is missing,
-// --kubeconfig naming a missing file.
+// --kubeconfig naming a missing file; fixtures/golden/v1.37.2/config/broken-kubeconfig.yaml (a
+// repeated name, a type error, a file under a regular file).
 //
 // Credentials are not read: kubeadm's kubeconfigs carry no certificate data yet (D-057), and the
 // API server admits every request (authentication is phase 20a). A user entry stands for the
@@ -19,6 +24,7 @@
 
 import type { Json } from '@simlab/kernel';
 import type { KubectlError } from '../cli/errors.ts';
+import { decodeConfig, type Config } from './kubeconfigmodel.ts';
 
 export interface KubeconfigFile {
   clusters: Record<string, { server: string }>;
@@ -46,7 +52,7 @@ export interface ClientConfig {
   user: string;
 }
 
-/** Reads a file: its text, or 'missing' when it does not exist, or another error text. */
+/** Reads a file: its text, or 'missing' when it does not exist (os.IsNotExist), or Go's error text. */
 export type ReadFile = (path: string) => string | { missing: true } | { error: string };
 
 export type ParseYaml = (text: string) => { value: Json } | { error: string } | { unsupported: string };
@@ -54,30 +60,22 @@ export type ParseYaml = (text: string) => { value: Json } | { error: string } | 
 /** clientcmd ClusterDefaults: getDefaultServer() without KUBERNETES_MASTER. */
 export const DEFAULT_SERVER = 'http://localhost:8080';
 
-function str(v: Json | undefined): string {
-  return typeof v === 'string' ? v : '';
-}
-
-function obj(v: Json | undefined): Record<string, Json> {
-  return v !== null && typeof v === 'object' && !Array.isArray(v) ? v : {};
-}
-
-function list(v: Json | undefined): Json[] {
-  return Array.isArray(v) ? v : [];
-}
-
-/** clientcmd's v1 Config decoded into maps (latest.Codec): named lists become maps. */
-export function decodeKubeconfig(doc: Json): KubeconfigFile {
-  const o = obj(doc);
-  const out: KubeconfigFile = { clusters: {}, contexts: {}, users: {}, currentContext: str(o['current-context']) };
-  // Conversion keeps the last entry of a repeated name (Convert_Slice_v1_NamedCluster_To_Map).
-  for (const c of list(o.clusters)) out.clusters[str(obj(c).name)] = { server: str(obj(obj(c).cluster).server) };
-  for (const c of list(o.contexts)) {
-    const ctx = obj(obj(c).context);
-    out.contexts[str(obj(c).name)] = { cluster: str(ctx.cluster), user: str(ctx.user), namespace: str(ctx.namespace) };
-  }
-  for (const u of list(o.users)) out.users[str(obj(u).name)] = {};
+/** What the loader keeps of clientcmd's internal api.Config. */
+export function fromConfig(c: Config): KubeconfigFile {
+  const out: KubeconfigFile = { clusters: {}, contexts: {}, users: {}, currentContext: c.currentContext };
+  for (const [k, e] of Object.entries(c.clusters)) out.clusters[k] = { server: e.value.server };
+  for (const [k, e] of Object.entries(c.contexts)) out.contexts[k] = { cluster: e.value.cluster, user: e.value.authInfo, namespace: e.value.namespace };
+  for (const k of Object.keys(c.users)) out.users[k] = {};
   return out;
+}
+
+/**
+ * clientcmd.Load of a file's YAML as JSON (undefined for an empty file): latest.Codec's decoding
+ * and the v1 conversion, by the one decoder `kubectl config` uses (client/kubeconfigmodel.ts).
+ */
+export function decodeKubeconfig(doc: Json | undefined): KubeconfigFile | { error: string } | { notSimulated: string } {
+  const r = decodeConfig(doc, '');
+  return 'config' in r ? fromConfig(r.config) : r;
 }
 
 /** filepath.SplitList on Linux, then deduplicated (NewDefaultClientConfigLoadingRules). */
@@ -127,17 +125,23 @@ export function loadKubeconfig(
       continue;
     }
     // An empty file is an empty config (clientcmd.Load).
-    if (r === '') {
-      files.push(decodeKubeconfig({}));
+    let value: Json | undefined;
+    if (r !== '') {
+      const doc = parse(r);
+      if ('unsupported' in doc) return { type: 'notSimulated', what: `${doc.unsupported} in ${p}` };
+      if ('error' in doc) {
+        errors.push({ type: 'message', message: `error loading config file "${p}": ${doc.error}` });
+        continue;
+      }
+      value = doc.value;
+    }
+    const f = decodeKubeconfig(value);
+    if ('notSimulated' in f) return { type: 'notSimulated', what: `${f.notSimulated} (${p})` };
+    if ('error' in f) {
+      errors.push({ type: 'message', message: `error loading config file "${p}": ${f.error}` });
       continue;
     }
-    const doc = parse(r);
-    if ('unsupported' in doc) return { type: 'notSimulated', what: `${doc.unsupported} in ${p}` };
-    if ('error' in doc) {
-      errors.push({ type: 'message', message: `error loading config file "${p}": ${doc.error}` });
-      continue;
-    }
-    files.push(decodeKubeconfig(doc.value));
+    files.push(f);
   }
   if (errors.length > 0) return { type: 'aggregate', errors };
   return merge(files);

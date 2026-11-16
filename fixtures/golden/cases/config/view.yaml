@@ -1,0 +1,193 @@
+description: >-
+  kubectl config view on kubeconfig files with no server: redaction, --raw, --minify, --flatten,
+  --merge, -o json, the KUBECONFIG list merged, explicit files, and the errors.
+server: false
+files:
+  .kube/config: |
+    # a comment kubectl drops
+    apiVersion: v1
+    kind: Config
+    preferences: {}
+    clusters:
+    - cluster:
+        certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+        server: https://172.16.0.10:6443
+      name: kubernetes
+    - cluster:
+        server: https://10.0.0.5:6443
+        insecure-skip-tls-verify: true
+        tls-server-name: api.staging
+        proxy-url: http://proxy:3128
+      name: staging
+    - cluster:
+        certificate-authority: certs/ca.crt
+        server: https://10.0.0.9:6443
+        disable-compression: true
+        unknown-field: dropped
+      name: files
+    contexts:
+    - context:
+        cluster: kubernetes
+        user: kubernetes-admin
+      name: kubernetes-admin@kubernetes
+    - context:
+        cluster: staging
+        user: dev
+        namespace: team-a
+      name: dev@staging
+    - context:
+        cluster: files
+        user: basic
+      name: basic@files
+    current-context: kubernetes-admin@kubernetes
+    users:
+    - name: kubernetes-admin
+      user:
+        client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+        client-key-data: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCg==
+    - name: dev
+      user:
+        token: abc123
+        as: jane
+        as-groups:
+        - devs
+        - ops
+    - name: basic
+      user:
+        username: admin
+        password: s3cret
+        client-certificate: certs/client.crt
+        client-key: /etc/missing/client.key
+  .kube/certs/ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIB
+    -----END CERTIFICATE-----
+  .kube/certs/client.crt: |
+    client cert
+  a.yaml: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - name: shared
+      cluster:
+        server: https://a.example:6443
+    - name: only-a
+      cluster:
+        server: https://only-a:6443
+    contexts:
+    - name: ctx-a
+      context:
+        cluster: shared
+        user: ua
+    users:
+    - name: ua
+      user:
+        token: from-a
+  b.yaml: |
+    apiVersion: v1
+    kind: Config
+    current-context: ctx-b
+    clusters:
+    - name: shared
+      cluster:
+        server: https://b.example:6443
+    contexts:
+    - name: ctx-b
+      context:
+        cluster: shared
+        user: ub
+        namespace: nb
+    users:
+    - name: ub
+      user:
+        client-key-data: ""
+  empty.yaml: ""
+  flat.yaml: |
+    apiVersion: v1
+    kind: Config
+    current-context: c
+    clusters:
+    - name: c
+      cluster:
+        server: https://x:6443
+        certificate-authority: .kube/certs/ca.crt
+    contexts:
+    - name: c
+      context: {cluster: c, user: u}
+    users:
+    - name: u
+      user:
+        client-certificate: .kube/certs/client.crt
+        token: t
+  both.yaml: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - name: c
+      cluster:
+        server: https://x:6443
+        certificate-authority: .kube/certs/ca.crt
+        certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCg==
+  bad.yaml: |
+    apiVersion: v1
+    kind: [Config
+  type.yaml: |
+    clusters: 5
+  nested.yaml: |
+    contexts:
+    - name: c
+      context:
+        cluster: 5
+        namespace: [a]
+    users:
+    - name: 7
+    clusters:
+    - name: s
+      cluster:
+        insecure-skip-tls-verify: "yes"
+  kind.yaml: |
+    apiVersion: v1
+    kind: Foo
+  version.yaml: |
+    apiVersion: v2
+  b64.yaml: |
+    users:
+    - name: u
+      user:
+        client-key-data: abc!
+steps:
+  - run: kubectl config view
+  - run: kubectl config view --raw
+  - run: kubectl config view -o json
+  - run: kubectl config view --minify
+  - run: kubectl config view --minify --context=dev@staging
+  - run: kubectl config view --minify --raw -o json --context=dev@staging
+  - run: kubectl config view --minify --context=nope
+  - run: kubectl config view --minify --context=basic@files --flatten
+  - run: kubectl config view --flatten
+  - run: KUBECONFIG=flat.yaml kubectl config view --flatten
+  - run: kubectl config view --kubeconfig flat.yaml --flatten -o json --minify
+  - run: (cd .kube && kubectl config view --kubeconfig ../flat.yaml --flatten)
+  - run: KUBECONFIG=both.yaml kubectl config view --flatten
+  - run: kubectl config view --merge=false
+  - run: kubectl config view --merge=x
+  - run: kubectl config view --kubeconfig .kube/config --minify
+  - run: kubectl config view --kubeconfig missing.yaml
+  - run: kubectl config view --kubeconfig missing.yaml --merge
+  - run: kubectl config view --kubeconfig empty.yaml
+  - run: kubectl config view --kubeconfig .kube
+  - run: kubectl config view extra
+  - run: kubectl config view -o name
+  - run: kubectl config view -o wide
+  - run: KUBECONFIG=a.yaml:b.yaml kubectl config view
+  - run: KUBECONFIG=b.yaml:a.yaml kubectl config view -o json
+  - run: KUBECONFIG=b.yaml:a.yaml kubectl config view --minify
+  - run: KUBECONFIG=a.yaml kubectl config view --minify
+  - run: KUBECONFIG=missing1.yaml:missing2.yaml kubectl config view
+  - run: KUBECONFIG=missing1.yaml:missing2.yaml kubectl config view -o json
+  - run: kubectl config view --kubeconfig type.yaml
+  - run: kubectl config view --kubeconfig nested.yaml --merge=false
+  - run: KUBECONFIG=kind.yaml:a.yaml kubectl config get-contexts
+  - run: KUBECONFIG=version.yaml:bad.yaml:.kube:a.yaml kubectl config current-context
+  - run: kubectl config view --kubeconfig bad.yaml --merge=false
+  - run: KUBECONFIG=b64.yaml kubectl config get-users

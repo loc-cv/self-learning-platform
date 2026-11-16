@@ -22,7 +22,7 @@ const USAGE = `usage: npm run sim -- --topology NAME [--seed N] (-c COMMANDS | F
   --hash               print the world hash at the end
   --file FILE[,FILE]   put local files into the session user's home directory first (by base
                        name), e.g. a manifest for kubectl apply -f
-Directives in scripts: @advance 30s, @keys \\x03, @resize 100x30, @editor <<EOF ... EOF
+Directives in scripts: @advance 30s, @keys \\x03, @resize 100x30, @editor <<EOF ... EOF, @editor :q!
 Topologies: ${topologyNames().join(', ')}
 `;
 

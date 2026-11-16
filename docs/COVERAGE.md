@@ -194,31 +194,31 @@ and the API server's discovery registry and strategies. Edit those, not this sec
 
 ### Commands
 
-All 111 commands of the real kubectl, in its help's groups: 5 simulated (flags below), 13 print their help as the real ones do (kubectl itself included), 93 print the notice.
+All 111 commands of the real kubectl, in its help's groups: 42 simulated (flags below), 13 print their help as the real ones do (kubectl itself included), 56 print the notice.
 
 | Command | Group | Status | Subcommands |
 |---|---|---|---|
 | `kubectl` | | help (as the real one) | |
-| `create` | Basic Commands (Beginner) | simulated | help (as the real one): `secret`, `service`; notice: `clusterrole`, `clusterrolebinding`, `configmap`, `cronjob`, `deployment`, `ingress`, `job`, `namespace`, `poddisruptionbudget`, `priorityclass`, `quota`, `role`, `rolebinding`, `secret docker-registry`, `secret generic`, `secret tls`, `service clusterip`, `service externalname`, `service loadbalancer`, `service nodeport`, `serviceaccount`, `token` |
-| `expose` | Basic Commands (Beginner) | notice |  |
-| `run` | Basic Commands (Beginner) | notice |  |
-| `set` | Basic Commands (Beginner) | help (as the real one) | notice: `env`, `image`, `resources`, `selector`, `serviceaccount`, `subject` |
-| `explain` | Basic Commands (Intermediate) | notice |  |
+| `create` | Basic Commands (Beginner) | simulated | simulated: `configmap`, `deployment`, `namespace`, `secret generic`, `service clusterip`, `service externalname`, `service loadbalancer`, `service nodeport`, `serviceaccount`; help (as the real one): `secret`, `service`; notice: `clusterrole`, `clusterrolebinding`, `cronjob`, `ingress`, `job`, `poddisruptionbudget`, `priorityclass`, `quota`, `role`, `rolebinding`, `secret docker-registry`, `secret tls`, `token` |
+| `expose` | Basic Commands (Beginner) | simulated |  |
+| `run` | Basic Commands (Beginner) | simulated |  |
+| `set` | Basic Commands (Beginner) | help (as the real one) | simulated: `image`; notice: `env`, `resources`, `selector`, `serviceaccount`, `subject` |
+| `explain` | Basic Commands (Intermediate) | simulated |  |
 | `get` | Basic Commands (Intermediate) | simulated |  |
-| `edit` | Basic Commands (Intermediate) | notice |  |
+| `edit` | Basic Commands (Intermediate) | simulated |  |
 | `delete` | Basic Commands (Intermediate) | simulated |  |
-| `rollout` | Deploy Commands | help (as the real one) | notice: `history`, `pause`, `restart`, `resume`, `status`, `undo` |
-| `scale` | Deploy Commands | notice |  |
+| `rollout` | Deploy Commands | help (as the real one) | simulated: `history`, `pause`, `restart`, `resume`, `status`, `undo` |
+| `scale` | Deploy Commands | simulated |  |
 | `autoscale` | Deploy Commands | notice |  |
 | `certificate` | Cluster Management Commands | help (as the real one) | notice: `approve`, `deny` |
-| `cluster-info` | Cluster Management Commands | notice | notice: `dump` |
+| `cluster-info` | Cluster Management Commands | simulated | notice: `dump` |
 | `top` | Cluster Management Commands | help (as the real one) | notice: `node`, `pod` |
 | `cordon` | Cluster Management Commands | notice |  |
 | `uncordon` | Cluster Management Commands | notice |  |
 | `drain` | Cluster Management Commands | notice |  |
 | `taint` | Cluster Management Commands | notice |  |
 | `describe` | Troubleshooting and Debugging Commands | simulated |  |
-| `logs` | Troubleshooting and Debugging Commands | notice |  |
+| `logs` | Troubleshooting and Debugging Commands | simulated |  |
 | `attach` | Troubleshooting and Debugging Commands | notice |  |
 | `exec` | Troubleshooting and Debugging Commands | notice |  |
 | `port-forward` | Troubleshooting and Debugging Commands | notice |  |
@@ -233,21 +233,48 @@ All 111 commands of the real kubectl, in its help's groups: 5 simulated (flags b
 | `replace` | Advanced Commands | notice |  |
 | `wait` | Advanced Commands | notice |  |
 | `kustomize` | Advanced Commands | notice |  |
-| `label` | Settings Commands | notice |  |
-| `annotate` | Settings Commands | notice |  |
-| `completion` | Settings Commands | notice |  |
-| `api-resources` | Other Commands | notice |  |
-| `api-versions` | Other Commands | notice |  |
-| `config` | Other Commands | help (as the real one) | notice: `current-context`, `delete-cluster`, `delete-context`, `delete-user`, `get-clusters`, `get-contexts`, `get-users`, `rename-context`, `set`, `set-cluster`, `set-context`, `set-credentials`, `unset`, `use-context`, `view` |
+| `label` | Settings Commands | simulated |  |
+| `annotate` | Settings Commands | simulated |  |
+| `completion` | Settings Commands | simulated |  |
+| `api-resources` | Other Commands | simulated |  |
+| `api-versions` | Other Commands | simulated |  |
+| `config` | Other Commands | help (as the real one) | simulated: `current-context`, `delete-context`, `get-clusters`, `get-contexts`, `get-users`, `set-context`, `use-context`, `view`; notice: `delete-cluster`, `delete-user`, `rename-context`, `set`, `set-cluster`, `set-credentials`, `unset` |
 | `kuberc` | Other Commands | help (as the real one) | notice: `set`, `view` |
 | `plugin` | Other Commands | help (as the real one) | notice: `list` |
-| `version` | Other Commands | notice |  |
+| `version` | Other Commands | simulated |  |
 | `help` | Unlisted | help (as the real one) |  |
 | `options` | Unlisted | help (as the real one) |  |
 
 ### Flags of the simulated commands
 
 Each command's own flags, in its help's order. Notice: the flag prints the `[sim]` notice and is written to the gap log; no effect: parsed and accepted silently, with the reason (docs/FIDELITY.md §4.1). The global flags follow.
+
+#### `kubectl annotate`
+
+| Status | Flags |
+|---|---|
+| simulated | `--all`, `--dry-run`, `--field-manager`, `--field-selector`, `--list`, `--local`, `--overwrite`, `-R, --recursive`, `--resource-version`, `-l, --selector` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-A, --all-namespaces` (with -f prints a notice), `-f, --filename` (URLs (http://, https://) print a notice: the simulated machines have no network access), `-k, --kustomize` (prints a notice: kustomize is not simulated), `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl api-resources`
+
+| Status | Flags |
+|---|---|
+| simulated | `--api-group`, `--categories`, `--namespaced`, `--no-headers`, `--sort-by`, `--verbs` |
+| `-o` formats | `json`, `name`, `wide`, `yaml` and the default; notice: `kyaml` |
+| notice for some values | `-o, --output` (kyaml prints a notice) |
+| accepted, no effect | `--cached`: the discovery cache is not modeled: discovery is answered by the server each time, with the same result; `--show-managed-fields`: an APIResourceList has no managed fields to show or strip |
+| notice | — |
+
+#### `kubectl api-versions`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
 
 #### `kubectl apply`
 
@@ -259,6 +286,79 @@ Each command's own flags, in its help's order. Notice: the flag prints the `[sim
 | accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--grace-period`: only used when --force deletes an object or --prune deletes them, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015); `--timeout`: only used when --force deletes an object, which prints a notice; `--wait`: only used when --prune deletes objects, which prints a notice |
 | notice | — |
 
+#### `kubectl cluster-info`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
+
+#### `kubectl completion`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
+
+#### `kubectl config current-context`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
+
+#### `kubectl config delete-context`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
+
+#### `kubectl config get-clusters`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
+
+#### `kubectl config get-contexts`
+
+| Status | Flags |
+|---|---|
+| simulated | `--no-headers`, `-o, --output` |
+| notice | — |
+
+#### `kubectl config get-users`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
+
+#### `kubectl config set-context`
+
+| Status | Flags |
+|---|---|
+| simulated | `--cluster`, `--current`, `-n, --namespace`, `--user` |
+| notice | — |
+
+#### `kubectl config use-context`
+
+| Status | Flags |
+|---|---|
+| simulated | — |
+| notice | — |
+
+#### `kubectl config view`
+
+| Status | Flags |
+|---|---|
+| simulated | `--flatten`, `--merge`, `--minify`, `--raw` |
+| `-o` formats | `json`, `name`, `yaml` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml, go-template, template and jsonpath formats print a notice), `--template` (go templates print a notice) |
+| accepted, no effect | `--allow-missing-template-keys`: templates print a notice; no other printer reads it; `--show-managed-fields`: a kubeconfig has no managed fields to show or strip |
+| notice | — |
+
 #### `kubectl create`
 
 | Status | Flags |
@@ -267,6 +367,96 @@ Each command's own flags, in its help's order. Notice: the flag prints the `[sim
 | `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
 | notice for some values | `--edit` (prints a notice: editing before create is not simulated), `-f, --filename` (URLs (http://, https://) print a notice: the simulated machines have no network access), `-k, --kustomize` (prints a notice: kustomize is not simulated), `-o, --output` (kyaml and the template formats print a notice), `--raw` (prints a notice after its own checks: raw POSTs are not simulated), `--template` (prints a notice: template output is not simulated) |
 | accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015); `--windows-line-endings`: only used with --edit, which prints a notice |
+| notice | — |
+
+#### `kubectl create configmap`
+
+| Status | Flags |
+|---|---|
+| simulated | `--append-hash`, `--dry-run`, `--field-manager`, `--from-env-file`, `--from-file`, `--from-literal`, `--save-config`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create deployment`
+
+| Status | Flags |
+|---|---|
+| simulated | `--dry-run`, `--field-manager`, `--image`, `--port`, `-r, --replicas`, `--save-config`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create namespace`
+
+| Status | Flags |
+|---|---|
+| simulated | `--dry-run`, `--field-manager`, `--save-config`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create secret generic`
+
+| Status | Flags |
+|---|---|
+| simulated | `--append-hash`, `--dry-run`, `--field-manager`, `--from-env-file`, `--from-file`, `--from-literal`, `--save-config`, `--type`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create service clusterip`
+
+| Status | Flags |
+|---|---|
+| simulated | `--clusterip`, `--dry-run`, `--field-manager`, `--save-config`, `--tcp`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create service externalname`
+
+| Status | Flags |
+|---|---|
+| simulated | `--dry-run`, `--external-name`, `--field-manager`, `--save-config`, `--tcp`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create service loadbalancer`
+
+| Status | Flags |
+|---|---|
+| simulated | `--dry-run`, `--field-manager`, `--save-config`, `--tcp`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create service nodeport`
+
+| Status | Flags |
+|---|---|
+| simulated | `--dry-run`, `--field-manager`, `--node-port`, `--save-config`, `--tcp`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl create serviceaccount`
+
+| Status | Flags |
+|---|---|
+| simulated | `--dry-run`, `--field-manager`, `--save-config`, `--validate` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
 | notice | — |
 
 #### `kubectl delete`
@@ -284,6 +474,35 @@ Each command's own flags, in its help's order. Notice: the flag prints the `[sim
 | accepted, no effect | `--chunk-size`: lists are answered whole; the printed result is the same |
 | notice | `-k, --kustomize` |
 
+#### `kubectl edit`
+
+| Status | Flags |
+|---|---|
+| simulated | `--field-manager`, `--output-patch`, `-R, --recursive`, `--save-config`, `--validate`, `--windows-line-endings` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-f, --filename` (URLs (http://, https://) print a notice: the simulated machines have no network access), `-k, --kustomize` (prints a notice: kustomize is not simulated), `-o, --output` (kyaml and the template formats print a notice), `--subresource` (only status is simulated; other values print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl explain`
+
+| Status | Flags |
+|---|---|
+| simulated | `--api-version`, `--max-depth`, `-R, --recursive` |
+| `-o` formats | `plaintext` and the default; notice: `plaintext-openapiv2` |
+| notice for some values | `-o, --output` (plaintext-openapiv2 (the OpenAPI v2 renderer)) |
+| notice | — |
+
+#### `kubectl expose`
+
+| Status | Flags |
+|---|---|
+| simulated | `--cluster-ip`, `--dry-run`, `--external-ip`, `--field-manager`, `-l, --labels`, `--load-balancer-ip`, `--name`, `--overrides`, `--port`, `--protocol`, `-R, --recursive`, `--save-config`, `--selector`, `--session-affinity`, `--target-port`, `--type` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-f, --filename` (URLs print a notice: the simulated machines have no network access), `-k, --kustomize` (prints a notice: kustomize is not simulated), `-o, --output` (kyaml and the template formats print a notice), `--override-type` (json with text that is not valid JSON prints a notice (encoding/json syntax errors are not ported)), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
 #### `kubectl get`
 
 | Status | Flags |
@@ -293,6 +512,119 @@ Each command's own flags, in its help's order. Notice: the flag prints the `[sim
 | notice for some values | `--output-watch-events` (every value), `--server-print` (`--server-print=false`) |
 | accepted, no effect | `--allow-missing-template-keys`: only matters to template output formats, which print a notice; `--chunk-size`: lists are paged in chunks; the printed result is the same; `--show-managed-fields`: objects have no managedFields (DIV-015) |
 | notice | `-f, --filename`, `-k, --kustomize`, `--raw`, `-R, --recursive`, `--sort-by`, `--subresource`, `--template`, `--watch-only` |
+
+#### `kubectl label`
+
+| Status | Flags |
+|---|---|
+| simulated | `--all`, `--dry-run`, `--field-manager`, `--field-selector`, `--list`, `--local`, `--overwrite`, `-R, --recursive`, `--resource-version`, `-l, --selector` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-A, --all-namespaces` (with -f prints a notice), `-f, --filename` (URLs (http://, https://) print a notice: the simulated machines have no network access), `-k, --kustomize` (prints a notice: kustomize is not simulated), `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl logs`
+
+| Status | Flags |
+|---|---|
+| simulated | `--all-containers`, `--all-pods`, `-c, --container`, `-f, --follow`, `--ignore-errors`, `--limit-bytes`, `--max-log-requests`, `--pod-running-timeout`, `--prefix`, `-p, --previous`, `-l, --selector`, `--since`, `--since-time`, `--tail`, `--timestamps` |
+| accepted, no effect | `--insecure-skip-tls-verify-backend`: the simulated kubelets serve valid certificates, so skipping their verification changes nothing |
+| notice | — |
+
+#### `kubectl rollout history`
+
+| Status | Flags |
+|---|---|
+| simulated | `-f, --filename`, `-o, --output`, `-R, --recursive`, `--revision`, `-l, --selector` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-k, --kustomize` (every value), `--template` (every value) |
+| accepted, no effect | `--allow-missing-template-keys`: only matters to template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl rollout pause`
+
+| Status | Flags |
+|---|---|
+| simulated | `--field-manager`, `-f, --filename`, `-o, --output`, `-R, --recursive`, `-l, --selector` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-k, --kustomize` (every value), `--template` (every value) |
+| accepted, no effect | `--allow-missing-template-keys`: only matters to template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl rollout restart`
+
+| Status | Flags |
+|---|---|
+| simulated | `--field-manager`, `-f, --filename`, `-o, --output`, `-R, --recursive`, `-l, --selector` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-k, --kustomize` (every value), `--template` (every value) |
+| accepted, no effect | `--allow-missing-template-keys`: only matters to template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl rollout resume`
+
+| Status | Flags |
+|---|---|
+| simulated | `--field-manager`, `-f, --filename`, `-o, --output`, `-R, --recursive`, `-l, --selector` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-k, --kustomize` (every value), `--template` (every value) |
+| accepted, no effect | `--allow-missing-template-keys`: only matters to template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl rollout status`
+
+| Status | Flags |
+|---|---|
+| simulated | `-f, --filename`, `-R, --recursive`, `--revision`, `-l, --selector`, `--timeout`, `-w, --watch` |
+| notice for some values | `-k, --kustomize` (every value) |
+| notice | — |
+
+#### `kubectl rollout undo`
+
+| Status | Flags |
+|---|---|
+| simulated | `--dry-run`, `-f, --filename`, `-o, --output`, `-R, --recursive`, `-l, --selector`, `--to-revision` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-k, --kustomize` (every value), `--template` (every value) |
+| accepted, no effect | `--allow-missing-template-keys`: only matters to template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl run`
+
+| Status | Flags |
+|---|---|
+| simulated | `--annotations`, `--cascade`, `--command`, `--dry-run`, `--env`, `--expose`, `--field-manager`, `--image`, `--image-pull-policy`, `-l, --labels`, `--overrides`, `--pod-running-timeout`, `--port`, `--privileged`, `--restart`, `--save-config` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `--attach` (attaching prints a notice (phase 17)), `-o, --output` (kyaml and the template formats print a notice), `--override-type` (json with text that is not valid JSON prints a notice (encoding/json syntax errors are not ported)), `--rm` (needs attaching, which prints a notice (phase 17)), `-i, --stdin` (attaching prints a notice (phase 17)), `--template` (prints a notice: template output is not simulated), `-t, --tty` (attaching prints a notice (phase 17)) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--detach-keys`: only used when attaching (-i, -t, --attach), which prints a notice (phase 17); `--force`: only used by --rm, which needs attaching and prints a notice (phase 17); `--grace-period`: only used by --rm, which needs attaching and prints a notice (phase 17); `-k, --kustomize`: only used by --rm, which needs attaching and prints a notice (phase 17); `--leave-stdin-open`: only used when attaching (-i, -t, --attach), which prints a notice (phase 17); `-q, --quiet`: only used when attaching (-i, -t, --attach), which prints a notice (phase 17); `-R, --recursive`: only used by --rm, which needs attaching and prints a notice (phase 17); `--show-managed-fields`: objects have no managedFields (DIV-015); `--timeout`: only used by --rm, which needs attaching and prints a notice (phase 17); `--wait`: only used by --rm, which needs attaching and prints a notice (phase 17) |
+| notice | — |
+
+#### `kubectl scale`
+
+| Status | Flags |
+|---|---|
+| simulated | `--all`, `--current-replicas`, `--dry-run`, `-R, --recursive`, `--replicas`, `--resource-version`, `-l, --selector`, `--timeout` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-f, --filename` (URLs (http://, https://) print a notice: the simulated machines have no network access), `-k, --kustomize` (prints a notice: kustomize is not simulated), `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl set image`
+
+| Status | Flags |
+|---|---|
+| simulated | `--all`, `--dry-run`, `--field-manager`, `--local`, `-R, --recursive`, `-l, --selector` |
+| `-o` formats | `json`, `yaml`, `name` and the default; notice: `go-template`, `go-template-file`, `jsonpath`, `jsonpath-as-json`, `jsonpath-file`, `kyaml`, `template`, `templatefile` |
+| notice for some values | `-f, --filename` (URLs (http://, https://) print a notice: the simulated machines have no network access), `-k, --kustomize` (prints a notice: kustomize is not simulated), `-o, --output` (kyaml and the template formats print a notice), `--template` (prints a notice: template output is not simulated) |
+| accepted, no effect | `--allow-missing-template-keys`: only used by template output formats, which print a notice; `--show-managed-fields`: objects have no managedFields (DIV-015) |
+| notice | — |
+
+#### `kubectl version`
+
+| Status | Flags |
+|---|---|
+| simulated | `--client`, `-o, --output` |
+| notice | — |
 
 #### Global flags
 

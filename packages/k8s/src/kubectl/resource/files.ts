@@ -59,6 +59,12 @@ export interface ReadOptions {
   /** -l: only objects whose labels match. */
   selector?: string;
   server: ServerState;
+  /**
+   * The builder's Local(): no server is asked. Objects get no mapping upstream, so a namespace is
+   * neither defaulted nor enforced on an object without one (Info.Namespaced() is then whether it
+   * has one); the simulator still maps known kinds (for their names) and prints a notice for others.
+   */
+  local?: boolean;
 }
 
 /**
@@ -79,7 +85,7 @@ const STOP_VALIDATE = 'if you choose to ignore these errors, turn validation off
 
 type Source = { kind: 'stdin' } | { kind: 'file'; path: string };
 
-const errnoText: Record<string, string> = {
+export const errnoText: Record<string, string> = {
   // upstream: .upstream/go src/syscall/zerrors_linux_amd64.go (the errors table)
   ENOENT: 'no such file or directory',
   EACCES: 'permission denied',
@@ -327,7 +333,7 @@ function missingRequired(v: Json | undefined, t: TypeExpr): boolean {
 type Validated = { ok: true } | { error: string } | { unsupported: string };
 
 /** paramVerifyingSchema.ValidateBytes for one document. */
-function* validateDocument(p: ProcApi, doc: Json, directive: 'Strict' | 'Warn', server: ServerState): Op<Validated> {
+export function* validateDocument(p: ProcApi, doc: Json, directive: 'Strict' | 'Warn', server: ServerState): Op<Validated> {
   const gvk = objectKind(doc);
   if ('errors' in gvk) return { error: joinErrors(gvk.errors) };
   const isList = gvk.group === '' && gvk.version === 'v1' && gvk.kind === 'List';
@@ -391,7 +397,7 @@ function metadataError(obj: JsonObject): string | { unsupported: string } | unde
 type Decoded = { infos: Info[]; errors: KubectlError[] } | { error: string } | { unsupported: string };
 
 /** mapper.infoForData (and FlattenListVisitor for a list) for one document. */
-function* infoForData(p: ProcApi, doc: JsonObject | Json, raw: string, source: string, server: ServerState): Op<Decoded> {
+function* infoForData(p: ProcApi, doc: JsonObject | Json, raw: string, source: string, server: ServerState, local = false): Op<Decoded> {
   const decodeErr = (m: string): { error: string } => ({ error: `unable to decode ${goQuote(source)}: ${m}` });
   if (!isObject(doc)) return decodeErr(`json: cannot unmarshal ${jsonTypeName(doc)} into Go value of type unstructured.detector`);
   const isList = 'items' in doc;
@@ -407,9 +413,10 @@ function* infoForData(p: ProcApi, doc: JsonObject | Json, raw: string, source: s
   const namespace = str(meta.namespace);
   const gv = typeof doc.apiVersion === 'string' ? parseGroupVersion(doc.apiVersion) : { group: '', version: '' };
   if ('error' in gv || gv.version === '') return { unsupported: 'a manifest without a valid apiVersion (read with --validate=false)' };
-  const unreachable = yield* discoveryError(p, server);
+  const unreachable = local ? undefined : yield* discoveryError(p, server);
   if (unreachable !== undefined) return { error: `unable to recognize ${goQuote(source)}: ${unreachable}` };
   const km = mappingForKind(gv.group, gv.version, kind);
+  if ('noMatch' in km && local) return { unsupported: `a local manifest of a kind the simulator does not know (${kind})` };
   if ('noMatch' in km) {
     return { error: `resource mapping not found for name: ${goQuote(name)} namespace: ${goQuote(namespace)} from ${goQuote(source)}: ${km.noMatch}\nensure CRDs are installed first` };
   }
@@ -432,6 +439,7 @@ function* infoForData(p: ProcApi, doc: JsonObject | Json, raw: string, source: s
     const igv = typeof item.apiVersion === 'string' ? parseGroupVersion(item.apiVersion) : { error: '' };
     if (ik === '' || 'error' in igv || igv.version === '') return { unsupported: 'a list item without a kind or apiVersion (read with --validate=false)' };
     const im = mappingForKind(igv.group, igv.version, ik);
+    if ('noMatch' in im && local) return { unsupported: `a local manifest of a kind the simulator does not know (${ik})` };
     if ('noMatch' in im) {
       errors.push(messageError(`unable to recognize ${im.noMatch}`));
       continue;
@@ -477,70 +485,97 @@ export function* visitFiles(p: ProcApi, opts: FileOptions, defaultNamespace: str
   if (opts.kustomize) return { type: 'notSimulated', what: 'kustomize (-k)' };
 
   const items: FileItem[] = [];
-  const readError = (m: string): void => {
-    items.push({ error: messageError(m), stage: 'read' });
-  };
   for (const src of ex.sources) {
     const source = src.kind === 'stdin' ? STDIN : src.path;
     const content = yield* readSource(p, src);
     if ('unsupported' in content) return { type: 'notSimulated', what: content.unsupported };
     if ('error' in content) {
-      readError(content.parsing ? `error parsing ${source}: ${content.error}` : content.error);
+      items.push({ error: messageError(content.parsing ? `error parsing ${source}: ${content.error}` : content.error), stage: 'read' });
       continue;
     }
     // FileVisitor decodes through a UTF-8 BOM override.
-    const text = content.text.startsWith('﻿') ? content.text.slice(1) : content.text;
-    const stream = decodeManifestStream(text);
-    if (stream.unsupported !== undefined) return { type: 'notSimulated', what: stream.unsupported };
-    let stopped = false;
-    for (let i = 0; i < stream.docs.length; i++) {
-      const doc = stream.docs[i] as Json;
-      if (doc === null) continue;
-      if (r.validation) {
-        const v = yield* validateDocument(p, doc, r.validation, r.server);
-        if ('unsupported' in v) return { type: 'notSimulated', what: v.unsupported };
-        if ('error' in v) {
-          readError(`error validating ${goQuote(source)}: error validating data: ${v.error}; ${STOP_VALIDATE}`);
-          stopped = true;
-          break;
-        }
-      }
-      const raw = stream.raw?.[i] ?? marshalJson(doc, { sortKeys: true });
-      const d = yield* infoForData(p, doc, raw, source, r.server);
-      if ('unsupported' in d) return { type: 'notSimulated', what: d.unsupported };
-      if ('error' in d) {
-        readError(d.error);
-        continue;
-      }
-      for (const info of d.infos) {
-        // FilterByLabelSelector
-        if (selector && !isSelectorError(selector)) {
-          const labels = isObject(info.object.metadata) && isObject(info.object.metadata.labels) ? info.object.metadata.labels : {};
-          if (!selectorMatches(selector, labels as Record<string, string>)) continue;
-        }
-        // Do's helpers: SetNamespace, RequireNamespace, FilterNamespace.
-        let ns = info.namespace;
-        if (info.mapping.namespaced) {
-          if (ns === '') {
-            ns = defaultNamespace;
-            setNamespace(info.object, ns);
-          }
-          if (enforceNamespace && ns !== defaultNamespace) {
-            items.push({
-              error: messageError(`the namespace from the provided object ${goQuote(ns)} does not match the namespace ${goQuote(defaultNamespace)}. You must pass '--namespace=${ns}' to perform this operation.`),
-              stage: 'visit',
-            });
-            continue;
-          }
-        } else {
-          ns = '';
-          setNamespace(info.object, '');
-        }
-        items.push({ source, object: info.object, mapping: info.mapping, namespace: ns, name: info.name });
-      }
-      if (d.errors.length > 0) items.push({ error: aggregate(d.errors), stage: 'read' });
-    }
-    if (!stopped && stream.error !== undefined) readError(`error parsing ${source}: ${stream.error}`);
+    const text = content.text.startsWith('\ufeff') ? content.text.slice(1) : content.text;
+    const r2 = yield* visitDocuments(p, text, source, defaultNamespace, enforceNamespace, r, selector, items);
+    if (r2) return r2;
   }
   return items;
 }
+
+/**
+ * The documents of one stream (StreamVisitor) appended to `items`, as visitFiles reads each file;
+ * also the builder's Stream(reader, name), as kubectl edit reads the edited file.
+ */
+export function* visitText(p: ProcApi, text: string, source: string, defaultNamespace: string, enforceNamespace: boolean, r: ReadOptions): Op<FileItem[] | KubectlError> {
+  const items: FileItem[] = [];
+  const err = yield* visitDocuments(p, text, source, defaultNamespace, enforceNamespace, r, undefined, items);
+  return err ?? items;
+}
+
+function* visitDocuments(
+  p: ProcApi,
+  text: string,
+  source: string,
+  defaultNamespace: string,
+  enforceNamespace: boolean,
+  r: ReadOptions,
+  selector: ReturnType<typeof parseSelector> | undefined,
+  items: FileItem[],
+): Op<KubectlError | undefined> {
+  const readError = (m: string): void => {
+    items.push({ error: messageError(m), stage: 'read' });
+  };
+  const stream = decodeManifestStream(text);
+  if (stream.unsupported !== undefined) return { type: 'notSimulated', what: stream.unsupported };
+  let stopped = false;
+  for (let i = 0; i < stream.docs.length; i++) {
+    const doc = stream.docs[i] as Json;
+    if (doc === null) continue;
+    if (r.validation) {
+      const v = yield* validateDocument(p, doc, r.validation, r.server);
+      if ('unsupported' in v) return { type: 'notSimulated', what: v.unsupported };
+      if ('error' in v) {
+        readError(`error validating ${goQuote(source)}: error validating data: ${v.error}; ${STOP_VALIDATE}`);
+        stopped = true;
+        break;
+      }
+    }
+    const raw = stream.raw?.[i] ?? marshalJson(doc, { sortKeys: true });
+    const d = yield* infoForData(p, doc, raw, source, r.server, r.local === true);
+    if ('unsupported' in d) return { type: 'notSimulated', what: d.unsupported };
+    if ('error' in d) {
+      readError(d.error);
+      continue;
+    }
+    for (const info of d.infos) {
+      // FilterByLabelSelector
+      if (selector && !isSelectorError(selector)) {
+        const labels = isObject(info.object.metadata) && isObject(info.object.metadata.labels) ? info.object.metadata.labels : {};
+        if (!selectorMatches(selector, labels as Record<string, string>)) continue;
+      }
+      // Do's helpers: SetNamespace, RequireNamespace, FilterNamespace. Locally an object without a
+      // namespace is not namespaced (Info.Namespaced() without a mapping).
+      let ns = info.namespace;
+      if (r.local === true ? ns !== '' : info.mapping.namespaced) {
+        if (ns === '') {
+          ns = defaultNamespace;
+          setNamespace(info.object, ns);
+        }
+        if (enforceNamespace && ns !== defaultNamespace) {
+          items.push({
+            error: messageError(`the namespace from the provided object ${goQuote(ns)} does not match the namespace ${goQuote(defaultNamespace)}. You must pass '--namespace=${ns}' to perform this operation.`),
+            stage: 'visit',
+          });
+          continue;
+        }
+      } else if (r.local !== true) {
+        ns = '';
+        setNamespace(info.object, '');
+      }
+      items.push({ source, object: info.object, mapping: info.mapping, namespace: ns, name: info.name });
+    }
+    if (d.errors.length > 0) items.push({ error: aggregate(d.errors), stage: 'read' });
+  }
+  if (!stopped && stream.error !== undefined) readError(`error parsing ${source}: ${stream.error}`);
+  return undefined;
+}
+

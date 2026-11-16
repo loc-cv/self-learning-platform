@@ -158,6 +158,12 @@ export function parseCommandLine(src0: string, pos0: number, opts: ParseOptions)
         let digits = '';
         while (digits.length < 2 && /[0-9a-fA-F]/.test(src[pos] ?? '')) digits += src[pos++];
         out += byteChar(parseInt(digits, 16));
+      } else if ((e === 'u' || e === 'U') && /[0-9a-fA-F]/.test(src[pos] ?? '')) {
+        // \uHHHH and \UHHHHHHHH: the code point's UTF-8 bytes (a UTF-8 locale).
+        let digits = '';
+        while (digits.length < (e === 'u' ? 4 : 8) && /[0-9a-fA-F]/.test(src[pos] ?? '')) digits += src[pos++];
+        const cp = parseInt(digits, 16);
+        out += cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : '\ufffd';
       } else if (e === 'c' && src[pos] !== undefined) {
         out += String.fromCharCode((src[pos++] as string).toUpperCase().charCodeAt(0) ^ 0x40);
       } else out += `\\${e}`;

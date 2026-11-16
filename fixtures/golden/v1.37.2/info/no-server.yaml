@@ -1,0 +1,106 @@
+# Captured from fixtures/golden/cases/info/no-server.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: info/no-server
+description: "kubectl version, api-resources, api-versions and cluster-info with no server: what each prints before and after the request that cannot connect."
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl version -o json
+    exit: 1
+    stdout: |
+      {
+        "clientVersion": {
+          "major": "1",
+          "minor": "37",
+          "gitVersion": "v1.37.2",
+          "gitCommit": "c50e5395f1ae2d4a2c05f28fdcc38c0916cc1a32",
+          "gitTreeState": "clean",
+          "buildDate": "<<time>>",
+          "goVersion": "go1.26.10",
+          "compiler": "gc",
+          "platform": "linux/amd64"
+        },
+        "kustomizeVersion": "v5.8.1"
+      }
+    stderr: |
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl version -o yaml --client
+    exit: 0
+    stdout: |+
+      clientVersion:
+        buildDate: "<<time>>"
+        compiler: gc
+        gitCommit: c50e5395f1ae2d4a2c05f28fdcc38c0916cc1a32
+        gitTreeState: clean
+        gitVersion: v1.37.2
+        goVersion: go1.26.10
+        major: "1"
+        minor: "37"
+        platform: linux/amd64
+      kustomizeVersion: v5.8.1
+
+    stderr: ""
+  - run: kubectl version --client extra
+    exit: 0
+    stdout: |
+      Client Version: v1.37.2
+      Kustomize Version: v5.8.1
+    stderr: ""
+  - run: kubectl version extra
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: extra arguments: [extra]
+  - run: kubectl version -o xml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --output must be 'yaml' or 'json'
+  - run: kubectl api-resources
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl api-resources --cached -o name
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl api-resources --sort-by=foo
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --sort-by accepts only name or kind
+  - run: kubectl api-resources extra
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected arguments: [extra]
+      See 'kubectl api-resources -h' for help and examples
+  - run: kubectl api-versions
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      error: couldn't get available api versions from server: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl api-versions extra
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected arguments: [extra]
+      See 'kubectl api-versions -h' for help and examples
+  - run: kubectl cluster-info -n kube-public
+    exit: 1
+    stdout: |
+      
+      To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?

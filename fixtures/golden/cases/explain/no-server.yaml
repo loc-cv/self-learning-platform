@@ -1,0 +1,5 @@
+description: kubectl explain with no kubeconfig and no server.
+server: false
+steps:
+  - run: kubectl explain pods
+  - run: kubectl explain

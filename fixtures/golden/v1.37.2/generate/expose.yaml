@@ -1,0 +1,656 @@
+# Captured from fixtures/golden/cases/generate/expose.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: generate/expose
+description: kubectl expose for each kind it takes, read from the server (or from -f), with the selector, ports and protocols it infers and the flags that replace them; client and server dry runs; the created Services read back; and its errors (no ports, no selector, a Pod without labels, a kind it cannot expose, a missing object, an existing Service).
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl expose deployment web --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose deployment web --port=8080 --target-port=80 --name=web-alt --type=NodePort --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "web-alt",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "ports": [
+                  {
+                      "protocol": "TCP",
+                      "port": 8080,
+                      "targetPort": 80
+                  }
+              ],
+              "selector": {
+                  "app": "web"
+              },
+              "type": "NodePort"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl expose deploy/web --port=80,81 --protocol=UDP --labels=a=b,c=d --selector=x=y --external-ip=1.2.3.4 --session-affinity=ClientIP --cluster-ip=None --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          a: b
+          c: d
+        name: web
+      spec:
+        clusterIP: None
+        externalIPs:
+        - 1.2.3.4
+        ports:
+        - name: port-1
+          port: 80
+          protocol: UDP
+          targetPort: 80
+        - name: port-2
+          port: 81
+          protocol: UDP
+          targetPort: 81
+        selector:
+          x: "y"
+        sessionAffinity: ClientIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose deployment web --type=LoadBalancer --load-balancer-ip=10.0.0.9 --dry-run=client -o yaml -n default
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+        namespace: default
+      spec:
+        loadBalancerIP: 10.0.0.9
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+        type: LoadBalancer
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose deployment web --target-port=http --dry-run=client -o name
+    exit: 0
+    stdout: |
+      service/web
+    stderr: ""
+  - run: kubectl expose deployment web --dry-run=client
+    exit: 0
+    stdout: |
+      service/web exposed (dry run)
+    stderr: ""
+  - run: kubectl expose deployment web --overrides='{"spec":{"type":"NodePort"}}' --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+        type: NodePort
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose replicaset frontend --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          tier: frontend
+        name: frontend
+      spec:
+        ports:
+        - name: port-1
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        - name: port-2
+          port: 443
+          protocol: TCP
+          targetPort: 443
+        - name: port-3-udp
+          port: 53
+          protocol: UDP
+          targetPort: 53
+        - name: port-3-tcp
+          port: 53
+          protocol: TCP
+          targetPort: 53
+        selector:
+          tier: frontend
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose pod solo --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: solo
+          tier: back
+        name: solo
+      spec:
+        ports:
+        - port: 8080
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: solo
+          tier: back
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose -f local.yaml --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: local
+        name: local
+      spec:
+        ports:
+        - port: 9090
+          protocol: TCP
+          targetPort: 9090
+        selector:
+          app: local
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose service ext --port=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): services "ext" already exists
+  - run: kubectl expose deployment noport
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: couldn't find port via --port flag or introspection
+  - run: kubectl expose deployment noport --cluster-ip=None --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: noport
+        name: noport
+      spec:
+        clusterIP: None
+        selector:
+          app: noport
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose pod bare
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: couldn't retrieve selectors via --selector flag or introspection: the pod has no labels and cannot be exposed
+  - run: kubectl expose pod bare --selector=run=bare --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: bare
+      spec:
+        ports:
+        - port: 8080
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          run: bare
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose configmap cfg --port=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot expose a ConfigMap
+  - run: kubectl expose deployment exprs
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: couldn't retrieve selectors via --selector flag or introspection: couldn't convert expressions - "[{Key:tier Operator:In Values:[a b]}]" to map-based selector format
+  - run: kubectl expose deployment missing --port=80
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "missing" not found
+  - run: kubectl expose deployment web --port=abc
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: strconv.Atoi: parsing "abc": invalid syntax
+  - run: kubectl expose deployment web --session-affinity=Sticky
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown session affinity: Sticky
+  - run: kubectl expose deployment web --labels=bad
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected label spec: bad
+  - run: kubectl expose deployment web --selector==x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected empty label key
+  - run: kubectl expose deployment
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource(s) were provided, but no name was specified
+  - run: kubectl expose
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must provide one or more resources by argument or filename.
+      Example resource specifications include:
+         '-f rsrc.yaml'
+         '--filename=rsrc.json'
+         '<resource> <name>'
+         '<resource>'
+  - run: kubectl expose deployment web extra
+    exit: 1
+    stdout: |
+      service/web exposed
+    stderr: |
+      Error from server (NotFound): deployments.apps "extra" not found
+  - run: kubectl expose deployment/web -f local.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource/name arguments cannot be provided when a path is specified
+  - run: kubectl expose deployment web noport --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: web
+      spec:
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+      status:
+        loadBalancer: {}
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        labels:
+          app: web
+        name: noport
+      spec:
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose deployment noport missing web --dry-run=client -o name
+    exit: 1
+    stdout: |
+      service/web
+    stderr: |
+      couldn't find port via --port flag or introspection
+      Error from server (NotFound): deployments.apps "missing" not found
+  - run: kubectl expose pod solo --protocol=SCTP --port=80 --type=ClusterIP --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "solo",
+              "labels": {
+                  "app": "solo",
+                  "tier": "back"
+              }
+          },
+          "spec": {
+              "ports": [
+                  {
+                      "protocol": "SCTP",
+                      "port": 80,
+                      "targetPort": 80
+                  }
+              ],
+              "selector": {
+                  "app": "solo",
+                  "tier": "back"
+              },
+              "type": "ClusterIP"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl expose deployment web --dry-run=server -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): services "web" already exists
+  - run: kubectl expose deployment web
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): services "web" already exists
+  - run: kubectl expose deployment web
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): services "web" already exists
+  - run: kubectl expose rs frontend --name=fe -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Service",
+          "apiVersion": "v1",
+          "metadata": {
+              "name": "fe",
+              "namespace": "default",
+              "uid": "<<uid:1>>",
+              "resourceVersion": "<<rv>>",
+              "creationTimestamp": "<<time>>",
+              "labels": {
+                  "tier": "frontend"
+              }
+          },
+          "spec": {
+              "ports": [
+                  {
+                      "name": "port-1",
+                      "protocol": "TCP",
+                      "port": 80,
+                      "targetPort": 80
+                  },
+                  {
+                      "name": "port-2",
+                      "protocol": "TCP",
+                      "port": 443,
+                      "targetPort": 443
+                  },
+                  {
+                      "name": "port-3-udp",
+                      "protocol": "UDP",
+                      "port": 53,
+                      "targetPort": 53
+                  },
+                  {
+                      "name": "port-3-tcp",
+                      "protocol": "TCP",
+                      "port": 53,
+                      "targetPort": 53
+                  }
+              ],
+              "selector": {
+                  "tier": "frontend"
+              },
+              "clusterIP": "<<ip>>",
+              "clusterIPs": [
+                  "<<ip>>"
+              ],
+              "type": "ClusterIP",
+              "sessionAffinity": "None",
+              "ipFamilies": [
+                  "IPv4"
+              ],
+              "ipFamilyPolicy": "SingleStack",
+              "internalTrafficPolicy": "Cluster"
+          },
+          "status": {
+              "loadBalancer": {}
+          }
+      }
+    stderr: ""
+  - run: kubectl expose pod solo --type=NodePort --save-config -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"kind":"Service","apiVersion":"v1","metadata":{"name":"solo","labels":{"app":"solo","tier":"back"}},"spec":{"ports":[{"protocol":"TCP","port":8080,"targetPort":8080}],"selector":{"app":"solo","tier":"back"},"type":"NodePort"},"status":{"loadBalancer":{}}}
+        creationTimestamp: "<<time>>"
+        labels:
+          app: solo
+          tier: back
+        name: solo
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        externalTrafficPolicy: Cluster
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - nodePort: <<port>>
+          port: 8080
+          protocol: TCP
+          targetPort: 8080
+        selector:
+          app: solo
+          tier: back
+        sessionAffinity: None
+        type: NodePort
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl expose -f local.yaml -n team
+    exit: 0
+    stdout: |
+      service/local exposed
+    stderr: ""
+  - run: kubectl expose service web --name=web-copy --port=8080 --target-port=80 --protocol=TCP
+    exit: 0
+    stdout: |
+      service/web-copy exposed
+    stderr: ""
+  - run: kubectl expose deployment web --name=Bad
+    exit: 1
+    stdout: ""
+    stderr: |
+      The Service "Bad" is invalid: metadata.name: Invalid value: "Bad": a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name',  or '123-abc', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?')
+  - run: kubectl expose deployment web --name=web-team -n team
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): deployments.apps "web" not found
+  - run: kubectl get services
+    exit: 0
+    stdout: |
+      NAME         TYPE           CLUSTER-IP   EXTERNAL-IP      PORT(S)                        AGE
+      ext          ExternalName   <none>       db.example.com   <none>                         <<age>>
+      fe           ClusterIP      <<ip>>       <none>           80/TCP,443/TCP,53/UDP,53/TCP   <<age>>
+      kubernetes   ClusterIP      10.96.0.1    <none>           443/TCP                        <<age>>
+      solo         NodePort       <<ip>>       <none>           8080:<<port>>/TCP              <<age>>
+      web          ClusterIP      <<ip>>       <none>           80/TCP                         <<age>>
+      web-copy     ClusterIP      <<ip>>       <none>           8080/TCP                       <<age>>
+    stderr: ""
+  - run: kubectl get service web -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: web
+        name: web
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:3>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - port: 80
+          protocol: TCP
+          targetPort: 80
+        selector:
+          app: web
+        sessionAffinity: None
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl get service fe -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          tier: frontend
+        name: fe
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - name: port-1
+          port: 80
+          protocol: TCP
+          targetPort: 80
+        - name: port-2
+          port: 443
+          protocol: TCP
+          targetPort: 443
+        - name: port-3-udp
+          port: 53
+          protocol: UDP
+          targetPort: 53
+        - name: port-3-tcp
+          port: 53
+          protocol: TCP
+          targetPort: 53
+        selector:
+          tier: frontend
+        sessionAffinity: None
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""
+  - run: kubectl get service local -n team -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: local
+        name: local
+        namespace: team
+        resourceVersion: "<<rv>>"
+        uid: <<uid:4>>
+      spec:
+        clusterIP: <<ip>>
+        clusterIPs:
+        - <<ip>>
+        internalTrafficPolicy: Cluster
+        ipFamilies:
+        - IPv4
+        ipFamilyPolicy: SingleStack
+        ports:
+        - port: 9090
+          protocol: TCP
+          targetPort: 9090
+        selector:
+          app: local
+        sessionAffinity: None
+        type: ClusterIP
+      status:
+        loadBalancer: {}
+    stderr: ""

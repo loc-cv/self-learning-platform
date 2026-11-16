@@ -1,0 +1,66 @@
+description: >-
+  kubectl cluster-info: the control plane and the Services labelled as cluster services in
+  kube-system (or -n), with and without named and https ports.
+steps:
+  - run: kubectl cluster-info
+  - do: kubectl create -f -
+    stdin: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: kube-dns
+        namespace: kube-system
+        labels:
+          k8s-app: kube-dns
+          kubernetes.io/cluster-service: "true"
+          kubernetes.io/name: CoreDNS
+      spec:
+        selector:
+          k8s-app: kube-dns
+        ports:
+        - name: dns
+          port: 53
+          protocol: UDP
+        - name: dns-tcp
+          port: 53
+          protocol: TCP
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: dashboard
+        namespace: kube-system
+        labels:
+          kubernetes.io/cluster-service: "true"
+      spec:
+        ports:
+        - port: 443
+          targetPort: 8443
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: metrics
+        namespace: default
+        labels:
+          kubernetes.io/cluster-service: "true"
+      spec:
+        ports:
+        - name: https
+          port: 8443
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: noports
+        namespace: default
+        labels:
+          kubernetes.io/cluster-service: "true"
+      spec:
+        clusterIP: None
+        selector:
+          app: x
+  - run: kubectl cluster-info
+  - run: kubectl cluster-info -n default
+  - run: kubectl cluster-info -n empty
+  - run: kubectl cluster-info extra

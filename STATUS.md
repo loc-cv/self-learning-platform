@@ -24,7 +24,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
 - [x] 07a `prompts/07a-kubectl-framework-and-get.md`
 - [x] 07b `prompts/07b-kubectl-describe-apply-delete.md`
-- [ ] 08 `prompts/08-kubectl-2.md`
+- [x] 08 `prompts/08-kubectl-2.md`
 - [ ] 09 `prompts/09-scenarios-and-first-labs.md`
 - [ ] 10 `prompts/10-web-app.md`
 - [ ] **Checkpoint A** — play the three labs, write `FEEDBACK.md`, then run `prompts/R3-feedback-and-gap-triage.md`
@@ -108,6 +108,10 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   - bash-completion (which Ubuntu's `.bashrc` loads) is reproduced by completers: builtin ones in
     `shell/complete.ts` (`cd`, `pushd`) and `ProgramSpec.complete`. These stay after 22a, since our
     bash will not run bash-completion's scripts; 22a only stops pretending the files ran.
+  - kubectl completes as if `source <(kubectl completion bash)` and
+    `complete -o default -F __start_kubectl k` were in `.bashrc` (D-090): on every machine, and
+    through any alias whose value starts with a program that has a completer. 22a replaces this
+    with the `complete` lines the startup files actually hold.
 - **Default admission plugins other than NamespaceLifecycle are missing** (D-039): new Pods get
   no `serviceAccountName: default`, `kube-api-access-*` volume and mount (ServiceAccount), no
   not-ready/unreachable tolerations (DefaultTolerationSeconds), no `priority`/`preemptionPolicy`
@@ -184,10 +188,12 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   empty user. Phases 20a (authentication) and 25b (certificate data) remove it.
 - **The differential runner shims the kubectl verbs that are not simulated yet**
   (`tools/src/golden/kubectl/shim.ts`): setup and state-changing steps of golden cases are sent as
-  the requests real kubectl sends. Each phase that builds a verb (08, 15) deletes its shim
-  entries so the runner uses the simulated kubectl (07b removed create -f, apply and delete).
-- **The scale subresource is read-only** (D-045): writes are a gap. The phase that builds
-  `kubectl scale` (08) implements them.
+  the requests real kubectl sends. Each phase that builds a verb deletes its shim entries so the
+  runner uses the simulated kubectl (07b removed create -f, apply and delete; 08 every verb it
+  built). Left: `wait`, `patch` and the config mutators (15), `cordon`, `uncordon`, `taint` (26b).
+- **The API server's `/version` is a constant** (`SERVER_VERSION_INFO` in
+  `apiserver/nonresource.ts`, the pinned kube-apiserver's build info, D-087). The phase that
+  upgrades the control plane (29b) moves it into the server's configuration.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
@@ -226,7 +232,7 @@ Unfinished work from a phase, precise enough for the next session to continue.
 - **Phase 07a, a YAML print failure during `get -w`.** `printGeneric` turns a YamlMarshalError
   into kubectl's `error: …`; the watch path does not catch it yet (real kubectl prints
   `unable to output the provided object: …` for the first object and returns the error for
-  events). Only reachable with control characters in a watched object. Owner: 08 or R3.
+  events). Only reachable with control characters in a watched object. Owner: 15 (output formats) or R3.
 
 - **Phase 02, program names in messages (DIV-011).** GNU tools print their `argv[0]` as typed.
   `programs/lib/io.ts` (`parseArgs`, `warn`, `usageError`), `lib/argmatch.ts` and about 25 programs
@@ -237,9 +243,94 @@ Unfinished work from a phase, precise enough for the next session to continue.
   `/usr/bin/sleep x` and `/bin/cat --help | head -1`. Owner: the next session that touches
   coreutils, or R3.
 
+- **Phase 08, small gaps left as notices.** `kubectl apply edit-last-applied`; `kubectl edit` of
+  kinds without a built-in type (a JSON merge patch) and `--subresource` other than `status`;
+  container completion after a non-Pod `type/name` (DIV-042); zsh, fish and PowerShell
+  completion scripts; `run --overrides` text that is not valid JSON (encoding/json's syntax error
+  texts are not ported); `explain -o plaintext-openapiv2` and jsonpath syntax beyond fields, `..`
+  and `*`; the other `create` subcommands (their types are not stored). Source-derived without a
+  golden step: edit's retry and deleted-object endings, `scale --timeout`'s error, every kubelet
+  log error (the oracle has no kubelet). Owner: 15 for edit, overrides and the formats; the phase
+  that stores each type for its `create`; 17 for container completion; R3 otherwise.
+- **Phase 08, the vendored schema has no enums.** `FieldSpec.enum` (`en` in
+  `openapi/data/v1.37.2.ts`) is never set, because the checked-in spec lacks them (D-082). Fill it
+  from the captured explain documents when a consumer needs enums (validation messages). Owner:
+  that consumer, or R3.
+
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 08 done.** kubectl II: imperative verbs, logs, rollout, explain, edit,
+  completion.
+  - Built (`packages/k8s/src/kubectl/`, one directory per group under `cmd/`): `generate/` (run,
+    expose, `create deployment|namespace|serviceaccount|configmap|secret generic|service *`,
+    `--overrides` merge/strategic/JSON), `change/` (scale, set image, label, annotate, edit),
+    `rollout/` (status, history, undo, restart, pause, resume), `logs/`, `explain/`, `info/`
+    (version, api-resources, api-versions, cluster-info), `config/` (view, get-contexts,
+    get-clusters, get-users, current-context, use-context, set-context, delete-context),
+    `cmd/typed.ts` (the typed printer), `completion/` (`__complete`, `kubectl completion bash`,
+    the Tab completer). API server: the scale subresource is writable (`apiserver/scale.ts`), JSON
+    patch (`apimachinery/jsonpatch.ts`, json-patch v4 port; `apiserver/jsonpatch.ts`), `pods/log`
+    (`apiserver/log.ts`, `kubelet/logs.ts`, topic `k8s.logs`), `/version` and legacy discovery
+    (`apiserver/nonresource.ts`), `/openapi/v3` (`apiserver/openapi.ts`). Host: editor answers in
+    transcripts (`@editor`), alias-aware completion, `ProgramCompletion` gained line, point, env,
+    aliases and columns, the `<<tmp>>` token. Tools: `npm run openapi:capture`;
+    `api:vendor --descriptions` removed. Golden cases added: `generate/` (4), `change/` (6),
+    `rollout/` (3), `api/json-patch`, `logs/before-the-kubelet`, `explain/` (5), `info/` (4),
+    `config/` (3), `completion/` (4); `generate/run` gained JSON overrides.
+  - Exit criteria. (1) Generators equal the binary: 252 steps over `generate/*`, plus
+    `client/generators` and `client/yaml-output`, all pass in the differential runner. (2) The
+    rollout story: `rollout/imperative.t` (create deployment, set image with change-cause, status
+    with progress lines, history, a bad tag stalling to the 600 s deadline with ImagePullBackOff,
+    undo, restart) and `rollout/story.t` (the same with apply). (3) `logs -f` streams in virtual
+    time and ends when the container exits; `--previous` after a crash (`cmd/logs/follow.test.ts`,
+    `transcripts/kubectl/logs/pods.t`). (4) `kubectl explain deployment.spec.strategy` equals the
+    binary (`explain/resources`). (5) Terminal player on a pty, seed 7, real speed: `alias
+    k=kubectl`, `k cre<Tab>` → `create`, `dep<Tab>` → `deployment`, `… --dry-run=client -o yaml >
+    d.yaml`, `vim d.<Tab>` (the workstation's `$EDITOR` set replicas 3), `k apply -f <Tab><Tab>`
+    listed `.kube/  d.yaml`, `d<Tab>`, created; `k get dep<Tab>` → `deployments.apps` showed 1/3;
+    `k edit deploy <Tab>` → `web` (the editor changed the image to 1.28), edited; `k rollout
+    st<Tab> deploy <Tab>` printed three "old replicas are pending termination" lines and
+    "successfully rolled out"; Pods on both workers, two ReplicaSets. The recording replayed to
+    the same world hash. Differential runner: 2143 compared, 2134 pass, 9 KNOWN (unchanged),
+    none failing; provenance 163 units, 139 golden-verified, 24 source-derived.
+  - Decisions D-082…D-092; D-038 and D-045 point to their successors; D-086 rewritten when the
+    loaders were unified. Divergences DIV-037…042. `docs/ARCHITECTURE.md` §4.6 and §4.9,
+    `docs/FIDELITY.md` §5, §6.3 (editors), §6.4 (`<<tmp>>`), §6.8, `docs/TRANSCRIPTS.md`
+    (`@editor`), COVERAGE regenerated, CLAUDE.md (openapi:capture, layout). Temporary shortcuts:
+    the read-only scale subresource is gone; added kubectl completion as the documented setup
+    (22a) and the constant `/version` (29b); the shim bullet lists what is left.
+  - Fixed on the way: the shared kubeconfig loader now reports the real load errors (a repeated
+    name is a conversion error, not "last wins"; type mismatches; ENOTDIR) through one decoder
+    (`client/kubeconfigmodel.ts`, golden case `config/broken-kubeconfig`); bash's `$'…'` decodes
+    `\uHHHH`/`\UHHHHHHHH`; tildes after `=` and `:` in assignment-like arguments
+    (`export X=~/a:~/b`, also `echo X=~/a` in default mode), both golden-verified in
+    `packages/host/transcripts/shell/quoting.t`; `tools/src/golden/yaml.test.ts` skips
+    `kubectl version` (it marshals its struct itself); decisions.md had no headings for 07a and
+    07b. CLAUDE.md now says to set `model` on every Agent call (`memory/subagent-model-choice.md`).
+  - Surprises. The checked-in OpenAPI v3 spec at v1.37.2 has no enums, the served one does.
+    `run --dry-run=client` needs a server (createGeneratedObject maps first). No command has
+    `--record` any more; change-cause comes from manifests or `kubectl annotate`, and an undo
+    copies it back from the ReplicaSet. JSON patch Apply errors reach the user as a generic 422.
+    `kubectl logs` for a Pod with no node prints nothing and exits 0; `-l` defaults to
+    `--tail=10`. Completing a command with required flags inserts them (`create deployment <Tab>`
+    → `--image`); `%q` escapes commas (`pods\,secrets`). `kubectl version` prints its struct with
+    two-space JSON. cluster-info has no colors at this pin. The control plane's static Pods write
+    no logs (the `component` stand-in, DIV-028). The editor scripts of golden cases avoid `sed`,
+    `if` and `${x//a/b}`, which the simulated bash lacks (22a). `nginx:1.26` is not in the image
+    catalog. Outside the repository: a subagent ran `npx prettier` once (npm's cache in
+    `~/.npm/_npx`, possibly a registry request); nothing else.
+  - For later phases. 15: `patch` (JSON patch exists), `wait`, the remaining config mutators,
+    jsonpath; delete their shim entries. 16a/16b: init containers run (set image already handles
+    them), probes unblock `controllers/endpoints` and `rollout-stuck`. 17: attach/exec for
+    `run -it`, container completion through workloads. 18a: DaemonSet/StatefulSet rollouts
+    (D-083). 22a: replace D-090's always-on completion with real `complete` lines. 29b: the
+    server version.
+  - Workflow: skeleton group directories first, then seven agents in parallel (generators,
+    change, rollout, logs, explain, info/config, completion), then four cleanup agents (shim,
+    typed printer and JSON overrides, kubeconfig loader, tilde expansion). All seven inherited
+    Opus because no model was set; the owner pointed it out, and the rule is now explicit.
 
 - 2026-11-16 — **Phase 07b done.** kubectl II: describe, create, apply, delete.
   - Built: `packages/k8s/src/kubectl/` — `resource/files.ts` (the `-f` reader: files, directories,

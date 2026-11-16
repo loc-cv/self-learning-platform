@@ -1,0 +1,22 @@
+description: >-
+  rollout status once settled with --timeout (positive, and negative: klog's error, then no
+  timeout), several objects, another namespace, a missing namespace and DaemonSet; and the objects
+  pause, resume and undo print with -o yaml and -o json.
+setup:
+  - do: kubectl create namespace other
+  - do: kubectl create deployment web --image=nginx:1.27 --replicas=2
+  - do: kubectl create deployment api --image=nginx:1.27 -n other
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl rollout status deployment/api -n other --timeout=60s
+steps:
+  - run: kubectl rollout status deployment/web --timeout=30s
+  - run: kubectl rollout status deployment/web --timeout=-5s
+  - run: kubectl rollout status deployment/web deployment/api
+  - run: kubectl rollout status deployment/api -n other
+  - run: kubectl rollout status deployment/api -n missing
+  - run: kubectl rollout status daemonset/nope
+  - run: kubectl rollout status deployment/web -w=false --revision=1
+  - run: kubectl rollout pause deployment/web -o yaml
+  - run: kubectl rollout resume deployment/web -o json
+  - run: kubectl rollout undo deployment/api -n other -o yaml --to-revision=1
+  - run: kubectl rollout history deployment/api -n other -o json

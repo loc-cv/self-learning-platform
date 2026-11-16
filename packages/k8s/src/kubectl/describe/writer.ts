@@ -49,6 +49,20 @@ export function tabbedString(f: (w: PrefixWriter) => void): string {
   return out + tabFlush(tw);
 }
 
+/**
+ * NewPrefixWriter over a plain buffer, without a tab writer: tabs stay as they are written (what
+ * `rollout history --revision` prints through polymorphichelpers/history.go printTemplate).
+ */
+export function prefixString(f: (w: PrefixWriter) => void): string {
+  let out = '';
+  f({
+    write: (level, text) => (out += escape('  '.repeat(level) + text)),
+    writeLine: (text) => (out += escape(`${text}\n`)),
+    flush: () => undefined,
+  });
+  return out;
+}
+
 /** NewNestedPrefixWriter: every level shifted by `indent`. */
 export function nested(w: PrefixWriter, indent: number): PrefixWriter {
   return {

@@ -1,0 +1,124 @@
+description: >-
+  kubectl expose for each kind it takes, read from the server (or from -f), with the selector,
+  ports and protocols it infers and the flags that replace them; client and server dry runs; the
+  created Services read back; and its errors (no ports, no selector, a Pod without labels, a kind
+  it cannot expose, a missing object, an existing Service).
+files:
+  rs.yaml: |
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    metadata:
+      name: frontend
+      labels:
+        tier: frontend
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          tier: frontend
+      template:
+        metadata:
+          labels:
+            tier: frontend
+        spec:
+          containers:
+          - name: php
+            image: nginx:1.27
+            ports:
+            - containerPort: 80
+            - containerPort: 443
+            - containerPort: 53
+              protocol: UDP
+            - containerPort: 53
+              protocol: TCP
+  exprs.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: exprs
+    spec:
+      selector:
+        matchLabels:
+          app: exprs
+        matchExpressions:
+        - key: tier
+          operator: In
+          values: [a, b]
+      template:
+        metadata:
+          labels:
+            app: exprs
+            tier: a
+        spec:
+          containers:
+          - name: app
+            image: nginx:1.27
+            ports:
+            - containerPort: 8080
+  local.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: local
+      labels:
+        app: local
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        ports:
+        - containerPort: 9090
+          name: metrics
+setup:
+  - do: kubectl create deployment web --image=nginx:1.27 --port=80
+  - do: kubectl create deployment noport --image=nginx:1.27
+  - do: kubectl run solo --image=nginx:1.27 --port=8080 --labels=app=solo,tier=back
+  - do: kubectl run bare --image=nginx:1.27 --port=8080 --overrides='{"metadata":{"labels":null}}'
+  - do: kubectl create -f rs.yaml
+  - do: kubectl create -f exprs.yaml
+  - do: kubectl create configmap cfg --from-literal=a=b
+  - do: kubectl create service externalname ext --external-name=db.example.com
+  - do: kubectl create namespace team
+steps:
+  - run: kubectl expose deployment web --dry-run=client -o yaml
+  - run: kubectl expose deployment web --port=8080 --target-port=80 --name=web-alt --type=NodePort --dry-run=client -o json
+  - run: kubectl expose deploy/web --port=80,81 --protocol=UDP --labels=a=b,c=d --selector=x=y --external-ip=1.2.3.4 --session-affinity=ClientIP --cluster-ip=None --dry-run=client -o yaml
+  - run: kubectl expose deployment web --type=LoadBalancer --load-balancer-ip=10.0.0.9 --dry-run=client -o yaml -n default
+  - run: kubectl expose deployment web --target-port=http --dry-run=client -o name
+  - run: kubectl expose deployment web --dry-run=client
+  - run: kubectl expose deployment web --overrides='{"spec":{"type":"NodePort"}}' --dry-run=client -o yaml
+  - run: kubectl expose replicaset frontend --dry-run=client -o yaml
+  - run: kubectl expose pod solo --dry-run=client -o yaml
+  - run: kubectl expose -f local.yaml --dry-run=client -o yaml
+  - run: kubectl expose service ext --port=80
+  - run: kubectl expose deployment noport
+  - run: kubectl expose deployment noport --cluster-ip=None --dry-run=client -o yaml
+  - run: kubectl expose pod bare
+  - run: kubectl expose pod bare --selector=run=bare --dry-run=client -o yaml
+  - run: kubectl expose configmap cfg --port=80
+  - run: kubectl expose deployment exprs
+  - run: kubectl expose deployment missing --port=80
+  - run: kubectl expose deployment web --port=abc
+  - run: kubectl expose deployment web --session-affinity=Sticky
+  - run: kubectl expose deployment web --labels=bad
+  - run: kubectl expose deployment web --selector==x
+  - run: kubectl expose deployment
+  - run: kubectl expose
+  - run: kubectl expose deployment web extra
+  - run: kubectl expose deployment/web -f local.yaml
+  - run: kubectl expose deployment web noport --dry-run=client -o yaml
+  - run: kubectl expose deployment noport missing web --dry-run=client -o name
+  - run: kubectl expose pod solo --protocol=SCTP --port=80 --type=ClusterIP --dry-run=client -o json
+  - run: kubectl expose deployment web --dry-run=server -o yaml
+  - run: kubectl expose deployment web
+  - run: kubectl expose deployment web
+  - run: kubectl expose rs frontend --name=fe -o json
+  - run: kubectl expose pod solo --type=NodePort --save-config -o yaml
+  - run: kubectl expose -f local.yaml -n team
+  - run: kubectl expose service web --name=web-copy --port=8080 --target-port=80 --protocol=TCP
+  - run: kubectl expose deployment web --name=Bad
+  - run: kubectl expose deployment web --name=web-team -n team
+  - run: kubectl get services
+  - run: kubectl get service web -o yaml
+  - run: kubectl get service fe -o yaml
+  - run: kubectl get service local -n team -o yaml

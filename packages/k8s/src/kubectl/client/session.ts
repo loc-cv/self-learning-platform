@@ -10,10 +10,11 @@
 //   upstream: staging/src/k8s.io/klog/v2 header: `Lmmdd hh:mm:ss.uuuuuu threadid file:line] `
 
 import { civilFromMillis, type Ctx } from '@simlab/kernel';
-import { FsError, type ProcApi } from '@simlab/host';
+import { FsError, strerror, type ProcApi } from '@simlab/host';
 import type { Op } from '@simlab/host';
 import type { ApiServerConfig } from '../../apiserver/config.ts';
 import { handle, openWatch, watchEvents } from '../../apiserver/pipeline.ts';
+import { getNonResource } from '../../apiserver/nonresource.ts';
 import { closeSubscription, watchTopic, type WatchEventType } from '../../apiserver/store.ts';
 import type { ApiRequest, ApiResponse } from '../../apiserver/types.ts';
 import type { JsonObject } from '../../apimachinery/json.ts';
@@ -48,20 +49,20 @@ export function overridesOf(values: Record<string, unknown>): Overrides {
   return o;
 }
 
-/** Reads a kubeconfig file as the process: ENOENT is a missing file, other errors are Go's texts. */
+/**
+ * Reads a kubeconfig file as the process (os.ReadFile): ENOENT is a missing file (os.IsNotExist);
+ * other errors are Go's PathError texts, ENOTDIR included (loader.go LoadFromFile).
+ */
 function reader(p: ProcApi): ReadFile {
   const fs = p.fs();
   return (path) => {
     try {
       return fs.readFile(path);
     } catch (e) {
-      if (e instanceof FsError) {
-        if (e.code === 'ENOENT') return { missing: true };
-        if (e.code === 'EISDIR') return { error: `read ${path}: is a directory` };
-        if (e.code === 'EACCES') return { error: `open ${path}: permission denied` };
-        if (e.code === 'ENOTDIR') return { missing: true };
-      }
-      throw e;
+      if (!(e instanceof FsError)) throw e;
+      if (e.code === 'ENOENT') return { missing: true };
+      // upstream: Go src/os PathError (`<op> <path>: <errno text>`); read(2) is what fails on a directory
+      return { error: `${e.code === 'EISDIR' ? 'read' : 'open'} ${path}: ${strerror(e.code).toLowerCase()}` };
     }
   };
 }
@@ -155,4 +156,9 @@ export function takeWatchEvents(s: Session, id: string): { type: WatchEventType;
 
 export function closeWatch(s: Session, id: string): void {
   closeSubscription(s.p.ctx, id);
+}
+
+/** A GET of the version or a discovery document (apiserver/nonresource.ts). */
+export function getNonResourcePath(s: Session, path: string): ApiResponse {
+  return getNonResource(s.server, path);
 }

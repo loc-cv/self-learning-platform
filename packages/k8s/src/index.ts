@@ -12,6 +12,7 @@ export type { ApiRequest, ApiResponse, RequestOptions, Strategy, StrategyCtx } f
 export { createClient, gvr, type Client, type ResourceClient } from './client/client.ts';
 export { registry, type ApiResource } from './discovery/registry.ts';
 export { schema } from './openapi/schema.ts';
+export { openApiV3Document, openApiV3Paths } from './openapi/v3.ts';
 export { CLUSTERS, KUBEADM_1CP_2W, KUBEADM_1N, controlPlaneNode, type ClusterDef, type ClusterNodeDef } from './topology/cluster.ts';
 export { NODE_ALLOCATABLE, NODE_CAPACITY, NODE_INFO, nodeLabels, nodeObject } from './topology/nodes.ts';
 export { apiServerConfig, buildCluster, TOPOLOGIES } from './topology/build.ts';

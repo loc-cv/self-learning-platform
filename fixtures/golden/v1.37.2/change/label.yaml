@@ -1,0 +1,319 @@
+# Captured from fixtures/golden/cases/change/label.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: change/label
+description: "kubectl label - add, overwrite (and the error without --overwrite), the same value again, remove with KEY- (and a key that is not there), --list for one object and several (Go prints a map: lines in random order), selectors, --all (on Namespaces: every namespace has a kube-root-ca.crt ConfigMap the simulator lacks), -A, --field-selector, -f, --local, client and server dry runs with -o, --resource-version; and the errors - an invalid value, a bad spec, a key both set and removed, pairs before resources, no change, the --local, --list and --all mistakes, an invalid key the server refuses, a missing object."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl label configmap a tier=web
+    exit: 0
+    stdout: |
+      configmap/a labeled
+    stderr: ""
+  - run: kubectl label configmap a tier=db
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'tier' already has a value (web), and --overwrite is false
+  - run: kubectl label configmap a tier=db x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'tier' already has a value (web), and --overwrite is false
+  - run: kubectl label configmap a tier=db --overwrite
+    exit: 0
+    stdout: |
+      configmap/a labeled
+    stderr: ""
+  - run: kubectl label configmap a tier=db
+    exit: 0
+    stdout: |
+      configmap/a not labeled
+    stderr: ""
+  - run: kubectl label configmap a tier-
+    exit: 0
+    stdout: |
+      configmap/a unlabeled
+    stderr: ""
+  - run: kubectl label configmap a tier-
+    exit: 0
+    stdout: |
+      label "tier" not found.
+      configmap/a not labeled
+    stderr: ""
+  - run: kubectl label configmap a x=1 y-
+    exit: 0
+    stdout: |
+      label "y" not found.
+      configmap/a labeled
+    stderr: ""
+  - run: kubectl label configmap a x=1 y=2 x-
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: can not both modify and remove a label in the same command
+  - run: kubectl label configmap a 'v=a b'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid label value: "v=a b": a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')
+  - run: kubectl label configmap a a=b=c
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid label spec: a=b=c
+  - run: kubectl label configmap a foo
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: at least one label update is required
+  - run: kubectl label configmap a x=1 foo
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: all resources must be specified before label changes: foo
+  - run: kubectl label configmap a 'bad key!=v'
+    exit: 1
+    stdout: ""
+    stderr: |
+      The ConfigMap "a" is invalid: metadata.labels: Invalid value: "bad key!": name part must consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or '123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]')
+  - run: kubectl label configmap a --list | sort
+    exit: 0
+    stdout: |
+      app=list
+      x=1
+    stderr: ""
+  - run: kubectl label configmap a b --list
+    exit: 0
+    stdout: |
+      Listing labels for ConfigMap./a:
+       app=list
+       app=list
+       x=1
+      Listing labels for ConfigMap./b:
+    stderr: ""
+    unorderedLines: true
+  - run: kubectl label configmap a --list z=9 | sort
+    exit: 0
+    stdout: |
+      app=list
+      x=1
+      z=9
+    stderr: ""
+  - run: kubectl label configmap -l app=none tier=web
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl label configmap -l app=list tier=sel
+    exit: 0
+    stdout: |
+      configmap/a labeled
+      configmap/b labeled
+    stderr: ""
+  - run: kubectl label namespace --all tier=all
+    exit: 0
+    stdout: |
+      namespace/default labeled
+      namespace/kube-node-lease labeled
+      namespace/kube-public labeled
+      namespace/kube-system labeled
+      namespace/other labeled
+    stderr: ""
+  - run: kubectl label configmap -A -l app=list region=eu
+    exit: 0
+    stdout: |
+      configmap/a labeled
+      configmap/b labeled
+      configmap/c labeled
+    stderr: ""
+  - run: kubectl label configmap --field-selector metadata.name=b only=b
+    exit: 0
+    stdout: |
+      configmap/b labeled
+    stderr: ""
+  - run: kubectl label configmap a x=3 --dry-run=client -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'x' already has a value (1), and --overwrite is false
+  - run: kubectl label configmap a b x=4 -o yaml
+    exit: 1
+    stdout: |
+      apiVersion: v1
+      data:
+        k: v
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: list
+          only: b
+          region: eu
+          tier: sel
+          x: "4"
+        name: b
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+    stderr: |
+      error: 'x' already has a value (1), and --overwrite is false
+  - run: kubectl label configmap a x=5 --dry-run=server -o json
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'x' already has a value (1), and --overwrite is false
+  - run: kubectl label configmap a x=6 -o name
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'x' already has a value (1), and --overwrite is false
+  - run: kubectl label configmap a x=7 --resource-version=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: 'x' already has a value (1), and --overwrite is false
+  - run: kubectl label configmap a b x=7 --resource-version=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --resource-version may only be used with a single resource
+  - run: kubectl label configmap nope a x=8
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): configmaps "nope" not found
+      'x' already has a value (1), and --overwrite is false
+  - run: kubectl label configmap a -n other x=9
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): configmaps "a" not found
+  - run: kubectl label -f cm.yaml from=file
+    exit: 0
+    stdout: |
+      configmap/a labeled
+    stderr: ""
+  - run: kubectl label -f cm.yaml -n other from=file
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the namespace from the provided object "default" does not match the namespace "other". You must pass '--namespace=default' to perform this operation.
+  - run: kubectl label --local -f local.yaml l=v
+    exit: 0
+    stdout: |
+      configmap/loc labeled
+    stderr: ""
+  - run: kubectl label --local -f local.yaml keep- -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels: {}
+        name: loc
+    stderr: ""
+  - run: kubectl label --local -f local.yaml --list
+    exit: 0
+    stdout: |
+      keep=yes
+    stderr: ""
+    unorderedLines: true
+  - run: kubectl label --local configmap a x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: can only use local files by -f pod.yaml or --filename=pod.json when --local=true is set
+  - run: kubectl label --local x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: one or more files must be specified as -f pod.yaml or --filename=pod.json
+  - run: kubectl label --local -f local.yaml x=1 --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot specify --local and --dry-run=server - did you mean --dry-run=client?
+  - run: kubectl label x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: one or more resources must be specified as <resource> <name> or <resource>/<name>
+  - run: kubectl label configmap a x=1 --list -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --list and --output may not be specified together
+  - run: kubectl label configmap --all -l app=list x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot set --all and --selector at the same time
+  - run: kubectl label configmap --all --field-selector metadata.name=a x=1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot set --all and --field-selector at the same time
+  - run: kubectl label configmap tier=x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource(s) were provided, but no name was specified
+  - objects:
+      - ref: configmap/a
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              app: list
+              from: file
+              region: eu
+              tier: sel
+              x: "1"
+            name: a
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+      - ref: configmap/b
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              app: list
+              only: b
+              region: eu
+              tier: sel
+              x: "4"
+            name: b
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+      - ref: -n other configmap/c
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            labels:
+              app: list
+              region: eu
+            name: c
+            namespace: other
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>

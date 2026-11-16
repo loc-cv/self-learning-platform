@@ -97,6 +97,25 @@ function resourceFor(input: GVR): ApiResource | undefined {
   return ret[0];
 }
 
+/**
+ * ResourcesFor({Resource: resource}) of kubectl's mapper: the shortcut expanded, then every match
+ * in discovery order. PriorityRESTMapper.ResourcesFor delegates to the MultiRESTMapper, which
+ * asks one DefaultRESTMapper per group version in discovery order and drops duplicates.
+ *   upstream: staging/src/k8s.io/apimachinery/pkg/api/meta/priority.go ResourcesFor;
+ *             multirestmapper.go ResourcesForWithContext; restmapper.go DefaultRESTMapper.ResourcesFor;
+ *             staging/src/k8s.io/client-go/restmapper/discovery.go NewDiscoveryRESTMapper (a
+ *             versionMapper per group version)
+ */
+export function resourcesFor(resource: string): Mapping[] {
+  const r = expandShortcut({ group: '', version: '', resource });
+  const name = r.resource.toLowerCase();
+  const matches = (a: ApiResource) => a.resource === name || a.singularName === name;
+  const all = discoveryOrder();
+  let ret = all.filter((a) => (r.group === '' || a.group === r.group) && matches(a));
+  if (ret.length === 0 && r.group !== '') ret = all.filter((a) => a.group.startsWith(r.group) && matches(a));
+  return ret.map(toMapping);
+}
+
 /** schema.ParseResourceArg */
 function parseResourceArg(arg: string): { full?: GVR; partial: GVR } {
   let full: GVR | undefined;

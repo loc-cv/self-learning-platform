@@ -349,6 +349,12 @@ Entry format:
 | DIV-034 | Strategic merge patch | kubectl apply looks patch strategies up in OpenAPI v3; Go map iteration decides which of two errors in one patch is reported, and whether a list or its `$deleteFromPrimitiveList` twin applies first; a JSON number written `1.0` is a float64 | Patch meta from the vendored Go struct tags (same strategies; the lookup's own error texts differ); maps in insertion order; `1.0` is an integer | The vendored schema carries the struct tags; deterministic engine; JSON numbers in the engine (DIV-031) | Only a patch with two errors, or an apply that changes a field the type does not know, reads differently | 07b |
 | DIV-035 | kubectl `-f` | Standard input from a terminal is processed document by document as it is typed; UTF-16 manifests (with a BOM) are transcoded; duplicate keys in a JSON List's own `metadata.labels`/`annotations` are rejected (NoDoubleKeySchema) | All of standard input is read before the first request (D-074), so objects print after Ctrl-D; only a UTF-8 BOM is stripped; such duplicates are accepted | Files are read before the first request; file contents are text (DIV-002); the duplicate check was not ported | `kubectl apply -f -` typed at the terminal answers only after Ctrl-D | 07b |
 | DIV-036 | kubectl describe: ordering of ties | Go's `sort.Sort` (pdqsort) leaves items with equal keys in an implementation-defined order beyond 12 items (events with the same last-seen second, tolerations with the same key) | A stable sort | Go's pdqsort is not ported yet (carry-over: `src/sort` is now in the checkout) | Only more than 12 events with the same timestamp could list in another order | 07b |
+| DIV-037 | kubectl explain: served OpenAPI v3 | `/openapi/v3` lists every path (`api`, `apis`, `version`, `logs`, the OIDC paths) with `?hash=` URLs; each group version's document holds paths, parameters, responses, formats, defaults and every annotation | The index lists group versions only, without hashes; documents keep the keys explain's template reads, each operation's GVK and the per-document differences (D-082); `info` is the checked-in header | Explain needs nothing else; the full documents are 12 MiB | `kubectl get --raw /openapi/v3/…` shows less than a real server; explain's output is the same | 08 |
+| DIV-038 | API server: JSON patch | json-patch compares `test` values by their bytes (`1` and `1.0` differ); a patch that makes the library panic drops the connection | Scalars are compared by value; integers beyond 2^53 lose precision (DIV-031); a panicking patch is a gap (D-084) | The body reaches the server parsed; there is no response to reproduce | Only unusual `test` operations differ | 08 |
+| DIV-039 | kubectl: Go map order | Output built by ranging over a Go map comes in random order: `config get-clusters`, FlattenConfig errors from two files, `label`/`annotate --list`, their overwrite errors, `set image`'s not-found errors, the order of more than 8 parallel `logs` streams | Argument order, or sorted keys; more than 8 log streams are shuffled from a named stream (up to 8 follow Go 1.26's rotated insertion order, D-088) | Deterministic engine (hard rule 4) | The order is one of the orders the real tool can print | 08 |
+| DIV-040 | kubectl logs | When one of several followed streams fails, in-flight requests may print `context canceled` (racy); `--limit-bytes` can split a multi-byte character; a container removed while followed writes the ContainerStatus rpc error into the stream | Only the fatal error prints; `--limit-bytes` cuts on a UTF-8 boundary (file contents are text, DIV-002); the stream ends silently (unreachable: the kubelet always stops a container before removing it) | Racy output is not reproducible; text contents | None in ordinary use | 08 |
+| DIV-041 | kubectl generators | `create configmap/secret --from-file` puts non-UTF-8 files in `binaryData`; `kubectl run -f` (hidden, deprecated) warns and is ignored; `expose` fetches each named object as it visits it | Files are text, so `binaryData` never appears (DIV-002); `run -f` is an unknown flag, since hidden flags are not in the manifest; `expose` fetches all named objects before creating Services | File contents are text; the manifest comes from help | Output and error order are the same; only `run -f` reads differently | 08 |
+| DIV-042 | kubectl completion | `logs`/`exec -c` after `deploy/x` complete the containers of the Pod AttachablePodForObject picks; plugins on PATH (`kubectl-*`) are offered as commands; the script's eval expands `$VAR` in earlier words and sees text after the cursor; `kubectl -n x __complete` fails with "flags cannot be placed before plugin name" | No container candidates after a non-Pod `type/name`; plugins are not offered; `$VAR` stays unexpanded and text after the cursor in the word is ignored; `kubectl -n x __complete` goes through normal dispatch | Not ported yet (no plugins are installed on the simulated machines) | Rare completions offer nothing where the real script offers a list | 08 |
 
 The non-goals in `PLAN.md` §4.3 (no packets, no real cryptography, a bash subset,
 an editor overlay instead of a terminal vi, a curated image catalog) become entries when the phase
@@ -470,6 +476,11 @@ least twice. A difference means the case depends on timing or on a random choice
 settled state before recording (`do: kubectl rollout status …`, then record), pin placement, or
 mark the step. Commit the case and the fixture together.
 
+**Editors.** `kubectl edit` is captured non-interactively: the case sets `KUBE_EDITOR` to a
+script from its `files:` run with bash (one that rewrites the file, or writes invalid content the
+first time and valid content the second), `cat` (no change) or `cp /dev/null` (an empty file);
+the random part of the temporary file's name becomes `<<tmp>>` (D-091).
+
 **What cases must avoid.** Progress output that depends on timing (`kubectl rollout status`
 while the rollout runs: record it after `do: kubectl rollout status`); `kubectl diff` (it prints
 temporary paths and times); `--watch`; two unschedulable Pods whose retries interleave
@@ -495,6 +506,7 @@ temporary paths and times); `--watch`; two unschedulable Pods whose retries inte
 | `<<pid>>` | klog's thread id | In a klog header |
 | `<<cert>>` | PEM bodies | Between `-----BEGIN …-----` and `-----END` (the cluster CA in `kube-root-ca.crt`) |
 | `<<node>>` | A worker chosen by a tie | `node01`/`node02` in steps marked `anyWorker` |
+| `<<tmp>>` | kubectl edit's temporary file name | The digits after `/kubectl-edit-`, before `.yaml` or `.json` (D-091) |
 
 Mappings, applied even with `normalize: false`, so that no workstation detail reaches a fixture:
 the working directory becomes `/home/student`; the workstation's host name (in leader election
@@ -595,7 +607,10 @@ step by step.
   phase 07b (describe, create, apply and delete simulated; their shim entries gone): 474 steps
   compared, 465 pass, 9 KNOWN (missing `kube-root-ca.crt` ×3, DIV-015 ×4, a KWOK limit, the missing
   Priority admission plugin), none failing; 47 shimmed, 83 notices, 39 blocked (kubeconfig
-  writers, KWOK's not-ready device, PriorityClasses).
+  writers, KWOK's not-ready device, PriorityClasses). At the end of phase 08 (every verb of the phase simulated, its shim
+  entries gone): 2143 steps compared, 2134 pass, the same 9 KNOWN, none failing; 9 shimmed (`wait`,
+  `patch`, `cordon`, `taint`), 15 notices, 31 blocked (KWOK's not-ready device, the missing
+  root-ca publisher, PriorityClasses).
 
 ### 6.9 Known limits
 

@@ -21,18 +21,25 @@ import { PROGRAM, type ProgramCompletion, type ProgramSpec } from '../proc/progr
 import { passwdEntries } from '../users.ts';
 import { ACCESS, createFs, type Fs } from '../vfs/fs.ts';
 import { BASH_BUILTINS, BASH_KEYWORDS } from './shell.ts';
-import type { ShellState } from './state.ts';
+import { exportOrder, type ShellState } from './state.ts';
+import { hostSlice } from '../machine.ts';
 
 interface BashCompletionData {
   vars: string[];
   aliases: string[];
   path: string;
+  /** Alias values by name, for completion through an alias. */
+  aliasValues?: Record<string, string>;
+  /** The exported environment, as a command started now would get it. */
+  env?: Record<string, string>;
 }
 
 /** What the shell hands the completer with each prompt: names it knows that the file system does not. */
 export function completionData(state: ShellState): Json {
   const vars = Object.keys(state.vars).filter((n) => state.vars[n]?.value !== undefined).sort();
-  return { vars, aliases: Object.keys(state.aliases).sort(), path: state.vars['PATH']?.value ?? '' };
+  const env: Record<string, string> = {};
+  for (const n of exportOrder(state)) env[n] = state.vars[n]?.value as string;
+  return { vars, aliases: Object.keys(state.aliases).sort(), path: state.vars['PATH']?.value ?? '', aliasValues: { ...state.aliases }, env };
 }
 
 const sortUnique = (xs: string[]): string[] => [...new Set(xs)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
@@ -148,7 +155,7 @@ const BUILTIN_COMPLETERS: Record<string, (req: CompletionRequest, c: ProgramComp
 };
 
 /** The words of the command the cursor is in, up to the cursor, without quoting. */
-function commandWords(line: string, start: number): { words: string[]; cword: number } {
+function commandWords(line: string, start: number): { words: string[]; cword: number; seg: number } {
   let seg = 0;
   let q: string | undefined;
   for (let i = 0; i < start; i++) {
@@ -181,16 +188,43 @@ function commandWords(line: string, start: number): { words: string[]; cword: nu
     else if (ch === "'" || ch === '"') q = ch;
   }
   if (inWord) words.push(dequote(cur));
-  return { words, cword: words.length };
+  return { words, cword: words.length, seg };
+}
+
+/** The columns of the terminal the shell reads from: readline keeps COLUMNS at its width. */
+function columnsOf(req: CompletionRequest): number | undefined {
+  const tty = getProc(getMachine(req.ctx, req.machine), req.pid).tty;
+  return tty === undefined ? undefined : hostSlice(req.ctx).ttys[tty]?.cols;
 }
 
 function programCompletion(req: CompletionRequest, data: BashCompletionData): CompletionResult | undefined {
-  const { words, cword } = commandWords(req.line, req.start);
-  const name = words[0];
-  if (name === undefined) return undefined;
-  const c: ProgramCompletion = { ctx: req.ctx, machine: req.machine, pid: req.pid, words: [...words, req.word], cword, cur: req.word };
-  const builtin = BUILTIN_COMPLETERS[name];
-  if (builtin && !data.aliases.includes(name)) return builtin(req, c);
+  const { words, cword, seg } = commandWords(req.line, req.start);
+  const first = words[0];
+  if (first === undefined) return undefined;
+  const lead = /^[ \t]*/.exec(req.line.slice(seg))?.[0].length ?? 0;
+  const columns = columnsOf(req);
+  const c: ProgramCompletion = {
+    ctx: req.ctx,
+    machine: req.machine,
+    pid: req.pid,
+    words: [...words, req.word],
+    cword,
+    cur: req.word,
+    line: req.line.slice(seg + lead),
+    point: req.point - seg - lead,
+    env: data.env ?? {},
+    aliases: data.aliasValues ?? {},
+    ...(columns === undefined ? {} : { columns }),
+  };
+  const builtin = BUILTIN_COMPLETERS[first];
+  if (builtin && !data.aliases.includes(first)) return builtin(req, c);
+  // An alias completes as the program its value starts with, as kubectl's documented setup does
+  // for `alias k=kubectl` with `complete -o default -F __start_kubectl k` (the function's eval of
+  // `k __complete …` expands the alias). Until startup files are read (phase 22a, D-025) every
+  // alias of a program with a completer is treated so.
+  const aliasValue = data.aliasValues?.[first];
+  const name = aliasValue === undefined ? first : (aliasValue.trim().split(/[ \t]+/)[0] ?? '');
+  if (name === '') return undefined;
   // The program an external command runs: the stub its PATH entry points at.
   const fs = fsOf(req);
   for (const dir of name.includes('/') ? [''] : data.path.split(':')) {

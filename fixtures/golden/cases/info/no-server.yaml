@@ -1,0 +1,17 @@
+description: >-
+  kubectl version, api-resources, api-versions and cluster-info with no server: what each prints
+  before and after the request that cannot connect.
+server: false
+steps:
+  - run: kubectl version -o json
+  - run: kubectl version -o yaml --client
+  - run: kubectl version --client extra
+  - run: kubectl version extra
+  - run: kubectl version -o xml
+  - run: kubectl api-resources
+  - run: kubectl api-resources --cached -o name
+  - run: kubectl api-resources --sort-by=foo
+  - run: kubectl api-resources extra
+  - run: kubectl api-versions
+  - run: kubectl api-versions extra
+  - run: kubectl cluster-info -n kube-public

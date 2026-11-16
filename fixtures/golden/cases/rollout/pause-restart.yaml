@@ -1,0 +1,75 @@
+description: >-
+  rollout pause, resume and restart: their outputs (-o name), the already-paused and not-paused
+  errors, restart and undo refused while paused, restart's restartedAt annotation and the rollout it
+  starts, selectors, -f, an empty selection, and kinds that cannot be paused or restarted.
+files:
+  web.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+      labels:
+        app: web
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.27
+  web-2.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: web
+      labels:
+        app: web
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.28
+setup:
+  - do: kubectl apply -f web.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl apply -f web-2.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
+steps:
+  - run: kubectl rollout pause deployment/web -o name
+  - run: kubectl rollout pause deployment/web
+  - run: kubectl rollout restart deployment/web
+  - run: kubectl rollout undo deployment/web
+  - run: kubectl rollout status deployment/web --watch=false
+  - run: kubectl rollout resume deployment/web
+  - run: kubectl rollout resume deployment/web
+  - run: kubectl rollout resume deployment/web -o name
+  - run: kubectl rollout restart deployment/web
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl rollout status deployment/web
+  - objects: [deployment/web]
+  - run: kubectl rollout history deployment/web
+  - run: kubectl rollout pause deployment -l app=web
+  - run: kubectl rollout resume -f web.yaml
+  - run: kubectl rollout pause deployment -l app=nothing
+  - run: kubectl rollout resume deployment -l app=nothing
+  - run: kubectl rollout restart deployment -l app=nothing
+  - run: kubectl rollout pause service/kubernetes
+  - run: kubectl rollout resume service/kubernetes
+  - run: kubectl rollout restart service/kubernetes
+  - run: kubectl rollout restart deployment/nope
+  - run: kubectl rollout pause
+  - run: kubectl rollout restart deployment/web -o yaml --dry-run=client

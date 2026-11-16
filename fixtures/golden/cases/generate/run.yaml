@@ -1,0 +1,62 @@
+description: >-
+  kubectl run against a server: client and server dry runs across its flags (-o yaml|json|name),
+  --expose, --overrides of each type and their errors, real creates with --save-config, and the
+  API server's errors (AlreadyExists, an invalid name, a missing namespace, an existing Service).
+setup:
+  - do: kubectl create namespace team
+  - do: kubectl create service clusterip taken --tcp=80
+steps:
+  - run: kubectl run nginx --image=nginx:1.27 --dry-run=client -o yaml
+  - run: >-
+      kubectl run busy --image=busybox:1.37 --restart=Never --labels=app=busy,tier=x --env=A=1
+      --env=B='two words' --port=8080 --annotations=note=hi --annotations=empty= --image-pull-policy=IfNotPresent
+      --privileged --command --dry-run=client -o json -- sleep 3600
+  - run: kubectl run args --image=busybox:1.37 --restart=OnFailure -n team --dry-run=client -o yaml -- echo hello world
+  - run: kubectl run plain --image=nginx:1.27 --dry-run=client -o name
+  - run: kubectl run plain --image=nginx:1.27 --dry-run=client
+  - run: kubectl run plain --image=nginx:1.27 --save-config --dry-run=client -o yaml
+  - run: kubectl run web --image=nginx:1.27 --port=80 --expose --dry-run=client -o yaml
+  - run: kubectl run web --image=nginx:1.27 --port=80 --expose --labels=app=web -n team --dry-run=client -o json
+  - run: kubectl run web --image=nginx:1.27 --port=80 --expose --dry-run=client
+  - run: >-
+      kubectl run merged --image=nginx:1.27 --dry-run=client -o yaml
+      --overrides='{"metadata":{"labels":{"extra":"y"}},"spec":{"nodeName":"node01","bogus":1,"containers":[{"name":"merged","image":"nginx:1.27","resources":{"limits":{"cpu":"100m"}}}]}}'
+  - run: >-
+      kubectl run strategic --image=nginx:1.27 --dry-run=client -o yaml --override-type=strategic
+      --overrides='{"spec":{"containers":[{"name":"strategic","resources":{"limits":{"memory":"64Mi"}}}]}}'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='{"spec":{"containers":"x"}}'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='"x"'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='{bad'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=strategic --overrides='{bad'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=strategic --overrides='[1]'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --overrides='[1]'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=bad --overrides='{}'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=bad
+  - run: >-
+      kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json
+      --overrides='[{"op":"add","path":"/spec/hostname","value":"h"}]'
+  - run: >-
+      kubectl run j --image=nginx:1.27 --dry-run=client -o yaml --override-type=json
+      --overrides='[{"op":"replace","path":"/spec/containers/0/image","value":"nginx:1.28"},{"op":"add","path":"/metadata/labels/tier","value":"web"},{"op":"remove","path":"/spec/restartPolicy"}]'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"bogus","path":"/spec"}]'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"remove","path":"/spec/nothing/here"}]'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"test","path":"/metadata/name","value":"x"}]'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='{"op":"add"}'
+  - run: kubectl run o --image=nginx:1.27 --dry-run=client -o yaml --override-type=json --overrides='[{"op":"replace","path":"/spec/containers","value":"x"}]'
+  - run: kubectl run sdr --image=nginx:1.27 --dry-run=server -o yaml
+  - run: kubectl run sdr --image=nginx:1.27 --dry-run=server
+  - run: kubectl get pods
+  - run: kubectl run real --image=nginx:1.27 --labels=app=real
+  - run: kubectl run real --image=nginx:1.27
+  - run: kubectl run Bad --image=nginx:1.27 -o name
+  - run: kubectl run lost --image=nginx:1.27 -n missing
+  - run: kubectl run withsvc --image=nginx:1.27 --port=8080 --expose
+  - run: kubectl run taken --image=nginx:1.27 --port=80 --expose
+  - run: kubectl run saved --image=nginx:1.27 --save-config --field-manager=me -o json
+  - run: kubectl run inteam --image=nginx:1.27 -n team -o yaml --restart=Never --env=X=1
+  - run: kubectl get service withsvc -o yaml
+  - do: kubectl wait --for=condition=Ready pod/real pod/saved pod/taken pod/withsvc --timeout=60s
+  - run: kubectl get pods,services --show-labels
+    kwok: true
+  - run: kubectl run x --image=nginx:1.27 -- arg --dry-run=client
+  - run: kubectl run x --image=nginx:1.27 --dry-run=client -o json --command

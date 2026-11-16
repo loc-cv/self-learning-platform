@@ -1,0 +1,261 @@
+# Captured from fixtures/golden/cases/configmaps/list-output.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: configmaps/list-output
+description: -o yaml and -o json for several objects (the List wrapper kubectl get builds, empty lists, --show-managed-fields) and for a manifest stream given to create.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get configmap a b -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      items:
+      - apiVersion: v1
+        data:
+          x: "1"
+        kind: ConfigMap
+        metadata:
+          creationTimestamp: "<<time>>"
+          labels:
+            app: list
+          name: a
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:1>>
+      - apiVersion: v1
+        data:
+          "y": "2"
+        kind: ConfigMap
+        metadata:
+          creationTimestamp: "<<time>>"
+          labels:
+            app: list
+          name: b
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:2>>
+      kind: List
+      metadata:
+        resourceVersion: ""
+    stderr: ""
+  - run: kubectl get configmap a b -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "items": [
+              {
+                  "apiVersion": "v1",
+                  "data": {
+                      "x": "1"
+                  },
+                  "kind": "ConfigMap",
+                  "metadata": {
+                      "creationTimestamp": "<<time>>",
+                      "labels": {
+                          "app": "list"
+                      },
+                      "name": "a",
+                      "namespace": "default",
+                      "resourceVersion": "<<rv>>",
+                      "uid": "<<uid:1>>"
+                  }
+              },
+              {
+                  "apiVersion": "v1",
+                  "data": {
+                      "y": "2"
+                  },
+                  "kind": "ConfigMap",
+                  "metadata": {
+                      "creationTimestamp": "<<time>>",
+                      "labels": {
+                          "app": "list"
+                      },
+                      "name": "b",
+                      "namespace": "default",
+                      "resourceVersion": "<<rv>>",
+                      "uid": "<<uid:2>>"
+                  }
+              }
+          ],
+          "kind": "List",
+          "metadata": {
+              "resourceVersion": ""
+          }
+      }
+    stderr: ""
+  - run: kubectl get configmap -l app=list -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      items:
+      - apiVersion: v1
+        data:
+          x: "1"
+        kind: ConfigMap
+        metadata:
+          creationTimestamp: "<<time>>"
+          labels:
+            app: list
+          name: a
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:1>>
+      - apiVersion: v1
+        data:
+          "y": "2"
+        kind: ConfigMap
+        metadata:
+          creationTimestamp: "<<time>>"
+          labels:
+            app: list
+          name: b
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:2>>
+      kind: List
+      metadata:
+        resourceVersion: ""
+    stderr: ""
+  - run: kubectl get configmap -l app=none -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      items: []
+      kind: List
+      metadata:
+        resourceVersion: ""
+    stderr: ""
+  - run: kubectl get configmap -l app=none -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "items": [],
+          "kind": "List",
+          "metadata": {
+              "resourceVersion": ""
+          }
+      }
+    stderr: ""
+  - run: kubectl get configmap a -o yaml --show-managed-fields
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        x: "1"
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: list
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              .: {}
+              f:x: {}
+          manager: kubectl-create
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:metadata:
+              f:labels:
+                .: {}
+                f:app: {}
+          manager: kubectl-label
+          operation: Update
+          time: "<<time>>"
+        name: a
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+    stderr: ""
+  - run: kubectl create -f two.yaml --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "yes"
+        b: true
+      kind: ConfigMap
+      metadata:
+        labels:
+          app: list
+        name: one
+        namespace: default
+      ---
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          app: list
+        name: two
+        namespace: default
+    stderr: ""
+  - run: kubectl create -f two.yaml --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "data": {
+              "a": "yes",
+              "b": true
+          },
+          "kind": "ConfigMap",
+          "metadata": {
+              "labels": {
+                  "app": "list"
+              },
+              "name": "one",
+              "namespace": "default"
+          }
+      }
+      {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "metadata": {
+              "labels": {
+                  "app": "list"
+              },
+              "name": "two",
+              "namespace": "default"
+          }
+      }
+    stderr: ""
+  - run: kubectl create -f two.yaml -o yaml
+    exit: 1
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        labels:
+          app: list
+        name: two
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:3>>
+    stderr: |
+      Error from server (BadRequest): error when creating "two.yaml": ConfigMap in version "v1" cannot be handled as a ConfigMap: json: cannot unmarshal bool into Go struct field ConfigMap.data of type string
+  - run: kubectl create -f bad.yaml --dry-run=client -o yaml
+    exit: 1
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: three
+        namespace: default
+    stderr: |
+      error: error parsing bad.yaml: error converting YAML to JSON: yaml: line 1: did not find expected ',' or ']'

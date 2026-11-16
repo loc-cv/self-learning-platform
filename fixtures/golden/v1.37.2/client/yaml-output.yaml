@@ -1,0 +1,346 @@
+# Captured from fixtures/golden/cases/client/yaml-output.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: client/yaml-output
+description: "How kubectl writes values with -o yaml and -o json (sigs.k8s.io/yaml over yaml.v2, encoding/json): quoting of YAML 1.1 words, numbers, timestamps and indicators, literal blocks, folding at 80 columns, escapes, natural key order, and the control-character failure. Client-side generators print typed objects, so -o json keeps struct field order."
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl create configmap words --dry-run=client -o yaml --from-literal=yes=yes --from-literal=no=no --from-literal=on=on --from-literal=off=OFF --from-literal=y=y --from-literal=n=N --from-literal=true=True --from-literal=false=false --from-literal=null=null --from-literal=tilde='~' --from-literal=empty= --from-literal=merge='<<' --from-literal=equals='='
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        empty: ""
+        equals: =
+        "false": "false"
+        merge: <<
+        "n": "N"
+        "no": "no"
+        "null": "null"
+        "off": "OFF"
+        "on": "on"
+        tilde: "~"
+        "true": "True"
+        "y": "y"
+        "yes": "yes"
+      kind: ConfigMap
+      metadata:
+        name: words
+    stderr: ""
+  - run: kubectl create configmap numbers --dry-run=client -o yaml --from-literal=int=1 --from-literal=neg=-1 --from-literal=plus=+1 --from-literal=quoted='"1"' --from-literal=hex=0x1F --from-literal=octal=012 --from-literal=eight=08 --from-literal=oct2=0o17 --from-literal=bin=0b101 --from-literal=under=1_000 --from-literal=float=1.5 --from-literal=exp=1e3 --from-literal=dot=.5 --from-literal=inf=.inf --from-literal=nan=.NaN --from-literal=big=99999999999999999999 --from-literal=huge=1e400 --from-literal=ip=10.0.0.1 --from-literal=version=1.37.2 --from-literal=time=12:30:45 --from-literal=base60=190:20:30 --from-literal=port=8080:80
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        base60: "190:20:30"
+        big: "99999999999999999999"
+        bin: "0b101"
+        dot: ".5"
+        eight: "08"
+        exp: "1e3"
+        float: "1.5"
+        hex: "0x1F"
+        huge: 1e400
+        inf: ".inf"
+        int: "1"
+        ip: 10.0.0.1
+        nan: ".NaN"
+        neg: "-1"
+        oct2: "0o17"
+        octal: "012"
+        plus: "+1"
+        port: 8080:80
+        quoted: '"1"'
+        time: "12:30:45"
+        under: "1_000"
+        version: 1.37.2
+      kind: ConfigMap
+      metadata:
+        name: numbers
+    stderr: ""
+  - run: kubectl create configmap dates --dry-run=client -o yaml --from-literal=date=2024-01-01 --from-literal=short=2024-1-2 --from-literal=rfc3339=2024-01-01T10:00:00Z --from-literal=lower=2024-01-01t10:00:00+02:00 --from-literal=spaced='2024-01-01 10:00:00' --from-literal=frac=2024-01-01T10:00:00.123456789012Z --from-literal=badmonth=2024-13-01 --from-literal=badday=2024-02-30 --from-literal=leap=2024-02-29 --from-literal=noleap=2023-02-29 --from-literal=year5=20240-01-01
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        badday: 2024-02-30
+        badmonth: 2024-13-01
+        date: "2024-01-01"
+        frac: "2024-01-01T10:00:00.123456789012Z"
+        leap: "2024-02-29"
+        lower: "2024-01-01t10:00:00+02:00"
+        noleap: 2023-02-29
+        rfc3339: "2024-01-01T10:00:00Z"
+        short: "2024-1-2"
+        spaced: "2024-01-01 10:00:00"
+        year5: 20240-01-01
+      kind: ConfigMap
+      metadata:
+        name: dates
+    stderr: ""
+  - run: "kubectl create configmap indicators --dry-run=client -o yaml --from-literal=lead=' lead' --from-literal=trail='trail ' --from-literal=colon='a: b' --from-literal=colon2='a:b' --from-literal=colonend='a:' --from-literal=hash='a #b' --from-literal=hash2='a#b' --from-literal=hash3='#x' --from-literal=dash='- x' --from-literal=dash2='-x' --from-literal=dashonly='-' --from-literal=q=\"'x\" --from-literal=dq='\"x' --from-literal=it=\"it's\" --from-literal=brace='{x}' --from-literal=bracket='[x]' --from-literal=comma='x,y' --from-literal=star='*x' --from-literal=amp='&x' --from-literal=bang='!x' --from-literal=pct='%x' --from-literal=at='@x' --from-literal=bt='`x' --from-literal=pipe='|x' --from-literal=gt='>x' --from-literal=question='?x' --from-literal=question2='? x' --from-literal=docstart=--- --from-literal=dots=... --from-literal=url='http://example.com/a?b=c&d=e#f' --from-literal=backslash='a\\b'"
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        amp: '&x'
+        at: '@x'
+        backslash: a\b
+        bang: '!x'
+        brace: '{x}'
+        bracket: '[x]'
+        bt: '`x'
+        colon: 'a: b'
+        colon2: a:b
+        colonend: 'a:'
+        comma: x,y
+        dash: '- x'
+        dash2: -x
+        dashonly: '-'
+        docstart: '---'
+        dots: '...'
+        dq: '"x'
+        gt: '>x'
+        hash: 'a #b'
+        hash2: a#b
+        hash3: '#x'
+        it: it's
+        lead: ' lead'
+        pct: '%x'
+        pipe: '|x'
+        q: '''x'
+        question: ?x
+        question2: '? x'
+        star: '*x'
+        trail: 'trail '
+        url: http://example.com/a?b=c&d=e#f
+      kind: ConfigMap
+      metadata:
+        name: indicators
+    stderr: ""
+  - run: kubectl create configmap escapes --dry-run=client -o yaml --from-literal=tab=$'a\tb' --from-literal=cr=$'a\rb' --from-literal=bell=$'a\ab' --from-literal=esc=$'a\eb' --from-literal=unicode='日本語 tiếng Việt' --from-literal=emoji='😀 ok' --from-literal=nbsp=$'a b' --from-literal=ls=$'a b' --from-literal=bom=$'﻿ab' --from-literal=html='<b>&amp;</b>' --from-literal=quote='say "hi"'
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        bell: "a\ab"
+        bom: "\uFEFF\x61\x62"
+        cr: "a\rb"
+        emoji: "\U0001F600 ok"
+        esc: "a\eb"
+        html: <b>&amp;</b>
+        ls: 'a     b'
+        nbsp: a b
+        quote: say "hi"
+        tab: "a\tb"
+        unicode: 日本語 tiếng Việt
+      kind: ConfigMap
+      metadata:
+        name: escapes
+    stderr: ""
+  - run: kubectl create configmap blocks --dry-run=client -o yaml --from-literal=multi=$'l1\nl2' --from-literal=multitrail=$'l1\nl2\n' --from-literal=keep=$'l1\nl2\n\n' --from-literal=leadnl=$'\nx' --from-literal=leadspace=$' x\ny' --from-literal=spacenl=$'a \nb' --from-literal=nlspace=$'a\n b' --from-literal=tabbed=$'a\n\tb' --from-literal=onlynl=$'\n' --from-file=multi.txt --from-file=nonl.txt --from-file=blank.txt --from-file=spaces.txt --from-file=trailing-space.txt --from-file=long.txt
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        blank.txt: |2+
+
+
+          after two blank lines
+
+        keep: |+
+          l1
+          l2
+
+        leadnl: |2-
+
+          x
+        leadspace: |2-
+           x
+          y
+        long.txt: |
+          This line is long enough that a literal block keeps it whole even though it runs past eighty columns.
+        multi: |-
+          l1
+          l2
+        multi.txt: |
+          first line
+          second line
+        multitrail: |
+          l1
+          l2
+        nlspace: |-
+          a
+           b
+        nonl.txt: |-
+          no trailing newline
+          second
+        onlynl: |2+
+
+        spacenl: "a \nb"
+        spaces.txt: |2
+            indented first line
+          next
+        tabbed: "a\n\tb"
+        trailing-space.txt: "line with trailing space \nnext\n"
+      kind: ConfigMap
+      metadata:
+        name: blocks
+    stderr: ""
+  - run: kubectl create configmap folding --dry-run=client -o yaml --from-literal=long='lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua' --from-literal=longnospace=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --from-literal=longdouble='"quoted at the start so it needs quotes, and long enough to fold past the eighty column limit of yaml.v2' --from-literal=longsingle=' leading space makes this single-quoted, and it is long enough to fold past the eighty column limit too' --from-literal=twospaces='words  separated  by  two  spaces  fold  only  at  a  single  space  so  this  line  runs  on  past  eighty' --from-literal=longtab=$'a tab\there makes it double-quoted and it is long enough to fold past the eighty column limit of the emitter'
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        long: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor
+          incididunt ut labore et dolore magna aliqua
+        longdouble: '"quoted at the start so it needs quotes, and long enough to fold past
+          the eighty column limit of yaml.v2'
+        longnospace: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        longsingle: ' leading space makes this single-quoted, and it is long enough to fold
+          past the eighty column limit too'
+        longtab: "a tab\there makes it double-quoted and it is long enough to fold past
+          the eighty column limit of the emitter"
+        twospaces: words  separated  by  two  spaces  fold  only  at  a  single  space  so  this  line  runs  on  past  eighty
+      kind: ConfigMap
+      metadata:
+        name: folding
+    stderr: ""
+  - run: kubectl create configmap keys --dry-run=client -o yaml --from-literal=a10=x --from-literal=a9=x --from-literal=a1=x --from-literal=a01=x --from-literal=a001=x --from-literal=a0=x --from-literal=A=x --from-literal=Z=x --from-literal=_x=x --from-literal=x_=x --from-literal=1=x --from-literal=10=x --from-literal=9=x --from-literal=01=x --from-literal=-1=x --from-literal=a.1=x --from-literal=a-1=x --from-literal=b1c10=x --from-literal=b1c2=x --from-literal=x9y=x --from-literal=x10y=x --from-literal=0=x --from-literal=00=x --from-literal=.dot=x --from-literal=y=x
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        "-1": x
+        .dot: x
+        _x: x
+        "0": x
+        "00": x
+        "1": x
+        "01": x
+        "9": x
+        "10": x
+        A: x
+        Z: x
+        a-1: x
+        a.1: x
+        a0: x
+        a1: x
+        a01: x
+        a001: x
+        a9: x
+        a10: x
+        b1c2: x
+        b1c10: x
+        x_: x
+        x9y: x
+        x10y: x
+        "y": x
+      kind: ConfigMap
+      metadata:
+        name: keys
+    stderr: ""
+  - run: kubectl create configmap escapes --dry-run=client -o json --from-literal=tab=$'a\tb' --from-literal=cr=$'a\rb' --from-literal=bell=$'a\ab' --from-literal=del=$'a\x7fb' --from-literal=multi=$'l1\nl2\n' --from-literal=unicode='日本語' --from-literal=emoji='😀' --from-literal=ls=$'a b' --from-literal=html='<b>&amp;</b>' --from-literal=quote='say "hi"' --from-literal=backslash='a\b' --from-literal=10=x --from-literal=9=x --from-literal=a=x
+    exit: 0
+    stdout: "{
+
+      \    \"kind\": \"ConfigMap\",
+
+      \    \"apiVersion\": \"v1\",
+
+      \    \"metadata\": {
+
+      \        \"name\": \"escapes\"
+
+      \    },
+
+      \    \"data\": {
+
+      \        \"10\": \"x\",
+
+      \        \"9\": \"x\",
+
+      \        \"a\": \"x\",
+
+      \        \"backslash\": \"a\\\\b\",
+
+      \        \"bell\": \"a\\u0007b\",
+
+      \        \"cr\": \"a\\rb\",
+
+      \        \"del\": \"ab\",
+
+      \        \"emoji\": \"😀\",
+
+      \        \"html\": \"\\u003cb\\u003e\\u0026amp;\\u003c/b\\u003e\",
+
+      \        \"ls\": \"a\\u2028b\",
+
+      \        \"multi\": \"l1\\nl2\\n\",
+
+      \        \"quote\": \"say \\\"hi\\\"\",
+
+      \        \"tab\": \"a\\tb\",
+
+      \        \"unicode\": \"日本語\"
+
+      \    }
+
+      }\n"
+    stderr: ""
+  - run: kubectl create deployment web --image=nginx:1.27 --replicas=2 --dry-run=client -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "Deployment",
+          "apiVersion": "apps/v1",
+          "metadata": {
+              "name": "web",
+              "labels": {
+                  "app": "web"
+              }
+          },
+          "spec": {
+              "replicas": 2,
+              "selector": {
+                  "matchLabels": {
+                      "app": "web"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "labels": {
+                          "app": "web"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "name": "nginx",
+                              "image": "nginx:1.27",
+                              "resources": {}
+                          }
+                      ]
+                  }
+              },
+              "strategy": {}
+          },
+          "status": {}
+      }
+    stderr: ""
+  - run: kubectl create configmap del --from-literal=del=$'a\x7fb' --dry-run=client -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: yaml: control characters are not allowed
+  - run: kubectl create configmap nel --from-literal=nel=$'a\u0085b' --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        nel: a b
+      kind: ConfigMap
+      metadata:
+        name: nel
+    stderr: ""

@@ -1,0 +1,52 @@
+description: >-
+  kubectl's command and flag errors, kubeconfig resolution errors and a refused connection, with a
+  kubeconfig whose server nothing listens on (localhost:1) and no API server.
+server: false
+files:
+  .kube/config: |
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - cluster:
+        server: http://localhost:1
+      name: kubernetes
+    contexts:
+    - context:
+        cluster: kubernetes
+        user: kubernetes-admin
+      name: kubernetes-admin@kubernetes
+    - context:
+        cluster: nocluster
+        user: kubernetes-admin
+      name: broken
+    current-context: kubernetes-admin@kubernetes
+    users:
+    - name: kubernetes-admin
+      user: {}
+steps:
+  - run: kubectl gte pods
+  - run: kubectl creat
+  - run: kubectl nosuch get
+  - run: kubectl get pods --nosuch
+  - run: kubectl get --nosuch pods
+  - run: kubectl get pods -Z
+  - run: kubectl get pods -n
+  - run: kubectl get pods --namespace
+  - run: kubectl get pods --watch=maybe
+  - run: kubectl get pods -Aw=x
+  - run: kubectl get pods --chunk-size=abc
+  - run: kubectl get
+  - run: kubectl get pods/x pods
+  - run: kubectl get pods/x/y
+  - run: kubectl get pods --show-labels -o yaml
+  - run: kubectl get pods --output-watch-events
+  - run: kubectl get pods
+  - run: kubectl get pods --context nosuch
+  - run: kubectl get pods --context broken
+  - run: kubectl get pods --cluster nosuch
+  - run: kubectl get pods --user nosuch
+  - run: kubectl get pods --cluster nosuch -n x
+  - run: kubectl get pods --context nosuch -n x
+  - run: kubectl get pods --context nosuch --cluster nosuch
+  - run: kubectl get pods --kubeconfig /nonexistent
+  - run: kubectl get pods -s localhost:2

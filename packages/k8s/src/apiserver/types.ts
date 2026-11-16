@@ -32,6 +32,18 @@ export interface RequestOptions {
   preconditions?: { uid?: string; resourceVersion?: string };
   /** Only `merge` (application/merge-patch+json) in this phase. */
   patchType?: 'merge' | 'json' | 'strategic' | 'apply';
+  /**
+   * get, list, watch: `Accept: application/json;as=Table;v=v1;g=meta.k8s.io`, the response (each
+   * watch event's object) is a meta.k8s.io/v1 Table (endpoints/handlers/response.go asTable).
+   * Other verbs do not take it here.
+   */
+  as?: 'Table';
+  /**
+   * With `as: 'Table'`: what each row's `object` holds, `None`, `Metadata` (a
+   * PartialObjectMetadata, the default) or `Object`; another value is a BadRequest. upstream:
+   * metav1.TableOptions.IncludeObject.
+   */
+  includeObject?: string;
 }
 
 export interface ApiRequest {

@@ -98,6 +98,23 @@ export const KUBERNETES_CHECKOUT: UpstreamCheckout = {
     'vendor/k8s.io/utils/integer',
     // inf.Dec: the layout of resource.Quantity's decimal form, which DeepHashObject prints (05b)
     'vendor/gopkg.in/inf.v0',
+    // NodeUnreachablePodReason ("NodeLost"), which the Pod printer shows (07a)
+    'pkg/util/node',
+    // kubectl's command framework: cobra commands, usage and errors, pflag parsing (07a)
+    'vendor/github.com/spf13/cobra',
+    'vendor/github.com/spf13/pflag',
+    // the tab writer kubectl's table printer aligns with (07a)
+    'vendor/github.com/liggitt/tabwriter',
+    // the word wrapping of kubectl's help on a terminal (term_writer.go, help_flags_printer.go) (07a)
+    'vendor/github.com/mitchellh/go-wordwrap',
+    // kubectl's YAML output and input: sigs.k8s.io/yaml over go.yaml.in/yaml/v2 (07a, 07b)
+    'vendor/sigs.k8s.io/yaml',
+    'vendor/go.yaml.in/yaml/v2',
+    // kubeconfig loading, contexts and the client's connection errors (07a)
+    'staging/src/k8s.io/client-go/tools/clientcmd',
+    'staging/src/k8s.io/client-go/rest',
+    'staging/src/k8s.io/client-go/discovery',
+    'staging/src/k8s.io/client-go/restmapper',
     // admission plugins, RBAC authorizer and bootstrap policy (20a, 20b)
     'plugin/pkg',
     // Pod Security admission checks and messages (20b)
@@ -205,6 +222,8 @@ export const GO_CHECKOUT: UpstreamCheckout = {
     'src/time',
     // syscall.Errno strings on linux (zerrors_linux_amd64.go): ENOENT, EACCES (06b)
     'src/syscall',
+    // strconv.Quote and CanBackquote: the %q and %#q of arguments in cobra's and kubectl's messages (07a)
+    'src/strconv',
   ],
 };
 

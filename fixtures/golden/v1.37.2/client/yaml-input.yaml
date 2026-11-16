@@ -1,0 +1,542 @@
+# Captured from fixtures/golden/cases/client/yaml-input.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: client/yaml-input
+description: How kubectl reads manifests (YAMLOrJSONDecoder, sigs.k8s.io/yaml over yaml.v2 with YAML 1.1 resolution) and the errors it prints for broken ones. `kubectl label --local -f` decodes the file into an unstructured object without a server and prints it again, so what yaml.v2 made of every value shows in the output.
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl label --local -f styles.yaml l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        complex key: value
+        double: "tab\there\nnewline A é \U0001F600 \\ \" end"
+        empty: ""
+        empty literal: ""
+        flow map:
+          a: 1
+          b:
+          - x
+          - true
+          c:
+            d: e
+        flow seq:
+        - a
+        - b
+        - c
+        - 1
+        - true
+        folded: |
+          folded lines
+          paragraph
+            more indented
+          last
+        folded double: |-
+          one two
+          three
+        folded strip: a b
+        indicator: |2
+            two extra spaces
+        keep: |+
+          keeps both
+
+        literal: |
+          line 1
+            indented
+          line 3
+        multiline plain: first continued and more
+        nested:
+        - a
+        - - b
+          - c
+        - k: v
+          k2: v2
+        nothing: null
+        plain: some text
+        quoted key: 1
+        single: it's 'quoted'
+        strip: no newline at the end
+        tilde: null
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: styles
+    stderr: ""
+  - run: kubectl label --local -f styles.yaml l=v -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "data": {
+              "complex key": "value",
+              "double": "tab\there\nnewline A é 😀 \\ \" end",
+              "empty": "",
+              "empty literal": "",
+              "flow map": {
+                  "a": 1,
+                  "b": [
+                      "x",
+                      true
+                  ],
+                  "c": {
+                      "d": "e"
+                  }
+              },
+              "flow seq": [
+                  "a",
+                  "b",
+                  "c",
+                  1,
+                  true
+              ],
+              "folded": "folded lines\nparagraph\n  more indented\nlast\n",
+              "folded double": "one two\nthree",
+              "folded strip": "a b",
+              "indicator": "  two extra spaces\n",
+              "keep": "keeps both\n\n",
+              "literal": "line 1\n  indented\nline 3\n",
+              "multiline plain": "first continued and more",
+              "nested": [
+                  "a",
+                  [
+                      "b",
+                      "c"
+                  ],
+                  {
+                      "k": "v",
+                      "k2": "v2"
+                  }
+              ],
+              "nothing": null,
+              "plain": "some text",
+              "quoted key": 1,
+              "single": "it's 'quoted'",
+              "strip": "no newline at the end",
+              "tilde": null
+          },
+          "kind": "ConfigMap",
+          "metadata": {
+              "labels": {
+                  "l": "v"
+              },
+              "name": "styles"
+          }
+      }
+    stderr: ""
+  - run: kubectl label --local -f resolution.yaml l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        big:
+        - 9007199254740991
+        - -9007199254740991
+        - 9223372036854776000
+        binary: hello world
+        bools:
+        - true
+        - false
+        - true
+        - false
+        - true
+        - false
+        - true
+        - false
+        - true
+        - false
+        - true
+        - oN
+        duplicate:
+          a: second
+        floats:
+        - 1.5
+        - 1000
+        - 0.001
+        - 0.5
+        - -0.5
+        - 0.5
+        - 1
+        - 6.02e+23
+        - 1
+        - 1e400
+        - 0.1
+        - 123456.789
+        - 1e-07
+        int keys:
+          "1": one
+          "1.5": float
+          "10": octal
+          "16": hex
+          "1000": exp
+          "true": bool
+        ints:
+        - 1
+        - -1
+        - 1
+        - 31
+        - 31
+        - 10
+        - 15
+        - 5
+        - -3
+        - 1000
+        - 8
+        - 9.5
+        - 0
+        - 0
+        nulls:
+        - null
+        - null
+        - null
+        - null
+        - nUll
+        strings:
+        - 0x
+        - 1a
+        - 1-2
+        - "12:30"
+        - "190:20:30"
+        - "2024-01-01"
+        - "2024-01-01T10:00:00Z"
+        - "1"
+        - "true"
+        - =
+        tagged:
+        - "123"
+        - "yes"
+        - 42
+        - 1
+        - true
+        - null
+        - value
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: resolution
+    stderr: ""
+  - run: kubectl label --local -f resolution.yaml l=v -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "data": {
+              "big": [
+                  9007199254740991,
+                  -9007199254740991,
+                  9223372036854776000
+              ],
+              "binary": "hello world",
+              "bools": [
+                  true,
+                  false,
+                  true,
+                  false,
+                  true,
+                  false,
+                  true,
+                  false,
+                  true,
+                  false,
+                  true,
+                  "oN"
+              ],
+              "duplicate": {
+                  "a": "second"
+              },
+              "floats": [
+                  1.5,
+                  1000,
+                  0.001,
+                  0.5,
+                  -0.5,
+                  0.5,
+                  1,
+                  6.02e+23,
+                  1,
+                  "1e400",
+                  0.1,
+                  123456.789,
+                  1e-7
+              ],
+              "int keys": {
+                  "1": "one",
+                  "1.5": "float",
+                  "10": "octal",
+                  "1000": "exp",
+                  "16": "hex",
+                  "true": "bool"
+              },
+              "ints": [
+                  1,
+                  -1,
+                  1,
+                  31,
+                  31,
+                  10,
+                  15,
+                  5,
+                  -3,
+                  1000,
+                  8,
+                  9.5,
+                  0,
+                  0
+              ],
+              "nulls": [
+                  null,
+                  null,
+                  null,
+                  null,
+                  "nUll"
+              ],
+              "strings": [
+                  "0x",
+                  "1a",
+                  "1-2",
+                  "12:30",
+                  "190:20:30",
+                  "2024-01-01",
+                  "2024-01-01T10:00:00Z",
+                  "1",
+                  "true",
+                  "="
+              ],
+              "tagged": [
+                  "123",
+                  "yes",
+                  42,
+                  1,
+                  true,
+                  null,
+                  "value"
+              ]
+          },
+          "kind": "ConfigMap",
+          "metadata": {
+              "labels": {
+                  "l": "v"
+              },
+              "name": "resolution"
+          }
+      }
+    stderr: ""
+  - run: kubectl label --local -f anchors.yaml l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        again: shared
+        base:
+          a: 1
+          b: 2
+        copy:
+          app: web
+          tier: front
+        many:
+          a: 1
+          b: 2
+          d: 5
+          e: 6
+        merged:
+          a: 1
+          b: 3
+          c: 4
+        overridden:
+          a: 1
+          b: 2
+        scalar: shared
+      kind: ConfigMap
+      metadata:
+        labels:
+          app: web
+          l: v
+          tier: front
+        name: anchors
+    stderr: ""
+  - run: kubectl label --local -f multi.yaml l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: one
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: two
+    stderr: ""
+  - run: kubectl label --local -f multi.yaml l=v -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "metadata": {
+              "labels": {
+                  "l": "v"
+              },
+              "name": "one"
+          }
+      }
+      {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "metadata": {
+              "labels": {
+                  "l": "v"
+              },
+              "name": "two"
+          }
+      }
+    stderr: ""
+  - run: kubectl label --local -f crlf.yaml l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: x y
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: crlf
+    stderr: ""
+  - run: kubectl label --local -f cm.json l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        esc: "é\U0001F600\n"
+        html: <b>&amp;</b>
+        num: 1.5
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: json
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: json2
+    stderr: ""
+  - run: kubectl label --local -f trailing-comma.json l=v -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: yamlish
+    stderr: ""
+  - run: kubectl label --local -f - l=v -o yaml
+    stdin: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: stdin
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: stdin
+    stderr: ""
+  - run: kubectl label --local -f bad-flow.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-flow.yaml: error converting YAML to JSON: yaml: line 6: did not find expected ',' or ']'
+  - run: kubectl label --local -f bad-indent.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-indent.yaml: error converting YAML to JSON: yaml: line 5: mapping values are not allowed in this context
+  - run: kubectl label --local -f bad-tab.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-tab.yaml: error converting YAML to JSON: yaml: line 4: found character that cannot start any token
+  - run: kubectl label --local -f bad-key.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-key.yaml: error converting YAML to JSON: yaml: line 6: could not find expected ':'
+  - run: kubectl label --local -f bad-quote.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-quote.yaml: error converting YAML to JSON: yaml: line 5: found unexpected end of stream
+  - run: kubectl label --local -f bad-alias.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-alias.yaml: error converting YAML to JSON: yaml: unknown anchor 'nope' referenced
+  - run: kubectl label --local -f bad-merge.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-merge.yaml: error converting YAML to JSON: yaml: map merge requires map or sequence of maps as the value
+  - run: kubectl label --local -f bad-mapkey.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-mapkey.yaml: error converting YAML to JSON: yaml: invalid map key: []interface {}{"a", "b"}
+  - run: kubectl label --local -f bad-nullkey.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-nullkey.yaml: error converting YAML to JSON: unsupported map key of type: %!s(<nil>), key: <nil>, value: "c"
+  - run: kubectl label --local -f bad-nan.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-nan.yaml: error converting YAML to JSON: json: unsupported value: NaN
+  - run: kubectl label --local -f bad-tag.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-tag.yaml: error converting YAML to JSON: yaml: cannot decode !!str `abc` as a !!int
+  - run: kubectl label --local -f bad-separator.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-separator.yaml: invalid Yaml document separator: foo
+  - run: kubectl label --local -f bad-second.yaml l=v -o yaml
+    exit: 1
+    stdout: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          l: v
+        name: first
+    stderr: |
+      error: error parsing bad-second.yaml: error converting YAML to JSON: yaml: line 2: did not find expected ',' or ']'
+  - run: kubectl label --local -f bad-json.json l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-json.json: json: offset 42: invalid character '"' after object key:value pair
+  - run: kubectl label --local -f bad-control.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-control.yaml: error converting YAML to JSON: yaml: control characters are not allowed
+  - run: kubectl label --local -f bad-recursive.yaml l=v -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad-recursive.yaml: error converting YAML to JSON: yaml: anchor 'd' value contains itself

@@ -19,3 +19,47 @@ export { isSchedulerRunning, startScheduler, stopScheduler } from './scheduler/s
 export { isKubeletRunning, startKubelet, stopKubelet, type KubeletNode } from './kubelet/kubelet.ts';
 export { runtimeOf } from './runtime/runtime.ts';
 export type { NodeRuntime, RuntimeContainer, Sandbox, RuntimeImage } from './runtime/types.ts';
+export { manifest, manifestCommand, type Manifest, type ManifestCommand, type ManifestFlag, type ManifestHelp } from './kubectl/manifest.ts';
+export { helpCommand, helpFlag, helpRun, helpText, optionsCommand, renderHelp, renderUsage, type HelpResult, type Terminal } from './kubectl/help/index.ts';
+export { convertToTable, applyIncludeObject, type TableSource } from './printers/tablegenerator.ts';
+export { humanDuration, shortHumanDuration, translateTimestampSince } from './printers/duration.ts';
+export { TABLE_PROVENANCE } from './printers/provenance.ts';
+export type { IncludeObjectPolicy, Table, TableColumnDefinition, TableRow, TableRowCondition } from './printers/types.ts';
+export {
+  DESCRIBE_TABWRITER,
+  GET_TABWRITER,
+  newTabWriter,
+  render,
+  setRememberedWidths,
+  tabFlush,
+  tabWrite,
+  type Cells,
+  type TabWriterParams,
+  type TabWriterState,
+} from './kubectl/printers/tabwriter.ts';
+export {
+  createTablePrinter,
+  newHumanReadablePrinter,
+  printObj,
+  restoreTablePrinter,
+  type GroupKind,
+  type HumanReadablePrinterState,
+  type PrintExtra,
+  type PrintOptions,
+  type TablePrinter,
+  type TablePrinterState,
+} from './kubectl/printers/tableprinter.ts';
+export { createObjects } from './testing/objects.ts';
+export {
+  decodeManifestStream,
+  marshalIndentJson,
+  marshalYaml,
+  printJson,
+  splitYamlDocuments,
+  unmarshalYaml,
+  yamlToJson,
+  YAML_JSON_PROVENANCE,
+  YamlMarshalError,
+  type StreamResult,
+  type YamlResult,
+} from './apimachinery/yaml/index.ts';

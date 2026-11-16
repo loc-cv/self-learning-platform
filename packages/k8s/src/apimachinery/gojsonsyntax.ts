@@ -28,8 +28,34 @@ const PARSE_OBJECT_KEY = 0;
 const PARSE_OBJECT_VALUE = 1;
 const PARSE_ARRAY_VALUE = 2;
 
+/** The UTF-8 bytes of a string (a lone surrogate as U+FFFD, as a Go string would hold it). */
+function utf8Bytes(s: string): number[] {
+  const out: number[] = [];
+  for (const ch of s) {
+    let c = ch.codePointAt(0) as number;
+    if (c >= 0xd800 && c <= 0xdfff) c = 0xfffd;
+    if (c < 0x80) out.push(c);
+    else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f));
+    else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f));
+    else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 0x3f), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f));
+  }
+  return out;
+}
+
 /** The syntax error of checkValid, or undefined when the bytes are valid JSON. */
 export function goJsonSyntaxError(data: string): string | undefined {
+  const r = goJsonScan(data);
+  return r?.error;
+}
+
+/**
+ * checkValid's scan with the position: a syntax error and its offset (the bytes read, the
+ * offending one included, as SyntaxError.Offset counts them), or undefined when the input is one
+ * valid value. `eof` marks an input that ends inside the value: checkValid's eof() then reports
+ * "unexpected end of JSON input", or the error of the space it steps (`{"a":tru` gives "invalid
+ * character ' ' in literal true (expecting 'e')"); a json.Decoder reports io.ErrUnexpectedEOF.
+ */
+export function goJsonScan(data: string): { error: string; offset: number; eof?: true } | undefined {
   const parse: number[] = [];
   let err: string | undefined;
   let endTop = false;
@@ -264,15 +290,17 @@ export function goJsonSyntaxError(data: string): string | undefined {
   };
 
   step = stateBeginValue;
-  for (let i = 0; i < data.length; i++) {
-    if (step(data.charCodeAt(i) & 0xff) === 'error') return err;
+  // The scanner reads bytes: a non-ASCII character is its UTF-8 bytes (an error names the first).
+  const bytes = utf8Bytes(data);
+  for (let i = 0; i < bytes.length; i++) {
+    // stateEndTop records its error and still returns 'end'.
+    if (step(bytes[i] as number) === 'error' || err !== undefined) return { error: err as string, offset: i + 1 };
   }
   // eof()
-  if (err !== undefined) return err;
   if (endTop) return undefined;
   step(0x20);
-  if (endTop) return err;
-  return err ?? 'unexpected end of JSON input';
+  if (endTop) return undefined;
+  return { error: err ?? 'unexpected end of JSON input', offset: bytes.length, eof: true };
 }
 
 /** The error of json.Unmarshal(data, &map[string]interface{}{}), or undefined. */

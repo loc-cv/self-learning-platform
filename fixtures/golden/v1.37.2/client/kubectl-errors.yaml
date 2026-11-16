@@ -1,0 +1,173 @@
+# Captured from fixtures/golden/cases/client/kubectl-errors.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: client/kubectl-errors
+description: kubectl's command and flag errors, kubeconfig resolution errors and a refused connection, with a kubeconfig whose server nothing listens on (localhost:1) and no API server.
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl gte pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown command "gte" for "kubectl"
+
+      Did you mean this?
+      	get
+  - run: kubectl creat
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown command "creat" for "kubectl"
+
+      Did you mean this?
+      	create
+  - run: kubectl nosuch get
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown command "nosuch" for "kubectl"
+  - run: kubectl get pods --nosuch
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown flag: --nosuch
+      See 'kubectl get --help' for usage.
+  - run: kubectl get --nosuch pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown flag: --nosuch
+      See 'kubectl get --help' for usage.
+  - run: kubectl get pods -Z
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unknown shorthand flag: 'Z' in -Z
+      See 'kubectl get --help' for usage.
+  - run: kubectl get pods -n
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: flag needs an argument: 'n' in -n
+      See 'kubectl get --help' for usage.
+  - run: kubectl get pods --namespace
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: flag needs an argument: --namespace
+      See 'kubectl get --help' for usage.
+  - run: kubectl get pods --watch=maybe
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid argument "maybe" for "-w, --watch" flag: strconv.ParseBool: parsing "maybe": invalid syntax
+      See 'kubectl get --help' for usage.
+  - run: kubectl get pods -Aw=x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid argument "x" for "-w, --watch" flag: strconv.ParseBool: parsing "x": invalid syntax
+      See 'kubectl get --help' for usage.
+  - run: kubectl get pods --chunk-size=abc
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid argument "abc" for "--chunk-size" flag: strconv.ParseInt: parsing "abc": invalid syntax
+      See 'kubectl get --help' for usage.
+  - run: kubectl get
+    exit: 1
+    stdout: ""
+    stderr: |
+      You must specify the type of resource to get. Use "kubectl api-resources" for a complete list of supported resources.
+
+      error: Required resource not specified.
+      Use "kubectl explain <resource>" for a detailed description of that resource (e.g. kubectl explain pods).
+      See 'kubectl get -h' for help and examples
+  - run: kubectl get pods/x pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: there is no need to specify a resource type as a separate argument when passing arguments in resource/name form (e.g. 'kubectl get resource/<resource_name>' instead of 'kubectl get resource resource/<resource_name>'
+  - run: kubectl get pods/x/y
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: arguments in resource/name form may not have more than one slash
+  - run: kubectl get pods --show-labels -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --show-labels option cannot be used with yaml printer
+  - run: kubectl get pods --output-watch-events
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --output-watch-events option can only be used with --watch or --watch-only
+  - run: kubectl get pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:1/api?timeout=32s\": dial tcp [::1]:1: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:1/api?timeout=32s\": dial tcp [::1]:1: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:1/api?timeout=32s\": dial tcp [::1]:1: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:1/api?timeout=32s\": dial tcp [::1]:1: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:1/api?timeout=32s\": dial tcp [::1]:1: connect: connection refused"
+      The connection to the server localhost:1 was refused - did you specify the right host or port?
+  - run: kubectl get pods --context nosuch
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error in configuration: context was not found for specified context: nosuch
+  - run: kubectl get pods --context broken
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      The connection to the server localhost:8080 was refused - did you specify the right host or port?
+  - run: kubectl get pods --cluster nosuch
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no server found for cluster "nosuch"
+  - run: kubectl get pods --user nosuch
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: auth info "nosuch" does not exist
+  - run: kubectl get pods --cluster nosuch -n x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cluster "nosuch" does not exist
+  - run: kubectl get pods --context nosuch -n x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: context "nosuch" does not exist
+  - run: kubectl get pods --context nosuch --cluster nosuch
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error in configuration: 
+      * context was not found for specified context: nosuch
+      * no server found for cluster "nosuch"
+  - run: kubectl get pods --kubeconfig /nonexistent
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: stat /nonexistent: no such file or directory
+  - run: kubectl get pods -s localhost:2
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:2/api?timeout=32s\": dial tcp [::1]:2: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:2/api?timeout=32s\": dial tcp [::1]:2: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:2/api?timeout=32s\": dial tcp [::1]:2: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:2/api?timeout=32s\": dial tcp [::1]:2: connect: connection refused"
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:2/api?timeout=32s\": dial tcp [::1]:2: connect: connection refused"
+      The connection to the server localhost:2 was refused - did you specify the right host or port?

@@ -79,6 +79,17 @@ export interface WatchSubscription {
   /** Who reads it, for cleanup when the owner goes away. */
   owner: Json;
   pending: WatchEvent[];
+  /**
+   * Opened with as=Table: each event's object is sent as a one-row Table. Column definitions go
+   * with the first event only (`noHeaders` is set once it is encoded). upstream:
+   * apiserver/pkg/endpoints/handlers/response.go watchEmbeddedEncoder.doEncode.
+   */
+  table?: WatchTableOptions;
+}
+
+export interface WatchTableOptions {
+  includeObject?: string;
+  noHeaders: boolean;
 }
 
 export interface K8sSlice {

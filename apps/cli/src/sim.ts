@@ -19,12 +19,14 @@ const USAGE = `usage: npm run sim -- --topology NAME [--seed N] (-c COMMANDS | F
   --transcript         run a plain session and print transcript format (docs/TRANSCRIPTS.md)
   --machine M, --user U  where the terminal opens (default: the topology's entry)
   --hash               print the world hash at the end
+  --objects FILE       create the manifest's objects through the API server first, then let 30s
+                       pass (a stand-in until kubectl create; repeatable)
 Directives in scripts: @advance 30s, @keys \\x03, @resize 100x30, @editor <<EOF ... EOF
 Topologies: ${topologyNames().join(', ')}
 `;
 
 function main(argv: string[]): number {
-  const a = parseArgs(argv, ['topology', 'seed', 'command', 'step', 'timeout', 'cols', 'rows', 'machine', 'user'], ['raw', 'transcript', 'hash', 'help']);
+  const a = parseArgs(argv, ['topology', 'seed', 'command', 'step', 'timeout', 'cols', 'rows', 'machine', 'user', 'objects'], ['raw', 'transcript', 'hash', 'help']);
   if (a.flags.has('help')) {
     process.stdout.write(USAGE);
     return 0;
@@ -50,6 +52,8 @@ function main(argv: string[]): number {
   const user = a.values.get('user');
   if (machine !== undefined) opts.machine = machine;
   if (user !== undefined) opts.user = user;
+  const objects = a.values.get('objects');
+  if (objects !== undefined) opts.objects = [{ text: readFileSync(objects, 'utf8'), where: objects }];
   const lines = text.split('\n');
   if (lines[lines.length - 1] === '') lines.pop();
   const r = runScript(lines, opts);

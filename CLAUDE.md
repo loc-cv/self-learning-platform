@@ -29,6 +29,7 @@ npx vitest run <file> -t "<name>"   # one test
 npm run upstream:fetch        # fetch pinned upstream sources (Kubernetes, containerd, runc, Go) into .upstream/
 npm run bench:fork            # time fork, hash, snapshot and restore of a three-machine world
 npm run bench:schema          # size and load time of the vendored API schema and resource registry
+npm run bench:kubectl         # wall-clock latency of kubectl get (p50/p95) on the default topology
 npm run api:vendor [-- --check]   # regenerate the vendored schema (OpenAPI v3 + Go types) and registry (discovery fixture)
 npm run transcript:capture -- <file|dir>  # write real bash/coreutils output into golden-verified transcripts
 npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
@@ -40,19 +41,23 @@ npm run play -- --replay <file>                   # replay a recording; checks i
 npm run sim -- --topology kubeadm-1cp-2w -c 'cmd1\ncmd2'  # run commands without a human and print the screen (how you
                                                   # verify behavior); also a script file or -, --transcript, --raw,
                                                   # --step 1s; directives @advance 30s, @keys \x03, @resize CxR,
-                                                  # @editor <<EOF … EOF (see apps/cli/src/script.ts, --help)
+                                                  # @editor <<EOF … EOF (see apps/cli/src/script.ts, --help);
+                                                  # --objects FILE creates a manifest's objects first
+                                                  # (until kubectl create, phase 07b)
 npm run lab -- <item-id> [--seed N]               # (phase 09) play a content item in this terminal
 npm run content:check         # (phase 09) validate every content item (schema, unsolved fails, solutions pass)
 npm run content:i18n          # (phase 11) report missing or outdated Vietnamese text (never a gate)
 npm run oracle -- up|status|fetch        # throwaway real control plane (v1.37.2 binaries + KWOK), no Docker;
 npm run oracle -- down|env [<dir>]       # several can run: each up prints its directory, which down and env take
 npm run golden:capture -- [--check] [<case|dir>]  # run golden cases against fresh oracles, write fixtures
-npm run golden:kubectl-manifest   # every kubectl command and flag of the pin, from the real binary
+npm run golden:kubectl-manifest [-- --check|--vendor]  # every kubectl command, flag and help text of the pin,
+                                  # from the real binary; also writes the engine's copy (kubectl/data/)
+npm run golden:diff           # differential runner: golden cases replayed in the simulator, per-step report
 npm run kubeadm:capture [-- --check]   # what the real kubeadm init writes and creates (dry run, unprivileged),
                                       # into fixtures/reference/kubeadm/ and packages/k8s/src/topology/kubeadm/reference.ts
 npm run images:capture [-- --check]    # what Docker Hub and registry.k8s.io answer for the listed images (digests, configs,
                                       # files, errors), into fixtures/reference/images/ and packages/k8s/src/runtime/images/catalog.data.ts
-npm run fidelity:report       # (phase 07a) provenance of every output unit
+npm run fidelity:report       # provenance of every output unit (docs/FIDELITY.md §3)
 ```
 
 Packages export TypeScript source and there is no build step: relative imports end in `.ts`, and
@@ -73,6 +78,11 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
                    topologies (ClusterDef data, builder, kubeadm files and objects), src/kubelet the
                    kubelet (pod workers, status, node heartbeat), src/runtime the container runtime
                    (sandboxes, containers, CRI logs) and src/runtime/images the captured image catalog,
+                   src/kubectl kubectl (cli/ cobra and pflag ports, client/ kubeconfig, transport and
+                   REST mapper, resource/ the builder, cmd/ one module per verb, help/, printers/ the
+                   table printer and tab writer, data/ the vendored command manifest),
+                   src/printers the API server's Table printers, src/apimachinery/yaml go-yaml and
+                   sigs.k8s.io/yaml (kubectl's YAML/JSON output and manifest parsing),
                    src/testing helpers for tests only: the fake kubelet, workload requests)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
 packages/content   content packs (YAML + Markdown), topology templates

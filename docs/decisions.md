@@ -645,3 +645,63 @@ create and start, sandbox stop — uniform draws, each step from its own stream
 `k8s.kubelet.latency.<step>`. They are the simulator's figures for a small cloud VM, not
 measurements; upstream's own constants (relist, back-offs, resyncs, grace periods) are not in the
 table.
+
+**D-066 — A category lists only types the simulator stores.** `kubectl get all` expands to every
+member of the `all` category, as discovery announces it (cronjobs, jobs, statefulsets, HPAs…).
+The API server answers `notSimulated` for a resource it does not store; a visit that came only
+from a category treats that as an empty list, because no object of such a type can exist in the
+simulator, so the printed result is the real one. A type named explicitly (`kubectl get
+cronjobs`) prints the `[sim]` notice, since the learner asked about something not simulated.
+
+**D-067 — kubectl is one dispatcher over the real command manifest.** The command tree, aliases,
+flags and help come from the real binary (`kubectl/data/`, `npm run golden:kubectl-manifest`).
+cobra's Find and pflag's parser run over it, so unknown commands and flags fail with kubectl's
+errors before anything else, and the simulator's gaps are exactly the manifest's commands without
+a `Verb` and the flags a verb does not declare, each a `[sim]` notice. Flags with no observable
+effect in a simulated world are accepted only from a list that gives each one's reason.
+
+**D-068 — The connection is resolved by address, the server listens on its machine.** Until the
+network model (phase 17), a client resolves its server URL's host to a machine by
+`Machine.addresses` (written by the topology from `ClusterDef` node IPs; loopback is the local
+machine), and an API server in `k8sSlice.apiServers` listens on every address of the machine its
+advertise address belongs to (kube-apiserver binds 0.0.0.0) at its secure port. A known machine
+with nothing on the port refuses, which is what a learner sees when the API server is down; a
+host that no machine has, a machine that is off and plain HTTP to the TLS port are notices rather
+than invented timeouts. `localhost` dials as `[::1]`, as the workstation's capture shows
+(docs/FIDELITY.md §6.9).
+
+**D-069 — kubeconfig credentials are not read yet.** kubeadm's kubeconfigs have no certificate
+data (D-057) and the API server authenticates nobody (phase 20a), so a user entry stands for the
+certificate it would hold and every request is admitted. A real kubectl given such an empty user
+on https would prompt for a username and password; the simulated one does not. Phases 20a and
+25b replace this with real identities from the certificates.
+
+**D-070 — Help is rendered from the manifest, proved against the binary.** Storing every
+command's raw help would add about 260 KB to the engine. The manifest keeps only what the other
+fields cannot give (description, examples, the root's groups); Options, Usage, Aliases, command
+lists and hints are rendered with ported templates, wrapped on a terminal with a port of
+go-wordwrap as kubectl's term writer does it (per template write; flag usages at the stdout limit
+minus 10; nothing below 80 columns). `npm run golden:kubectl-manifest` compares the rendering of all
+111 commands with the binary, piped and at four widths; the gate compares the captured help
+fixtures. `help` and `options` are manifest commands marked `unlisted`. The "Subcommands provided
+by plugins:" group is always empty: plugins on a machine's PATH are not modeled.
+
+**D-071 — Tables are made by the API server.** As in the real system, `kubectl get` asks for
+`as=Table` and the API server converts with the ported printers (`packages/k8s/src/printers/`,
+pkg/printers/internalversion), reading the stored object rather than Go's internal type
+(events.k8s.io Events print through the core Event printer, as their shared storage does upstream).
+`as` and `includeObject` are honored on get, list and watch only; a watch sends column
+definitions with its first event only. kubectl's human-readable printer and liggitt's tab writer
+(`packages/k8s/src/kubectl/printers/`) keep their state as plain data, so a watch's remembered
+widths and header state could live in a process record. Column descriptions are copied verbatim
+from the swagger docs at the pin.
+
+**D-072 — The differential runner replays every case and shims the verbs not built yet.** Each
+golden case runs in an oracle-like simulated world (kube-system workloads removed). Steps the
+simulated kubectl implements are compared after capture's normalization; state-changing steps
+of other verbs go through a shim that sends what real kubectl sends, so later comparisons see the
+same cluster. KWOK-authored and admission-plugin fields are masked on both sides rather than
+listed as differences, numbered tokens are renumbered per step (a skipped step must not shift
+later numbering; consistency across steps is no longer checked), and every accepted difference
+is a KNOWN entry with its cause that fails the test once it passes. The shim shrinks as phases
+07b, 08 and 15 build the verbs.

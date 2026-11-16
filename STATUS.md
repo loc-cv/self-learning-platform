@@ -22,7 +22,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 05b `prompts/05b-k8s-controllers.md`
 - [x] 06a `prompts/06a-topology-and-scheduler.md`
 - [x] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
-- [ ] 07a `prompts/07a-kubectl-framework-and-get.md`
+- [x] 07a `prompts/07a-kubectl-framework-and-get.md`
 - [ ] 07b `prompts/07b-kubectl-describe-apply-delete.md`
 - [ ] 08 `prompts/08-kubectl-2.md`
 - [ ] 09 `prompts/09-scenarios-and-first-labs.md`
@@ -163,14 +163,32 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   lower-priority Pod, which cannot exist yet, would record a gap); PodTopologySpread and
   InterPodAffinity are neither filtered nor scored (phase 20b, DIV-020).
 - **No root-ca-certificate-publisher**: namespaces get no `kube-root-ca.crt` ConfigMap (the golden
-  `controllers/namespace-deletion` shows it). Phase 20a (service account credentials), or 16a if
-  projected volumes need it first.
+  `controllers/namespace-deletion` shows it, and `kubectl get configmaps` lists it in every real
+  namespace; `tools/src/golden/tables.test.ts` creates a stand-in). Phase 20a (service account
+  credentials), or 16a if projected volumes need it first.
 - **No `deletecollection` verb and no strategic merge patch in the pipeline.** The namespace
   deleter uses upstream's list-and-delete fallback (D-050); controllers send JSON merge patches
   with the same result (D-052). Phase 07b (kubectl apply/patch send strategic merge patches) adds
   strategic merge; deletecollection comes with the first client that sends it.
-- **The client calls the pipeline directly** (`packages/k8s/src/client/client.ts`): no kubeconfig,
-  credentials or network. Phase 07a adds the transport and connection errors.
+- **Controllers, the scheduler and kubelets call the pipeline directly**
+  (`packages/k8s/src/client/client.ts`): no kubeconfig, credentials or network. kubectl goes
+  through `kubectl/client/transport.ts` since 07a. Phase 27 (the API server as a process that can
+  be down) routes the components' clients through the transport too.
+- **Addresses are a list on the machine** (`Machine.addresses`, written by the topology from the
+  `ClusterDef` IPs; D-068): clients resolve a server's host by it, an API server listens on all of
+  its machine's addresses. Phase 17's network model (interfaces, listeners, DNS, `/etc/hosts`)
+  replaces it; host names other than localhost print a notice until then.
+- **kubeconfig credentials are ignored** (D-069): a user entry stands for the certificate it would
+  hold, so kubectl never prompts for basic auth as the real one does for an https server with an
+  empty user. Phases 20a (authentication) and 25b (certificate data) remove it.
+- **Objects for transcripts and `npm run sim -- --objects` are created through the API server**
+  (`packages/k8s/src/testing/objects.ts`, the `# objects:` transcript header, the sim option),
+  as `kubectl create -f` would send them. Phase 07b turns them into `kubectl create`/`apply` setup
+  lines and removes the option and the header.
+- **The differential runner shims the kubectl verbs that are not simulated yet**
+  (`tools/src/golden/kubectl/shim.ts`): setup and state-changing steps of golden cases are sent as
+  the requests real kubectl sends. Each phase that builds a verb (07b, 08, 15) deletes its shim
+  entries so the runner uses the simulated kubectl.
 - **The scale subresource is read-only** (D-045): writes are a gap. The phase that builds
   `kubectl scale` (08) implements them.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
@@ -203,6 +221,18 @@ Unfinished work from a phase, precise enough for the next session to continue.
   from `pkg/apis/core/types.go` with `tools/src/openapi/gotypes.ts` and port go-difflib's unified
   diff into `apis/core/validation/podspecdiff.ts`. Owner: R3 if learners report it.
 
+- **Phase 07a, provenance of the host's programs.** The registry exists (`provenance`
+  contributions, `npm run fidelity:report`), and every kubectl, printer, YAML/JSON and help unit is
+  registered (45 units). The host's programs and shell (coreutils, grep, bash, the line editor,
+  the `[sim]` notice itself) register nothing yet. Add `HOST_PROVENANCE` next to them, tagged
+  `golden-verified` where a golden-verified transcript covers the program, and a test like
+  `packages/k8s/src/provenance.test.ts` that every registered program has a unit. Owner: the next
+  phase that touches host programs (22a), or R3.
+- **Phase 07a, a YAML print failure during `get -w`.** `printGeneric` turns a YamlMarshalError
+  into kubectl's `error: …`; the watch path does not catch it yet (real kubectl prints
+  `unable to output the provided object: …` for the first object and returns the error for
+  events). Only reachable with control characters in a watched object. Owner: 08 or R3.
+
 - **Phase 02, program names in messages (DIV-011).** GNU tools print their `argv[0]` as typed.
   `programs/lib/io.ts` (`parseArgs`, `warn`, `usageError`), `lib/argmatch.ts` and about 25 programs
   that write `${p.name}:` use the base name instead, and the captured `--help` texts hard-code
@@ -215,6 +245,65 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 07a done.** kubectl I: framework, get, output formats, differential tests.
+  - Built: `packages/k8s/src/kubectl/` — the program `kubectl` (`kubectl.ts`) with cobra's Find
+    and pflag's parser over the real command manifest (`cli/command.ts`, `cli/flagset.ts`,
+    `cli/goduration.ts`), CheckErr's error texts (`cli/errors.ts`), kubeconfig loading and
+    clientcmd's resolution (`client/kubeconfig.ts`), the transport by address with the real refused
+    connection (`client/transport.ts`, `client/session.ts`), the REST mapper and category expander
+    (`client/restmapper.ts`), the resource builder (`resource/builder.ts`), `get` (`cmd/get.ts`:
+    tables, wide, yaml, json, name, `-A`, `-n`, `-l`, `--field-selector`, `--show-labels`, `-L`,
+    `--no-headers`, `--show-kind`, `--ignore-not-found`, `-w`), help (`help/`, `cmd/help.ts`), the
+    table printer and tab writer (`printers/`), provenance (`provenance.ts`). The API server makes
+    Tables (`packages/k8s/src/printers/`, `as: 'Table'` on get, list and watch). go-yaml v2 and
+    sigs.k8s.io/yaml (`packages/k8s/src/apimachinery/yaml/`: encoder, emitter, scanner, parser,
+    decoder, manifest streams, Go JSON printer). Kernel: `PROVENANCE`, `ProvenanceSpec`,
+    `validateProvenance`. Host: `Machine.addresses`. Tools: the differential runner
+    (`tools/src/golden/kubectl/`, `npm run golden:diff`), `npm run fidelity:report`,
+    `npm run bench:kubectl`, `golden:kubectl-manifest` now carries help and vendors the manifest
+    (`--vendor`). Golden cases added: `client/kubectl-errors`, `client/help-more`,
+    `client/yaml-output`, `client/yaml-input`, `configmaps/list-output`. `npm run sim -- --objects`.
+  - Exit criteria. Differential runner over every case: 197 steps compared, 192 pass, 5 KNOWN with
+    causes (kube-root-ca.crt missing ×3, DIV-015, a KWOK limit), none failing, PENDING empty; the
+    cases it cannot run yet are listed in the report (FIDELITY §6.8). Transcripts
+    (`packages/k8s/transcripts/kubectl/get/`): every printer plain and wide, yaml/json/name, Lists,
+    mixed types, type/name pairs, `all`, selectors, `-A`, empty results, not-found, unknown types,
+    unknown flags, real-but-unsimulated flags, formats, types and commands, refused connections and
+    kubeconfig errors. `get -w` streams in virtual time and Ctrl-C ends it with status 1
+    (`kubectl/cmd/get.watch.test.ts`). Latency p95 3.2 ms (ARCHITECTURE §4.9). Script mode showed a
+    running three-replica Deployment as table, wide and YAML (`npm run sim -- --objects web.yaml`).
+    Help of all 111 commands equals the binary's, piped and at four widths
+    (`golden:kubectl-manifest -- --check`).
+  - Decisions D-066 (categories skip unstored types), D-067 (dispatcher over the manifest, no-effect
+    lists), D-068 (connection by address), D-069 (credentials ignored), D-070 (help rendered and
+    proved), D-071 (Tables in the API server), D-072 (differential runner). Divergences DIV-031…033.
+    `docs/ARCHITECTURE.md` §4.9 (new), `docs/FIDELITY.md` §6.7, §6.8 (new; Known limits is §6.9).
+  - Fixed on the way: `apimachinery/gojsonsyntax.ts` read characters as single bytes (U+0122 looked
+    like `"`), so quoted characters and offsets were wrong for non-ASCII JSON; it scans UTF-8 now.
+    The upstream checkout gained cobra, pflag, liggitt/tabwriter, go-wordwrap, go-yaml v2,
+    sigs.k8s.io/yaml, client-go clientcmd/rest/discovery/restmapper, Go's strconv and
+    `pkg/util/node` (which confirmed the printer's `NodeLost`).
+  - Surprises. kubectl reports an unknown type as `error: the server doesn't have…` (builder.go
+    wraps it; checkErr's own NoResourceMatch branch is never reached). A NotFound outside `default`
+    makes kubectl GET the namespace and report that instead. A list's BadRequest is rewritten to
+    `Unable to find "/v1, Resource=pods" that match label selector …`. `--help` is undefined while
+    cobra finds the command, so `kubectl --help get` prints kubectl's help. `kubectl rollout` prints
+    help and exits 1, `kubectl config` prints it on stderr. Help prints `[]` for StringSlice and
+    StringArray alike, so flags the simulator does not define are read as StringArray. The
+    empty-user kubeconfig makes real kubectl prompt for a password on https (D-069). `get endpoints`
+    prints the Endpoints deprecation warning. Go's toolchain updates its local telemetry counters
+    in `~/.config/go/telemetry/local` on every run (the YAML agent compiled the vendored Go code
+    against fuzzed inputs, with the build cache in the scratchpad); nothing else outside the repo.
+  - For later phases. 07b: `kubectl create`/`apply` replace the `# objects:` header, the sim
+    option and the runner's shim entries; `decodeManifestStream` and `unmarshalYaml` give `-f`'s
+    parsing and errors; `printJson` without `sortKeys` gives typed generator output; warnings
+    print through `session.ts`. 08: `logs`, `rollout`, `explain`, imperative verbs; delete their shim
+    entries. 15: jsonpath, custom-columns, `--sort-by` (send `includeObject=Object`), `-o kyaml`.
+    17: replace `Machine.addresses` with interfaces and DNS. 20a/25b: credentials. 27: route the
+    components' clients through the transport.
+  - Workflow: four agents (YAML/JSON, server and client tables, help, differential runner) worked
+    in parallel on the framework written first.
 
 - 2026-11-16 — **Phase 06b done.** Kubelet, container runtime, behavior models.
   - Built: `packages/k8s/src/kubelet/` — the kubelet as a controller-runtime instance per node

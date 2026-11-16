@@ -12,6 +12,7 @@
 // Output is the terminal's screen with its scrollback (`screen`), the bytes the terminal received
 // (`raw`), or transcript format (`transcript`: a plain session, see docs/TRANSCRIPTS.md).
 
+import { createObjects } from '@simlab/k8s';
 import { HOUR, type GapEvent } from '@simlab/kernel';
 import { captureOutput, createScreen, formatOutput, openSession, type Session } from '@simlab/host';
 import { boot, header, UsageError } from './world.ts';
@@ -29,6 +30,12 @@ export interface ScriptOptions {
   mode: 'screen' | 'raw' | 'transcript';
   machine?: string;
   user?: string;
+  /**
+   * Manifests created through the API server before the session, as `kubectl create -f` would
+   * send them, then `settle` of virtual time. A stand-in until phase 07b's kubectl create.
+   */
+  objects?: { text: string; where: string }[];
+  settle?: number;
 }
 
 export interface ScriptResult {
@@ -56,6 +63,10 @@ export function runScript(lines: readonly string[], opts: ScriptOptions): Script
   const cap = captureOutput();
   const gaps: GapEvent[] = [];
   const { kernel, info } = boot(header(opts.topology, opts.seed), { ...cap.ports, gap: (g) => gaps.push(g) });
+  if (opts.objects && opts.objects.length > 0) {
+    for (const o of opts.objects) kernel.act('objects', (ctx) => createObjects(ctx, o.text, o.where));
+    kernel.advance(opts.settle ?? 30_000);
+  }
   const s: Session = openSession(kernel, cap, {
     machine: opts.machine ?? info.entry.machine,
     user: opts.user ?? info.entry.user,

@@ -1,0 +1,39 @@
+description: >-
+  -o yaml and -o json for several objects (the List wrapper kubectl get builds, empty lists,
+  --show-managed-fields) and for a manifest stream given to create.
+files:
+  two.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: one
+      labels: {app: list}
+    data: {a: "yes", b: on}
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: two
+      labels: {app: list}
+  bad.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: three
+    ---
+    kind: [ConfigMap
+setup:
+  - do: kubectl create configmap a --from-literal=x=1
+  - do: kubectl create configmap b --from-literal=y=2
+  - do: kubectl label configmap a b app=list
+steps:
+  - run: kubectl get configmap a b -o yaml
+  - run: kubectl get configmap a b -o json
+  - run: kubectl get configmap -l app=list -o yaml
+  - run: kubectl get configmap -l app=none -o yaml
+  - run: kubectl get configmap -l app=none -o json
+  - run: kubectl get configmap a -o yaml --show-managed-fields
+  - run: kubectl create -f two.yaml --dry-run=client -o yaml
+  - run: kubectl create -f two.yaml --dry-run=client -o json
+  - run: kubectl create -f two.yaml -o yaml
+  - run: kubectl create -f bad.yaml --dry-run=client -o yaml

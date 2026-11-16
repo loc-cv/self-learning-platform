@@ -43,7 +43,7 @@ export function apiServerConfig(def: ClusterDef): ApiServerConfig {
 /** Builds `def` into the world and returns where the terminal opens. */
 export function buildCluster(ctx: Ctx, def: ClusterDef): TopologyInfo {
   for (const n of def.nodes) {
-    createMachine(ctx, { id: n.name, hostname: n.name, kind: 'node' });
+    createMachine(ctx, { id: n.name, hostname: n.name, kind: 'node', addresses: [n.ip] });
     buildUbuntuBase(ctx, n.name, { user: { name: NODE_USER } });
   }
   const server = apiServerConfig(def);

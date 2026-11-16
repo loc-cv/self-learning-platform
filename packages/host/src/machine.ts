@@ -19,6 +19,11 @@ export interface Machine {
   /** Open file descriptions by id: what a file descriptor of kind `file` points at. */
   files: Table<OpenFile>;
   boot: { bootedAt: Millis; state: 'running' | 'off' };
+  /**
+   * IPv4 addresses of the machine's interface, besides loopback. A stand-in until phase 17
+   * models interfaces and listeners: clients use it to tell which machine an address reaches.
+   */
+  addresses?: string[];
 }
 
 export interface HostSlice {
@@ -49,7 +54,7 @@ export function nextInode(ctx: Ctx, machineId: string): string {
 /** Creates a machine with an empty root directory (mode 0755, owned by root). */
 export function createMachine(
   ctx: Ctx,
-  spec: { id: string; hostname: string; kind: Machine['kind'] },
+  spec: { id: string; hostname: string; kind: Machine['kind']; addresses?: string[] },
 ): Machine {
   const slice = hostSlice(ctx);
   if (slice.machines[spec.id]) throw new Error(`machine ${spec.id} already exists`);
@@ -76,6 +81,7 @@ export function createMachine(
     procs: {},
     files: {},
     boot: { bootedAt: ctx.now, state: 'running' },
+    ...(spec.addresses ? { addresses: [...spec.addresses] } : {}),
   };
   slice.machines[spec.id] = machine;
   return machine;

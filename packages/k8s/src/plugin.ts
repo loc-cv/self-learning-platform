@@ -2,7 +2,10 @@
 // their event recorders, the events.k8s.io broadcasters), the controller runtime's and the
 // broadcasters' handlers, and the controllers.
 
-import { put, TOPOLOGY, type Contribution, type Plugin, type SliceSpec } from '@simlab/kernel';
+import { PROVENANCE, put, TOPOLOGY, type Contribution, type Plugin, type SliceSpec } from '@simlab/kernel';
+import { PROGRAM } from '@simlab/host';
+import { kubectlProgram } from './kubectl/kubectl.ts';
+import { K8S_PROVENANCE } from './provenance.ts';
 import { K8S, type K8sSlice } from './apiserver/store.ts';
 import { CONTROLLERS } from './controllers/catalog.ts';
 import { eventsHandlers } from './controllers/events.ts';
@@ -49,5 +52,5 @@ export const k8sPlugin: Plugin = {
   requires: ['host'],
   slice: k8sSliceSpec as SliceSpec<unknown>,
   handlers: [...controllerHandlers, ...eventsHandlers, ...runtimeHandlers, ...nodeHandlers, ...healthHandlers],
-  contributions: { [CONTROLLER]: [...CONTROLLERS, schedulerSpec, kubeletSpec] as unknown as Contribution[], [TOPOLOGY]: [...TOPOLOGIES] },
+  contributions: { [PROVENANCE]: [...K8S_PROVENANCE] as unknown as Contribution[], [PROGRAM]: [kubectlProgram as unknown as Contribution], [CONTROLLER]: [...CONTROLLERS, schedulerSpec, kubeletSpec] as unknown as Contribution[], [TOPOLOGY]: [...TOPOLOGIES] },
 };

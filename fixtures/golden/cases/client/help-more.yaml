@@ -1,0 +1,69 @@
+description: kubectl help at other widths, `kubectl help`, `kubectl options` and command groups run without a subcommand.
+server: false
+steps:
+  - run: kubectl
+    normalize: false
+  - run: kubectl help
+    tty: true
+    cols: 100
+    normalize: false
+  - run: kubectl help get
+    tty: true
+    cols: 120
+    normalize: false
+  - run: kubectl get -h
+    tty: true
+    cols: 79
+    normalize: false
+  - run: kubectl help get pods
+    normalize: false
+  - run: kubectl help create secret nosuch
+    normalize: false
+  - run: kubectl help nosuch
+    normalize: false
+  - run: kubectl help nosuch
+    tty: true
+    cols: 80
+    normalize: false
+  - run: kubectl help help
+    normalize: false
+  - run: kubectl help options
+    normalize: false
+  - run: kubectl options --help
+    normalize: false
+  - run: kubectl options
+    tty: true
+    cols: 120
+    normalize: false
+  - run: kubectl options nosuch
+    normalize: false
+  - run: kubectl create --help
+    tty: true
+    cols: 100
+    normalize: false
+  - run: kubectl create secret --help
+    tty: true
+    cols: 80
+    normalize: false
+  - run: kubectl apply --help
+    tty: true
+    cols: 100
+    normalize: false
+  - run: kubectl config
+    normalize: false
+  - run: kubectl config
+    tty: true
+    cols: 80
+    normalize: false
+  - run: kubectl config a b
+    normalize: false
+  - run: kubectl rollout
+    normalize: false
+  - run: kubectl rollout nosuch
+    normalize: false
+  - run: kubectl certificate nosuch
+    normalize: false
+  - run: kubectl top
+    tty: true
+    cols: 100
+    normalize: false

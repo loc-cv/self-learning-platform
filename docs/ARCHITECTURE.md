@@ -1661,6 +1661,73 @@ flowchart LR
 - `startKubelet`/`stopKubelet` start and stop one kubelet; phase 26a ties them to the
   `kubelet.service` unit and its configuration.
 
+### 4.9 kubectl
+
+`packages/k8s/src/kubectl/` (phase 07a; D-066…D-070). One program, `kubectl`, registered by the
+k8s plugin; a simulated command is one `Verb` module under `cmd/`.
+
+```mermaid
+flowchart LR
+  A[argv] --> F[cli/command.ts<br/>cobra Find over the manifest tree]
+  F --> P[cli/flagset.ts<br/>pflag parse: command + global flags]
+  P -->|unknown command/flag| E[cli/errors.ts<br/>CheckErr texts]
+  P -->|real but not simulated| N["[sim] notice + gap"]
+  P --> V[cmd/get.ts …]
+  V --> K[client/kubeconfig.ts<br/>files, contexts, namespace]
+  V --> T[client/transport.ts<br/>server URL → API server or refusal]
+  V --> R[resource/builder.ts + client/restmapper.ts<br/>args → visits]
+  V --> S[client/session.ts → apiserver handle()]
+  S --> O[printers: Table, YAML, JSON, name]
+```
+
+- **The manifest is the command tree.** `manifest.ts` reads `kubectl/data/v1.37.2.ts`, which
+  `npm run golden:kubectl-manifest` writes from the real binary's help (every command, alias and
+  flag, the global flags, and the help text). `cli/command.ts` runs cobra's `Find` over it
+  (`stripFlags`, `argsMinusFirstX`, aliases, `legacyArgs` with Levenshtein suggestions), so an
+  unknown command or flag gets kubectl's own error, and a real one the simulator lacks gets the
+  `[sim]` notice: a command without a `Verb` (`the command "kubectl describe"`), or a flag the
+  verb does not declare and no no-effect list names (`the flag --sort-by`). Flags are parsed as
+  pflag parses them (`cli/flagset.ts`: long and short forms, `=` or a separate value, grouped
+  shorthands, bools with `NoOptDefVal`, slices, `--`, `_` normalized to `-`) with the real types'
+  value errors (strconv, time.ParseDuration).
+- **No-effect flags** (docs/FIDELITY.md §4.1) are listed with their reason: globally
+  `--request-timeout`, `--cache-dir`, `--log-flush-frequency` (`kubectl.ts`); per verb in
+  `Verb.noEffect` (get: `--chunk-size`, `--allow-missing-template-keys`, `--show-managed-fields`).
+- **Client configuration** (`client/kubeconfig.ts`) is clientcmd's: `--kubeconfig` (must exist),
+  else `KUBECONFIG` (missing files skipped), else `~/.kube/config`, read from the machine's VFS as
+  the process; first file wins per entry; `--context`, `--cluster`, `--user`, `-n`, `-s`
+  override; `Namespace()` runs ConfirmUsable before `ClientConfig()`, which fixes which error a
+  bad name produces. The default server is `http://localhost:8080`. Credentials are not read
+  (D-057, D-069).
+- **Transport** (`client/transport.ts`, D-068): the server URL's host is resolved to a machine by
+  its addresses (`Machine.addresses`, a stand-in until phase 17's network model; loopback is the
+  local machine). An API server listens on every address of its machine at its secure port
+  (`k8sSlice.apiServers`); nothing listening is a refusal, which `client/session.ts` prints as
+  kubectl does (five `memcache.go:381` klog lines, then `The connection to the server … was
+  refused`). A host no machine has, a machine that is off, or plain HTTP to the secure port
+  prints a notice.
+- **Resources** (`client/restmapper.ts`, `resource/builder.ts`): discovery is the real server's
+  (`discovery/registry.ts`); the shortcut expander, the priority REST mapper (core first, then
+  discovery order) and the category expander are ported; the builder turns arguments into visits
+  (list with selectors, or get by name) and reports argument errors before any request. A visit
+  of a type the API server does not store answers `notSimulated`: printed as a notice when the
+  type was named, skipped when it came from a category (`get all`, D-066).
+- **get** (`cmd/get.ts`): human-readable output asks for server-side Tables (`as: 'Table'`) and
+  prints them with one printer per mapping and a blank line between mappings; `-o yaml|json|name`
+  fetch objects and wrap several in kubectl's `List`; `-w` prints the first state and then the
+  watch's events (one-row Tables) until Ctrl-C, which ends it with status 1 as kubectl's interrupt
+  handler does. Formats kubectl knows but the simulator does not print (jsonpath, custom-columns,
+  templates, kyaml) are notices; others get kubectl's "unable to match a printer" error.
+- **Latency** (`npm run bench:kubectl`, PLAN.md §2: p95 under 50 ms for read commands): from Enter
+  to the prompt in a login shell on the control plane with a three-replica Deployment running,
+  200 runs each, measured 2026-11-16 on the workstation (§2.1 of docs/FIDELITY.md): `get pods`
+  p95 2.7 ms, `-o wide` 2.4 ms, `-A` 2.6 ms, `get all` 2.7 ms, `get deployment web -o yaml`
+  4.1 ms, `get nodes` 2.4 ms; all together p50 1.4 ms, p95 3.2 ms (the first run's 31 ms is
+  warm-up).
+- **Provenance**: `kubectl/provenance.ts` (framework, client, get) and the printers' own lists,
+  gathered by `packages/k8s/src/provenance.ts` and contributed as `provenance` (docs/FIDELITY.md §3,
+  `npm run fidelity:report`).
+
 ## 5. The hard questions, answered in one place
 
 **How do blocking programs stay deterministic?** A program is a synchronous generator that
@@ -1711,7 +1778,7 @@ Each item is decided by the phase named, and recorded here when decided.
 | Supported shell grammar and the list of builtins: **phase 02's in `docs/COVERAGE.md`** | 02, 22a |
 | Line editor key bindings (bash 5.2.21's `bind -p`, D-027); SGR style of the `[sim]` notice (yellow, D-026): **decided in 03** | 03 |
 | Normalization tokens (`<<kind>>`, `packages/host/src/transcript/tokens.ts`; D-034, D-035): **decided in 04** | 04 |
-| Provenance registry implementation (`prompts/07a-kubectl-framework-and-get.md`) | 07a |
+| Provenance registry implementation: **decided in 07a** (`provenance` contributions of `ProvenanceSpec`, `validateProvenance` in `packages/kernel/src/contracts.ts`, `npm run fidelity:report`) | 07a |
 | Processed OpenAPI format (§4.6); exact pipeline stage order verified against upstream (§4.2): **decided in 05a** | 05a |
 | Work queue backoff parameters, controller latencies with their sources: **decided in 05b** (§4.3) | 05b |
 | Behavior model contract (D-060, `docs/BEHAVIOR_MODELS.md`) and image catalog format (D-061): **decided in 06b**; declarative fields beyond `docs/SCENARIO_FORMAT.md` §5.4 come with the first content image (09) | 06b |

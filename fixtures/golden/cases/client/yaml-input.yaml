@@ -1,0 +1,264 @@
+description: >-
+  How kubectl reads manifests (YAMLOrJSONDecoder, sigs.k8s.io/yaml over yaml.v2 with YAML 1.1
+  resolution) and the errors it prints for broken ones. `kubectl label --local -f` decodes the
+  file into an unstructured object without a server and prints it again, so what yaml.v2 made of
+  every value shows in the output.
+server: false
+files:
+  styles.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: styles   # a comment
+    data:
+      plain: some text
+      multiline plain: first
+        continued
+          and more
+      single: 'it''s ''quoted'''
+      double: "tab\there\nnewline \x41 é \U0001F600 \\ \" end"
+      folded double: "one
+        two
+
+        three"
+      literal: |
+        line 1
+          indented
+        line 3
+      strip: |-
+        no newline at the end
+      keep: |+
+        keeps both
+
+      folded: >
+        folded
+        lines
+
+        paragraph
+          more indented
+        last
+      folded strip: >-
+        a
+        b
+      indicator: |2
+          two extra spaces
+      empty literal: |
+      empty: ""
+      nothing:
+      tilde: ~
+      flow seq: [a, 'b', "c", 1, yes]
+      flow map: {a: 1, b: [x, y], c: {d: e}}
+      nested:
+      - a
+      - - b
+        - c
+      - k: v
+        k2: v2
+      "quoted key": 1
+      ? complex key
+      : value
+  resolution.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: resolution
+    data:
+      bools: [yes, no, on, off, y, n, Yes, NO, true, False, TRUE, oN]
+      nulls: [~, null, Null, NULL, nUll]
+      ints: [1, -1, +1, 0x1F, 0X1f, 012, 0o17, 0b101, -0b11, 1_000, 08, 09.5, 0, -0]
+      big: [9007199254740991, -9007199254740991, 9223372036854775808]
+      floats: [1.5, 1e3, 1E-3, .5, -.5, +.5, 1., 6.02e+23, 1.0, 1e400, 0.1, 123456.789, 1e-7]
+      strings: [0x, 1a, 1-2, 12:30, 190:20:30, 2024-01-01, 2024-01-01T10:00:00Z, '1', "true", =]
+      tagged: [!!str 123, !!str yes, !!int "42", !!float 1, !!bool "true", !!null "", !custom value]
+      binary: !!binary aGVsbG8gd29ybGQ=
+      int keys: {1: one, 0x10: hex, 1.5: float, true: bool, 1e3: exp, 012: octal}
+      duplicate: {a: first, a: second}
+  anchors.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: anchors
+      labels: &labels
+        app: web
+        tier: front
+    data:
+      copy: *labels
+      scalar: &s shared
+      again: *s
+      base: &base {a: 1, b: 2}
+      merged:
+        <<: *base
+        b: 3
+        c: 4
+      overridden:
+        b: 3
+        <<: *base
+      many:
+        <<: [*base, {d: 5}]
+        e: 6
+  multi.yaml: |
+    # leading comment
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: one
+    ---
+    ---   # an empty document is skipped
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: two
+    ...
+  crlf.yaml: "apiVersion: v1\r\nkind: ConfigMap\r\nmetadata:\r\n  name: crlf\r\ndata:\r\n  a: \"x\r\n    y\"\r\n"
+  cm.json: |
+    {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "json"},
+     "data": {"html": "<b>&amp;</b>", "num": 1.50, "esc": "é😀\n"}}
+    {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "json2"}}
+  trailing-comma.json: |
+    {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "yamlish",},}
+  bad-flow.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    data:
+      a: [1, 2
+  bad-indent.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+       bad: 1
+  bad-tab.yaml: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n\tname: x\n"
+  bad-key.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    missing colon here
+    data: {}
+  bad-quote.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: "x
+  bad-alias.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: *nope
+  bad-merge.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      <<: scalar
+      name: x
+  bad-mapkey.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    data:
+      [a, b]: c
+  bad-nullkey.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    data:
+      ~: c
+  bad-nan.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    data:
+      a: .nan
+  bad-tag.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    data:
+      a: !!int abc
+  bad-separator.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    --- foo
+    apiVersion: v1
+  bad-second.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: first
+    ---
+    apiVersion: v1
+    kind: [ConfigMap
+  bad-json.json: |
+    {"apiVersion": "v1", "kind": "ConfigMap" "metadata": {}}
+  bad-control.yaml: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\ndata:\n  a: \"\x01\"\n"
+  bad-recursive.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: x
+    data: &d
+      a: *d
+steps:
+  - run: kubectl label --local -f styles.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f styles.yaml l=v -o json
+    normalize: false
+  - run: kubectl label --local -f resolution.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f resolution.yaml l=v -o json
+    normalize: false
+  - run: kubectl label --local -f anchors.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f multi.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f multi.yaml l=v -o json
+    normalize: false
+  - run: kubectl label --local -f crlf.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f cm.json l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f trailing-comma.json l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f - l=v -o yaml
+    stdin: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: stdin\n"
+    normalize: false
+  - run: kubectl label --local -f bad-flow.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-indent.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-tab.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-key.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-quote.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-alias.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-merge.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-mapkey.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-nullkey.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-nan.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-tag.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-separator.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-second.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-json.json l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-control.yaml l=v -o yaml
+    normalize: false
+  - run: kubectl label --local -f bad-recursive.yaml l=v -o yaml
+    normalize: false

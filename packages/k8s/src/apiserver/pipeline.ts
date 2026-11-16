@@ -14,7 +14,7 @@
 // watch,rest}.go; registry/rest/{create,update,delete,meta}.go; registry/generic/registry/store.go.
 // Authentication and authorization are explicit no-op stages until phase 20a.
 
-import { daysFromCivil, type Ctx } from '@simlab/kernel';
+import { daysFromCivil, put, type Ctx } from '@simlab/kernel';
 import { decode, canonical } from '../apimachinery/gojson.ts';
 import {
   alreadyExistsError,
@@ -60,6 +60,7 @@ import {
   type WatchEventType,
 } from './store.ts';
 import type { ApiRequest, ApiResponse, RequestOptions, Strategy, StrategyCtx } from './types.ts';
+import { applyIncludeObject, convertToTable, type TableSource } from '../printers/tablegenerator.ts';
 
 type Result<T> = { ok: T } | { status: Status };
 
@@ -271,7 +272,13 @@ function get(sv: Served, req: ApiRequest): ApiResponse {
   const key = objectKey(namespaceFor(sv, req), req.name ?? '');
   const obj = storeGet(sv.etcd, sv.strategy.storage, key);
   if (!obj) return fail(notFoundError(sv.gr, req.name ?? ''));
-  if (req.subresource === 'scale' && sv.strategy.scale) return okResponse(200, sv.strategy.scale.get(toResponse(sv, obj)));
+  if (req.subresource === 'scale' && sv.strategy.scale) {
+    const scale = sv.strategy.scale.get(toResponse(sv, obj));
+    // The scale storage's ConvertToTable is the store's: printScale (printers.go AddHandlers).
+    if (req.options?.as === 'Table') return tableResponse(sv, req, 'autoscaling', 'Scale', { object: scale }, (o) => o);
+    return okResponse(200, scale);
+  }
+  if (req.options?.as === 'Table') return tableResponse(sv, req, printedGroup(sv.strategy), sv.strategy.kind, { object: obj }, (o) => toResponse(sv, o));
   return okResponse(200, toResponse(sv, obj));
 }
 
@@ -279,6 +286,9 @@ function list(sv: Served, req: ApiRequest): ApiResponse {
   const sel = compileSelectors(sv.strategy, req.options?.labelSelector, req.options?.fieldSelector);
   if ('error' in sel) return fail(badRequestError(sel.error));
   const items = storeList(sv.etcd, sv.strategy.storage, namespaceFor(sv, req)).filter((o) => sel.matches(o));
+  if (req.options?.as === 'Table') {
+    return tableResponse(sv, req, printedGroup(sv.strategy), sv.strategy.kind, { items, resourceVersion: String(sv.etcd.revision) }, (o) => toResponse(sv, o));
+  }
   const listKind = `${sv.strategy.kind}List`;
   return okResponse(200, {
     kind: listKind,
@@ -290,6 +300,26 @@ function list(sv: Served, req: ApiRequest): ApiResponse {
       return rest;
     }),
   });
+}
+
+// ---- Table (as=Table) ----
+
+/**
+ * The group of the type printers see: the storage type's (events.k8s.io Events are core Events in
+ * storage and in the internal API, pkg/registry/events/rest/storage_events.go).
+ */
+const printedGroup = (st: Strategy): string => st.storageGroup ?? st.group;
+
+/**
+ * The response of a get or list asking for a Table: the kind's TableConvertor over the stored
+ * objects, then includeObject. upstream: apiserver/pkg/endpoints/handlers/response.go
+ * transformResponseObject, doTransformObject, asTable.
+ */
+function tableResponse(sv: Served, req: ApiRequest, group: string, kind: string, src: TableSource, toVersioned: (o: JsonObject) => JsonObject): ApiResponse {
+  const t = convertToTable(group, kind, src, { noHeaders: false, now: sv.s.ctx.now });
+  const r = applyIncludeObject(t, req.options?.includeObject, toVersioned);
+  if ('badRequest' in r) return fail(badRequestError(r.badRequest));
+  return okResponse(200, r);
 }
 
 // ---- create ----
@@ -771,6 +801,7 @@ export function openWatch(ctx: Ctx, server: ApiServerConfig, req: ApiRequest, ow
     ...(namespace ? { namespace } : {}),
     ...(req.options?.labelSelector ? { labelSelector: req.options.labelSelector } : {}),
     ...(req.options?.fieldSelector ? { fieldSelector: req.options.fieldSelector } : {}),
+    ...(req.options?.as === 'Table' ? { table: { ...(req.options.includeObject !== undefined ? { includeObject: req.options.includeObject } : {}), noHeaders: false } } : {}),
     owner,
   };
   if (rv === '' || rv === '0') {
@@ -795,5 +826,17 @@ export function watchEvents(ctx: Ctx, server: ApiServerConfig, id: string): { ty
   if (!strategy || !res) return events.map((e) => ({ type: e.type, object: cloneJson(e.object) }));
   const sv = { strategy, res, apiVersion: sub.group === '' ? sub.version : `${sub.group}/${sub.version}` } as Served;
   void server;
-  return events.map((e) => ({ type: e.type, object: toResponse(sv, e.object) }));
+  if (!sub.table || events.length === 0) return events.map((e) => ({ type: e.type, object: toResponse(sv, e.object) }));
+  // as=Table: each object becomes a one-row Table; only the first event carries the column
+  // definitions. A failed transform logs and sends the object as it is (watchEmbeddedEncoder.doEncode).
+  let noHeaders = sub.table.noHeaders;
+  const out = events.map((e) => {
+    const t = convertToTable(printedGroup(strategy), strategy.kind, { object: e.object }, { noHeaders, now: ctx.now });
+    noHeaders = true;
+    const r = applyIncludeObject(t, sub.table?.includeObject, (o) => toResponse(sv, o));
+    return { type: e.type, object: 'badRequest' in r ? toResponse(sv, e.object) : (r as JsonObject) };
+  });
+  const now = k8sSlice(ctx).watches[id];
+  if (now) put(k8sSlice(ctx).watches, id, { ...now, table: { ...sub.table, noHeaders: true } });
+  return out;
 }

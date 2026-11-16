@@ -343,6 +343,10 @@ Entry format:
 | DIV-029 | Containers: filesystem | A container has its image's filesystem plus its volumes; programs read and write files there | Executables are known from the captured file tables; a shell redirection to a file is discarded with a gap; `cat` of a file outside the model is a gap | Container filesystems are phase 16a/17 (volumes, exec) | Scripts that write files (`date >> /log/x`) lose that output | 06b |
 | DIV-030 | Container shell | `sh` is the image's real shell with its whole language | dash, BusyBox ash and bash share one interpreter of the common subset (simple commands, `;` `&&` `\|\|` `!`, `{ }` `( )`, while/until/for/if, quoting, `$VAR`, `$(( ))`, `$( )`, traps on signals, `set -e`) checked against the real shells; pipelines, `case`, functions, here-documents and background jobs are gaps, and the container then runs without output | A full shell per container is not needed for the curriculum | Most container commands in CKA/CKAD tasks run; unusual scripts say they are not simulated | 06b |
 
+| DIV-031 | kubectl: YAML and JSON numbers | Integers in objects are int64 and print exactly (`-9223372036854775808`) | Integers beyond 2^53 lose precision (world state holds JSON numbers) | The `Json` type of the engine | None in practice; no Kubernetes field a learner sets needs such numbers | 07a |
+| DIV-032 | kubectl: YAML key order | yaml.v2 sorts map keys with a "natural" comparison that is not transitive for some key sets (`"1"`, `"01"`, `"0b101"`), so their order follows Go's random map iteration | Such key sets get one fixed order (Go's insertion sort over byte-sorted keys) | Deterministic engine (hard rule 4) | None in practice; ordinary keys sort as the real tool sorts them | 07a |
+| DIV-033 | kubectl: rare Unicode | Go's `%q` and `unicode.IsLetter`/`IsDigit` use Go's Unicode tables | JavaScript's Unicode tables; `%#v` quoting is approximated for rare characters | No port of Go's tables | Only messages quoting unusual characters can differ | 07a |
+
 The non-goals in `PLAN.md` §4.3 (no packets, no real cryptography, a bash subset,
 an editor overlay instead of a terminal vi, a curated image catalog) become entries when the phase
 that builds each area lands, worded for what was actually built.
@@ -550,10 +554,42 @@ only when standard output is a terminal (upstream:
 subcommand (piped, so unwrapped) and writes `fixtures/golden/v1.37.2/kubectl-commands.json`: for
 each command its path, aliases, short description, usage line, subcommands and flags (name,
 shorthand, default, a type inferred from how help prints the default, usage, deprecation), plus
-`kubectl options`' global flags. 109 commands and 30 global flags for v1.37.2. Hidden and plugin
-commands are not in help and not in the manifest.
+`kubectl options`' global flags, and the parts of help that cannot be derived from those fields
+(the description, the examples, the root's command groups). 111 commands (the 109 that help lists,
+plus `help` and `options`, marked `unlisted`) and 30 global flags for v1.37.2. Hidden and plugin
+commands are not in help and not in the manifest. The same run renders every command's help from
+the manifest with the simulator's templates (`packages/k8s/src/kubectl/help/`) and compares it
+with the binary's, piped and at 79, 80, 100 and 120 columns, plus `kubectl help <cmd>`,
+`kubectl options` and `kubectl help nosuch`; `--check` does the same without rewriting, and
+`--vendor` writes the engine's copy (`packages/k8s/src/kubectl/data/v1.37.2.ts`) from the fixture
+without the binary. The simulated kubectl's command tree, flags and help come from this copy
+(docs/decisions.md D-067).
 
-### 6.8 Known limits
+### 6.8 The differential runner
+
+`tools/src/golden/kubectl/` (phase 07a; `npm run golden:diff [-- -v] [case…]` prints the report,
+`tools/src/golden/kubectl.test.ts` runs it in the gate; D-072). Every case is replayed in the
+simulator: a `kubeadm-1cp-2w` world made to look like the oracle's (kube-system Deployments,
+DaemonSets, kube-dns and Pods deleted; for client cases root's kubeconfig removed), forked per
+case, with commands typed into a root shell on the control plane in /root and stdout and stderr
+redirected to files. Output is normalized with capture's rules (`workdir` /root) and compared
+step by step.
+
+- A command the simulated kubectl implements is **compared**. A verb it lacks is run through the
+  **shim** (`shim.ts`: the requests real kubectl sends, each cited) when it changes state, so
+  later steps see the same cluster, and reported as shimmed with the phase that builds it; a
+  read-only one that prints a notice is reported as **notice**; anything else **blocks** the rest
+  of the case.
+- KWOK-authored fields (§6.5) and the fields of the missing admission plugins (D-046) are masked
+  on both sides (`mask.ts`). Numbered tokens are renumbered per step.
+- `known.ts` holds the **KNOWN** steps, each with its cause (a DIV entry, an oracle limit, a
+  STATUS shortcut); a KNOWN step that passes fails the test. **PENDING** lists differences of work
+  in progress and must be empty when a phase ends.
+- At the end of phase 07a: 197 steps compared, 192 pass, 5 KNOWN (missing `kube-root-ca.crt`,
+  DIV-015, a KWOK limit), none failing; 69 shimmed, 117 notices, 56 blocked (apply to existing
+  objects, kubeconfig writers, KWOK's not-ready device, PriorityClasses).
+
+### 6.9 Known limits
 
 - The workstation resolves `localhost` to `::1` first, so the no-server error reads
   `dial tcp [::1]:8080`. Whether a simulated server prints `[::1]` or `127.0.0.1` depends on its

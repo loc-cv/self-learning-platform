@@ -1,4 +1,4 @@
-// kubectl's column alignment, ported, and its inverse.
+// kubectl's column alignment and its inverse.
 //
 // kubectl aligns tables with a tab writer: `get` with github.com/liggitt/tabwriter (a fork of Go's
 // text/tabwriter that adds RememberWidths), `describe` with Go's text/tabwriter. A column's width
@@ -12,16 +12,20 @@
 // upstream: github.com/liggitt/tabwriter@v0.0.0-20181228230101-89fcab3d43de tabwriter.go
 //   Writer.format, Writer.writeLines, Writer.Write (a line with one cell flushes)
 //
-// RememberWidths only shows when one writer is flushed several times (kubectl get --watch). A
-// plain `kubectl get` prints each table in one flush, and each kind through its own writer: in a
-// captured `kubectl get all` the second table is narrower than the first
-// (fixtures/golden/v1.37.2/deployments/create-and-read.yaml). So the parameters for captured
-// tables leave it off; render() still implements it for a later --watch port.
+// The writer itself is the engine's (packages/k8s/src/kubectl/printers/tabwriter.ts): kubectl
+// prints through it, normalization re-renders with it. This file adds the inverse, `parse`.
+//
+// RememberWidths only shows when one writer is flushed several times (kubectl get --watch, or a
+// table of more than 100 rows). `kubectl get` resets the remembered widths when it moves to the
+// next resource (get.go Run: SetRememberedWidths(nil)): in a captured `kubectl get all` the second
+// table is narrower than the first (fixtures/golden/v1.37.2/deployments/create-and-read.yaml). A
+// captured output is re-rendered in one flush, so the parameters for captured tables leave it off.
 
-export interface TabParams {
-  minwidth: number;
-  padding: number;
-  rememberWidths: boolean;
+import { render, type Cells, type TabWriterParams } from '@simlab/k8s';
+
+export { render, type Cells };
+
+export interface TabParams extends TabWriterParams {
   /**
    * Every table starts with a header row whose cells start where the columns start (kubectl get).
    * Rows are then cut at those positions, which keeps empty cells (SUBOBJECT in events -o wide).
@@ -32,68 +36,7 @@ export interface TabParams {
 export const GET_TABLE: TabParams = { minwidth: 6, padding: 3, rememberWidths: false, headerColumns: true };
 export const DESCRIBE: TabParams = { minwidth: 0, padding: 2, rememberWidths: false, headerColumns: false };
 
-/** A line is its cells; the last cell is the text before the newline and is never padded. */
-export type Cells = string[];
-
 const width = (s: string) => [...s].length;
-
-/** Renders lines of cells as the tab writer would (each line ends with a newline). */
-export function render(lines: readonly Cells[], p: TabParams): string {
-  let out = '';
-  const maxwidths: number[] = [];
-  const widths: number[] = [];
-
-  const writeLines = (line0: number, line1: number, buf: readonly Cells[]) => {
-    for (let i = line0; i < line1; i++) {
-      const line = buf[i] as Cells;
-      line.forEach((c, j) => {
-        out += c;
-        if (j < widths.length) out += ' '.repeat(Math.max(0, (widths[j] as number) - width(c)));
-      });
-      out += '\n';
-    }
-  };
-
-  const format = (line0: number, line1: number, buf: readonly Cells[]) => {
-    const column = widths.length;
-    for (let self = line0; self < line1; self++) {
-      if (column >= (buf[self] as Cells).length - 1) continue;
-      writeLines(line0, self, buf);
-      line0 = self;
-      let w = p.minwidth;
-      for (; self < line1; self++) {
-        const line = buf[self] as Cells;
-        if (column >= line.length - 1) break;
-        const cw = width(line[column] as string) + p.padding;
-        if (cw > w) w = cw;
-      }
-      if (p.rememberWidths) {
-        if (maxwidths.length < widths.length) maxwidths.push(...widths.slice(maxwidths.length));
-        if (maxwidths.length === widths.length) maxwidths.push(w);
-        else if ((maxwidths[widths.length] as number) > w) w = maxwidths[widths.length] as number;
-        else if ((maxwidths[widths.length] as number) < w) maxwidths[widths.length] = w;
-      }
-      widths.push(w);
-      format(line0, self, buf);
-      widths.pop();
-      line0 = self;
-    }
-    writeLines(line0, line1, buf);
-  };
-
-  // Write(): a line with a single cell flushes everything buffered so far.
-  let pending: Cells[] = [];
-  const flush = () => {
-    format(0, pending.length, pending);
-    pending = [];
-  };
-  for (const l of lines) {
-    pending.push(l);
-    if (l.length === 1) flush();
-  }
-  flush();
-  return out;
-}
 
 interface Run {
   /** Spaces before the text. */

@@ -1,0 +1,166 @@
+# Captured from fixtures/golden/cases/describe/pod-spec.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: describe/pod-spec
+description: "describe pod for a Pod that cannot be scheduled, with most of what its spec can hold: init containers, command and arguments over several lines, ports, probes of each kind, environment from values, fields, resources, Secrets and ConfigMaps, envFrom with a prefix, mounts with a subPath, each common volume source, security profiles, tolerations, topology spread constraints, readiness gates, long and multi-line annotations."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl describe pod full
+    exit: 0
+    stdout: |
+      Name:             full
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           app=full
+                        tier=back
+      Annotations:      example.com/long:
+                          aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...
+                        example.com/multi:
+                          first line
+                          second line
+                        example.com/short: value
+      Status:           Pending
+      SeccompProfile:   RuntimeDefault
+      IP:               
+      IPs:              <none>
+      Init Containers:
+        init:
+          Image:      busybox:1.36
+          Port:       <none>
+          Host Port:  <none>
+          Command:
+            sh
+            -c
+            echo one
+            echo two
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Containers:
+        app:
+          Image:               nginx:1.27
+          Ports:               8080/TCP (http), 9090/TCP (metrics), 5353/UDP
+          Host Ports:          0/TCP (http), 9090/TCP (metrics), 0/UDP
+          SeccompProfile:      Localhost
+            LocalhostProfile:  profiles/app.json
+          Args:
+            --port
+            8080
+          Limits:
+            cpu:     1
+            memory:  128Mi
+          Requests:
+            cpu:      250m
+            memory:   64Mi
+          Liveness:   http-get https://:8080/healthz delay=5s timeout=1s period=10s successThreshold=1 failureThreshold=3
+          Readiness:  tcp-socket :http delay=0s timeout=1s period=3s successThreshold=1 failureThreshold=3
+          Startup:    exec [cat /run/ready] delay=0s timeout=1s period=10s successThreshold=1 failureThreshold=30
+          Environment Variables from:
+            settings  ConfigMap with prefix 'CFG_'  Optional: false
+            creds     Secret                        Optional: false
+          Environment:
+            PLAIN:         hello
+            MULTI:         line one
+                           line two
+            MY_NAME:       full (v1:metadata.name)
+            MY_NAMESPACE:  default (v1:metadata.namespace)
+            CPU_LIMIT:     1000 (limits.cpu)
+            MEM_REQUEST:   67108864 (requests.memory)
+            NO_MEM_LIMIT:  0 (limits.ephemeral-storage)
+            PASSWORD:      <set to the key 'password' in secret 'creds'>     Optional: true
+            MODE:          <set to the key 'mode' of config map 'settings'>  Optional: false
+          Mounts:
+            /data from data (rw)
+            /etc/app from config (ro)
+            /etc/app.conf from config (rw,path="app.conf")
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+        sidecar:
+          Image:      busybox:1.36
+          Port:       8443/TCP (https)
+          Host Port:  0/TCP (https)
+          Command:
+            sleep
+            infinity
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Readiness Gates:
+        Type                Status
+        example.com/ready   <none> 
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        data:
+          Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+          Medium:     
+          SizeLimit:  <unset>
+        config:
+          Type:      ConfigMap (a volume populated by a ConfigMap)
+          Name:      settings
+          Optional:  true
+        secret:
+          Type:        Secret (a volume populated by a Secret)
+          SecretName:  creds
+          Optional:    false
+        cache:
+          Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+          Medium:     Memory
+          SizeLimit:  64Mi
+        scratch:
+          Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+          Medium:     
+          SizeLimit:  <unset>
+        host:
+          Type:          HostPath (bare host directory volume)
+          Path:          /var/log
+          HostPathType:  Directory
+        plain-host:
+          Type:          HostPath (bare host directory volume)
+          Path:          /srv
+          HostPathType:  
+        podinfo:
+          Type:  DownwardAPI (a volume populated by information about the pod)
+          Items:
+            metadata.labels -> labels
+            limits.cpu -> cpu
+        bundle:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          ConfigMapName:           settings
+          Optional:                false
+          SecretName:              creds
+          Optional:                true
+          DownwardAPI:             true
+          TokenExpirationSeconds:  7200
+        share:
+          Type:      NFS (an NFS mount that lasts the lifetime of a pod)
+          Server:    nfs.example.com
+          Path:      /exports
+          ReadOnly:  true
+        kube-api-access-<<suffix>>:
+          Type:                     Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:   3607
+          ConfigMapName:            kube-root-ca.crt
+          Optional:                 false
+          DownwardAPI:              true
+      QoS Class:                    Burstable
+      Node-Selectors:               disktype=nvme
+      Tolerations:                  :NoExecute op=Exists for 60s
+                                    dedicated=gpu:NoSchedule
+                                    zone op=Exists
+      Topology Spread Constraints:  kubernetes.io/hostname:ScheduleAnyway when max skew 2 is exceeded
+                                    topology.kubernetes.io/zone:ScheduleAnyway when max skew 1 is exceeded for selector app=full
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""

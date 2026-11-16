@@ -1,0 +1,420 @@
+# Captured from fixtures/golden/cases/apply/overwrite.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: apply/overwrite
+description: kubectl apply --overwrite=false when another client changed a field the manifest also changes (a three-way merge conflict), with and without --openapi-patch; apply to an object kubectl edit or create made, and to an object in a namespace that does not exist.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl apply -f cm.yaml
+    exit: 0
+    stdout: |
+      configmap/shared created
+    stderr: ""
+  - run: kubectl patch configmap shared -p '{"data":{"a":"2"}}'
+    exit: 0
+    stdout: |
+      configmap/shared patched
+    stderr: ""
+  - run: kubectl apply -f cm-v2.yaml --overwrite=false
+    exit: 1
+    stdout: ""
+    stderr: |+
+      warning: error calculating patch from openapi v3 spec: patch:
+      data:
+        a: "3"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      conflicts with changes made from original to current:
+      data:
+        a: "2"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data: {}
+            f:metadata:
+              f:annotations:
+                .: {}
+                f:kubectl.kubernetes.io/last-applied-configuration: {}
+          manager: kubectl-client-side-apply
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              f:a: {}
+          manager: kubectl-patch
+          operation: Update
+          time: "<<time>>"
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+
+
+      warning: error calculating patch from openapi spec: patch:
+      data:
+        a: "3"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      conflicts with changes made from original to current:
+      data:
+        a: "2"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data: {}
+            f:metadata:
+              f:annotations:
+                .: {}
+                f:kubectl.kubernetes.io/last-applied-configuration: {}
+          manager: kubectl-client-side-apply
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              f:a: {}
+          manager: kubectl-patch
+          operation: Update
+          time: "<<time>>"
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+
+
+      error: error when applying patch:
+
+      to:
+      Resource: "/v1, Resource=configmaps", GroupVersionKind: "/v1, Kind=ConfigMap"
+      Name: "shared", Namespace: "default"
+      for: "cm-v2.yaml": error when patching "cm-v2.yaml": creating patch with:
+      original:
+      {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      modified:
+      {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"a\":\"3\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"shared\",\"namespace\":\"default\"}}\n"},"name":"shared","namespace":"default"}}
+
+      current:
+      {"apiVersion":"v1","data":{"a":"2"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"a\":\"1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"shared\",\"namespace\":\"default\"}}\n"},"creationTimestamp":"<<time>>","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:data":{},"f:metadata":{"f:annotations":{".":{},"f:kubectl.kubernetes.io/last-applied-configuration":{}}}},"manager":"kubectl-client-side-apply","operation":"Update","time":"<<time>>"},{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:data":{"f:a":{}}},"manager":"kubectl-patch","operation":"Update","time":"<<time>>"}],"name":"shared","namespace":"default","resourceVersion":"<<rv>>","uid":"<<uid:1>>"}}
+
+      for: patch:
+      data:
+        a: "3"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      conflicts with changes made from original to current:
+      data:
+        a: "2"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data: {}
+            f:metadata:
+              f:annotations:
+                .: {}
+                f:kubectl.kubernetes.io/last-applied-configuration: {}
+          manager: kubectl-client-side-apply
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              f:a: {}
+          manager: kubectl-patch
+          operation: Update
+          time: "<<time>>"
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+
+  - run: kubectl apply -f cm-v2.yaml --overwrite=false --openapi-patch=false
+    exit: 1
+    stdout: ""
+    stderr: |+
+      error: error when applying patch:
+
+      to:
+      Resource: "/v1, Resource=configmaps", GroupVersionKind: "/v1, Kind=ConfigMap"
+      Name: "shared", Namespace: "default"
+      for: "cm-v2.yaml": error when patching "cm-v2.yaml": creating patch with:
+      original:
+      {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      modified:
+      {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"a\":\"3\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"shared\",\"namespace\":\"default\"}}\n"},"name":"shared","namespace":"default"}}
+
+      current:
+      {"apiVersion":"v1","data":{"a":"2"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"a\":\"1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"shared\",\"namespace\":\"default\"}}\n"},"creationTimestamp":"<<time>>","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:data":{},"f:metadata":{"f:annotations":{".":{},"f:kubectl.kubernetes.io/last-applied-configuration":{}}}},"manager":"kubectl-client-side-apply","operation":"Update","time":"<<time>>"},{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:data":{"f:a":{}}},"manager":"kubectl-patch","operation":"Update","time":"<<time>>"}],"name":"shared","namespace":"default","resourceVersion":"<<rv>>","uid":"<<uid:1>>"}}
+
+      for: patch:
+      data:
+        a: "3"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      conflicts with changes made from original to current:
+      data:
+        a: "2"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data: {}
+            f:metadata:
+              f:annotations:
+                .: {}
+                f:kubectl.kubernetes.io/last-applied-configuration: {}
+          manager: kubectl-client-side-apply
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              f:a: {}
+          manager: kubectl-patch
+          operation: Update
+          time: "<<time>>"
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+
+  - run: kubectl apply -f cm-v2.yaml --overwrite=false --dry-run=client
+    exit: 1
+    stdout: ""
+    stderr: |+
+      warning: error calculating patch from openapi v3 spec: patch:
+      data:
+        a: "3"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      conflicts with changes made from original to current:
+      data:
+        a: "2"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data: {}
+            f:metadata:
+              f:annotations:
+                .: {}
+                f:kubectl.kubernetes.io/last-applied-configuration: {}
+          manager: kubectl-client-side-apply
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              f:a: {}
+          manager: kubectl-patch
+          operation: Update
+          time: "<<time>>"
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+
+
+      warning: error calculating patch from openapi spec: patch:
+      data:
+        a: "3"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      conflicts with changes made from original to current:
+      data:
+        a: "2"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data: {}
+            f:metadata:
+              f:annotations:
+                .: {}
+                f:kubectl.kubernetes.io/last-applied-configuration: {}
+          manager: kubectl-client-side-apply
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              f:a: {}
+          manager: kubectl-patch
+          operation: Update
+          time: "<<time>>"
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+
+
+      error: error when applying patch:
+
+      to:
+      Resource: "/v1, Resource=configmaps", GroupVersionKind: "/v1, Kind=ConfigMap"
+      Name: "shared", Namespace: "default"
+      for: "cm-v2.yaml": creating patch with:
+      original:
+      {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      modified:
+      {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"a\":\"3\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"shared\",\"namespace\":\"default\"}}\n"},"name":"shared","namespace":"default"}}
+
+      current:
+      {"apiVersion":"v1","data":{"a":"2"},"kind":"ConfigMap","metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"a\":\"1\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"shared\",\"namespace\":\"default\"}}\n"},"creationTimestamp":"<<time>>","managedFields":[{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:data":{},"f:metadata":{"f:annotations":{".":{},"f:kubectl.kubernetes.io/last-applied-configuration":{}}}},"manager":"kubectl-client-side-apply","operation":"Update","time":"<<time>>"},{"apiVersion":"v1","fieldsType":"FieldsV1","fieldsV1":{"f:data":{"f:a":{}}},"manager":"kubectl-patch","operation":"Update","time":"<<time>>"}],"name":"shared","namespace":"default","resourceVersion":"<<rv>>","uid":"<<uid:1>>"}}
+
+      for: patch:
+      data:
+        a: "3"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+
+      conflicts with changes made from original to current:
+      data:
+        a: "2"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        managedFields:
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data: {}
+            f:metadata:
+              f:annotations:
+                .: {}
+                f:kubectl.kubernetes.io/last-applied-configuration: {}
+          manager: kubectl-client-side-apply
+          operation: Update
+          time: "<<time>>"
+        - apiVersion: v1
+          fieldsType: FieldsV1
+          fieldsV1:
+            f:data:
+              f:a: {}
+          manager: kubectl-patch
+          operation: Update
+          time: "<<time>>"
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+
+  - run: kubectl apply -f cm-v2.yaml
+    exit: 0
+    stdout: |
+      configmap/shared configured
+    stderr: ""
+  - run: kubectl get configmap shared -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "3"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"3"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"shared","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        name: shared
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+    stderr: ""
+  - run: kubectl apply -f nowhere.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): error when creating "nowhere.yaml": namespaces "nowhere" not found
+  - run: kubectl create -f created.yaml
+    exit: 0
+    stdout: |
+      configmap/created created
+    stderr: ""
+  - run: kubectl apply -f created-v2.yaml
+    exit: 0
+    stdout: |
+      configmap/created configured
+    stderr: |
+      Warning: resource configmaps/created is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+  - run: kubectl apply -f created-v2.yaml
+    exit: 0
+    stdout: |
+      configmap/created unchanged
+    stderr: ""
+  - run: kubectl get configmap created -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "2"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"2"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"created","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        labels:
+          keep: "yes"
+        name: created
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+    stderr: ""

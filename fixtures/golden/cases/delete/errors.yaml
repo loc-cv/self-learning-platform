@@ -1,0 +1,38 @@
+description: >-
+  kubectl delete's argument and flag errors (before any request, after discovery, and in Validate),
+  several names with some missing (the others are still deleted), --ignore-not-found with names and
+  selectors, and the deprecated forms of --dry-run (a klog warning).
+setup:
+  - do: kubectl run a --image=nginx:1.27
+  - do: kubectl run b --image=nginx:1.27
+  - do: kubectl create configmap c1 --from-literal=a=1
+steps:
+  - run: kubectl delete
+  - run: kubectl delete pods
+  - run: kubectl delete pod
+  - run: kubectl delete pod/a pods
+  - run: kubectl delete pod a/b/c
+  - run: kubectl delete pod x --all
+  - run: kubectl delete pod/x --all
+  - run: kubectl delete pods --all -l app=a
+  - run: kubectl delete pods --all --field-selector metadata.name=a
+  - run: kubectl delete pods --all -l ' '
+  - run: kubectl delete pods -l app=a,
+  - run: kubectl delete pods --field-selector spec.nope=a
+  - run: kubectl delete pod x -o yaml
+  - run: kubectl delete pod x --now --grace-period=3
+  - run: kubectl delete pod x --force --grace-period=5
+  - run: kubectl delete pod x --cascade=bogus
+  - run: kubectl delete pod x --dry-run=bogus
+  - run: kubectl delete pod x --dry-run
+  - run: kubectl delete pod x --dry-run=true
+  - run: kubectl delete pod x --dry-run=0
+  - run: kubectl delete pod x -A
+  - run: kubectl delete pod x --timeout=bogus
+  - run: kubectl delete nosuch x
+  - run: kubectl delete pod a missing b
+  - run: kubectl delete pods missing1 missing2
+  - run: kubectl delete configmap missing c1 --ignore-not-found
+  - run: kubectl delete pods -l app=nothing --ignore-not-found=false
+  - run: kubectl delete pods --field-selector metadata.name=nothing
+  - run: kubectl delete pod missing -n nowhere

@@ -142,3 +142,30 @@ export function expandCategory(name: string): string[] | undefined {
   }
   return out.length > 0 ? out : undefined;
 }
+
+/** A kind's mapping, or the NoKindMatchError text (`no matches for kind "X" in version "g/v"`). */
+export type KindMapping = { mapping: Mapping; list: boolean } | { noMatch: string };
+
+/**
+ * RESTMapping(groupKind, version) over the discovery mapper: each group version maps its kinds,
+ * their lower-case forms, `<Kind>List` (a guessed resource, only usable as a list to flatten) and
+ * `List`. An empty version is not resolved here (the caller reports it).
+ *   upstream: staging/src/k8s.io/client-go/restmapper/discovery.go NewDiscoveryRESTMapper
+ *             (AddSpecific for the kind and strings.ToLower(kind), Add for kind+"List" and "List")
+ *   upstream: staging/src/k8s.io/apimachinery/pkg/api/meta/errors.go NoKindMatchError.Error
+ */
+export function mappingForKind(group: string, version: string, kind: string): KindMapping {
+  const gv = group === '' ? version : `${group}/${version}`;
+  const noMatch = { noMatch: `no matches for kind ${JSON.stringify(kind)} in version ${JSON.stringify(gv)}` };
+  const inGv = discoveryOrder().filter((a) => a.group === group && a.version === version);
+  if (inGv.length === 0) return noMatch;
+  const exact = inGv.find((a) => a.kind === kind) ?? inGv.find((a) => a.kind.toLowerCase() === kind);
+  if (exact) return { mapping: toMapping(exact), list: false };
+  const listOf = kind.endsWith('List') ? inGv.find((a) => `${a.kind}List` === kind) : undefined;
+  if (kind === 'List' || listOf) {
+    // meta.UnsafeGuessKindToResource of the list kind; only a list's items are ever sent.
+    const resource = `${kind.toLowerCase()}s`;
+    return { mapping: { group, version, resource, kind, namespaced: kind === 'List' ? false : (listOf as ApiResource).namespaced, singular: kind.toLowerCase() }, list: true };
+  }
+  return noMatch;
+}

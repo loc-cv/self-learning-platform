@@ -30,7 +30,7 @@ export interface RequestOptions {
   orphanDependents?: boolean;
   gracePeriodSeconds?: number;
   preconditions?: { uid?: string; resourceVersion?: string };
-  /** Only `merge` (application/merge-patch+json) in this phase. */
+  /** `merge` (application/merge-patch+json) and `strategic` (application/strategic-merge-patch+json); `json` and `apply` are gaps. */
   patchType?: 'merge' | 'json' | 'strategic' | 'apply';
   /**
    * get, list, watch: `Accept: application/json;as=Table;v=v1;g=meta.k8s.io`, the response (each

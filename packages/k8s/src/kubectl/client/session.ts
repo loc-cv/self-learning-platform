@@ -2,7 +2,8 @@
 // (kubeconfig.ts), the server reached (transport.ts), and requests sent through the API server's
 // pipeline with its warnings printed as kubectl prints them.
 //   upstream: staging/src/k8s.io/client-go/rest/warnings.go WarningWriter (`Warning: <text>` on
-//             standard error, each text once per invocation: kubectl sets Deduplicate)
+//             standard error, each text once per invocation: kubectl sets Deduplicate, and Color
+//             when standard error allows it)
 //   upstream: staging/src/k8s.io/client-go/discovery/cached/memory/memcache.go:381 (the klog line
 //             a failed discovery request logs) — five attempts before get gives up, as captured in
 //             fixtures/golden/v1.37.2/client/no-server.yaml
@@ -81,10 +82,15 @@ export function resolveConfig(p: ProcApi, overrides: Overrides, parseYaml: Parse
   return clientConfig(cfg, overrides);
 }
 
-function klogHeader(ctx: Ctx, pid: string, file: string): string {
+function klogHeader(ctx: Ctx, pid: string, file: string, severity: 'E' | 'W' = 'E'): string {
   const c = civilFromMillis(ctx.now);
   const two = (n: number) => String(n).padStart(2, '0');
-  return `E${two(c.month)}${two(c.day)} ${two(c.hour)}:${two(c.minute)}:${two(c.second)}.${String(c.ms * 1000).padStart(6, '0')} ${pid.padStart(7)} ${file}] `;
+  return `${severity}${two(c.month)}${two(c.day)} ${two(c.hour)}:${two(c.minute)}:${two(c.second)}.${String(c.ms * 1000).padStart(6, '0')} ${pid.padStart(7)} ${file}] `;
+}
+
+/** A klog line kubectl writes to standard error: `W1116 09:00:00.000000    1234 helpers.go:714] text`. */
+export function klogLine(p: ProcApi, severity: 'E' | 'W', file: string, text: string): string {
+  return `${klogHeader(p.ctx, p.pid.replace(/^\D+/, ''), file, severity)}${text}\n`;
 }
 
 /**
@@ -118,8 +124,20 @@ export function* printWarnings(s: Session, warnings: readonly string[]): Op<void
   for (const w of warnings) {
     if (s.warned.has(w)) continue;
     s.warned.add(w);
-    yield* s.p.write(2, `Warning: ${w}\n`);
+    yield* s.p.write(2, warningLine(s.p, w));
   }
+}
+
+/**
+ * A warning as kubectl's writers print it: `Warning:` in bold yellow when standard error allows
+ * color (a terminal, TERM not dumb, NO_COLOR unset).
+ * upstream: staging/src/k8s.io/kubectl/pkg/cmd/cmd.go (the WarningWriter's Color option);
+ *           client-go/rest/warnings.go WarningWriter.HandleWarningHeader;
+ *           cli-runtime/pkg/printers/warningprinter.go Print, terminal.go AllowsColorOutput
+ */
+export function warningLine(p: ProcApi, message: string): string {
+  const color = p.isatty(2) && p.env.TERM !== 'dumb' && !('NO_COLOR' in p.env);
+  return color ? `\x1b[33;1mWarning:\x1b[0m ${message}\n` : `Warning: ${message}\n`;
 }
 
 export type WatchOpen = { id: string; topic: string } | { status: Status } | { notSimulated: string };

@@ -12,9 +12,8 @@
 // Output is the terminal's screen with its scrollback (`screen`), the bytes the terminal received
 // (`raw`), or transcript format (`transcript`: a plain session, see docs/TRANSCRIPTS.md).
 
-import { createObjects } from '@simlab/k8s';
 import { HOUR, type GapEvent } from '@simlab/kernel';
-import { captureOutput, createScreen, formatOutput, openSession, type Session } from '@simlab/host';
+import { captureOutput, createScreen, formatOutput, openSession, placeFile, type Session } from '@simlab/host';
 import { boot, header, UsageError } from './world.ts';
 import { parseDuration } from './args.ts';
 
@@ -31,11 +30,10 @@ export interface ScriptOptions {
   machine?: string;
   user?: string;
   /**
-   * Manifests created through the API server before the session, as `kubectl create -f` would
-   * send them, then `settle` of virtual time. A stand-in until phase 07b's kubectl create.
+   * Files put into the session user's home directory before the session, as if the user had
+   * written them: manifests for `kubectl apply -f`, scripts. `name` is the path below the home.
    */
-  objects?: { text: string; where: string }[];
-  settle?: number;
+  files?: { name: string; text: string }[];
 }
 
 export interface ScriptResult {
@@ -63,13 +61,12 @@ export function runScript(lines: readonly string[], opts: ScriptOptions): Script
   const cap = captureOutput();
   const gaps: GapEvent[] = [];
   const { kernel, info } = boot(header(opts.topology, opts.seed), { ...cap.ports, gap: (g) => gaps.push(g) });
-  if (opts.objects && opts.objects.length > 0) {
-    for (const o of opts.objects) kernel.act('objects', (ctx) => createObjects(ctx, o.text, o.where));
-    kernel.advance(opts.settle ?? 30_000);
-  }
+  const machine = opts.machine ?? info.entry.machine;
+  const user = opts.user ?? info.entry.user;
+  for (const f of opts.files ?? []) kernel.act('sim-file', (ctx) => placeFile(ctx, machine, user, f.name, f.text));
   const s: Session = openSession(kernel, cap, {
-    machine: opts.machine ?? info.entry.machine,
-    user: opts.user ?? info.entry.user,
+    machine,
+    user,
     cols: opts.cols,
     rows: opts.rows,
     terminal: opts.mode !== 'transcript',

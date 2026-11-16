@@ -1,0 +1,768 @@
+# Captured from fixtures/golden/cases/describe/selection.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: describe/selection
+description: "Which objects describe prints: by name, TYPE/NAME, several names, a label selector, a name prefix, across namespaces; events only for a single object unless --show-events is given; what it prints when nothing matches, a name is missing, or the arguments are wrong."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl describe pod web-1
+    exit: 0
+    stdout: |
+      Name:             web-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=web
+                        tier=front
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/web-1 to node01
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod/web-2
+    exit: 0
+    stdout: |
+      Name:             web-2
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node02/172.16.0.12
+      Start Time:       <<time>>
+      Labels:           app=web
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node02
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/web-2 to node02
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pods web-1 web-2
+    exit: 0
+    stdout: |
+      Name:             web-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=web
+                        tier=front
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+
+
+      Name:             web-2
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node02/172.16.0.12
+      Start Time:       <<time>>
+      Labels:           app=web
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node02
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pods -l app=web
+    exit: 0
+    stdout: |
+      Name:             web-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=web
+                        tier=front
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+
+
+      Name:             web-2
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node02/172.16.0.12
+      Start Time:       <<time>>
+      Labels:           app=web
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node02
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pods -l app=web --show-events
+    exit: 0
+    stdout: |
+      Name:             web-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=web
+                        tier=front
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/web-1 to node01
+
+
+      Name:             web-2
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node02/172.16.0.12
+      Start Time:       <<time>>
+      Labels:           app=web
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node02
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/web-2 to node02
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pods -l app=none
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in default namespace.
+  - run: kubectl describe pods -A -l app=none
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found
+  - run: kubectl describe pods -A -l app=db
+    exit: 0
+    stdout: |
+      Name:             db-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=db
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        redis:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/db-1 to node01
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod web
+    exit: 0
+    stdout: |+
+      Name:             web-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=web
+                        tier=front
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+
+      Name:             web-2
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node02/172.16.0.12
+      Start Time:       <<time>>
+      Labels:           app=web
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node02
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pods we --show-events=true
+    exit: 0
+    stdout: |+
+      Name:             web-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=web
+                        tier=front
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/web-1 to node01
+
+      Name:             web-2
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node02/172.16.0.12
+      Start Time:       <<time>>
+      Labels:           app=web
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node02
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type    Reason     Age      From               Message
+        ----    ------     ----     ----               -------
+        Normal  Scheduled  <<age>>  default-scheduler  Successfully assigned default/web-2 to node02
+
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod nothere
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "nothere" not found
+  - run: kubectl describe pod web-1 missing
+    exit: 1
+    stdout: |
+      Name:             web-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             node01/172.16.0.11
+      Start Time:       <<time>>
+      Labels:           app=web
+                        tier=front
+      Annotations:      <none>
+      Status:           Running
+      IP:               <<ip>>
+      IPs:
+        IP:  <<ip>>
+      Containers:
+        nginx:
+          Container ID:   
+          Image:          nginx:1.27
+          Image ID:       
+          Port:           <none>
+          Host Port:      <none>
+          State:          Running
+            Started:      <<time>>
+          Ready:          True
+          Restart Count:  0
+          Environment:    <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type              Status
+        Initialized       True 
+        Ready             True 
+        ContainersReady   True 
+        PodScheduled      True 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              kubernetes.io/hostname=node01
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+    stderr: |
+      Error from server (NotFound): pods "missing" not found
+    kwok: true
+  - run: kubectl describe pods,services web-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: you may only specify a single resource type
+  - run: kubectl describe pods,services nothere
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "nothere" not found
+      Error from server (NotFound): services "nothere" not found
+  - run: kubectl describe pod web -n kube-system
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "web" not found
+  - run: kubectl describe pod web-1 -n nowhere
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): namespaces "nowhere" not found
+  - run: kubectl describe
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must specify the type of resource to describe. Use "kubectl api-resources" for a complete list of supported resources.
+  - run: kubectl describe pod web-1 -l app=web
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: name cannot be provided when a selector is specified
+  - run: kubectl describe pods -l 'app in (a'
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (BadRequest): Unable to find "/v1, Resource=pods" that match label selector "app in (a", field selector "": unable to parse requirement: found '', expected: ',' or ')'
+  - run: kubectl describe pod -A web-1
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: a resource cannot be retrieved by name across all namespaces
+  - run: kubectl describe pods/web-1 pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: there is no need to specify a resource type as a separate argument when passing arguments in resource/name form (e.g. 'kubectl get resource/<resource_name>' instead of 'kubectl get resource resource/<resource_name>'

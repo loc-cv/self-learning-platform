@@ -1,7 +1,7 @@
 // PodValidationOptions: what the Pod validation may allow, from feature gates and the old object.
 // upstream: pkg/apis/core/validation/validation.go PodValidationOptions; the values come from
 // pkg/api/pod/util.go GetValidationOptionsFromPodSpecAndMeta / GetValidationOptionsFromPodTemplate
-// (not in the sparse checkout). The gates are the v1.37.2 defaults, read from the oracle's
+// (not in the checkout when this was written; it is now). The gates are the v1.37.2 defaults, read from the oracle's
 // kubernetes_feature_enabled metric: RelaxedEnvironmentVariableValidation (GA), EnvFiles (beta, on),
 // ContainerRestartRules (beta, on), RestartAllContainersOnContainerExits (beta, on),
 // InPlacePodVerticalScaling (GA), PodLevelResources (beta, on), TaintTolerationComparisonOperators

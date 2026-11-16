@@ -1,0 +1,1103 @@
+# Captured from fixtures/golden/cases/api/warnings.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: api/warnings
+description: The Warning headers of the API server for Pods and pod templates (pkg/api/pod/warnings.go), Services (pkg/api/service/warnings.go) and the recorder that dedupes them. Deprecated annotations and node labels, null label selectors, invalid label values in preferred node affinity, duplicate env, ports and port names, hostIP without hostPort, a negative termination grace period, fractional byte quantities, overlapping volume paths, deprecated volume plugins, duplicate or empty image pull secrets and host aliases, non-canonical IPs; templates warn on create and when their generation changes. Pod responses keep metadata only (admission plugins add fields, phase 20b); Deployment patches keep spec only (the controller writes metadata and status in the background).
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /api/v1/namespaces/default/pods?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: warned
+        annotations:
+          scheduler.alpha.kubernetes.io/critical-pod: ""
+          seccomp.security.alpha.kubernetes.io/pod: runtime/default
+          container.seccomp.security.alpha.kubernetes.io/sidecar: runtime/default
+      spec:
+        terminationGracePeriodSeconds: -1
+        nodeSelector:
+          beta.kubernetes.io/os: linux
+        imagePullSecrets:
+        - name: regcred
+        - name: regcred
+        - name: ""
+        hostAliases:
+        - ip: 10.0.0.5
+          hostnames: [a.local]
+        - ip: 10.0.0.5
+          hostnames: [b.local]
+        dnsConfig:
+          nameservers:
+          - 2001:db8:0:0::53
+        containers:
+        - name: app
+          image: nginx:1.27
+          env:
+          - name: MODE
+            value: one
+          - name: MODE
+            value: two
+          - name: MODE
+            value: $(MODE)-three
+          ports:
+          - name: http
+            containerPort: 80
+          - containerPort: 8080
+            hostIP: 10.0.0.1
+          resources:
+            requests:
+              memory: 1500m
+        - name: sidecar
+          image: busybox:1.36
+          ports:
+          - name: http
+            containerPort: 80
+          - containerPort: 8080
+            hostPort: 8080
+    keep:
+      - kind
+      - apiVersion
+      - metadata
+    code: 201
+    warnings:
+      - 'spec.nodeSelector[beta.kubernetes.io/os]: deprecated since v1.14; use "kubernetes.io/os" instead'
+      - 'metadata.annotations[scheduler.alpha.kubernetes.io/critical-pod]: non-functional in v1.16+; use the "priorityClassName" field instead'
+      - 'spec.hostAliases[1].ip: duplicate ip "10.0.0.5"'
+      - 'spec.imagePullSecrets[1].name: duplicate name "regcred"'
+      - 'spec.imagePullSecrets[2].name: invalid empty name ""'
+      - 'metadata.annotations[seccomp.security.alpha.kubernetes.io/pod]: non-functional in v1.27+; use the "seccompProfile" field instead'
+      - 'spec.containers[0].resources.requests[memory]: fractional byte value "1500m" is invalid, must be an integer'
+      - 'spec.containers[0].env[1]: hides previous definition of "MODE", which may be dropped when using apply'
+      - 'metadata.annotations[container.seccomp.security.alpha.kubernetes.io/sidecar]: non-functional in v1.27+; use the "seccompProfile" field instead'
+      - "spec.containers[0].ports[1]: hostIP set without hostPort: {Name: HostPort:0 ContainerPort:8080 Protocol:TCP HostIP:10.0.0.1}"
+      - "spec.containers[1].ports[0]: duplicate port definition with spec.containers[0].ports[0]"
+      - "spec.containers[1].ports[1]: overlapping port definition with spec.containers[0].ports[1]"
+      - 'spec.containers[1].ports[0]: duplicate port name "http" with spec.containers[0].ports[0], services and probes that select ports by name will use spec.containers[0].ports[0]'
+      - 'spec.dnsConfig.nameservers[0]: IPv6 address "2001:db8:0:0::53" should be in RFC 5952 canonical format ("2001:db8::53")'
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: warned
+        namespace: default
+        uid: <<uid:1>>
+        generation: 1
+        creationTimestamp: <<time>>
+        annotations:
+          container.seccomp.security.alpha.kubernetes.io/sidecar: runtime/default
+          scheduler.alpha.kubernetes.io/critical-pod: ""
+          seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:container.seccomp.security.alpha.kubernetes.io/sidecar: {}
+                  f:scheduler.alpha.kubernetes.io/critical-pod: {}
+                  f:seccomp.security.alpha.kubernetes.io/pod: {}
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:env:
+                      .: {}
+                      k:{"name":"MODE"}: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:ports:
+                      .: {}
+                      k:{"containerPort":80,"protocol":"TCP"}:
+                        .: {}
+                        f:containerPort: {}
+                        f:name: {}
+                        f:protocol: {}
+                      k:{"containerPort":8080,"protocol":"TCP"}:
+                        .: {}
+                        f:containerPort: {}
+                        f:hostIP: {}
+                        f:protocol: {}
+                    f:resources:
+                      .: {}
+                      f:requests:
+                        .: {}
+                        f:memory: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                  k:{"name":"sidecar"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:ports:
+                      .: {}
+                      k:{"containerPort":80,"protocol":"TCP"}:
+                        .: {}
+                        f:containerPort: {}
+                        f:name: {}
+                        f:protocol: {}
+                      k:{"containerPort":8080,"protocol":"TCP"}:
+                        .: {}
+                        f:containerPort: {}
+                        f:hostPort: {}
+                        f:protocol: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsConfig:
+                  .: {}
+                  f:nameservers: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:hostAliases:
+                  .: {}
+                  k:{"ip":"10.0.0.5"}: {}
+                f:imagePullSecrets:
+                  .: {}
+                  k:{"name":""}: {}
+                  k:{"name":"regcred"}: {}
+                f:nodeSelector: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: web
+      spec:
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+            annotations:
+              container.apparmor.security.beta.kubernetes.io/app: runtime/default
+              security.alpha.kubernetes.io/sysctls: kernel.shm_rmid_forced=1
+          spec:
+            topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                  - matchExpressions:
+                    - key: node-role.kubernetes.io/master
+                      operator: DoesNotExist
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 10
+                  preference:
+                    matchExpressions:
+                    - key: beta.kubernetes.io/arch
+                      operator: In
+                      values: [amd64, "not valid"]
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 5
+                  podAffinityTerm:
+                    topologyKey: kubernetes.io/hostname
+            volumes:
+            - name: config
+              configMap:
+                name: web-config
+                items:
+                - key: a
+                  path: conf
+                - key: b
+                  path: conf/b
+            - name: bundle
+              projected:
+                sources:
+                - configMap:
+                    name: web-config
+                    items:
+                    - key: token
+                      path: token
+                - serviceAccountToken:
+                    path: token/
+            - name: repo
+              gitRepo:
+                repository: https://example.com/repo.git
+            - name: scratch
+              ephemeral:
+                volumeClaimTemplate:
+                  spec:
+                    accessModes: [ReadWriteOnce]
+                    resources:
+                      requests:
+                        storage: 1500m
+            containers:
+            - name: app
+              image: nginx:1.27
+              resources:
+                limits:
+                  ephemeral-storage: 100.5
+    code: 201
+    warnings:
+      - 'spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key: node-role.kubernetes.io/master is use "node-role.kubernetes.io/control-plane" instead'
+      - 'spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions[0].key: beta.kubernetes.io/arch is deprecated since v1.14; use "kubernetes.io/arch" instead'
+      - "spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions[0].values[1]: not valid is invalid, a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')"
+      - 'spec.template.spec.topologySpreadConstraints[0].topologyKey: failure-domain.beta.kubernetes.io/zone is deprecated since v1.17; use "topology.kubernetes.io/zone" instead'
+      - "spec.template.spec.topologySpreadConstraints[0].labelSelector: a null labelSelector results in matching no pod"
+      - 'spec.template.metadata.annotations[security.alpha.kubernetes.io/sysctls]: non-functional in v1.11+; use the "sysctls" field instead'
+      - "spec.template.spec.volumes[2].gitRepo: deprecated in v1.11, and disabled by default in v1.33+"
+      - 'spec.template.spec.volumes[3].ephemeral.volumeClaimTemplate.spec.resources.requests[storage]: fractional byte value "1500m" is invalid, must be an integer'
+      - 'volume "config" (ConfigMap "web-config"): overlapping paths: "conf/b" with "conf"'
+      - 'volume "bundle" (Projected): overlapping paths: "token" (ServiceAccountToken) with "token" (ConfigMap "web-config")'
+      - 'spec.template.metadata.annotations[container.apparmor.security.beta.kubernetes.io/app]: deprecated since v1.30; use the "appArmorProfile" field instead'
+      - 'spec.template.spec.containers[0].resources.limits[ephemeral-storage]: fractional byte value "100500m" is invalid, must be an integer'
+      - "spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].labelSelector: a null labelSelector results in matching no pod"
+      - "spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector: a null labelSelector results in matching no pod"
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: web
+        namespace: default
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:progressDeadlineSeconds: {}
+                f:replicas: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:strategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+                f:template:
+                  f:metadata:
+                    f:annotations:
+                      .: {}
+                      f:container.apparmor.security.beta.kubernetes.io/app: {}
+                      f:security.alpha.kubernetes.io/sysctls: {}
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:affinity:
+                      .: {}
+                      f:nodeAffinity:
+                        .: {}
+                        f:preferredDuringSchedulingIgnoredDuringExecution: {}
+                        f:requiredDuringSchedulingIgnoredDuringExecution: {}
+                      f:podAntiAffinity:
+                        .: {}
+                        f:preferredDuringSchedulingIgnoredDuringExecution: {}
+                        f:requiredDuringSchedulingIgnoredDuringExecution: {}
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources:
+                          .: {}
+                          f:limits:
+                            .: {}
+                            f:ephemeral-storage: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                    f:topologySpreadConstraints:
+                      .: {}
+                      k:{"topologyKey":"failure-domain.beta.kubernetes.io/zone","whenUnsatisfiable":"ScheduleAnyway"}:
+                        .: {}
+                        f:maxSkew: {}
+                        f:topologyKey: {}
+                        f:whenUnsatisfiable: {}
+                    f:volumes:
+                      .: {}
+                      k:{"name":"bundle"}:
+                        .: {}
+                        f:name: {}
+                        f:projected:
+                          .: {}
+                          f:defaultMode: {}
+                          f:sources: {}
+                      k:{"name":"config"}:
+                        .: {}
+                        f:configMap:
+                          .: {}
+                          f:defaultMode: {}
+                          f:items: {}
+                          f:name: {}
+                        f:name: {}
+                      k:{"name":"repo"}:
+                        .: {}
+                        f:gitRepo:
+                          .: {}
+                          f:repository: {}
+                        f:name: {}
+                      k:{"name":"scratch"}:
+                        .: {}
+                        f:ephemeral:
+                          .: {}
+                          f:volumeClaimTemplate:
+                            .: {}
+                            f:metadata: {}
+                            f:spec:
+                              .: {}
+                              f:accessModes: {}
+                              f:resources:
+                                .: {}
+                                f:requests:
+                                  .: {}
+                                  f:storage: {}
+                              f:volumeMode: {}
+                        f:name: {}
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+            annotations:
+              container.apparmor.security.beta.kubernetes.io/app: runtime/default
+              security.alpha.kubernetes.io/sysctls: kernel.shm_rmid_forced=1
+          spec:
+            volumes:
+              - name: config
+                configMap:
+                  name: web-config
+                  items:
+                    - key: a
+                      path: conf
+                    - key: b
+                      path: conf/b
+                  defaultMode: 420
+              - name: bundle
+                projected:
+                  sources:
+                    - configMap:
+                        name: web-config
+                        items:
+                          - key: token
+                            path: token
+                    - serviceAccountToken:
+                        expirationSeconds: 3600
+                        path: token/
+                  defaultMode: 420
+              - name: repo
+                gitRepo:
+                  repository: https://example.com/repo.git
+              - name: scratch
+                ephemeral:
+                  volumeClaimTemplate:
+                    metadata: {}
+                    spec:
+                      accessModes:
+                        - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: 1500m
+                      volumeMode: Filesystem
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources:
+                  limits:
+                    ephemeral-storage: 100500m
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/master
+                          operator: DoesNotExist
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 10
+                    preference:
+                      matchExpressions:
+                        - key: beta.kubernetes.io/arch
+                          operator: In
+                          values:
+                            - amd64
+                            - not valid
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  - topologyKey: kubernetes.io/hostname
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 5
+                    podAffinityTerm:
+                      topologyKey: kubernetes.io/hostname
+            schedulerName: default-scheduler
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: failure-domain.beta.kubernetes.io/zone
+                whenUnsatisfiable: ScheduleAnyway
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+      status: {}
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/merge-patch+json
+    body: |
+      {"metadata": {"labels": {"tier": "front"}}}
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+            annotations:
+              container.apparmor.security.beta.kubernetes.io/app: runtime/default
+              security.alpha.kubernetes.io/sysctls: kernel.shm_rmid_forced=1
+          spec:
+            volumes:
+              - name: config
+                configMap:
+                  name: web-config
+                  items:
+                    - key: a
+                      path: conf
+                    - key: b
+                      path: conf/b
+                  defaultMode: 420
+              - name: bundle
+                projected:
+                  sources:
+                    - configMap:
+                        name: web-config
+                        items:
+                          - key: token
+                            path: token
+                    - serviceAccountToken:
+                        expirationSeconds: 3600
+                        path: token/
+                  defaultMode: 420
+              - name: repo
+                gitRepo:
+                  repository: https://example.com/repo.git
+              - name: scratch
+                ephemeral:
+                  volumeClaimTemplate:
+                    metadata: {}
+                    spec:
+                      accessModes:
+                        - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: 1500m
+                      volumeMode: Filesystem
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources:
+                  limits:
+                    ephemeral-storage: 100500m
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/master
+                          operator: DoesNotExist
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 10
+                    preference:
+                      matchExpressions:
+                        - key: beta.kubernetes.io/arch
+                          operator: In
+                          values:
+                            - amd64
+                            - not valid
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  - topologyKey: kubernetes.io/hostname
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 5
+                    podAffinityTerm:
+                      topologyKey: kubernetes.io/hostname
+            schedulerName: default-scheduler
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: failure-domain.beta.kubernetes.io/zone
+                whenUnsatisfiable: ScheduleAnyway
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/merge-patch+json
+    body: |
+      {"spec": {"replicas": 2}}
+    keep:
+      - kind
+      - apiVersion
+      - spec
+    code: 200
+    warnings:
+      - 'spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key: node-role.kubernetes.io/master is use "node-role.kubernetes.io/control-plane" instead'
+      - 'spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions[0].key: beta.kubernetes.io/arch is deprecated since v1.14; use "kubernetes.io/arch" instead'
+      - "spec.template.spec.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].preference.matchExpressions[0].values[1]: not valid is invalid, a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character (e.g. 'MyValue',  or 'my_value',  or '12345', regex used for validation is '(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?')"
+      - 'spec.template.spec.topologySpreadConstraints[0].topologyKey: failure-domain.beta.kubernetes.io/zone is deprecated since v1.17; use "topology.kubernetes.io/zone" instead'
+      - "spec.template.spec.topologySpreadConstraints[0].labelSelector: a null labelSelector results in matching no pod"
+      - 'spec.template.metadata.annotations[security.alpha.kubernetes.io/sysctls]: non-functional in v1.11+; use the "sysctls" field instead'
+      - "spec.template.spec.volumes[2].gitRepo: deprecated in v1.11, and disabled by default in v1.33+"
+      - 'spec.template.spec.volumes[3].ephemeral.volumeClaimTemplate.spec.resources.requests[storage]: fractional byte value "1500m" is invalid, must be an integer'
+      - 'volume "config" (ConfigMap "web-config"): overlapping paths: "conf/b" with "conf"'
+      - 'volume "bundle" (Projected): overlapping paths: "token" (ServiceAccountToken) with "token" (ConfigMap "web-config")'
+      - 'spec.template.metadata.annotations[container.apparmor.security.beta.kubernetes.io/app]: deprecated since v1.30; use the "appArmorProfile" field instead'
+      - 'spec.template.spec.containers[0].resources.limits[ephemeral-storage]: fractional byte value "100500m" is invalid, must be an integer'
+      - "spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].labelSelector: a null labelSelector results in matching no pod"
+      - "spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector: a null labelSelector results in matching no pod"
+    response:
+      kind: Deployment
+      apiVersion: apps/v1
+      spec:
+        replicas: 2
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+            annotations:
+              container.apparmor.security.beta.kubernetes.io/app: runtime/default
+              security.alpha.kubernetes.io/sysctls: kernel.shm_rmid_forced=1
+          spec:
+            volumes:
+              - name: config
+                configMap:
+                  name: web-config
+                  items:
+                    - key: a
+                      path: conf
+                    - key: b
+                      path: conf/b
+                  defaultMode: 420
+              - name: bundle
+                projected:
+                  sources:
+                    - configMap:
+                        name: web-config
+                        items:
+                          - key: token
+                            path: token
+                    - serviceAccountToken:
+                        expirationSeconds: 3600
+                        path: token/
+                  defaultMode: 420
+              - name: repo
+                gitRepo:
+                  repository: https://example.com/repo.git
+              - name: scratch
+                ephemeral:
+                  volumeClaimTemplate:
+                    metadata: {}
+                    spec:
+                      accessModes:
+                        - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: 1500m
+                      volumeMode: Filesystem
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources:
+                  limits:
+                    ephemeral-storage: 100500m
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/master
+                          operator: DoesNotExist
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 10
+                    preference:
+                      matchExpressions:
+                        - key: beta.kubernetes.io/arch
+                          operator: In
+                          values:
+                            - amd64
+                            - not valid
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  - topologyKey: kubernetes.io/hostname
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 5
+                    podAffinityTerm:
+                      topologyKey: kubernetes.io/hostname
+            schedulerName: default-scheduler
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: failure-domain.beta.kubernetes.io/zone
+                whenUnsatisfiable: ScheduleAnyway
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 25%
+            maxSurge: 25%
+        revisionHistoryLimit: 10
+        progressDeadlineSeconds: 600
+  - request: POST /apis/apps/v1/namespaces/default/replicasets?dryRun=All
+    body: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        name: web.v2
+      spec:
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            nodeSelector:
+              node-role.kubernetes.io/master: ""
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 201
+    warnings:
+      - "metadata.name: this is used in Pod names and hostnames, which can result in surprising behavior; a DNS label is recommended: [must not contain dots]"
+      - 'spec.template.spec.nodeSelector[node-role.kubernetes.io/master]: use "node-role.kubernetes.io/control-plane" instead'
+    response:
+      kind: ReplicaSet
+      apiVersion: apps/v1
+      metadata:
+        name: web.v2
+        namespace: default
+        uid: <<uid:3>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:replicas: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:nodeSelector: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            nodeSelector:
+              node-role.kubernetes.io/master: ""
+            securityContext: {}
+            schedulerName: default-scheduler
+      status:
+        replicas: 0
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets?dryRun=All
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: agent
+      spec:
+        selector:
+          matchLabels:
+            app: agent
+        template:
+          metadata:
+            labels:
+              app: agent
+            annotations:
+              security.alpha.kubernetes.io/unsafe-sysctls: net.core.somaxconn=1024
+          spec:
+            hostAliases:
+            - ip: 10.0.0.9
+              hostnames: [a.local]
+            - ip: 10.0.0.9
+              hostnames: [b.local]
+            containers:
+            - name: agent
+              image: busybox:1.36
+              env:
+              - name: A
+                value: x
+              - name: A
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+    code: 201
+    warnings:
+      - 'spec.template.metadata.annotations[security.alpha.kubernetes.io/unsafe-sysctls]: non-functional in v1.11+; use the "sysctls" field instead'
+      - 'spec.template.spec.hostAliases[1].ip: duplicate ip "10.0.0.9"'
+      - 'spec.template.spec.containers[0].env[1]: hides previous definition of "A", which may be dropped when using apply'
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: agent
+        namespace: default
+        uid: <<uid:4>>
+        generation: 1
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:annotations:
+                      .: {}
+                      f:security.alpha.kubernetes.io/unsafe-sysctls: {}
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"agent"}:
+                        .: {}
+                        f:env:
+                          .: {}
+                          k:{"name":"A"}: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:hostAliases:
+                      .: {}
+                      k:{"ip":"10.0.0.9"}: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: agent
+        template:
+          metadata:
+            labels:
+              app: agent
+            annotations:
+              security.alpha.kubernetes.io/unsafe-sysctls: net.core.somaxconn=1024
+          spec:
+            containers:
+              - name: agent
+                image: busybox:1.36
+                env:
+                  - name: A
+                    value: x
+                  - name: A
+                    valueFrom:
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: spec.nodeName
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+            hostAliases:
+              - ip: 10.0.0.9
+                hostnames:
+                  - a.local
+              - ip: 10.0.0.9
+                hostnames:
+                  - b.local
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 0
+        revisionHistoryLimit: 10
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+  - request: POST /api/v1/namespaces/default/pods?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: empty-sources
+      spec:
+        volumes:
+        - name: nothing
+          projected:
+            sources:
+            - {}
+            - {}
+        containers:
+        - name: app
+          image: nginx:1.27
+    keep:
+      - kind
+      - apiVersion
+      - metadata
+    code: 201
+    warnings:
+      - volume "nothing" (Projected) has no sources provided
+    response:
+      kind: Pod
+      apiVersion: v1
+      metadata:
+        name: empty-sources
+        namespace: default
+        uid: <<uid:5>>
+        generation: 1
+        creationTimestamp: <<time>>
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:spec:
+                f:containers:
+                  k:{"name":"app"}:
+                    .: {}
+                    f:image: {}
+                    f:imagePullPolicy: {}
+                    f:name: {}
+                    f:resources: {}
+                    f:terminationMessagePath: {}
+                    f:terminationMessagePolicy: {}
+                f:dnsPolicy: {}
+                f:enableServiceLinks: {}
+                f:restartPolicy: {}
+                f:schedulerName: {}
+                f:securityContext: {}
+                f:terminationGracePeriodSeconds: {}
+                f:volumes:
+                  .: {}
+                  k:{"name":"nothing"}:
+                    .: {}
+                    f:name: {}
+                    f:projected:
+                      .: {}
+                      f:defaultMode: {}
+                      f:sources: {}
+  - request: POST /api/v1/namespaces/default/services?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: headless
+        annotations:
+          service.kubernetes.io/topology-aware-hints: auto
+      spec:
+        clusterIP: None
+        sessionAffinity: ClientIP
+        externalName: example.com
+        externalIPs:
+        - 2001:db8:0:0::10
+        selector:
+          app: web
+        ports:
+        - port: 80
+    code: 201
+    warnings:
+      - annotation service.kubernetes.io/topology-aware-hints is deprecated, please use service.kubernetes.io/topology-mode instead
+      - spec.externalIPs is ignored for headless services
+      - spec.SessionAffinity is ignored for headless services
+      - 'spec.externalIPs[0]: IPv6 address "2001:db8:0:0::10" should be in RFC 5952 canonical format ("2001:db8::10")'
+      - spec.externalName is ignored when spec.type is not "ExternalName"
+    response:
+      kind: Service
+      apiVersion: v1
+      metadata:
+        name: headless
+        namespace: default
+        uid: <<uid:6>>
+        creationTimestamp: <<time>>
+        annotations:
+          service.kubernetes.io/topology-aware-hints: auto
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:service.kubernetes.io/topology-aware-hints: {}
+              f:spec:
+                f:clusterIP: {}
+                f:externalIPs: {}
+                f:externalName: {}
+                f:externalTrafficPolicy: {}
+                f:internalTrafficPolicy: {}
+                f:ports:
+                  .: {}
+                  k:{"port":80,"protocol":"TCP"}:
+                    .: {}
+                    f:port: {}
+                    f:protocol: {}
+                    f:targetPort: {}
+                f:selector: {}
+                f:sessionAffinity: {}
+                f:sessionAffinityConfig:
+                  .: {}
+                  f:clientIP:
+                    .: {}
+                    f:timeoutSeconds: {}
+                f:type: {}
+      spec:
+        ports:
+          - protocol: TCP
+            port: 80
+            targetPort: 80
+        selector:
+          app: web
+        clusterIP: None
+        clusterIPs:
+          - None
+        type: ClusterIP
+        externalIPs:
+          - 2001:db8:0:0::10
+        sessionAffinity: ClientIP
+        externalName: example.com
+        externalTrafficPolicy: Cluster
+        sessionAffinityConfig:
+          clientIP:
+            timeoutSeconds: 10800
+        ipFamilies:
+          - IPv4
+        ipFamilyPolicy: SingleStack
+        internalTrafficPolicy: Cluster
+      status:
+        loadBalancer: {}

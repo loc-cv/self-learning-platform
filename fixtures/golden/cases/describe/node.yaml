@@ -1,0 +1,66 @@
+description: >-
+  describe node with roles, taints, a cordon and Pods with requests and limits (their share of
+  allocatable, the totals); several Nodes by label and by prefix; a missing
+  Node.
+files:
+  pods.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: sized
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node02
+      tolerations:
+      - key: dedicated
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          requests:
+            cpu: 250m
+            memory: 300Mi
+            ephemeral-storage: 1Gi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: mixed
+      namespace: kube-public
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node02
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: app
+        image: nginx:1.27
+      - name: sidecar
+        image: busybox:1.36
+        command: ["sleep", "infinity"]
+        resources:
+          requests:
+            cpu: 100m
+setup:
+  - do: kubectl label node node02 node-role.kubernetes.io/worker= node-role.kubernetes.io/gpu=
+  - do: kubectl taint node node02 dedicated=gpu:NoSchedule
+  - do: kubectl create -f pods.yaml
+  - do: kubectl wait --for=condition=Ready pod/sized --timeout=60s
+  - do: kubectl wait --for=condition=Ready pod/mixed -n kube-public --timeout=60s
+  - do: kubectl cordon node02
+steps:
+  - run: kubectl describe node node02
+    kwok: true
+  - run: kubectl describe nodes -l node-role.kubernetes.io/worker
+    kwok: true
+  - run: kubectl describe node node0
+    kwok: true
+  - run: kubectl describe node nope
+  - run: kubectl describe node/node01 --show-events=false
+    kwok: true

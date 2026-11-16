@@ -1,0 +1,326 @@
+# Captured from fixtures/golden/cases/create/from-files.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: create/from-files
+description: "kubectl create -f: standard input, multi-document YAML, a JSON object, a JSON stream and a JSON List, directories with and without -R, already-exists among several objects, output formats, dry runs, namespaces, selectors, and the errors of reading and decoding manifests."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl create -f -
+    stdin: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: from-stdin
+    exit: 0
+    stdout: |
+      configmap/from-stdin created
+    stderr: ""
+  - run: kubectl create -f multi.yaml
+    exit: 0
+    stdout: |
+      configmap/multi-a created
+      configmap/multi-b created
+    stderr: ""
+  - run: kubectl create -f multi.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): error when creating "multi.yaml": configmaps "multi-a" already exists
+      Error from server (AlreadyExists): error when creating "multi.yaml": configmaps "multi-b" already exists
+  - run: kubectl create -f one.json -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        k: v
+      kind: ConfigMap
+      metadata:
+        annotations:
+          note: <b>&</b>
+        creationTimestamp: "<<time>>"
+        name: from-json
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:1>>
+    stderr: ""
+  - run: kubectl create -f stream.json -o name
+    exit: 0
+    stdout: |
+      configmap/stream-a
+      configmap/stream-b
+    stderr: ""
+  - run: kubectl create -f list.json
+    exit: 0
+    stdout: |
+      configmap/list-a created
+      secret/list-b created
+    stderr: ""
+  - run: kubectl create -f list.yaml
+    exit: 0
+    stdout: |
+      configmap/typed-list-a created
+      configmap/typed-list-b created
+    stderr: ""
+  - run: kubectl create -f dir
+    exit: 0
+    stdout: |
+      configmap/dir-a created
+      configmap/dir-b created
+    stderr: ""
+  - run: kubectl create -f dir/ -R --dry-run=client
+    exit: 0
+    stdout: |
+      configmap/dir-a created (dry run)
+      configmap/dir-b created (dry run)
+      configmap/dir-c created (dry run)
+    stderr: ""
+  - run: kubectl create -R -f dir
+    exit: 1
+    stdout: |
+      configmap/dir-c created
+    stderr: |
+      Error from server (AlreadyExists): error when creating "dir/a.yaml": configmaps "dir-a" already exists
+      Error from server (AlreadyExists): error when creating "dir/b.yml": configmaps "dir-b" already exists
+  - run: kubectl create -f empty-dir
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error reading [empty-dir]: recognized file extensions are [.json .yaml .yml]
+  - run: kubectl create -f empty.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: no objects passed to create
+  - run: kubectl create -f one.json,multi.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): error when creating "one.json": configmaps "from-json" already exists
+      Error from server (AlreadyExists): error when creating "multi.yaml": configmaps "multi-a" already exists
+      Error from server (AlreadyExists): error when creating "multi.yaml": configmaps "multi-b" already exists
+  - run: kubectl create -f - -f -
+    stdin: ""
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: standard input cannot be used for multiple arguments
+  - run: kubectl create -f 'mu*.yaml' --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): error when creating "multi.yaml": configmaps "multi-a" already exists
+      Error from server (AlreadyExists): error when creating "multi.yaml": configmaps "multi-b" already exists
+  - run: kubectl create -f 'nothing*.yaml'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the path "nothing*.yaml" does not exist
+  - run: kubectl create -f '[.yaml'
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: pattern "[.yaml" is not valid: syntax error in pattern
+  - run: kubectl create -f ns.yaml
+    exit: 0
+    stdout: |
+      namespace/team created
+    stderr: ""
+  - run: kubectl create -f in-team.yaml -n default
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the namespace from the provided object "team" does not match the namespace "default". You must pass '--namespace=team' to perform this operation.
+  - run: kubectl create -f in-team.yaml -n team -o json
+    exit: 0
+    stdout: |
+      {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "metadata": {
+              "creationTimestamp": "<<time>>",
+              "name": "in-team",
+              "namespace": "team",
+              "resourceVersion": "<<rv>>",
+              "uid": "<<uid:2>>"
+          }
+      }
+    stderr: ""
+  - run: kubectl create -f multi.yaml -l tier=b --dry-run=client -o name
+    exit: 0
+    stdout: |
+      configmap/multi-b
+    stderr: ""
+  - run: kubectl create -f multi.yaml -l 'tier in (a' --dry-run=client
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the provided selector "tier in (a" is not valid: unable to parse requirement: found '', expected: ',' or ')'
+  - run: kubectl create -f noname.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      The ConfigMap "" is invalid: metadata.name: Required value: name or generateName is required
+  - run: kubectl create -f numberlabel.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to decode "numberlabel.yaml": json: cannot unmarshal number into Go struct field ObjectMeta.metadata.labels of type string
+  - run: kubectl create -f scalar.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "scalar.yaml": error validating data: invalid object to validate; if you choose to ignore these errors, turn validation off with --validate=false
+  - run: kubectl create -f scalar.yaml --validate=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to decode "scalar.yaml": json: cannot unmarshal string into Go value of type unstructured.detector
+  - run: kubectl create -f nokind.yaml --validate=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to decode "nokind.yaml": Object 'Kind' is missing in '{"apiVersion":"v1","metadata":{"name":"nokind"}}'
+  - run: kubectl create -f noversion.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "noversion.yaml": error validating data: apiVersion not set; if you choose to ignore these errors, turn validation off with --validate=false
+  - run: kubectl create -f badversion.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "badversion.yaml": error validating data: unexpected GroupVersion string: a/b/c; if you choose to ignore these errors, turn validation off with --validate=false
+  - run: kubectl create -f nokind.yaml --validate=warn
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "nokind.yaml": error validating data: kind not set; if you choose to ignore these errors, turn validation off with --validate=false
+  - run: kubectl create -f mixed.yaml
+    exit: 1
+    stdout: |
+      configmap/mixed-ok created
+      configmap/mixed-ok-2 created
+    stderr: |
+      resource mapping not found for name: "w" namespace: "" from "mixed.yaml": no matches for kind "Widget" in version "example.com/v1"
+      ensure CRDs are installed first
+      error parsing mixed.yaml: error converting YAML to JSON: yaml: line 2: did not find expected ',' or ']'
+  - run: kubectl create -f mixed.yaml --validate=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (AlreadyExists): error when creating "mixed.yaml": configmaps "mixed-ok" already exists
+      Error from server (AlreadyExists): error when creating "mixed.yaml": configmaps "mixed-ok-2" already exists
+      [resource mapping not found for name: "w" namespace: "" from "mixed.yaml": no matches for kind "Widget" in version "example.com/v1"
+      ensure CRDs are installed first, error parsing mixed.yaml: error converting YAML to JSON: yaml: line 2: did not find expected ',' or ']']
+  - run: kubectl create -f saved.yaml --save-config -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "1"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"saved","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        name: saved
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:3>>
+    stderr: ""
+  - run: kubectl apply -f saved.yaml
+    exit: 0
+    stdout: |
+      configmap/saved unchanged
+    stderr: ""
+  - run: kubectl create -f saved.yaml --dry-run
+    exit: 0
+    stdout: |
+      configmap/saved created (dry run)
+    stderr: |
+      W<<time>> <<pid>> helpers.go:714] --dry-run is deprecated and can be replaced with --dry-run=client.
+  - run: kubectl create -f saved.yaml --dry-run=true
+    exit: 0
+    stdout: |
+      configmap/saved created (dry run)
+    stderr: |
+      W<<time>> <<pid>> helpers.go:728] --dry-run=true is deprecated (boolean value) and can be replaced with --dry-run=client.
+  - run: kubectl create -f saved.yaml --dry-run=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid dry-run value (bogus). Must be "none", "server", or "client".
+  - run: kubectl create -f saved.yaml --validate=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid - validate option "bogus"; must be one of: strict (or true), warn, ignore (or false)
+  - run: kubectl create -f saved.yaml -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: kubectl create -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: kubectl create configmaps
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Unexpected args: [configmaps]
+      See 'kubectl create -h' for help and examples
+  - run: kubectl create -f saved.yaml -k dir
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: only one of -f or -k can be specified
+  - objects:
+      - ref: configmap/from-json
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            annotations:
+              note: <b>&</b>
+            creationTimestamp: <<time>>
+            name: from-json
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+      - ref: configmap/saved
+        object:
+          apiVersion: v1
+          data:
+            a: "1"
+          kind: ConfigMap
+          metadata:
+            annotations:
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"v1","data":{"a":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"saved","namespace":"default"}}
+            creationTimestamp: <<time>>
+            name: saved
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>
+      - ref: -n team configmap/in-team
+        object:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            name: in-team
+            namespace: team
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>

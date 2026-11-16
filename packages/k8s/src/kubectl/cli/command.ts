@@ -36,6 +36,17 @@ export interface Verb {
    * each with the reason (docs/FIDELITY.md §4.1): accepted silently.
    */
   noEffect?: Record<string, string>;
+  /**
+   * Flags in `flags` that still print a notice for some or all of their values, with which: they
+   * are defined so that kubectl's own validation of them runs first. The verb prints the notice;
+   * this is the record docs/COVERAGE.md is generated from (npm run coverage:generate).
+   */
+  partial?: Record<string, string>;
+  /**
+   * The `-o` formats of the real command (its AllowedFormats) and those the simulator prints,
+   * besides the default; the verb prints a notice for the others. For docs/COVERAGE.md.
+   */
+  outputFormats?: { allowed: readonly string[]; simulated: readonly string[] };
   run(inv: Invocation): Op<number>;
 }
 

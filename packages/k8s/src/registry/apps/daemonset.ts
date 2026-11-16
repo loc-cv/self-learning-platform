@@ -14,8 +14,8 @@
 // refuses; Convert_apps_DaemonSet_To_v1_DaemonSet always writes it back). Objects stay in apps/v1
 // here, so the strategy keeps the annotation itself: whatever the client sent is replaced by the
 // value the internal object would hold.
-//
-// Not ported: podutil.GetWarningsForPodTemplate (DIV-017), the only warnings a DaemonSet gets.
+// Its only warnings are the template's (GetWarningsForPodTemplate), on create and when the
+// template generation changes.
 
 import type { Strategy, StrategyCtx } from '../../apiserver/types.ts';
 import { cloneJson, isObject, jsonEqual, type Json, type JsonObject } from '../../apimachinery/json.ts';
@@ -25,6 +25,7 @@ import { validateDaemonSet, validateDaemonSetStatusUpdate, validateDaemonSetUpda
 import type { PodValidationOptions } from '../../apis/core/validation/options.ts';
 import { defaultFieldLabel, objectMetaFields } from '../meta.ts';
 import { dropDisabledTemplateFields } from './template.ts';
+import { templateWarnings } from './deployment.ts';
 
 /** upstream: staging/src/k8s.io/api/apps/v1/types.go DeprecatedTemplateGeneration. */
 export const TEMPLATE_GENERATION_ANNOTATION = 'deprecated.daemonset.template.generation';
@@ -105,6 +106,8 @@ export const daemonSetStrategy: Strategy = {
   },
   validate: (o, s) => validateDaemonSet(o, Number(templateGeneration(o)), options(s)),
   validateUpdate: (o, old, s) => validateDaemonSetUpdate(o, Number(templateGeneration(o)), old, Number(templateGeneration(old)), options(s)),
+  warningsOnCreate: (o) => templateWarnings(o),
+  warningsOnUpdate: (o, old) => (templateGeneration(o) !== templateGeneration(old) ? templateWarnings(o) : []),
   allowCreateOnUpdate: false,
   allowUnconditionalUpdate: true,
   gcPolicy: 'DeleteDependents',

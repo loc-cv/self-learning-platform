@@ -20,6 +20,12 @@ import { toGoString } from './encode.ts';
 export interface StreamResult {
   /** Every document decoded before the error, in order; `null` for an empty document (the caller skips those). */
   docs: Json[];
+  /**
+   * For each document of a JSON stream, its text as the decoder passed it on (RawExtension.Raw:
+   * the value's bytes without surrounding space); undefined for a YAML document, whose bytes are
+   * the JSON sigs.k8s.io/yaml made of it (json.Marshal of the value: keys sorted, compact).
+   */
+  raw?: (string | undefined)[];
   /** The decoder's error for the next document; kubectl prints `error parsing <source>: <error>`. */
   error?: string;
   /** Input the simulator cannot decode exactly; reported as a [sim] notice. */
@@ -192,6 +198,8 @@ export function decodeManifestStream(text: string): StreamResult {
     if ('unsupported' in step) return { ...out, unsupported: step.unsupported };
     if ('value' in step) {
       out.docs.push(step.value);
+      (out.raw ??= []).length = out.docs.length - 1;
+      out.raw.push(text.slice(pos, step.end).replace(/^[ \t\n\r]+/, ''));
       count++;
       bytes += utf8Length(text.slice(pos, step.end));
       pos = step.end;

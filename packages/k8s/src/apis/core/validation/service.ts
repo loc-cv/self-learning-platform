@@ -10,8 +10,8 @@
 // Feature gates (GA, locked on in v1.37.2: absent from kube-apiserver --help):
 // RelaxedServiceNameValidation (names are DNS-1123 labels; checked against the v1.37.2 oracle:
 // a Service named "1svc-dry" is accepted), PreferSameTrafficDistribution.
-// Warnings: pkg/api/service/warnings.go GetWarningsForService is not in the sparse checkout; its
-// rules and their order here are checked against the v1.37.2 oracle (see getWarningsForService).
+// Warnings: pkg/api/service/warnings.go GetWarningsForService, isHeadlessService (first written
+// from oracle probes, then checked against the source).
 
 import { duplicate, forbidden, invalid, newPath, notSupported, required, type FieldError, type Path } from '../../../apimachinery/field.ts';
 import { goJson, type JsonObject } from '../../../apimachinery/json.ts';
@@ -430,11 +430,20 @@ export function serviceStatusWarnings(svc: JsonObject): string[] {
 }
 
 /**
- * GetWarningsForService. Checked against the v1.37.2 oracle, rule by rule and in this order: the
- * deprecated topology annotation; the cluster IPs; for a headless Service, loadBalancerIP,
- * externalIPs and session affinity being ignored; each external IP; external IPs being
- * deprecated (neither headless nor ExternalName); loadBalancerIP; each source range; external
- * IPs on an ExternalName Service; externalName on another type; trafficDistribution PreferClose.
+ * upstream: pkg/api/service/warnings.go isHeadlessService, which differs from validation's (type
+ * ClusterIP and spec.clusterIP None, not spec.clusterIPs).
+ */
+function isHeadlessForWarnings(spec: JsonObject): boolean {
+  return str(spec.type) === 'ClusterIP' && str(spec.clusterIP) === 'None';
+}
+
+/**
+ * GetWarningsForService (upstream: pkg/api/service/warnings.go), in its order: the deprecated
+ * topology annotation; the cluster IPs (helper.IsServiceIPSet); for a headless Service,
+ * loadBalancerIP, externalIPs and session affinity being ignored; each external IP; external IPs
+ * being deprecated (neither headless nor ExternalName); loadBalancerIP; each source range;
+ * external IPs on an ExternalName Service; externalName on another type; trafficDistribution
+ * PreferClose. Also checked against the v1.37.2 oracle.
  */
 export function getWarningsForService(svc: JsonObject): string[] {
   const w: string[] = [];
@@ -447,7 +456,7 @@ export function getWarningsForService(svc: JsonObject): string[] {
   if (clusterIP !== 'None' && clusterIP !== '') {
     strs(spec.clusterIPs).forEach((ip, i) => w.push(...getWarningsForIP(specPath.child('clusterIPs').index(i), ip)));
   }
-  const headless = isHeadlessService(spec);
+  const headless = isHeadlessForWarnings(spec);
   const externalIPs = strs(spec.externalIPs);
   const lbIP = str(spec.loadBalancerIP);
   if (headless) {

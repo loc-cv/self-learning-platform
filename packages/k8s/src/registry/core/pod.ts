@@ -5,8 +5,11 @@
 // (ReturnDeletedObject, the status subresource), pkg/apis/core/v1/conversion.go (the Pod field
 // label conversion).
 //
-// Not ported: podutil.GetWarningsForPod (pkg/api/pod/warnings.go, not in the sparse checkout),
-// the matchLabelKeys merges of mutatePodAffinity / mutateTopologySpreadConstraints and
+// WarningsOnCreate adds podutil.GetWarningsForPod (apis/core/validation/podwarnings.ts);
+// WarningsOnUpdate has none (upstream skips them on the Pod update path); the status strategy's
+// WarningsOnUpdate checks status.podIPs and status.hostIPs.
+//
+// Not ported: the matchLabelKeys merges of mutatePodAffinity / mutateTopologySpreadConstraints and
 // DefaultPodLevelResources (logged by validation when the fields are used), the AppArmor version
 // skew (annotations, logged), and podutil.DropDisabledPodFields apart from lifecycle.stopSignal.
 
@@ -18,6 +21,9 @@ import { defaultPod } from '../../apis/core/v1/defaults/pod.ts';
 import { getPodQOS } from '../../apis/core/helper/qos.ts';
 import { validatePodCreate, validatePodStatusUpdate, validatePodUpdate } from '../../apis/core/validation/pod.ts';
 import type { PodValidationOptions } from '../../apis/core/validation/options.ts';
+import { getWarningsForPod } from '../../apis/core/validation/podwarnings.ts';
+import { newPath } from '../../apimachinery/field.ts';
+import { getWarningsForIP } from '../../apimachinery/validation/ip.ts';
 import { objectMetaFields } from '../meta.ts';
 import { dropDisabledPodSpecFields } from '../apps/template.ts';
 
@@ -119,7 +125,8 @@ export const podStrategy: Strategy = {
   validateUpdate: (o, old, s) => validatePodUpdate(o, old, options(s)),
   warningsOnCreate: (o) => {
     const msgs = isDNS1123Label(str(meta(o).name));
-    return msgs.length === 0 ? [] : [`metadata.name: this is used in the Pod's hostname, which can result in surprising behavior; a DNS label is recommended: [${msgs.join(' ')}]`];
+    const name = msgs.length === 0 ? [] : [`metadata.name: this is used in the Pod's hostname, which can result in surprising behavior; a DNS label is recommended: [${msgs.join(' ')}]`];
+    return [...name, ...getWarningsForPod(o)];
   },
   allowCreateOnUpdate: false,
   allowUnconditionalUpdate: true,
@@ -175,5 +182,13 @@ export const podStrategy: Strategy = {
       preserveOldObservedGeneration(status, oldStatus);
     },
     validateUpdate: (o, old, s) => validatePodStatusUpdate(o, old, options(s)),
+    warningsOnUpdate: (o) => {
+      const status = obj(o.status) ?? {};
+      const ips = (field: string) => (Array.isArray(status[field]) ? (status[field] as Json[]) : []);
+      return [
+        ...ips('podIPs').flatMap((ip, i) => getWarningsForIP(newPath('status', 'podIPs').index(i).child('ip'), str(obj(ip)?.ip))),
+        ...ips('hostIPs').flatMap((ip, i) => getWarningsForIP(newPath('status', 'hostIPs').index(i).child('ip'), str(obj(ip)?.ip))),
+      ];
+    },
   },
 };

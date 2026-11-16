@@ -152,9 +152,11 @@ describe('every -o yaml and -o json output in the fixtures survives a parse and 
         } else {
           const r = decodeManifestStream(text);
           expect(r.error ?? r.unsupported).toBeUndefined();
-          // kubectl get prints unstructured objects (sorted keys); generators print typed ones.
-          const sortKeys = /^kubectl (get|apply|label|annotate|patch|edit|replace)\b/.test(s.run as string);
-          expect(valuesToTokens(r.docs.map((d) => printJson(d, { sortKeys })).join(''))).toBe(stdout);
+          // kubectl get prints unstructured objects (sorted keys); generators print typed ones, and
+          // so does apply for several objects: a corev1.List (struct order) of unstructured items.
+          const unstructured = /^kubectl (get|apply|label|annotate|patch|edit|replace)\b/.test(s.run as string);
+          const typedList = (d: Json) => /^kubectl apply\b/.test(s.run as string) && typeof d === 'object' && d !== null && !Array.isArray(d) && d.kind === 'List';
+          expect(valuesToTokens(r.docs.map((d) => printJson(d, { sortKeys: unstructured && !typedList(d) })).join(''))).toBe(stdout);
         }
       });
     }

@@ -72,3 +72,39 @@ export function marshalIndentJson(v: Json, prefix: string, indent: string, opts:
 export function printJson(v: Json, opts: { sortKeys?: boolean } = {}): string {
   return `${marshalIndentJson(v, '', '    ', opts)}\n`;
 }
+
+/**
+ * json.Marshal(v): compact, no trailing newline. With `sortKeys`, as encoding/json writes a
+ * map[string]interface{} (an unstructured object: what UnstructuredJSONScheme encodes, the bytes of
+ * kubectl's last-applied-configuration annotation).
+ */
+export function marshalJson(v: Json, opts: { sortKeys?: boolean } = {}): string {
+  const sortKeys = opts.sortKeys ?? false;
+  const out: string[] = [];
+  const put = (x: Json): void => {
+    if (x === null) out.push('null');
+    else if (typeof x === 'boolean') out.push(x ? 'true' : 'false');
+    else if (typeof x === 'number') {
+      if (!Number.isFinite(x)) throw new Error(`json: unsupported value: ${x}`);
+      out.push(String(x));
+    } else if (typeof x === 'string') out.push(goString(x));
+    else if (Array.isArray(x)) {
+      out.push('[');
+      x.forEach((e, i) => {
+        if (i > 0) out.push(',');
+        put(e);
+      });
+      out.push(']');
+    } else {
+      out.push('{');
+      keysOf(x, sortKeys).forEach((k, i) => {
+        if (i > 0) out.push(',');
+        out.push(goString(k), ':');
+        put(x[k] as Json);
+      });
+      out.push('}');
+    }
+  };
+  put(v);
+  return out.join('');
+}

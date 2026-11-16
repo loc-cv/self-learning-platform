@@ -4,6 +4,7 @@
 //   upstream: staging/src/k8s.io/kubectl/pkg/cmd/util/helpers.go checkErr, StandardErrorMessage,
 //             MultilineError, MultipleErrors, statusCausesToAggrError, fatal
 //   upstream: staging/src/k8s.io/apimachinery/pkg/api/errors/errors.go StatusError.Error (the message)
+//   upstream: staging/src/k8s.io/apimachinery/pkg/util/errors/errors.go aggregate.Error, visit
 
 import type { Status } from '../../apimachinery/errors.ts';
 
@@ -66,8 +67,20 @@ function plainText(err: KubectlError): string {
       return statusText(err.status);
     case 'url':
       return `${err.op} "${err.url}": ${err.err}`;
-    case 'aggregate':
-      return err.errors.length === 1 ? plainText(err.errors[0] as KubectlError) : `[${err.errors.map(plainText).join(', ')}]`;
+    case 'aggregate': {
+      // aggregate.Error: one error is its own text; more are flattened (nested aggregates
+      // visited), duplicates dropped, and bracketed unless only one text remains.
+      if (err.errors.length === 1) return plainText(err.errors[0] as KubectlError);
+      const seen: string[] = [];
+      const visit = (a: KubectlError[]): void => {
+        for (const e of a) {
+          if (e.type === 'aggregate') visit(e.errors);
+          else if (!seen.includes(plainText(e))) seen.push(plainText(e));
+        }
+      };
+      visit(err.errors);
+      return seen.length === 1 ? (seen[0] as string) : `[${seen.join(', ')}]`;
+    }
     case 'config':
       return err.errors.join(', ');
     case 'message':

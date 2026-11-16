@@ -1,0 +1,54 @@
+description: >-
+  kubectl apply --overwrite=false when another client changed a field the manifest also changes
+  (a three-way merge conflict), with and without --openapi-patch; apply to an object kubectl edit
+  or create made, and to an object in a namespace that does not exist.
+files:
+  cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: shared
+    data:
+      a: "1"
+  cm-v2.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: shared
+    data:
+      a: "3"
+  nowhere.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: lost
+      namespace: nowhere
+  created.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: created
+      labels:
+        keep: "yes"
+    data:
+      a: "1"
+  created-v2.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: created
+    data:
+      a: "2"
+steps:
+  - run: kubectl apply -f cm.yaml
+  - run: kubectl patch configmap shared -p '{"data":{"a":"2"}}'
+  - run: kubectl apply -f cm-v2.yaml --overwrite=false
+  - run: kubectl apply -f cm-v2.yaml --overwrite=false --openapi-patch=false
+  - run: kubectl apply -f cm-v2.yaml --overwrite=false --dry-run=client
+  - run: kubectl apply -f cm-v2.yaml
+  - run: kubectl get configmap shared -o yaml
+  - run: kubectl apply -f nowhere.yaml
+  - run: kubectl create -f created.yaml
+  - run: kubectl apply -f created-v2.yaml
+  - run: kubectl apply -f created-v2.yaml
+  - run: kubectl get configmap created -o yaml

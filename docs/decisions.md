@@ -472,7 +472,8 @@ in the trace as syncs.
 
 **D-052 — Ownership patches are JSON merge patches with the same result.** Upstream adopts and
 releases (ControllerRefManager) and the garbage collector removes owner references with
-strategic merge patches, which the pipeline does not accept yet. Controllers send JSON merge
+strategic merge patches, which the pipeline did not accept until phase 07b (switching the
+controllers to them is carry-over in STATUS.md). Controllers send JSON merge
 patches carrying the whole resulting `ownerReferences` (and `finalizers`) list, with `uid` or
 `resourceVersion` preconditions as upstream's patches have; `ownerReferences: null` when none
 remain, so the key disappears as the golden fixture shows. The stored objects are identical; the
@@ -705,3 +706,83 @@ listed as differences, numbered tokens are renumbered per step (a skipped step m
 later numbering; consistency across steps is no longer checked), and every accepted difference
 is a KNOWN entry with its cause that fails the test once it passes. The shim shrinks as phases
 07b, 08 and 15 build the verbs.
+
+**D-073 — Strategic merge patch is a direct port over the Go struct tags.**
+`apimachinery/strategicpatch/` ports patch.go function by function: apply (merge keys, `$patch`,
+`$retainKeys`, `$deleteFromPrimitiveList`, `$setElementOrder`), the two- and three-way diffs and
+their conflict checks. Patch strategies and merge keys come from the vendored Go types' struct
+tags (`PatchMetaFromStruct`); kubectl apply looks them up in OpenAPI v3, which gives the same
+strategies (DIV-034). Upstream merges in place and the server's errors print the mutated patch,
+so the port mutates copies the same way, and models Go's slice aliasing where it decides the
+result (lists decoded from JSON grow as `append` grows them; a stored list has capacity equal to
+its length, as the generated deep copy allocates it). Sorting by merge key uses Go's insertion
+sort up to 12 items and a stable sort beyond, as `sort.SliceStable` does with upstream's
+comparison. The server path (smpPatcher) applies the patch to the current object, converts with
+a port of the unstructured converter (`apimachinery/converter.ts`, whose type errors differ from
+encoding/json's), then decodes, defaults and updates as for a JSON merge patch; merge errors map
+to 400, 422 or reason-less 500 as the oracle answers (`fixtures/golden/v1.37.2/api/strategic-patch.yaml`).
+upstream's patch_test.go tables are copied verbatim by `tools/src/strategicpatch/extract-tests.ts`
+and all run.
+
+**D-074 — `-f` reads every file and all of standard input before the first request.**
+`kubectl/resource/files.ts` expands paths (files, directories by extension, `-R`, globs with a
+port of Go's filepath.Glob, `-`), splits and decodes every document, and maps each kind, then
+the command visits the items in order, so errors keep upstream's order (the command's own
+errors, then the read errors as one aggregate, as ContinueOnError gives them). The only visible
+difference is interactive standard input, which real kubectl processes document by document
+(DIV-035). A URL prints the notice before any file is visited. kubectl's client-side OpenAPI v2
+validation, which upstream applies only to what the server cannot validate (items of a `v1 List`,
+create-only kinds), is not ported: a document passes when the schema decode finds no unknown
+field, type error or missing required field, and prints a notice otherwise.
+
+**D-075 — create and apply: flags that act only with another flag are on the no-effect list.**
+`--grace-period`, `--timeout`, `--wait` (apply, only with `--force` or `--prune`),
+`--windows-line-endings` (create, only with `--edit`), `--show-managed-fields` and
+`--allow-missing-template-keys` (no managedFields, DIV-015; template formats print a notice) have
+no effect unless a flag that itself prints a notice is given. `--openapi-patch=false` only drops
+the two warnings of a failed patch (golden-verified). The last-applied annotation is
+GetModifiedConfiguration's exact serialization (`kubectl/util/apply.ts`).
+
+**D-076 — describe renders everything before writing.** A describer's output is built completely
+first, so a notice (a volume source or kind not simulated, a TZ other than UTC: machines run in
+UTC and kubectl prints local times) never follows partial output. Pod, Deployment, Service and
+Node have describers; other kinds print `describe for the resource type "<resource>[.<group>]" is
+not simulated yet` until phase 15. Objects from `-f` are not fetched again by the builder (as
+RetrieveLazy), so a missing object is the describer's error. ResourceSlices are not served, so a
+node has none (D-066's reasoning).
+
+**D-077 — describe text is masked by section in the differential runner.** Golden describe output
+comes from an oracle with KWOK and without the ServiceAccount, DefaultTolerationSeconds and
+Priority admission plugins. `maskDescribe` (tools/src/golden/kubectl/mask.ts) parses both sides
+into tab-writer cells, removes the admission plugins' lines (`Priority:`, `Service Account:`, the
+kube-api-access mount and volume, the two 300 s NoExecute tolerations), writing what kubectl
+prints for a section left empty, and on steps marked `kwok` replaces KWOK-authored values (Pod
+status, container ids and states, condition statuses, Node conditions, the Lease) with `<<kwok>>`
+and drops kubelet event rows; then renders both sides again. Output that does not parse as one
+tab-writer rendering is compared unmasked, so a mask cannot hide kubectl's own layout.
+
+**D-078 — delete waits per object in virtual time under one deadline.** After deleting, kubectl
+gets each object (checking its UID), lists, and watches it by name until DELETED, with one
+deadline for all (a week when `--timeout` is 0), as delete.go's wait does; requests take no
+virtual time, so a timeout below 1 ms is rounded up to 1 ms. A negative `--timeout` with waiting,
+and `-A` with `-f`, print notices (their upstream handling is outside the checkout or not
+modeled).
+
+**D-079 — Transcripts and `npm run sim` place files, not objects.** The `# objects:` header and
+`--objects` are gone. `# file: <path>` (transcripts) and `--file FILE[,FILE]` (sim) put files
+into the session user's home directory, owned by that user with umask 022 (`placeFile` in
+`packages/host/src/transcript/place.ts`); objects are created by setup lines
+(`% kubectl create -f workloads.yaml`, `% sleep 30`), through the simulated kubectl.
+
+**D-080 — COVERAGE's kubectl section is generated from registrations.** `npm run coverage:generate`
+writes it from the command manifest, `VERBS` (flags, `noEffect`, and two optional fields added
+for it: `partial`, flags that print a notice for some values, and `outputFormats`), `GLOBALS`,
+the help-only commands and the API server's discovery registry and strategies; a gate test fails
+when it is stale. The generator throws when a verb registers a flag the real command lacks.
+
+**D-081 — API warnings are collected once per request.** `pkg/api/pod/warnings.go` is ported in
+`apis/core/validation/podwarnings.ts`, next to the Service warnings, and used by the Pod,
+Deployment, ReplicaSet and DaemonSet strategies as upstream calls it. The apiserver's warning
+recorder (deduplication, the 4096-rune budget and 256-rune truncation) runs once at the end of
+`handle()`, after the deprecation warning is put first (`apiserver/warning.ts`). Warnings that
+upstream produces by iterating a Go map are emitted in sorted key order (DIV-017).

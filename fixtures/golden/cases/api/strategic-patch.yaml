@@ -1,0 +1,130 @@
+description: Strategic merge patches (application/strategic-merge-patch+json) through the raw API - merge-key list merges of a Deployment's containers and env and a Service's ports, $setElementOrder with $patch delete as kubectl apply sends them, $retainKeys, $patch replace, $deleteFromPrimitiveList, nulls, and the errors - a bad directive, an order that does not match, malformed directives, a wrong type, unknown fields per field validation mode, a body that is not an object, a missing object. Deployment successes keep spec only (the controller writes metadata and status in the background).
+kwok: false
+steps:
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    keep: [kind, apiVersion, spec]
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: web
+      spec:
+        replicas: 0
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+              env:
+              - name: A
+                value: "1"
+              - name: B
+                value: "2"
+              ports:
+              - containerPort: 80
+            - name: sidecar
+              image: busybox:1.36
+              command: ["sleep", "3600"]
+  # Merge by key: env B changes, C is added after the live items, A stays.
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"template":{"spec":{"containers":[{"name":"app","env":[{"name":"C","value":"3"},{"name":"B","value":"20"}]}]}}}}'
+  # What kubectl apply sends to drop a container, add one and set the order.
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"template":{"spec":{"$setElementOrder/containers":[{"name":"log"},{"name":"app"}],"containers":[{"name":"log","image":"busybox:1.36","command":["sleep","60"]},{"$patch":"delete","name":"sidecar"}]}}}}'
+  # $setElementOrder on env alone reorders without changing items; a null removes a field.
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"template":{"spec":{"$setElementOrder/containers":[{"name":"log"},{"name":"app"}],"containers":[{"$setElementOrder/env":[{"name":"C"},{"name":"B"},{"name":"A"}],"name":"app","ports":null}]}}}}'
+  # The strategy has the retainKeys strategy: rollingUpdate is cleared.
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"strategy":{"$retainKeys":["type"],"type":"Recreate"}}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"strategy":{"$retainKeys":["type"],"rollingUpdate":{"maxSurge":1}}}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"template":{"spec":{"containers":[{"name":"app","$patch":"foo"}]}}}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"template":{"spec":{"$setElementOrder/containers":[{"name":"app"}],"containers":[{"name":"log","image":"busybox:1.37"}]}}}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"template":{"spec":{"containers":[{"image":"nginx:1.28"}]}}}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"metadata":{"$deleteFromPrimitiveList":["x"]}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"replicas":"three"}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web?fieldValidation=Strict
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"replicaz":2,"template":{"spec":{"containers":[{"name":"app","imagePullPolice":"Always"}]}}}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"replicaz":2,"template":{"spec":{"containers":[{"name":"app","imagePullPolice":"Always"}]}}}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web?fieldValidation=Ignore
+    contentType: application/strategic-merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: '{"spec":{"replicaz":2}}'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/strategic-merge-patch+json
+    body: '[]'
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/missing
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"replicas":1}}'
+  - request: POST /api/v1/namespaces/default/services
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: web
+      spec:
+        selector:
+          app: web
+        ports:
+        - name: http
+          port: 80
+          targetPort: 8080
+        - name: https
+          port: 443
+  # Ports merge by port: 443 changes, 8080 is added.
+  - request: PATCH /api/v1/namespaces/default/services/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"ports":[{"port":443,"targetPort":8443},{"name":"alt","port":8080}]}}'
+  - request: PATCH /api/v1/namespaces/default/services/web
+    contentType: application/strategic-merge-patch+json
+    body: '{"spec":{"ports":[{"name":"only","port":9090},{"$patch":"replace"}]}}'
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: conf
+        finalizers: ["example.com/a"]
+      data:
+        a: "1"
+        b: "2"
+  # finalizers merge as a set; the parallel deletion list removes one.
+  - request: PATCH /api/v1/namespaces/default/configmaps/conf
+    contentType: application/strategic-merge-patch+json
+    body: '{"metadata":{"finalizers":["example.com/b","example.com/a"]},"data":{"a":null,"c":"3"}}'
+  - request: PATCH /api/v1/namespaces/default/configmaps/conf
+    contentType: application/strategic-merge-patch+json
+    body: '{"metadata":{"$deleteFromPrimitiveList/finalizers":["example.com/a","example.com/b"]}}'
+  - request: PATCH /api/v1/namespaces/default/configmaps/conf
+    contentType: application/strategic-merge-patch+json
+    body: 'null'

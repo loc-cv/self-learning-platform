@@ -99,6 +99,7 @@ export const KUBECTL_PROVENANCE: ProvenanceSpec[] = [
   {
     name: 'kubectl.warnings',
     tag: 'source-derived',
-    sources: ['staging/src/k8s.io/client-go/rest/warnings.go WarningWriter'],
+    sources: ['staging/src/k8s.io/client-go/rest/warnings.go WarningWriter', 'staging/src/k8s.io/kubectl/pkg/cmd/cmd.go (Color: AllowsColorOutput)'],
+    note: 'Warning: in bold yellow when standard error is a terminal (captures are piped, so the color is not in a fixture)',
   },
 ];

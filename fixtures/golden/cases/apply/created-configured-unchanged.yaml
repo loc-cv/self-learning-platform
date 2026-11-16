@@ -58,7 +58,9 @@ files:
 steps:
   - run: kubectl apply -f web.yaml
   - run: kubectl apply -f web.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
   - run: kubectl apply -f web-v2.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
   - run: kubectl get deployment web -o yaml
   - run: kubectl apply -f dir/
   - run: kubectl apply -f dir/

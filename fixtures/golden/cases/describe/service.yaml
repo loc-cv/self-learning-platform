@@ -1,0 +1,119 @@
+description: >-
+  describe service for each type: named and numbered ports with their endpoints (more than three
+  are cut), a headless Service, a LoadBalancer with a local traffic policy, an ExternalName, a
+  selector nothing matches; several Services by label.
+files:
+  app.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: api
+    spec:
+      replicas: 4
+      selector:
+        matchLabels:
+          app: api
+      template:
+        metadata:
+          labels:
+            app: api
+        spec:
+          containers:
+          - name: api
+            image: nginx:1.27
+            ports:
+            - name: web
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+  services.yaml: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: api
+      labels:
+        tier: backend
+        team: payments
+      annotations:
+        example.com/owner: payments-team
+        example.com/description: This Service fronts the payments API, which every checkout flow calls, so it is long enough to be folded by describe.
+    spec:
+      selector:
+        app: api
+      ports:
+      - name: http
+        port: 80
+        targetPort: web
+      - name: metrics
+        port: 9090
+        targetPort: 9090
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: api-headless
+      labels:
+        tier: backend
+    spec:
+      clusterIP: None
+      selector:
+        app: api
+      ports:
+      - port: 8080
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: api-lb
+    spec:
+      type: LoadBalancer
+      externalTrafficPolicy: Local
+      sessionAffinity: ClientIP
+      selector:
+        app: api
+      ports:
+      - port: 443
+        targetPort: 8080
+        nodePort: 32000
+        protocol: TCP
+      healthCheckNodePort: 32001
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: docs
+    spec:
+      type: ExternalName
+      externalName: docs.example.com
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: orphan
+    spec:
+      selector:
+        app: nothing
+      ports:
+      - port: 80
+        appProtocol: http
+setup:
+  - do: kubectl create -f app.yaml
+  - do: kubectl rollout status deployment/api --timeout=60s
+  - do: kubectl create -f services.yaml
+  - until: kubectl get endpointslices -l kubernetes.io/service-name=api -o jsonpath='{.items[0].endpoints[*].addresses[0]}'
+    match: '\S+ \S+ \S+ \S+'
+  - until: kubectl get endpointslices -l kubernetes.io/service-name=api-headless -o jsonpath='{.items[0].endpoints[*].addresses[0]}'
+    match: '\S+ \S+ \S+ \S+'
+  - until: kubectl get endpointslices -l kubernetes.io/service-name=api-lb -o jsonpath='{.items[0].endpoints[*].addresses[0]}'
+    match: '\S+ \S+ \S+ \S+'
+steps:
+  - run: kubectl describe service api
+    kwok: true
+  - run: kubectl describe svc api-headless
+    kwok: true
+  - run: kubectl describe svc api-lb
+    kwok: true
+  - run: kubectl describe svc docs
+  - run: kubectl describe svc orphan
+  - run: kubectl describe services -l tier=backend
+    kwok: true

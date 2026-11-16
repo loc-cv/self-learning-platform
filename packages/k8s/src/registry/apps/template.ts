@@ -1,5 +1,5 @@
 // pod.DropDisabledTemplateFields for the apps kinds: the template's spec gets what a Pod's gets.
-// upstream: pkg/api/pod/util.go DropDisabledTemplateFields (not in the sparse checkout). Only the
+// upstream: pkg/api/pod/util.go DropDisabledTemplateFields (not in the checkout when this was written; it is now). Only the
 // ContainerStopSignals gate (alpha, off in v1.37.2) is handled: lifecycle.stopSignal is dropped
 // unless the old template used it, and a lifecycle left empty goes with it, as the v1.37.2 oracle
 // does for Pods.

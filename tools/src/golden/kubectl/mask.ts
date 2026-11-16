@@ -8,6 +8,7 @@
 // then ignored on both sides, since removing a member changes its neighbor's.
 
 import { isMap, isScalar, isSeq, parseAllDocuments, type Node as YamlNode } from 'yaml';
+import { DESCRIBE as DESCRIBE_CELLS, parse as parseCells, render as renderCells } from '../tabwriter.ts';
 
 type Obj = Record<string, unknown>;
 
@@ -161,4 +162,205 @@ export function maskText(text: string, masks: Mask[]): string {
   const kept = lines.filter((_l, i) => !drop.has(i));
   const json = text.trimStart().startsWith('{');
   return (json ? kept.map((l) => l.replace(/,$/, '')) : kept).join('\n');
+}
+
+// ---- describe text ----
+//
+// `kubectl describe` prints those fields as lines of a tab-writer layout, so they are masked in its
+// cells: the normalized text is split into cells (tabwriter.ts, describe parameters), lines are
+// removed or their values replaced by a token on both sides, and the cells are rendered again as
+// describe's tab writer would. Where removing the admission plugins' entries leaves a section empty,
+// the line becomes what kubectl prints for an empty section (describeContainerVolumes,
+// describeVolumes, printTolerationsMultilineWithIndent: `\t<none>`): what the oracle would have
+// printed without those plugins. Everything else, the set of lines and their order included, is
+// still compared.
+
+/** The token that replaces a KWOK-authored value in describe output. */
+export const KWOK_TOKEN = '<<kwok>>';
+
+export const DESCRIBE_ADMISSION_WHY = `${POD_ADMISSION.why}: the Priority and Service Account lines, the kube-api-access mount and volume, the NoExecute tolerations for 300s`;
+export const DESCRIBE_KWOK_POD_WHY = 'KWOK writes the Pod status (FIDELITY §6.5): Status, container IDs, states, Ready, Restart Count, the kubelet\'s conditions';
+export const DESCRIBE_KWOK_NODE_WHY = 'KWOK writes Node conditions and holds the node Lease (FIDELITY §6.5)';
+export const DESCRIBE_KUBELET_EVENTS_WHY = 'KWOK records no kubelet events (FIDELITY §6.5): their rows are left out of the events table';
+
+type Line = string[];
+
+const indentOf = (l: Line): number => /^ */.exec(l[0] ?? '')?.[0].length ?? 0;
+const keyOf = (l: Line): string => (l[0] ?? '').trim();
+const blank = (l: Line): boolean => l.length === 1 && (l[0] ?? '').trim() === '';
+
+const SA_MOUNT = /^\/var\/run\/secrets\/kubernetes\.io\/serviceaccount from kube-api-access-\S+ \(ro\)$/;
+const SA_VOLUME = /^kube-api-access-\S+:$/;
+const DEFAULT_TOLERATIONS = new Set(['node.kubernetes.io/not-ready:NoExecute op=Exists for 300s', 'node.kubernetes.io/unreachable:NoExecute op=Exists for 300s']);
+
+/** describePod's object: it has a `QoS Class:` line. */
+const isPod = (lines: Line[]): boolean => lines.some((l) => indentOf(l) === 0 && keyOf(l) === 'QoS Class:');
+/** describeNode's object: it has a `Roles:` line. */
+const isNode = (lines: Line[]): boolean => lines.some((l) => indentOf(l) === 0 && keyOf(l) === 'Roles:');
+
+/** A multi-line value (`Tolerations:` and its continuation lines) with some values removed. */
+function filterMultiline(lines: Line[], at: number, drop: (v: string) => boolean): Line[] {
+  const head = lines[at] as Line;
+  let end = at + 1;
+  while (end < lines.length && (lines[end] as Line).length === 2 && (lines[end] as Line)[0] === '') end++;
+  const values = [head[1] ?? '', ...lines.slice(at + 1, end).map((l) => l[1] ?? '')];
+  const kept = values.filter((v) => !drop(v));
+  const replaced: Line[] = kept.length === 0 ? [[head[0] as string, '<none>']] : kept.map((v, i) => (i === 0 ? [head[0] as string, v] : ['', v]));
+  return [...lines.slice(0, at), ...replaced, ...lines.slice(end)];
+}
+
+function maskPodAdmission(lines: Line[]): Line[] {
+  let out = lines.filter((l) => !(indentOf(l) === 0 && (keyOf(l) === 'Priority:' || keyOf(l) === 'Service Account:')));
+  // Mounts: the service account token's mount
+  const mounts: Line[] = [];
+  for (let i = 0; i < out.length; i++) {
+    const l = out[i] as Line;
+    mounts.push(l);
+    if (!(l.length === 1 && keyOf(l) === 'Mounts:')) continue;
+    const ind = indentOf(l);
+    let j = i + 1;
+    const kept: Line[] = [];
+    while (j < out.length && (out[j] as Line).length === 1 && indentOf(out[j] as Line) > ind) {
+      if (!SA_MOUNT.test(keyOf(out[j] as Line))) kept.push(out[j] as Line);
+      j++;
+    }
+    if (kept.length === 0) mounts[mounts.length - 1] = [l[0] as string, '<none>'];
+    mounts.push(...kept);
+    i = j - 1;
+  }
+  out = mounts;
+  // Volumes: the kube-api-access projected volume
+  const vi = out.findIndex((l) => l.length === 1 && indentOf(l) === 0 && keyOf(l) === 'Volumes:');
+  if (vi >= 0) {
+    let j = vi + 1;
+    const kept: Line[] = [];
+    while (j < out.length && indentOf(out[j] as Line) > 0) {
+      const name = out[j] as Line;
+      let k = j + 1;
+      while (k < out.length && indentOf(out[k] as Line) > indentOf(name)) k++;
+      if (!(name.length === 1 && SA_VOLUME.test(keyOf(name)))) kept.push(...out.slice(j, k));
+      j = k;
+    }
+    const head: Line[] = kept.length === 0 ? [['Volumes:', '<none>']] : [out[vi] as Line];
+    out = [...out.slice(0, vi), ...head, ...kept, ...out.slice(j)];
+  }
+  const ti = out.findIndex((l) => indentOf(l) === 0 && keyOf(l) === 'Tolerations:' && l.length === 2);
+  if (ti >= 0) out = filterMultiline(out, ti, (v) => DEFAULT_TOLERATIONS.has(v));
+  return out;
+}
+
+/** The rows of the table that starts at the header `title` (indent 0): [first row, end). */
+function tableRows(lines: Line[], title: string): [number, number] | undefined {
+  const at = lines.findIndex((l) => l.length === 1 && indentOf(l) === 0 && keyOf(l) === title);
+  if (at < 0) return undefined;
+  let start = at + 1;
+  // the column header, and the dashes under it when there are some
+  if (start < lines.length && indentOf(lines[start] as Line) > 0) start++;
+  if (start < lines.length && /^-+$/.test(keyOf(lines[start] as Line))) start++;
+  let end = start;
+  while (end < lines.length && indentOf(lines[end] as Line) > 0) end++;
+  return [start, end];
+}
+
+function dropKubeletEvents(lines: Line[]): Line[] {
+  const rows = tableRows(lines, 'Events:');
+  if (!rows) return lines;
+  const [start, end] = rows;
+  const kept = lines.slice(start, end).filter((l) => (l[3] ?? '').trim() !== 'kubelet');
+  if (kept.length === end - start) return lines;
+  if (kept.length > 0) return [...lines.slice(0, start), ...kept, ...lines.slice(end)];
+  // DescribeEvents with no events
+  const title = lines.findIndex((l) => l.length === 1 && indentOf(l) === 0 && keyOf(l) === 'Events:');
+  return [...lines.slice(0, title), ['Events:', '<none>'], ...lines.slice(end)];
+}
+
+const tokenValue = (l: Line): Line => [l[0] as string, KWOK_TOKEN];
+
+function maskPodKwok(lines: Line[]): Line[] {
+  const out: Line[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i] as Line;
+    const key = keyOf(l);
+    const ind = indentOf(l);
+    if (ind === 0 && key === 'Status:') {
+      out.push(tokenValue(l));
+      continue;
+    }
+    if (ind === 4 && (key === 'Container ID:' || key === 'Image ID:' || key === 'Ready:' || key === 'Restart Count:')) {
+      out.push(tokenValue(l));
+      continue;
+    }
+    if (ind === 4 && (key === 'State:' || key === 'Last State:')) {
+      // the state's details are the lines indented under it
+      let j = i + 1;
+      while (j < lines.length && indentOf(lines[j] as Line) > ind) j++;
+      if (key === 'State:') out.push(tokenValue(l));
+      i = j - 1;
+      continue;
+    }
+    out.push(l);
+  }
+  const rows = tableRows(out, 'Conditions:');
+  if (!rows) return out;
+  const [start, end] = rows;
+  const conditions = out
+    .slice(start, end)
+    .filter((l) => keyOf(l) !== 'PodReadyToStartContainers')
+    .map((l) => (keyOf(l) === 'PodScheduled' ? l : [l[0] as string, KWOK_TOKEN]));
+  return [...out.slice(0, start), ...conditions, ...out.slice(end)];
+}
+
+function maskNodeKwok(lines: Line[]): Line[] {
+  const leaseAt = lines.findIndex((l) => l.length === 1 && indentOf(l) === 0 && keyOf(l) === 'Lease:');
+  let out = lines.map((l, i) => (leaseAt >= 0 && i > leaseAt && i <= leaseAt + 3 && indentOf(l) === 2 ? tokenValue(l) : l));
+  const rows = tableRows(out, 'Conditions:');
+  if (rows) out = [...out.slice(0, rows[0]), ...out.slice(rows[1])];
+  return out;
+}
+
+/** The objects of a describe output: runs of lines between blank lines. */
+function describedObjects(lines: Line[]): Line[][] {
+  const out: Line[][] = [];
+  let cur: Line[] = [];
+  for (const l of lines) {
+    if (blank(l)) {
+      if (cur.length > 0) out.push(cur);
+      out.push([l]);
+      cur = [];
+      continue;
+    }
+    cur.push(l);
+  }
+  if (cur.length > 0) out.push(cur);
+  return out;
+}
+
+/**
+ * Masks normalized `kubectl describe` output: the admission plugins' fields of every Pod (D-046)
+ * and, with `kwok`, KWOK's fields of Pods and Nodes and the kubelet's event rows. Returns the text
+ * unchanged when it does not parse as describe output, and the reasons of the masks that changed it.
+ */
+export function maskDescribe(text: string, kwok: boolean): { text: string; masked: string[] } {
+  if (text === '' || !text.endsWith('\n')) return { text, masked: [] };
+  const lines = parseCells(text, DESCRIBE_CELLS);
+  if (!lines) return { text, masked: [] };
+  const masked = new Set<string>();
+  const step = (why: string, f: (l: Line[]) => Line[], o: Line[]): Line[] => {
+    const r = f(o);
+    if (JSON.stringify(r) !== JSON.stringify(o)) masked.add(why);
+    return r;
+  };
+  const out = describedObjects(lines).flatMap((o) => {
+    if (o.length === 1 && blank(o[0] as Line)) return o;
+    let r = o;
+    if (isPod(r)) {
+      r = step(DESCRIBE_ADMISSION_WHY, maskPodAdmission, r);
+      if (kwok && r.some((l) => keyOf(l) === 'Node:' && l[1] !== '<none>')) r = step(DESCRIBE_KWOK_POD_WHY, maskPodKwok, r);
+    }
+    if (kwok && isNode(r)) r = step(DESCRIBE_KWOK_NODE_WHY, maskNodeKwok, r);
+    if (kwok) r = step(DESCRIBE_KUBELET_EVENTS_WHY, dropKubeletEvents, r);
+    return r;
+  });
+  if (masked.size === 0) return { text, masked: [] };
+  return { text: renderCells(out, DESCRIBE_CELLS), masked: [...masked] };
 }

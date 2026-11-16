@@ -1,0 +1,171 @@
+# Captured from fixtures/golden/cases/delete/errors.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: delete/errors
+description: kubectl delete's argument and flag errors (before any request, after discovery, and in Validate), several names with some missing (the others are still deleted), --ignore-not-found with names and selectors, and the deprecated forms of --dry-run (a klog warning).
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl delete
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: You must provide one or more resources by argument or filename.
+      Example resource specifications include:
+         '-f rsrc.yaml'
+         '--filename=rsrc.json'
+         '<resource> <name>'
+         '<resource>'
+  - run: kubectl delete pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource(s) were provided, but no name was specified
+  - run: kubectl delete pod
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource(s) were provided, but no name was specified
+  - run: kubectl delete pod/a pods
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: there is no need to specify a resource type as a separate argument when passing arguments in resource/name form (e.g. 'kubectl get resource/<resource_name>' instead of 'kubectl get resource resource/<resource_name>'
+  - run: kubectl delete pod a/b/c
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: there is no need to specify a resource type as a separate argument when passing arguments in resource/name form (e.g. 'kubectl get resource/<resource_name>' instead of 'kubectl get resource resource/<resource_name>'
+  - run: kubectl delete pod x --all
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: name cannot be provided when a selector is specified
+  - run: kubectl delete pod/x --all
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: selectors and the all flag cannot be used when passing resource/name arguments
+  - run: kubectl delete pods --all -l app=a
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: setting 'all' parameter but found a non empty selector. 
+  - run: kubectl delete pods --all --field-selector metadata.name=a
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: setting 'all' parameter but found a non empty selector. 
+  - run: kubectl delete pods --all -l ' '
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: cannot set --all and --selector at the same time
+  - run: kubectl delete pods -l app=a,
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (BadRequest): Unable to find "/v1, Resource=pods" that match label selector "app=a,", field selector "": found '', expected: identifier after ','
+  - run: kubectl delete pods --field-selector spec.nope=a
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (BadRequest): Unable to find "/v1, Resource=pods" that match label selector "", field selector "spec.nope=a": field label not supported: spec.nope
+  - run: kubectl delete pod x -o yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unexpected -o output mode: yaml. We only support '-o name'
+  - run: kubectl delete pod x --now --grace-period=3
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --now and --grace-period cannot be specified together
+  - run: kubectl delete pod x --force --grace-period=5
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --force and --grace-period greater than 0 cannot be specified together
+  - run: kubectl delete pod x --cascade=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid cascade value (bogus). Must be "background", "foreground", or "orphan"
+  - run: kubectl delete pod x --dry-run=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Invalid dry-run value (bogus). Must be "none", "server", or "client".
+  - run: kubectl delete pod x --dry-run
+    exit: 0
+    stdout: |
+      pod "x" deleted from default namespace (dry run)
+    stderr: |
+      W<<time>> <<pid>> helpers.go:714] --dry-run is deprecated and can be replaced with --dry-run=client.
+  - run: kubectl delete pod x --dry-run=true
+    exit: 0
+    stdout: |
+      pod "x" deleted from default namespace (dry run)
+    stderr: |
+      W<<time>> <<pid>> helpers.go:728] --dry-run=true is deprecated (boolean value) and can be replaced with --dry-run=client.
+  - run: kubectl delete pod x --dry-run=0
+    exit: 1
+    stdout: ""
+    stderr: |
+      W<<time>> <<pid>> helpers.go:731] --dry-run=0 is deprecated (boolean value) and can be replaced with --dry-run=none.
+      Error from server (NotFound): pods "x" not found
+  - run: kubectl delete pod x -A
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: a resource cannot be retrieved by name across all namespaces
+  - run: kubectl delete pod x --timeout=bogus
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid argument "bogus" for "--timeout" flag: time: invalid duration "bogus"
+      See 'kubectl delete --help' for usage.
+  - run: kubectl delete nosuch x
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the server doesn't have a resource type "nosuch"
+  - run: kubectl delete pod a missing b
+    exit: 1
+    stdout: |
+      pod "a" deleted from default namespace
+      pod "b" deleted from default namespace
+    stderr: |
+      Error from server (NotFound): pods "missing" not found
+  - run: kubectl delete pods missing1 missing2
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "missing1" not found
+      Error from server (NotFound): pods "missing2" not found
+  - run: kubectl delete configmap missing c1 --ignore-not-found
+    exit: 0
+    stdout: |
+      configmap "c1" deleted from default namespace
+    stderr: ""
+  - run: kubectl delete pods -l app=nothing --ignore-not-found=false
+    exit: 0
+    stdout: |
+      No resources found
+    stderr: ""
+  - run: kubectl delete pods --field-selector metadata.name=nothing
+    exit: 0
+    stdout: |
+      No resources found
+    stderr: ""
+  - run: kubectl delete pod missing -n nowhere
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "missing" not found

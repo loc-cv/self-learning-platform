@@ -1,0 +1,242 @@
+description: The Warning headers of the API server for Pods and pod templates (pkg/api/pod/warnings.go), Services (pkg/api/service/warnings.go) and the recorder that dedupes them. Deprecated annotations and node labels, null label selectors, invalid label values in preferred node affinity, duplicate env, ports and port names, hostIP without hostPort, a negative termination grace period, fractional byte quantities, overlapping volume paths, deprecated volume plugins, duplicate or empty image pull secrets and host aliases, non-canonical IPs; templates warn on create and when their generation changes. Pod responses keep metadata only (admission plugins add fields, phase 20b); Deployment patches keep spec only (the controller writes metadata and status in the background).
+kwok: false
+steps:
+  # 0: a Pod with most of the Pod warnings, each once (the nodeSelector has one deprecated key:
+  # Go iterates the map in random order).
+  - request: POST /api/v1/namespaces/default/pods?dryRun=All
+    keep: [kind, apiVersion, metadata]
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: warned
+        annotations:
+          scheduler.alpha.kubernetes.io/critical-pod: ""
+          seccomp.security.alpha.kubernetes.io/pod: runtime/default
+          container.seccomp.security.alpha.kubernetes.io/sidecar: runtime/default
+      spec:
+        terminationGracePeriodSeconds: -1
+        nodeSelector:
+          beta.kubernetes.io/os: linux
+        imagePullSecrets:
+        - name: regcred
+        - name: regcred
+        - name: ""
+        hostAliases:
+        - ip: 10.0.0.5
+          hostnames: [a.local]
+        - ip: 10.0.0.5
+          hostnames: [b.local]
+        dnsConfig:
+          nameservers:
+          - 2001:db8:0:0::53
+        containers:
+        - name: app
+          image: nginx:1.27
+          env:
+          - name: MODE
+            value: one
+          - name: MODE
+            value: two
+          - name: MODE
+            value: $(MODE)-three
+          ports:
+          - name: http
+            containerPort: 80
+          - containerPort: 8080
+            hostIP: 10.0.0.1
+          resources:
+            requests:
+              memory: 1500m
+        - name: sidecar
+          image: busybox:1.36
+          ports:
+          - name: http
+            containerPort: 80
+          - containerPort: 8080
+            hostPort: 8080
+  # 1: a Deployment whose template has the scheduling, volume and annotation warnings; a template
+  # warns about the AppArmor annotation too (a Pod does not).
+  - request: POST /apis/apps/v1/namespaces/default/deployments
+    body: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: web
+      spec:
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+            annotations:
+              container.apparmor.security.beta.kubernetes.io/app: runtime/default
+              security.alpha.kubernetes.io/sysctls: kernel.shm_rmid_forced=1
+          spec:
+            topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                  - matchExpressions:
+                    - key: node-role.kubernetes.io/master
+                      operator: DoesNotExist
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 10
+                  preference:
+                    matchExpressions:
+                    - key: beta.kubernetes.io/arch
+                      operator: In
+                      values: [amd64, "not valid"]
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 5
+                  podAffinityTerm:
+                    topologyKey: kubernetes.io/hostname
+            volumes:
+            - name: config
+              configMap:
+                name: web-config
+                items:
+                - key: a
+                  path: conf
+                - key: b
+                  path: conf/b
+            - name: bundle
+              projected:
+                sources:
+                - configMap:
+                    name: web-config
+                    items:
+                    - key: token
+                      path: token
+                - serviceAccountToken:
+                    path: token/
+            - name: repo
+              gitRepo:
+                repository: https://example.com/repo.git
+            - name: scratch
+              ephemeral:
+                volumeClaimTemplate:
+                  spec:
+                    accessModes: [ReadWriteOnce]
+                    resources:
+                      requests:
+                        storage: 1500m
+            containers:
+            - name: app
+              image: nginx:1.27
+              resources:
+                limits:
+                  ephemeral-storage: 100.5
+  # 2: a metadata change leaves the generation alone: no template warnings.
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: |
+      {"metadata": {"labels": {"tier": "front"}}}
+  # 3: a spec change bumps the generation: the template warns again.
+  - request: PATCH /apis/apps/v1/namespaces/default/deployments/web
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, spec]
+    body: |
+      {"spec": {"replicas": 2}}
+  # 4: a ReplicaSet: the name warning, then the template's.
+  - request: POST /apis/apps/v1/namespaces/default/replicasets?dryRun=All
+    body: |
+      apiVersion: apps/v1
+      kind: ReplicaSet
+      metadata:
+        name: web.v2
+      spec:
+        selector:
+          matchLabels:
+            app: web
+        template:
+          metadata:
+            labels:
+              app: web
+          spec:
+            nodeSelector:
+              node-role.kubernetes.io/master: ""
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 5: a DaemonSet: only the template's warnings.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets?dryRun=All
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: agent
+      spec:
+        selector:
+          matchLabels:
+            app: agent
+        template:
+          metadata:
+            labels:
+              app: agent
+            annotations:
+              security.alpha.kubernetes.io/unsafe-sysctls: net.core.somaxconn=1024
+          spec:
+            hostAliases:
+            - ip: 10.0.0.9
+              hostnames: [a.local]
+            - ip: 10.0.0.9
+              hostnames: [b.local]
+            containers:
+            - name: agent
+              image: busybox:1.36
+              env:
+              - name: A
+                value: x
+              - name: A
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+  # 6: the recorder dedupes: two empty projected sources warn once.
+  - request: POST /api/v1/namespaces/default/pods?dryRun=All
+    keep: [kind, apiVersion, metadata]
+    body: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: empty-sources
+      spec:
+        volumes:
+        - name: nothing
+          projected:
+            sources:
+            - {}
+            - {}
+        containers:
+        - name: app
+          image: nginx:1.27
+  # 7: Service warnings: headless with external IPs and session affinity, an externalName on a
+  # ClusterIP Service, a non-canonical IPv6 external IP.
+  - request: POST /api/v1/namespaces/default/services?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: headless
+        annotations:
+          service.kubernetes.io/topology-aware-hints: auto
+      spec:
+        clusterIP: None
+        sessionAffinity: ClientIP
+        externalName: example.com
+        externalIPs:
+        - 2001:db8:0:0::10
+        selector:
+          app: web
+        ports:
+        - port: 80

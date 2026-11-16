@@ -23,8 +23,8 @@ import { GET_TABLE, parse as parseTable, render as renderTable, type Cells } fro
 import { defaultTable, parseCase, type DoStep, type GoldenCase, type RunStep, type SleepStep, type UntilStep } from '../case.ts';
 import { mapOracle, newContext, normalizeJson, normalizeText, type NormalizeContext } from '../normalize.ts';
 import { caseWorld, HOME, type CaseWorld } from './world.ts';
-import { dropItems, KWOK, kubeletEvent, maskText, maskTouches, maskValue, POD_ADMISSION, type Mask } from './mask.ts';
-import { phaseOf, readOnly, shim, type ShimEnv, type ShimResult, type Unsupported } from './shim.ts';
+import { dropItems, KWOK, kubeletEvent, maskDescribe, maskText, maskTouches, maskValue, POD_ADMISSION, type Mask } from './mask.ts';
+import { oracleDeviceIn, phaseOf, readOnly, shim, type ShimEnv, type ShimResult, type Unsupported } from './shim.ts';
 
 type Obj = Record<string, unknown>;
 
@@ -125,6 +125,8 @@ const firstLine = (s: string): string => s.split('\n')[0] ?? '';
 type Ran = { via: 'sim'; r: Exec } | { via: 'shim'; r: ShimResult; notice: string } | { via: 'none'; why: string; notice: string };
 
 function runEither(w: CaseWorld, env: ShimEnv, command: string, stdin?: string): Ran {
+  const device = oracleDeviceIn(env, command, stdin);
+  if (device) return { via: 'none', why: device, notice: '' };
   const r = exec(w, command, stdin);
   if (!isNotice(r)) return { via: 'sim', r };
   const notice = firstLine(r.stderr.slice(r.stderr.search(NOTICE)));
@@ -469,6 +471,8 @@ function runStep(w: CaseWorld, env: ShimEnv, step: RunStep, expected: Obj, ctx: 
     if (isNotice({ status: r.status, output: r.output })) return notCompared(env, step, expected, index, firstLine(r.output.slice(r.output.search(NOTICE))), notes, server);
     actual = { exit: r.status, output: norm(r.output) };
   } else {
+    const device = oracleDeviceIn(env, step.run, step.stdin);
+    if (device) return { index, label, outcome: 'blocked', detail: device };
     const r = exec(w, step.run, step.stdin);
     if (isNotice(r)) return notCompared(env, step, expected, index, firstLine(r.stderr.slice(r.stderr.search(NOTICE))), notes, server);
     let stdout = r.stdout;
@@ -494,6 +498,15 @@ function runStep(w: CaseWorld, env: ShimEnv, step: RunStep, expected: Obj, ctx: 
       exp.stdout = maskText(String(exp.stdout), masks);
       act.stdout = maskText(String(act.stdout), masks);
     }
+  }
+  if (!step.tty && table === 'describe') {
+    // describe's text: the same fields, masked in its cells (mask.ts maskDescribe).
+    const e = maskDescribe(String(exp.stdout), step.kwok === true);
+    const a = maskDescribe(String(act.stdout), step.kwok === true);
+    for (const why of [...e.masked, ...a.masked]) if (!masked.includes(why)) masked.push(why);
+    // numbered tokens of masked values (a KWOK lease holder's UUID) no longer count
+    exp.stdout = renumber(e.text);
+    act.stdout = renumber(a.text);
   }
   const equal = JSON.stringify(exp) === JSON.stringify(act);
   const res: StepResult = { index, label, outcome: equal ? 'pass' : 'fail', expected: exp, actual: act };

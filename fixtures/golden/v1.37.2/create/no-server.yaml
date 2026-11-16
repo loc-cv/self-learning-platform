@@ -1,0 +1,50 @@
+# Captured from fixtures/golden/cases/create/no-server.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: create/no-server
+description: "kubectl create -f and apply -f with no server: what is read and reported before the first request (paths, parsing), and what the first request that cannot connect prints."
+kubernetes: v1.37.2
+oracle:
+  mode: client
+steps:
+  - run: kubectl create -f cm.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "cm.yaml": error validating data: failed to download openapi: Get "http://localhost:8080/openapi/v2?timeout=32s": dial tcp [::1]:8080: connect: connection refused; if you choose to ignore these errors, turn validation off with --validate=false
+  - run: kubectl create -f cm.yaml --validate=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      error: unable to recognize "cm.yaml": Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl apply -f cm.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "cm.yaml": error validating data: failed to download openapi: Get "http://localhost:8080/openapi/v2?timeout=32s": dial tcp [::1]:8080: connect: connection refused; if you choose to ignore these errors, turn validation off with --validate=false
+  - run: kubectl apply -f cm.yaml --validate=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      E<<time>> <<pid>> memcache.go:381] "Couldn't get current server API group list" err="Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+      error: unable to recognize "cm.yaml": Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connect: connection refused
+  - run: kubectl create -f missing.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the path "missing.yaml" does not exist
+  - run: kubectl create -f bad.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad.yaml: error converting YAML to JSON: yaml: line 2: did not find expected ',' or ']'
+  - run: kubectl apply -f bad.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error parsing bad.yaml: error converting YAML to JSON: yaml: line 2: did not find expected ',' or ']'
+  - run: kubectl create -f cm.yaml --dry-run=client
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error validating "cm.yaml": error validating data: failed to download openapi: Get "http://localhost:8080/openapi/v2?timeout=32s": dial tcp [::1]:8080: connect: connection refused; if you choose to ignore these errors, turn validation off with --validate=false

@@ -1,0 +1,22 @@
+description: >-
+  kubectl create -f and apply -f with no server: what is read and reported before the first
+  request (paths, parsing), and what the first request that cannot connect prints.
+server: false
+files:
+  cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: cm
+  bad.yaml: |
+    apiVersion: v1
+    kind: [ConfigMap
+steps:
+  - run: kubectl create -f cm.yaml
+  - run: kubectl create -f cm.yaml --validate=false
+  - run: kubectl apply -f cm.yaml
+  - run: kubectl apply -f cm.yaml --validate=false
+  - run: kubectl create -f missing.yaml
+  - run: kubectl create -f bad.yaml
+  - run: kubectl apply -f bad.yaml
+  - run: kubectl create -f cm.yaml --dry-run=client

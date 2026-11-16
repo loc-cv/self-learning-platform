@@ -22,17 +22,22 @@ import {
   conflictError,
   deleteSuccess,
   generateNameConflictError,
+  genericServerResponse,
   invalidError,
   methodNotSupportedError,
   notFoundError,
   OPTIMISTIC_LOCK_ERROR,
   resourceExpiredError,
+  unknownStatusError,
   type GroupKind,
   type Status,
 } from '../apimachinery/errors.ts';
 import { invalid, newPath, notSupported, type FieldError } from '../apimachinery/field.ts';
 import { cloneJson, isObject, jsonEqual, type Json, type JsonObject } from '../apimachinery/json.ts';
 import { mergePatch, mergePatchError } from '../apimachinery/mergepatch.ts';
+import { applyStrategicPatchInPlace } from '../apimachinery/strategicpatch/index.ts';
+import { fromUnstructured } from '../apimachinery/converter.ts';
+import { goSprint } from '../kubectl/printers/gofmt.ts';
 import { generateName } from '../apimachinery/rand.ts';
 import { timeOf } from '../apimachinery/time.ts';
 import { isPathSegmentPrefix, isValidPathSegmentName } from '../apimachinery/validation/names.ts';
@@ -60,6 +65,7 @@ import {
   type WatchEventType,
 } from './store.ts';
 import type { ApiRequest, ApiResponse, RequestOptions, Strategy, StrategyCtx } from './types.ts';
+import { recordWarnings } from './warning.ts';
 import { applyIncludeObject, convertToTable, type TableSource } from '../printers/tablegenerator.ts';
 
 type Result<T> = { ok: T } | { status: Status };
@@ -129,7 +135,8 @@ export function handle(ctx: Ctx, server: ApiServerConfig, req: ApiRequest): ApiR
     },
   };
   const r = dispatch(served, req);
-  return strategy.deprecationWarning ? { ...r, warnings: [strategy.deprecationWarning, ...r.warnings] } : r;
+  // The deprecation warning is added first; the recorder dedupes and truncates (warning.ts).
+  return { ...r, warnings: recordWarnings(strategy.deprecationWarning ? [strategy.deprecationWarning, ...r.warnings] : r.warnings) };
 }
 
 function dispatch(served: Served, req: ApiRequest): ApiResponse {
@@ -505,7 +512,8 @@ function update(sv: Served, req: ApiRequest, merged: JsonObject | undefined): Ap
 
 function patch(sv: Served, req: ApiRequest): ApiResponse {
   const type = req.options?.patchType ?? 'merge';
-  if (type !== 'merge') return gap(`${type} patches (only JSON merge patches are simulated so far)`);
+  if (type === 'strategic') return strategicPatch(sv, req);
+  if (type !== 'merge') return gap(`${type} patches (only JSON merge and strategic merge patches are simulated so far)`);
   const optErr = checkFieldValidation(req.options, 'PatchOptions');
   if (optErr) return fail(optErr);
   // patch.go: json-patch v4 refuses a merge patch that is not an object or array.
@@ -534,6 +542,72 @@ function patch(sv: Served, req: ApiRequest): ApiResponse {
     if (mode !== 'Ignore') sv.warnings.push(...items);
   }
   const obj = canonical(r.value as Json, t.id) as JsonObject;
+  obj.apiVersion = sv.apiVersion;
+  obj.kind = sv.strategy.kind;
+  sv.strategy.defaults?.(obj, sv.s);
+  return update(sv, req, canonical(obj, t.id) as JsonObject);
+}
+
+/** jsonKind of a value encoding/json cannot unmarshal into a map: its UnmarshalTypeError Value. */
+function jsonValueKind(v: Json): string {
+  return Array.isArray(v) ? 'array' : typeof v === 'boolean' ? 'bool' : typeof v;
+}
+
+/**
+ * A strategic merge patch (application/strategic-merge-patch+json), as smpPatcher applies it.
+ * upstream: staging/src/k8s.io/apiserver/pkg/endpoints/handlers/patch.go (validateAndTranscodePatch,
+ * smpPatcher.applyPatchToCurrentObject, strategicPatchObject, applyPatchToObject,
+ * interpretStrategicMergePatchError). The current object as a map, the patch decoded into
+ * map[string]interface{}, StrategicMergeMapPatch, then the unstructured converter into the Go type
+ * (its errors and sorted unknown fields, apimachinery/converter.ts); a failure is Invalid on the
+ * field `patch` with the patch map, as the merge left it, printed by %+v.
+ */
+function strategicPatch(sv: Served, req: ApiRequest): ApiResponse {
+  const optErr = checkFieldValidation(req.options, 'PatchOptions');
+  if (optErr) return fail(optErr);
+  // validateAndTranscodePatch: json.Valid.
+  if (req.body === undefined) return fail(badRequestError('invalid JSON patch'));
+  const ns = namespaceFor(sv, req);
+  const name = req.name ?? '';
+  const existing = storeGet(sv.etcd, sv.strategy.storage, objectKey(ns, name));
+  // smpPatcher.createNewObject: a strategic merge patch never creates.
+  if (!existing) return fail(notFoundError(sv.gr, name));
+  const t = schema().kind(sv.apiVersion, sv.strategy.kind);
+  if (!t) throw new Error(`no schema for ${sv.apiVersion}`);
+  // kjson.UnmarshalStrict / UnmarshalCaseSensitivePreserveInts into map[string]interface{}: a
+  // JSON null leaves the map empty. (Duplicate keys, the one strict error a map can have, cannot
+  // reach the simulator: clients send values.)
+  if (req.body !== null && !isObject(req.body)) return fail(badRequestError(`json: cannot unmarshal ${jsonValueKind(req.body)} into Go value of type map[string]interface {}`));
+  const patchMap: JsonObject = req.body === null ? {} : cloneJson(req.body);
+  const merged = applyStrategicPatchInPlace(cloneJson(toResponse(sv, existing)), patchMap, t.id);
+  if ('error' in merged) {
+    switch (merged.sentinel) {
+      case 'ErrBadJSONDoc':
+      case 'ErrBadPatchFormatForPrimitiveList':
+      case 'ErrBadPatchFormatForRetainKeys':
+      case 'ErrBadPatchFormatForSetElementOrderList':
+      case 'ErrUnsupportedStrategicMergePatchFormat':
+        return fail(badRequestError(merged.error));
+      case 'ErrNoListOfLists':
+      case 'ErrPatchContentNotMatchRetainKeys':
+        return fail(genericServerResponse(422, merged.error));
+      default:
+        return fail(unknownStatusError(merged.error));
+    }
+  }
+  // handlers/rest.go fieldValidation: no directive is Warn.
+  const mode = req.options?.fieldValidation || 'Warn';
+  const conv = fromUnstructured(merged.ok, t.id, mode === 'Warn' || mode === 'Strict');
+  const patchInvalid = (detail: string) => invalidError({ group: '', kind: '' }, '', [invalid(newPath('patch'), goSprint(patchMap), detail)]);
+  if (conv.error !== undefined) return fail(patchInvalid(conv.error));
+  if (conv.unknown.length > 0) {
+    if (mode === 'Strict') return fail(patchInvalid(`strict decoding error: ${conv.unknown.join(', ')}`));
+    sv.warnings.push(...conv.unknown);
+  }
+  // smpPatcher: ConvertToVersion to the hub version; its error is a plain one.
+  const convErr = isObject(conv.value) ? sv.strategy.conversionError?.(conv.value) : undefined;
+  if (convErr !== undefined) return fail(unknownStatusError(convErr), sv.warnings);
+  const obj = canonical(conv.value as Json, t.id) as JsonObject;
   obj.apiVersion = sv.apiVersion;
   obj.kind = sv.strategy.kind;
   sv.strategy.defaults?.(obj, sv.s);

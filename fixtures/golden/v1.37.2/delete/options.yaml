@@ -1,0 +1,131 @@
+# Captured from fixtures/golden/cases/delete/options.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: delete/options
+description: "kubectl delete's options and their output: --wait=false, --now, --grace-period, --all, -A with a selector, -o name, client and server dry runs (an object named is not fetched first, so a client dry run of a missing one still prints), forced deletion's warning, the cluster-scope warning, the deprecated boolean forms of --cascade and --dry-run, and a wait that times out on a finalizer."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl delete pod a --wait=false
+    exit: 0
+    stdout: |
+      pod "a" deleted from default namespace
+    stderr: ""
+  - run: kubectl delete pod b --now
+    exit: 0
+    stdout: |
+      pod "b" deleted from default namespace
+    stderr: ""
+  - run: kubectl delete pod c --grace-period=5
+    exit: 0
+    stdout: |
+      pod "c" deleted from default namespace
+    stderr: ""
+  - run: kubectl delete pod d -o name
+    exit: 0
+    stdout: |
+      pod/d
+    stderr: ""
+  - run: kubectl delete pod e --dry-run=client
+    exit: 0
+    stdout: |
+      pod "e" deleted from default namespace (dry run)
+    stderr: ""
+  - run: kubectl delete pod missing --dry-run=client
+    exit: 0
+    stdout: |
+      pod "missing" deleted from default namespace (dry run)
+    stderr: ""
+  - run: kubectl delete pod e --dry-run=server
+    exit: 0
+    stdout: |
+      pod "e" deleted from default namespace (server dry run)
+    stderr: ""
+  - run: kubectl delete pod missing --dry-run=server
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): pods "missing" not found
+  - run: kubectl delete pod e --dry-run=server -o name
+    exit: 0
+    stdout: |
+      pod/e
+    stderr: ""
+  - run: kubectl get pod e -o name
+    exit: 0
+    stdout: |
+      pod/e
+    stderr: ""
+  - run: kubectl delete pod e --force
+    exit: 0
+    stdout: |
+      pod "e" force deleted from default namespace
+    stderr: |
+      Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+  - run: kubectl delete pod f --grace-period=0
+    exit: 0
+    stdout: |
+      pod "f" deleted from default namespace
+    stderr: ""
+  - run: kubectl delete pod g --grace-period=0 --force -o name
+    exit: 0
+    stdout: |
+      pod/g
+    stderr: |
+      Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+  - run: kubectl delete pods --all -n scratch
+    exit: 0
+    stdout: |
+      pod "p1" deleted from scratch namespace
+      pod "p2" deleted from scratch namespace
+    stderr: ""
+  - run: kubectl get pods -n scratch
+    exit: 0
+    stdout: ""
+    stderr: |
+      No resources found in scratch namespace.
+  - run: kubectl delete configmaps -A -l tier=x
+    exit: 0
+    stdout: |
+      configmap "tagged" deleted from other namespace
+      configmap "tagged" deleted from scratch namespace
+    stderr: ""
+  - run: kubectl delete namespace other -n scratch --wait=false
+    exit: 0
+    stdout: |
+      namespace "other" deleted
+    stderr: |
+      Warning: deleting cluster-scoped resources, not scoped to the provided namespace
+  - run: kubectl delete pod missing --cascade=false
+    exit: 1
+    stdout: ""
+    stderr: |
+      warning: --cascade=false is deprecated (boolean value) and can be replaced with --cascade=orphan.
+      Error from server (NotFound): pods "missing" not found
+  - run: kubectl delete pod missing --cascade=true --ignore-not-found
+    exit: 0
+    stdout: ""
+    stderr: |
+      warning: --cascade=true is deprecated (boolean value) and can be replaced with --cascade=background.
+  - run: kubectl delete configmap held --timeout=2s
+    exit: 1
+    stdout: |
+      configmap "held" deleted from default namespace
+    stderr: |
+      error: timed out waiting for the condition on configmaps/held
+  - run: kubectl get configmap held -o name
+    exit: 0
+    stdout: |
+      configmap/held
+    stderr: ""
+  - run: kubectl delete pods,configmaps -l app=nothing --dry-run=server
+    exit: 0
+    stdout: |
+      No resources found
+    stderr: ""

@@ -1,0 +1,76 @@
+description: >-
+  kubectl delete -f: a file with two documents, a directory, -R, stdin, JSON; the source named in
+  NotFound errors, --ignore-not-found, a selector filtering the file's objects, a client dry run
+  (the objects are not fetched), a file's namespace against -n, and the argument errors with -f.
+files:
+  cms.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: one
+      labels:
+        app: x
+    data:
+      a: "1"
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: two
+    data:
+      a: "2"
+  dir/cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: in-dir
+    data:
+      a: "1"
+  dir/sub/cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: in-sub
+    data:
+      a: "1"
+  ns.yaml: |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: gone
+  other.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: elsewhere
+      namespace: other
+    data:
+      a: "1"
+  cm.json: |
+    {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "json"}, "data": {"a": "1"}}
+setup:
+  - do: kubectl create namespace other
+  - do: kubectl create -f cms.yaml
+  - do: kubectl create -f dir/cm.yaml
+  - do: kubectl create -f dir/sub/cm.yaml
+  - do: kubectl create -f other.yaml
+  - do: kubectl create -f cm.json
+  - do: kubectl create -f ns.yaml
+steps:
+  - run: kubectl delete -f cms.yaml --dry-run=client
+  - run: kubectl delete -f cms.yaml -l app=x
+  - run: kubectl delete -f cms.yaml
+  - run: kubectl delete -f cms.yaml --ignore-not-found
+  - run: kubectl delete -f dir/
+  - run: kubectl delete -f dir/ -R -o name
+  - run: kubectl delete -f other.yaml -n default
+  - run: kubectl delete -f other.yaml
+  - run: kubectl delete -f - -o name
+    stdin: |
+      {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "json"}}
+  - run: kubectl delete -f ns.yaml -n other --wait=false
+  - run: kubectl delete -f missing.yaml
+  - run: kubectl delete -f cms.yaml configmap one
+  - run: kubectl delete -f cms.yaml configmaps
+  - run: kubectl delete -f cms.yaml configmap/one
+  - run: kubectl delete -f cms.yaml --all

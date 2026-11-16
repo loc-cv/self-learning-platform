@@ -3,17 +3,21 @@
 
 import type { ProcApi, ProgramSpec, Syscall } from '@simlab/host';
 import { dispatch, type Dispatch, type Verb } from './cli/command.ts';
+import { applyVerb } from './cmd/apply.ts';
+import { createVerb } from './cmd/create.ts';
+import { deleteVerb } from './cmd/delete.ts';
+import { describeVerb } from './cmd/describe.ts';
 import { getVerb } from './cmd/get.ts';
 import { helpCommands, helpOutput } from './cmd/help.ts';
 
 /** The verbs the simulator implements; every other command of the manifest prints a notice. */
-export const VERBS: readonly Verb[] = [getVerb];
+export const VERBS: readonly Verb[] = [getVerb, describeVerb, createVerb, applyVerb, deleteVerb];
 
 /**
  * Global flags the simulator honors, and those on the no-effect list (docs/FIDELITY.md §4.1) with
  * the reason each has no observable effect here.
  */
-const GLOBALS: Dispatch['globals'] = {
+export const GLOBALS: Dispatch['globals'] = {
   kubeconfig: {},
   context: {},
   cluster: {},

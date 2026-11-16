@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elsewhere
+  namespace: kube-public
+data:
+  a: "1"

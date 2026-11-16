@@ -32,6 +32,13 @@ export function loadFixture(name: string): Fixture {
   return parseYaml(readFileSync(path.join(fixturesDir, `${name}.yaml`), 'utf8')) as Fixture;
 }
 
+const PATCH_TYPES: Record<string, NonNullable<RequestOptions['patchType']>> = {
+  'application/merge-patch+json': 'merge',
+  'application/strategic-merge-patch+json': 'strategic',
+  'application/json-patch+json': 'json',
+  'application/apply-patch+yaml': 'apply',
+};
+
 /** `<METHOD> <path?query>` → an ApiRequest. */
 export function toApiRequest(rec: RequestRecord): ApiRequest | undefined {
   const [method, target] = rec.request.split(' ') as [string, string];
@@ -64,7 +71,13 @@ export function toApiRequest(rec: RequestRecord): ApiRequest | undefined {
   if (q.has('propagationPolicy')) options.propagationPolicy = q.get('propagationPolicy') as string;
   if (q.get('dryRun') === 'All') options.dryRun = true;
   const verb = method === 'GET' ? (name ? 'get' : 'list') : method === 'POST' ? 'create' : method === 'PUT' ? 'update' : method === 'PATCH' ? 'patch' : 'delete';
-  if (verb === 'patch') options.patchType = 'merge';
+  if (verb === 'patch') {
+    // The Content-Type names the patch type (types.PatchType); the capture defaults to JSON.
+    const ct = rec.contentType ?? 'application/json';
+    const patchType = PATCH_TYPES[ct];
+    if (!patchType) return undefined;
+    options.patchType = patchType;
+  }
   let body: unknown;
   if (rec.body !== undefined) {
     const trimmed = rec.body.trim();

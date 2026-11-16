@@ -1663,7 +1663,7 @@ flowchart LR
 
 ### 4.9 kubectl
 
-`packages/k8s/src/kubectl/` (phase 07a; D-066…D-070). One program, `kubectl`, registered by the
+`packages/k8s/src/kubectl/` (phases 07a and 07b; D-066…D-070, D-073…D-078). One program, `kubectl`, registered by the
 k8s plugin; a simulated command is one `Verb` module under `cmd/`.
 
 ```mermaid
@@ -1685,7 +1685,7 @@ flowchart LR
   flag, the global flags, and the help text). `cli/command.ts` runs cobra's `Find` over it
   (`stripFlags`, `argsMinusFirstX`, aliases, `legacyArgs` with Levenshtein suggestions), so an
   unknown command or flag gets kubectl's own error, and a real one the simulator lacks gets the
-  `[sim]` notice: a command without a `Verb` (`the command "kubectl describe"`), or a flag the
+  `[sim]` notice: a command without a `Verb` (`the command "kubectl logs"`), or a flag the
   verb does not declare and no no-effect list names (`the flag --sort-by`). Flags are parsed as
   pflag parses them (`cli/flagset.ts`: long and short forms, `=` or a separate value, grouped
   shorthands, bools with `NoOptDefVal`, slices, `--`, `_` normalized to `-`) with the real types'
@@ -1718,6 +1718,23 @@ flowchart LR
   watch's events (one-row Tables) until Ctrl-C, which ends it with status 1 as kubectl's interrupt
   handler does. Formats kubectl knows but the simulator does not print (jsonpath, custom-columns,
   templates, kyaml) are notices; others get kubectl's "unable to match a printer" error.
+- **Manifests** (`resource/files.ts`, D-074): `-f` paths (files, directories by extension, `-R`,
+  globs, `-`) are read from the machine's VFS and decoded with go-yaml and sigs.k8s.io/yaml
+  (`apimachinery/yaml/`) before the first request; each document is mapped to its resource and
+  namespace. create, apply, delete and describe visit the items in order with ContinueOnError.
+- **create and apply** (`cmd/create.ts`, `cmd/apply.ts`, `util/apply.ts`): create posts each object
+  with fieldValidation from `--validate`; apply writes the
+  `kubectl.kubernetes.io/last-applied-configuration` annotation, creates what is missing and
+  otherwise sends the three-way strategic merge patch of last-applied, the file and the live
+  object (`apimachinery/strategicpatch/`, D-073), which the API server applies as its smpPatcher
+  does; an empty patch is `unchanged`. Dry runs are client-side (no request) or `dryRun=All`.
+- **delete** (`cmd/delete.ts`, D-078): one DELETE per object with the grace period and propagation
+  policy the flags give, then (unless `--wait=false`) a watch per object until it is gone, in
+  virtual time, so a Pod's grace period is a real wait at the prompt.
+- **describe** (`cmd/describe.ts`, `describe/`, D-076): describers for Pod, Deployment, Service and
+  Node send the requests upstream's do (events by involvedObject field selector, a Deployment's
+  ReplicaSets, a Node's non-terminated Pods and Lease, a Service's EndpointSlices) and write
+  through a port of the PrefixWriter onto the tab writer.
 - **Latency** (`npm run bench:kubectl`, PLAN.md §2: p95 under 50 ms for read commands): from Enter
   to the prompt in a login shell on the control plane with a three-replica Deployment running,
   200 runs each, measured 2026-11-16 on the workstation (§2.1 of docs/FIDELITY.md): `get pods`

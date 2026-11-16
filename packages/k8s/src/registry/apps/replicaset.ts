@@ -1,5 +1,5 @@
 // ReplicaSet. upstream: pkg/registry/apps/replicaset/strategy.go (rsStrategy: PrepareForCreate,
-// PrepareForUpdate (generation on spec change), Validate, WarningsOnCreate, ValidateUpdate,
+// PrepareForUpdate (generation on spec change), Validate, WarningsOnCreate, ValidateUpdate, WarningsOnUpdate,
 // DefaultGarbageCollectionPolicy DeleteDependents, ToSelectableFields; rsStatusStrategy:
 // PrepareForUpdate keeps spec, ValidateUpdate), pkg/registry/apps/replicaset/storage/storage.go
 // (status and scale subresources, Status on delete). ToSelectableFields has status.replicas, but no
@@ -12,7 +12,7 @@ import { defaultReplicaSet } from '../../apis/apps/v1/defaults.ts';
 import { validateReplicaSet, validateReplicaSetStatusUpdate, validateReplicaSetUpdate } from '../../apis/apps/validation/replicaset.ts';
 import type { PodValidationOptions } from '../../apis/core/validation/options.ts';
 import { defaultFieldLabel, objectMetaFields } from '../meta.ts';
-import { podNamePrefixWarning } from './deployment.ts';
+import { podNamePrefixWarning, templateWarnings, templateWarningsOnUpdate } from './deployment.ts';
 import { scaleOf } from './scale.ts';
 import { dropDisabledTemplateFields } from './template.ts';
 
@@ -45,7 +45,8 @@ export const replicaSetStrategy: Strategy = {
   },
   validate: (o, s) => validateReplicaSet(o, options(s)),
   validateUpdate: (o, old, s) => validateReplicaSetUpdate(o, old, options(s)),
-  warningsOnCreate: (o) => podNamePrefixWarning(o),
+  warningsOnCreate: (o) => [...podNamePrefixWarning(o), ...templateWarnings(o)],
+  warningsOnUpdate: (o, old) => templateWarningsOnUpdate(o, old),
   allowCreateOnUpdate: false,
   allowUnconditionalUpdate: true,
   gcPolicy: 'DeleteDependents',

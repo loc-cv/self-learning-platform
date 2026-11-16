@@ -1,8 +1,10 @@
 # kubectl get: the table of each kind, plain and with -o wide.
-# objects: workloads.yaml
-# settle: 30
+# file: workloads.yaml
+# settle: 0
 # Server-side Tables (packages/k8s/src/printers) printed by kubectl's table printer; layouts as in
 # the golden fixtures (fixtures/golden/v1.37.2), values from the simulated cluster.
+% kubectl create -f workloads.yaml
+% sleep 30
 $ kubectl get pods
 NAME                   READY   STATUS    RESTARTS   AGE
 web-5d66c95fd4-dm95j   1/1     Running   0          30s
@@ -61,7 +63,7 @@ $ kubectl get serviceaccounts
 NAME      AGE
 default   35s
 $ kubectl get endpoints
-Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+[33;1mWarning:[0m v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
 NAME         ENDPOINTS                     AGE
 kubernetes   172.16.0.10:6443              35s
 web          10.244.1.3:80,10.244.2.3:80   30s

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+    owner: team-a
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: web
+        image: nginx:1.31.8
+        env:
+        - name: MODE
+          value: production
+        - name: DEBUG
+          value: "false"
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 443
+          name: https

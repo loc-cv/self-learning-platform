@@ -122,8 +122,8 @@ describe('decodeManifestStream', () => {
   });
 
   test('a JSON stream: an unambiguous one keeps its error, one object falls back to YAML', () => {
-    expect(decodeManifestStream('{"a": 1}\n{"b": 2}\n{"c": 3')).toEqual({ docs: [{ a: 1 }, { b: 2 }], error: 'unexpected EOF' });
-    expect(decodeManifestStream('{"a": 1}\nb: 2\n')).toEqual({ docs: [{ a: 1 }, { b: 2 }] });
+    expect(decodeManifestStream('{"a": 1}\n{"b": 2}\n{"c": 3')).toEqual({ docs: [{ a: 1 }, { b: 2 }], raw: ['{"a": 1}', '{"b": 2}'], error: 'unexpected EOF' });
+    expect(decodeManifestStream('{"a": 1}\nb: 2\n')).toEqual({ docs: [{ a: 1 }, { b: 2 }], raw: ['{"a": 1}'] });
     expect(decodeManifestStream('{"a" 1}')).toEqual({ docs: [], error: "json: offset 6: invalid character '1' after object key" });
   });
 });

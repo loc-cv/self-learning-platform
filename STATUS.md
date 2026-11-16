@@ -23,7 +23,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 06a `prompts/06a-topology-and-scheduler.md`
 - [x] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
 - [x] 07a `prompts/07a-kubectl-framework-and-get.md`
-- [ ] 07b `prompts/07b-kubectl-describe-apply-delete.md`
+- [x] 07b `prompts/07b-kubectl-describe-apply-delete.md`
 - [ ] 08 `prompts/08-kubectl-2.md`
 - [ ] 09 `prompts/09-scenarios-and-first-labs.md`
 - [ ] 10 `prompts/10-web-app.md`
@@ -166,10 +166,11 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   `controllers/namespace-deletion` shows it, and `kubectl get configmaps` lists it in every real
   namespace; `tools/src/golden/tables.test.ts` creates a stand-in). Phase 20a (service account
   credentials), or 16a if projected volumes need it first.
-- **No `deletecollection` verb and no strategic merge patch in the pipeline.** The namespace
-  deleter uses upstream's list-and-delete fallback (D-050); controllers send JSON merge patches
-  with the same result (D-052). Phase 07b (kubectl apply/patch send strategic merge patches) adds
-  strategic merge; deletecollection comes with the first client that sends it.
+- **No `deletecollection` verb; controllers send JSON merge patches.** The namespace deleter uses
+  upstream's list-and-delete fallback (D-050); deletecollection comes with the first client that
+  sends it. Controllers send JSON merge patches where upstream sends strategic merge patches,
+  with the same stored result (D-052); the pipeline applies strategic patches since phase 07b, so
+  switching them is optional (R3, or the next phase that touches the controllers).
 - **Controllers, the scheduler and kubelets call the pipeline directly**
   (`packages/k8s/src/client/client.ts`): no kubeconfig, credentials or network. kubectl goes
   through `kubectl/client/transport.ts` since 07a. Phase 27 (the API server as a process that can
@@ -181,14 +182,10 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 - **kubeconfig credentials are ignored** (D-069): a user entry stands for the certificate it would
   hold, so kubectl never prompts for basic auth as the real one does for an https server with an
   empty user. Phases 20a (authentication) and 25b (certificate data) remove it.
-- **Objects for transcripts and `npm run sim -- --objects` are created through the API server**
-  (`packages/k8s/src/testing/objects.ts`, the `# objects:` transcript header, the sim option),
-  as `kubectl create -f` would send them. Phase 07b turns them into `kubectl create`/`apply` setup
-  lines and removes the option and the header.
 - **The differential runner shims the kubectl verbs that are not simulated yet**
   (`tools/src/golden/kubectl/shim.ts`): setup and state-changing steps of golden cases are sent as
-  the requests real kubectl sends. Each phase that builds a verb (07b, 08, 15) deletes its shim
-  entries so the runner uses the simulated kubectl.
+  the requests real kubectl sends. Each phase that builds a verb (08, 15) deletes its shim
+  entries so the runner uses the simulated kubectl (07b removed create -f, apply and delete).
 - **The scale subresource is read-only** (D-045): writes are a gap. The phase that builds
   `kubectl scale` (08) implements them.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
@@ -212,11 +209,9 @@ Unfinished work from a phase, precise enough for the next session to continue.
   returns nothing, so httpd's AH00558 (needs `/etc/hosts`) is a gap. Add the fields when containers
   get files (16a/17).
 
-- **Phase 05a, API warnings (DIV-017).** `pkg/api/pod/warnings.go` (GetWarningsForPod,
-  GetWarningsForPodTemplate) was not in the checkout; it is now. Port it into the Pod, Deployment
-  and ReplicaSet strategies' `warningsOnCreate`/`warningsOnUpdate`, and check the Service
-  warnings of `apis/core/validation/service.ts` (written from oracle probes) against
-  `pkg/api/service/warnings.go`. Owner: phase 07b (apply and create print warnings), or R3.
+- **Phase 07b, tie order in describe (DIV-036).** Port Go's pdqsort (`sort.Sort`, `sort.Slice`;
+  `src/sort` is now in the Go checkout, `tools/src/upstream/paths.ts`) and use it where describe
+  sorts events and tolerations, so more than 12 equal keys order as upstream. Owner: R3 or 15.
 - **Phase 05a, the Pod update diff (DIV-016).** Optional: generate the internal PodSpec layout
   from `pkg/apis/core/types.go` with `tools/src/openapi/gotypes.ts` and port go-difflib's unified
   diff into `apis/core/validation/podspecdiff.ts`. Owner: R3 if learners report it.
@@ -245,6 +240,77 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 07b done.** kubectl II: describe, create, apply, delete.
+  - Built: `packages/k8s/src/kubectl/` — `resource/files.ts` (the `-f` reader: files, directories,
+    `-R`, globs via `resource/glob.ts`, stdin, JSON streams and Lists, every reader error; URLs and
+    `-k` print notices), `cmd/create.ts`, `cmd/apply.ts` (client-side apply: last-applied
+    annotation in `util/apply.ts`, three-way strategic merge, created/configured/unchanged, the
+    missing-annotation warning, conflict retries, dry runs, `-o`), `cmd/delete.ts` (names,
+    selectors, `--all`, `-f`, cascade, grace period, `--now`, `--force` and its warning, waiting in
+    virtual time, `--timeout`, `-o name`, dry runs), `cmd/describe.ts` and `describe/` (Pod,
+    Deployment, Service, Node with events; selector, prefix match, `-f`; other kinds print
+    notices), `cmd/helpers.ts`. `packages/k8s/src/apimachinery/strategicpatch/` (patch.go ported:
+    apply, directives, two- and three-way) and `apimachinery/converter.ts`; the API server applies
+    strategic merge patches. API warnings: `apis/core/validation/podwarnings.ts` (warnings.go),
+    `apiserver/warning.ts` (the recorder). Host: `placeFile`. Tools: `npm run coverage:generate`
+    (COVERAGE's kubectl section, gate test `tools/src/coverage/coverage.test.ts`),
+    `tools/src/strategicpatch/extract-tests.ts` (upstream's patch_test.go tables, all run). The
+    `# objects:` header, `testing/objects.ts` and `npm run sim -- --objects` are gone: `# file:`
+    and `--file` place files, setup lines run `kubectl create -f` (D-079). Golden cases added:
+    `api/strategic-patch`, `api/warnings`, `apply/three-way`, `apply/overwrite`,
+    `create/from-files`, `create/no-server`, `delete/options`, `delete/errors`, `delete/by-file`,
+    `describe/{selection,service,deployment,node,pod-spec}`; `apply/created-configured-unchanged`
+    gained two `rollout status` waits (its `-o yaml` depended on KWOK's instant readiness).
+  - Exit criteria. Differential runner: 474 steps compared, 465 pass, 9 KNOWN with causes, none
+    failing, PENDING empty; every describe, create, apply and delete step passes or is KNOWN,
+    except steps blocked by KWOK's not-ready device and PriorityClasses (listed by the report).
+    Transcripts: `apply/outcomes.t` (created, configured, unchanged; a three-way merge removing a
+    label, an env var and a port; the missing-annotation warning), `apply/errors.t` (unknown field,
+    YAML syntax error with its line), `create/`, `delete/dependents.t` (a Deployment with its
+    ReplicaSet and Pods, orphan, foreground waits), `delete/pods.t`, `delete/files.t`,
+    `describe/pods.t` (Running and CrashLoopBackOff with Last State, Restart Count and
+    `BackOff … (x6 over 5m28s)`), `describe/objects.t`. Pending `describe pod` is golden
+    (scheduling cases, `describe/pod-spec`). Terminal player (`npm run play`, driven on a pty,
+    seed 7): a Deployment written with a here-document, `kubectl apply -f`, `get pods -w` from
+    ContainerCreating to Running in 4–5 s, `describe pod` with containerd ids, image digest and the
+    kubelet's events, `apply` again `unchanged`, `delete -f`, nothing left. What still looks
+    different from a real cluster is the D-046 shortcut: no `Priority:` and `Service Account:`
+    lines, `Mounts`, `Volumes` and `Tolerations` show `<none>` (phase 20b).
+  - Decisions D-073 (strategic merge port), D-074 (`-f` reads everything first), D-075 (create/apply
+    no-effect flags), D-076 (describe renders before writing), D-077 (describe masks in the
+    runner), D-078 (delete's wait), D-079 (files, not objects, in transcripts and sim), D-080
+    (generated COVERAGE section), D-081 (API warnings). D-052's reasoning corrected. Divergences
+    DIV-034…036; DIV-017 narrowed to map-ordered warnings; DIV-015's impact gained apply's conflict
+    text. `docs/ARCHITECTURE.md` §4.9, `docs/FIDELITY.md` §6.8, `docs/COVERAGE.md` (kubectl section
+    generated; strategic merge row).
+  - Fixed on the way: kubectl's `Warning:` prefix is bold yellow on a terminal
+    (client-go rest/warnings.go); aggregate error messages flatten nested aggregates and drop
+    duplicates; the normalizer tokenizes resourceVersions inside compact JSON; `golden.test.ts`'s
+    stability check honors a case's `table:`; the Service warnings' headless test
+    (`type == ClusterIP && clusterIP == None`); stale "not in the checkout" notes about `pkg/api`;
+    `get/errors.t` used `describe` as its unsimulated example. The upstream checkout gained Go's
+    `src/sort` and `src/path/filepath`.
+  - Surprises. Plain strategic merge errors are reason-less 500s on the real server, and its type
+    errors come from the unstructured converter (`unrecognized type: int32`). A client dry run of
+    `delete` never fetches the objects it names, so a missing Pod prints "deleted (dry run)".
+    `--all` with `-l` fails in the builder with a trailing space in its message. The apply warning
+    names the plural resource without its group (`resource deployments/web`); `-o yaml` on apply
+    prints nothing if any object failed; a Secret with `stringData` is `configured` on every apply.
+    `describe pods,services web-1` with one missing prints "you may only specify a single resource
+    type" (prefix matching runs for a single NotFound). Kubelet events carry a
+    `spec.containers{x}: ` prefix in describe at this pin. The real server's ported warning reads
+    `… is use "node-role.kubernetes.io/control-plane" instead` (sic). An agent ran `npx tsx` once,
+    which put tsx into `~/.npm/_npx` (npm's cache) outside the repository; nothing else changed
+    outside it.
+  - For later phases. 08: `logs`, `rollout`, `explain`, `edit`, imperative verbs — reuse
+    `resource/files.ts`, `cmd/helpers.ts` (dry run, validation, AddSourceToErr) and delete their
+    shim entries; `kubectl patch` can now send strategic patches. 15: describers for the other
+    kinds (the notice names them), jsonpath and custom columns. 20b: remove the describe admission
+    masks with the others.
+  - Workflow: the verb skeletons and provenance files were written first; five agents (strategic
+    merge, describe, create/apply with the `-f` reader, delete, COVERAGE generation with API
+    warnings) worked in parallel on separate files.
 
 - 2026-11-16 — **Phase 07a done.** kubectl I: framework, get, output formats, differential tests.
   - Built: `packages/k8s/src/kubectl/` — the program `kubectl` (`kubectl.ts`) with cobra's Find

@@ -8,7 +8,7 @@
 // sub-range [first + rangeOffset, last], then a random offset in the lower one; createIPAddress;
 // dry run: Allocate checks the range only, AllocateNext returns the network address),
 // bitmap.go calculateRangeOffset (min(max(16, size/16), 256)), interfaces.go (the errors).
-// pkg/api/servicecidr PrefixContainsIP is not in the sparse checkout: checked against the v1.37.2
+// pkg/api/servicecidr PrefixContainsIP was not in the checkout when this was written (it is now): checked against the v1.37.2
 // oracle: 10.96.0.0 and 10.111.255.255 give "the provided network does not match the current
 // range" with 10.96.0.0/12 (the network and IPv4 broadcast addresses are not contained).
 // Go iterates the allocators of a map; this port goes in CIDR order. Randomness comes from the

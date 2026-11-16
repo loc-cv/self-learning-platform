@@ -135,10 +135,16 @@ describe('committed fixtures', () => {
 
   test('re-aligned tables are stable: parsing and rendering them again changes nothing', () => {
     for (const f of fixtures) {
-      const fx = parseYaml(readFileSync(f, 'utf8')) as { steps: { run?: string; stdout?: string; exit?: number }[] };
-      for (const s of fx.steps) {
+      const fx = parseYaml(readFileSync(f, 'utf8')) as { case?: string; steps: { run?: string; stdout?: string; exit?: number }[] };
+      // The case's own `table` setting wins over the command's default, as in capture.
+      const caseFile = fx.case === undefined ? undefined : path.join(casesDir, `${fx.case}.yaml`);
+      const recorded = caseFile && statSync(caseFile, { throwIfNoEntry: false }) ? parseCase(readFileSync(caseFile, 'utf8'), fx.case as string).steps.filter((x) => 'run' in x || 'objects' in x || 'request' in x) : [];
+      for (const [i, s] of fx.steps.entries()) {
         if (s.run === undefined || s.exit !== 0 || !s.stdout) continue;
-        const kind = defaultTable(s.run);
+        const step = recorded[i];
+        const table = step && 'run' in step && step.run === s.run ? step.table : undefined;
+        if (table === 'none') continue;
+        const kind = table ?? defaultTable(s.run);
         if (!kind) continue;
         const p = kind === 'get' ? GET_TABLE : DESCRIBE;
         expect(parse(s.stdout, p), `${path.relative(fixturesDir, f)}: ${s.run}`).toBeDefined();

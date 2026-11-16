@@ -4,6 +4,7 @@
 // command did not finish, or 2 for a usage error.
 
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import { parseArgs, parseDuration, parseSeed } from './args.ts';
 import { DEFAULT_TIMEOUT, runScript, type ScriptOptions } from './script.ts';
 import { topologyNames, UsageError } from './world.ts';
@@ -19,14 +20,14 @@ const USAGE = `usage: npm run sim -- --topology NAME [--seed N] (-c COMMANDS | F
   --transcript         run a plain session and print transcript format (docs/TRANSCRIPTS.md)
   --machine M, --user U  where the terminal opens (default: the topology's entry)
   --hash               print the world hash at the end
-  --objects FILE       create the manifest's objects through the API server first, then let 30s
-                       pass (a stand-in until kubectl create; repeatable)
+  --file FILE[,FILE]   put local files into the session user's home directory first (by base
+                       name), e.g. a manifest for kubectl apply -f
 Directives in scripts: @advance 30s, @keys \\x03, @resize 100x30, @editor <<EOF ... EOF
 Topologies: ${topologyNames().join(', ')}
 `;
 
 function main(argv: string[]): number {
-  const a = parseArgs(argv, ['topology', 'seed', 'command', 'step', 'timeout', 'cols', 'rows', 'machine', 'user', 'objects'], ['raw', 'transcript', 'hash', 'help']);
+  const a = parseArgs(argv, ['topology', 'seed', 'command', 'step', 'timeout', 'cols', 'rows', 'machine', 'user', 'file'], ['raw', 'transcript', 'hash', 'help']);
   if (a.flags.has('help')) {
     process.stdout.write(USAGE);
     return 0;
@@ -52,8 +53,8 @@ function main(argv: string[]): number {
   const user = a.values.get('user');
   if (machine !== undefined) opts.machine = machine;
   if (user !== undefined) opts.user = user;
-  const objects = a.values.get('objects');
-  if (objects !== undefined) opts.objects = [{ text: readFileSync(objects, 'utf8'), where: objects }];
+  const files = a.values.get('file');
+  if (files !== undefined) opts.files = files.split(',').map((f) => ({ name: basename(f), text: readFileSync(f, 'utf8') }));
   const lines = text.split('\n');
   if (lines[lines.length - 1] === '') lines.pop();
   const r = runScript(lines, opts);

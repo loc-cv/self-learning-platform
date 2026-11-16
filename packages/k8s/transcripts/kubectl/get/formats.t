@@ -1,6 +1,8 @@
 # kubectl get -o yaml, -o json and -o name: one object alone, several in a List.
-# objects: workloads.yaml
-# settle: 30
+# file: workloads.yaml
+# settle: 0
+% kubectl create -f workloads.yaml
+% sleep 30
 $ kubectl get cm app-config -o yaml
 apiVersion: v1
 data:

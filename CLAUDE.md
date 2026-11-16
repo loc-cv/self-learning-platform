@@ -42,8 +42,8 @@ npm run sim -- --topology kubeadm-1cp-2w -c 'cmd1\ncmd2'  # run commands without
                                                   # verify behavior); also a script file or -, --transcript, --raw,
                                                   # --step 1s; directives @advance 30s, @keys \x03, @resize CxR,
                                                   # @editor <<EOF … EOF (see apps/cli/src/script.ts, --help);
-                                                  # --objects FILE creates a manifest's objects first
-                                                  # (until kubectl create, phase 07b)
+                                                  # --file FILE[,FILE] puts local files (manifests) into
+                                                  # the session user's home first
 npm run lab -- <item-id> [--seed N]               # (phase 09) play a content item in this terminal
 npm run content:check         # (phase 09) validate every content item (schema, unsolved fails, solutions pass)
 npm run content:i18n          # (phase 11) report missing or outdated Vietnamese text (never a gate)
@@ -58,6 +58,10 @@ npm run kubeadm:capture [-- --check]   # what the real kubeadm init writes and c
 npm run images:capture [-- --check]    # what Docker Hub and registry.k8s.io answer for the listed images (digests, configs,
                                       # files, errors), into fixtures/reference/images/ and packages/k8s/src/runtime/images/catalog.data.ts
 npm run fidelity:report       # provenance of every output unit (docs/FIDELITY.md §3)
+npm run coverage:generate [-- --check]   # write docs/COVERAGE.md's generated kubectl section from the
+                                         # manifest and the registrations (the gate fails when stale)
+node tools/src/strategicpatch/extract-tests.ts [--check]  # copy upstream's patch_test.go tables into
+                                         # apimachinery/strategicpatch/testdata/ (needs .upstream)
 ```
 
 Packages export TypeScript source and there is no build step: relative imports end in `.ts`, and
@@ -79,15 +83,18 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
                    kubelet (pod workers, status, node heartbeat), src/runtime the container runtime
                    (sandboxes, containers, CRI logs) and src/runtime/images the captured image catalog,
                    src/kubectl kubectl (cli/ cobra and pflag ports, client/ kubeconfig, transport and
-                   REST mapper, resource/ the builder, cmd/ one module per verb, help/, printers/ the
+                   REST mapper, resource/ the builder and the -f reader, cmd/ one module per verb,
+                   describe/ the describers, util/ the last-applied annotation, help/, printers/ the
                    table printer and tab writer, data/ the vendored command manifest),
                    src/printers the API server's Table printers, src/apimachinery/yaml go-yaml and
                    sigs.k8s.io/yaml (kubectl's YAML/JSON output and manifest parsing),
+                   src/apimachinery/strategicpatch strategic merge patch (server and three-way),
                    src/testing helpers for tests only: the fake kubelet, workload requests)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
 packages/content   content packs (YAML + Markdown), topology templates
 apps/web  apps/server  apps/cli
-tools/             upstream fetch, OpenAPI processing (openapi/), oracle and golden capture, transcript capture, update check;
+tools/             upstream fetch, OpenAPI processing (openapi/), oracle and golden capture, transcript capture,
+                   coverage generation (coverage/), update check;
                    tools/eslint holds the two lint rules, their fixtures and the dependency table
 docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against

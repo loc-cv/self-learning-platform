@@ -1,0 +1,93 @@
+# Captured from fixtures/golden/cases/delete/by-file.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: delete/by-file
+description: "kubectl delete -f: a file with two documents, a directory, -R, stdin, JSON; the source named in NotFound errors, --ignore-not-found, a selector filtering the file's objects, a client dry run (the objects are not fetched), a file's namespace against -n, and the argument errors with -f."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl delete -f cms.yaml --dry-run=client
+    exit: 0
+    stdout: |
+      configmap "one" deleted from default namespace (dry run)
+      configmap "two" deleted from default namespace (dry run)
+    stderr: ""
+  - run: kubectl delete -f cms.yaml -l app=x
+    exit: 0
+    stdout: |
+      configmap "one" deleted from default namespace
+    stderr: ""
+  - run: kubectl delete -f cms.yaml
+    exit: 1
+    stdout: |
+      configmap "two" deleted from default namespace
+    stderr: |
+      Error from server (NotFound): error when deleting "cms.yaml": configmaps "one" not found
+  - run: kubectl delete -f cms.yaml --ignore-not-found
+    exit: 0
+    stdout: ""
+    stderr: ""
+  - run: kubectl delete -f dir/
+    exit: 0
+    stdout: |
+      configmap "in-dir" deleted from default namespace
+    stderr: ""
+  - run: kubectl delete -f dir/ -R -o name
+    exit: 1
+    stdout: |
+      configmap/in-sub
+    stderr: |
+      Error from server (NotFound): error when deleting "dir/cm.yaml": configmaps "in-dir" not found
+  - run: kubectl delete -f other.yaml -n default
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the namespace from the provided object "other" does not match the namespace "default". You must pass '--namespace=other' to perform this operation.
+  - run: kubectl delete -f other.yaml
+    exit: 0
+    stdout: |
+      configmap "elsewhere" deleted from other namespace
+    stderr: ""
+  - run: kubectl delete -f - -o name
+    stdin: |
+      {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "json"}}
+    exit: 0
+    stdout: |
+      configmap/json
+    stderr: ""
+  - run: kubectl delete -f ns.yaml -n other --wait=false
+    exit: 0
+    stdout: |
+      namespace "gone" deleted
+    stderr: |
+      Warning: deleting cluster-scoped resources, not scoped to the provided namespace
+  - run: kubectl delete -f missing.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the path "missing.yaml" does not exist
+  - run: kubectl delete -f cms.yaml configmap one
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: when paths, URLs, or stdin is provided as input, you may not specify resource arguments as well
+  - run: kubectl delete -f cms.yaml configmaps
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: when paths, URLs, or stdin is provided as input, you may not specify resource arguments as well
+  - run: kubectl delete -f cms.yaml configmap/one
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: resource/name arguments cannot be provided when a path is specified
+  - run: kubectl delete -f cms.yaml --all
+    exit: 0
+    stdout: ""
+    stderr: ""

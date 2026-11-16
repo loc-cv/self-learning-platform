@@ -10,14 +10,10 @@
 //   configmap, namespace), staging/src/k8s.io/kubectl/pkg/cmd/run/run.go createPod (run), and
 //   cmd/expose/expose.go createService (expose).
 //
-// Two simulator limits shape some requests, each noted where it applies: the API server applies
-// only JSON merge patches (apiserver/pipeline.ts patch), and the scale subresource is read-only.
-// A strategic merge patch whose body holds no list that meets an existing list, and no `$`
-// directive, has the same result as the JSON merge patch of the same body
-// (staging/src/k8s.io/apimachinery/pkg/util/strategicpatch/patch.go: maps merge key by key, null
-// deletes, lists without a patch strategy are replaced) and is sent as one; others are refused.
+// A simulator limit shapes some requests, noted where it applies: the scale subresource is
+// read-only. Patches go as real kubectl sends them, JSON merge or strategic merge (the API
+// server applies both, apiserver/pipeline.ts patch); JSON patches are refused.
 
-import { parseAllDocuments } from 'yaml';
 import type { Kernel } from '@simlab/kernel';
 import { createClient, DEFAULT_APISERVER, registry, type ApiRequest, type ApiResponse, type RequestOptions } from '@simlab/k8s';
 import { splitWords, type Substitute } from './argv.ts';
@@ -120,12 +116,6 @@ function mappingFor(arg: string): Mapping | undefined {
     if (r.resource === name || r.singularName === name || r.shortNames.includes(name)) return { group: r.group, version: r.version, resource: r.resource, kind: r.kind, namespaced: r.namespaced };
   }
   return undefined;
-}
-
-function mappingForKind(apiVersion: string, kind: string): Mapping | undefined {
-  const [group, version] = apiVersion.includes('/') ? (apiVersion.split('/') as [string, string]) : ['', apiVersion];
-  const r = registry().forKind(group, version, kind);
-  return r ? { group: r.group, version: r.version, resource: r.resource, kind: r.kind, namespaced: r.namespaced } : undefined;
 }
 
 /** `deployment.apps/web`, `pod/x`: how kubectl names an object in its messages. */
@@ -234,27 +224,12 @@ function resolve(env: ShimEnv, rs: Ref[], ns: string, a: Args): [Mapping, Obj][]
 
 // ---- manifests ----
 
-/** The documents of `-f` (a file, a directory's .yaml/.yml/.json files in name order, or `-`). */
-function manifests(env: ShimEnv, f: string, stdin: string | undefined): { source: string; doc: Obj }[] | string {
-  const files: string[] = [];
-  if (f === '-') files.push('-');
-  else {
-    const dir = env.listDir(f);
-    if (dir) files.push(...dir.filter((n) => /\.(ya?ml|json)$/.test(n)).map((n) => `${f.replace(/\/$/, '')}/${n}`));
-    else files.push(f);
-  }
-  const docs: { source: string; doc: Obj }[] = [];
-  for (const file of files) {
-    const text = file === '-' ? (stdin ?? '') : env.readFile(file);
-    if (text === undefined) return `error: the path "${file}" does not exist`;
-    // kubectl decodes with sigs.k8s.io/yaml (go-yaml v2: YAML 1.1, where `on` and `yes` are booleans).
-    for (const d of parseAllDocuments(text, { version: '1.1' })) {
-      if (d.errors.length > 0) return `error: error parsing ${file}: ${d.errors[0]?.message ?? ''}`;
-      const v = d.toJSON() as unknown;
-      if (v !== null && typeof v === 'object') docs.push({ source: file === '-' ? 'STDIN' : file, doc: v as Obj });
-    }
-  }
-  return docs;
+/** The texts `-f` names (a file, a directory's .yaml/.yml/.json files in name order, or `-`). */
+function manifestTexts(env: ShimEnv, f: string, stdin: string | undefined): string[] {
+  if (f === '-') return [stdin ?? ''];
+  const dir = env.listDir(f);
+  const files = dir ? dir.filter((n) => /\.(ya?ml|json)$/.test(n)).map((n) => `${f.replace(/\/$/, '')}/${n}`) : [f];
+  return files.map((file) => env.readFile(file) ?? '');
 }
 
 /**
@@ -268,83 +243,36 @@ function oracleDevice(v: unknown): string | undefined {
     : undefined;
 }
 
-// ---- patches ----
-
-/** Whether a strategic merge patch has the effect of the JSON merge patch with the same body (see the header). */
-function mergeEquivalent(current: unknown, patch: unknown): boolean {
-  if (patch === null || typeof patch !== 'object') return true;
-  if (Array.isArray(patch)) return !(Array.isArray(current) && current.length > 0);
-  for (const [k, v] of Object.entries(patch)) {
-    if (k.startsWith('$')) return false;
-    const c = current !== null && typeof current === 'object' && !Array.isArray(current) ? (current as Obj)[k] : undefined;
-    if (!mergeEquivalent(c, v)) return false;
+/**
+ * Why a `kubectl create -f` or `apply -f` cannot be replayed: its manifests use the oracle's
+ * device (oracleDevice). The simulated kubectl creates such objects; the runner checks first.
+ */
+export function oracleDeviceIn(env: ShimEnv, line: string, stdin?: string): string | undefined {
+  const w = splitWords(line, () => 'x');
+  if (!w || w.words[0] !== 'kubectl') return undefined;
+  const a = parseArgs(w.words.slice(1));
+  if (!['create', 'apply'].includes(a.pos[0] ?? '') || !flag(a, 'filename')) return undefined;
+  for (const f of a.flags.filename ?? []) {
+    for (const text of manifestTexts(env, f, stdin)) {
+      const why = oracleDevice(text);
+      if (why) return why;
+    }
   }
-  return true;
+  return undefined;
 }
+
+// ---- patches ----
 
 function patch(env: ShimEnv, m: Mapping, ns: string, name: string, body: unknown, type: string, opts: { subresource?: string; fieldManager: string }): ApiResponse | Unsupported {
   const why = oracleDevice(body);
   if (why) return { unsupported: why };
-  if (type === 'strategic') {
-    const cur = get(env, m, ns, name);
-    if (cur && !mergeEquivalent(cur, body)) return { unsupported: 'a strategic merge patch that merges lists (the simulator applies JSON merge patches only)' };
-  } else if (type !== 'merge') return { unsupported: `${type} patches (the simulator applies JSON merge patches only)` };
-  return send(env, req(m, 'patch', ns, { name, body: body as never, ...(opts.subresource ? { subresource: opts.subresource } : {}), options: { patchType: 'merge', fieldManager: opts.fieldManager } }));
+  if (type !== 'strategic' && type !== 'merge') return { unsupported: `${type} patches (the simulator applies JSON merge and strategic merge patches)` };
+  return send(env, req(m, 'patch', ns, { name, body: body as never, ...(opts.subresource ? { subresource: opts.subresource } : {}), options: { patchType: type, fieldManager: opts.fieldManager } }));
 }
 
 // ---- verbs ----
 
 type Verb = (env: ShimEnv, a: Args, ns: string, stdin: string | undefined) => ShimResult | Unsupported;
-
-/** kubectl create -f: each document POSTed, Strict field validation. upstream: cmd/create/create.go RunCreate. */
-function createFromFiles(env: ShimEnv, a: Args, ns: string, stdin: string | undefined, apply = false): ShimResult | Unsupported {
-  const docs = manifests(env, flag(a, 'filename') as string, stdin);
-  if (typeof docs === 'string') return err(docs);
-  // The builder decodes and maps every document before anything is sent (cmd/create/create.go
-  // RunCreate: r.Err()); a document without a known kind fails the command client-side.
-  for (const { source, doc } of docs) {
-    if (!mappingForKind(String(doc.apiVersion ?? ''), String(doc.kind ?? ''))) return err(`error: unable to recognize "${source}": no matches for kind "${String(doc.kind)}" in version "${String(doc.apiVersion)}"`);
-    const why = oracleDevice(doc);
-    if (why) return { unsupported: why };
-  }
-  let stdout = '';
-  let stderr = '';
-  for (const { source, doc } of docs) {
-    const m = mappingForKind(String(doc.apiVersion ?? ''), String(doc.kind ?? '')) as Mapping;
-    const md = (doc.metadata ?? {}) as Obj;
-    const objNs = m.namespaced ? (typeof md.namespace === 'string' ? md.namespace : ns) : undefined;
-    let body = doc;
-    if (apply) {
-      // upstream: cmd/apply/apply.go applyOneObject: an object not found is created with the
-      // last-applied annotation, the JSON of the manifest (namespace set, annotations without the
-      // annotation itself), keys sorted, newline-terminated
-      // (staging/src/k8s.io/kubectl/pkg/util/apply.go GetModifiedConfiguration); the format is
-      // fixtures/golden/v1.37.2/apply/created-configured-unchanged.yaml's.
-      const name = String(md.name ?? '');
-      if (get(env, m, objNs ?? '', name)) return { unsupported: 'kubectl apply to an existing object (three-way strategic merge)' };
-      const annotations = { ...((md.annotations ?? {}) as Obj) };
-      const applied = { ...doc, metadata: { ...md, annotations, ...(objNs !== undefined ? { namespace: objNs } : {}) } };
-      annotations['kubectl.kubernetes.io/last-applied-configuration'] = `${sortedJson(applied)}\n`;
-      body = { ...doc, metadata: { ...md, annotations } };
-    }
-    const fieldValidation = flag(a, 'validate') === 'false' ? 'Ignore' : 'Strict';
-    const res = send(env, req(m, 'create', objNs, { body: body as never, options: { fieldManager: apply ? 'kubectl-client-side-apply' : 'kubectl-create', fieldValidation } }));
-    if (res.ok) stdout += `${qualified(m, String(md.name))} created\n`;
-    else stderr += serverError(res).replace(/^(Error from server \([^)]*\): )/, `$1error when creating "${source}": `);
-  }
-  return out(stdout, stderr === '' ? 0 : 1, stderr);
-}
-
-function sortedJson(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(sortedJson).join(',')}]`;
-  if (v !== null && typeof v === 'object') {
-    return `{${Object.keys(v)
-      .sort()
-      .map((k) => `${JSON.stringify(k)}:${sortedJson((v as Obj)[k])}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(v);
-}
 
 function createGenerated(env: ShimEnv, m: Mapping, ns: string, body: Obj, fieldManager: string): ShimResult {
   const res = send(env, req(m, 'create', ns, { body: body as never, options: { fieldManager, fieldValidation: 'Strict' } }));
@@ -353,8 +281,9 @@ function createGenerated(env: ShimEnv, m: Mapping, ns: string, body: Obj, fieldM
   return err(`error: failed to create ${m.kind.toLowerCase()}: ${serverError(res).replace(/^Error from server \([^)]*\): /, '')}`);
 }
 
-const create: Verb = (env, a, ns, stdin) => {
-  if (flag(a, 'filename')) return createFromFiles(env, a, ns, stdin);
+const create: Verb = (env, a, ns) => {
+  // The simulated kubectl creates from files (phase 07b); it printed a notice for this manifest.
+  if (flag(a, 'filename')) return { unsupported: 'a manifest the simulated kubectl create -f prints a notice for' };
   const [what, name] = a.pos;
   // upstream: cmd/create/create.go RunCreate, before any request.
   if (what === undefined) return err('error: must specify one of -f and -k');
@@ -456,70 +385,6 @@ function mergePatch(target: unknown, p: unknown): unknown {
   }
   return t;
 }
-
-/** kubectl apply -f: creation only (see createFromFiles). */
-const apply: Verb = (env, a, ns, stdin) => {
-  if (!flag(a, 'filename')) return { unsupported: 'kubectl apply without -f' };
-  if (flag(a, 'dry-run') && flag(a, 'dry-run') !== 'none') return { unsupported: 'kubectl apply --dry-run' };
-  return createFromFiles(env, a, ns, stdin, true);
-};
-
-/**
- * kubectl delete: DELETE with propagationPolicy from --cascade (default background) and
- * gracePeriodSeconds from --grace-period/--force, then (--wait, default true) until each object is
- * gone. upstream: cmd/delete/delete.go Complete (grace period rules), DeleteResult, waitForDeletion.
- */
-const del: Verb = (env, a, ns, stdin) => {
-  const cascade = flag(a, 'cascade') ?? 'background';
-  const policy = { background: 'Background', orphan: 'Orphan', foreground: 'Foreground', true: 'Background', false: 'Orphan' }[cascade];
-  if (!policy) return err(`error: invalid cascade value (${cascade}). Must be "background", "foreground", or "orphan".`);
-  let grace = flag(a, 'grace-period') === undefined ? -1 : Number(flag(a, 'grace-period'));
-  const force = bool(a, 'force');
-  if (grace === 0 && !force) grace = 1;
-  if (force && grace < 0) grace = 0;
-  const options: RequestOptions = { propagationPolicy: policy, ...(grace >= 0 ? { gracePeriodSeconds: grace } : {}) };
-  let targets: [Mapping, Obj][] = [];
-  // With -l, --all or --field-selector, NotFound is ignored unless the flag says otherwise.
-  const ignoreNotFound = bool(a, 'ignore-not-found', flag(a, 'selector') !== undefined);
-  if (flag(a, 'filename')) {
-    const docs = manifests(env, flag(a, 'filename') as string, stdin);
-    if (typeof docs === 'string') return err(docs);
-    for (const { doc } of docs) {
-      const m = mappingForKind(String(doc.apiVersion ?? ''), String(doc.kind ?? ''));
-      if (!m) return { unsupported: `delete -f of ${String(doc.kind)}` };
-      targets.push([m, { metadata: { name: (doc.metadata as Obj).name, namespace: m.namespaced ? ((doc.metadata as Obj).namespace ?? ns) : undefined } }]);
-    }
-  } else {
-    const rs = refs(a.pos);
-    if (!rs) return { unsupported: `kubectl delete ${a.pos.join(' ')}` };
-    if (rs.some((r) => r.name === undefined) && !flag(a, 'selector')) return { unsupported: 'kubectl delete of a type without names or selector' };
-    for (const r of rs) {
-      if (r.name !== undefined) targets.push([r.m, { metadata: { name: r.name, namespace: ns } }]);
-    }
-    targets = [...targets, ...resolve(env, rs.filter((r) => r.name === undefined), ns, a)];
-  }
-  let stdout = '';
-  let stderr = '';
-  const deleted: [Mapping, string, string | undefined][] = [];
-  for (const [m, o] of targets) {
-    const name = String(meta(o).name);
-    const objNs = m.namespaced ? String(meta(o).namespace ?? ns) : undefined;
-    const res = send(env, req(m, 'delete', objNs, { name, options }));
-    if (!res.ok) {
-      if (res.code === 404 && ignoreNotFound) continue;
-      stderr += serverError(res);
-      continue;
-    }
-    stdout += `${m.kind.toLowerCase()}${m.group ? `.${m.group}` : ''} "${name}" ${force && grace === 0 ? 'force ' : ''}deleted${objNs ? ` from ${objNs} namespace` : ''}\n`;
-    deleted.push([m, name, objNs]);
-  }
-  if (targets.length === 0 && stderr === '') stdout = 'No resources found\n';
-  if (bool(a, 'wait', true) && deleted.length > 0) {
-    const gone = waitUntil(env, () => deleted.every(([m, name, n]) => !get(env, m, n ?? '', name)), duration(flag(a, 'timeout'), 7 * 24 * 3_600_000));
-    if (!gone) stderr += 'error: timed out waiting for the condition\n';
-  }
-  return out(stdout, stderr === '' ? 0 : 1, stderr);
-};
 
 /** kubectl wait: --for=delete, --for=condition=NAME[=VALUE] (case folded). upstream: cmd/wait/wait.go, condition.go IsConditionMet. */
 const wait: Verb = (env, a, ns) => {
@@ -713,8 +578,8 @@ const cordon = (on: boolean): Verb => (env, a) => {
 
 /**
  * kubectl taint: the Node's taints with the given ones added or removed (cmd/taint/taint.go
- * reorganizeTaints), sent as a strategic patch; spec.taints has no patch strategy, so the list is
- * replaced, as a merge patch replaces it.
+ * reorganizeTaints), sent as the two-way strategic patch of the Node; spec.taints has no patch
+ * strategy, so the patch holds the whole list (null when none is left).
  */
 const taint: Verb = (env, a) => {
   const m = mappingFor('nodes') as Mapping;
@@ -739,7 +604,7 @@ const taint: Verb = (env, a) => {
     taints = taints.filter((x) => !(x.key === key && x.effect === effect));
     taints.push({ key, ...(value !== undefined ? { value } : {}), effect });
   }
-  const r = patch(env, m, '', node, { spec: { taints: taints.length > 0 ? taints : null } }, 'merge', { fieldManager: 'kubectl-taint' });
+  const r = patch(env, m, '', node, { spec: { taints: taints.length > 0 ? taints : null } }, 'strategic', { fieldManager: 'kubectl-taint' });
   if ('unsupported' in r) return r;
   return r.ok ? out(`node/${node} ${removed ? 'untainted' : 'tainted'}\n`) : err(serverError(r));
 };
@@ -830,8 +695,6 @@ const READ_ONLY: Verb = () => out('');
 const VERBS: Record<string, Verb> = {
   create,
   run,
-  apply,
-  delete: del,
   wait,
   rollout,
   label,
@@ -916,7 +779,9 @@ export function phaseOf(line: string): string {
     return '07a';
   }
   if (v.verb === 'create') return /(^| )(-f|--filename)( |=)/.test(line) ? '07b' : '08';
-  if (['describe', 'apply', 'delete'].includes(v.verb)) return '07b';
+  // describe prints a notice only for kinds other than Pod, Deployment, Service and Node (prompts/15).
+  if (v.verb === 'describe') return '15';
+  if (['apply', 'delete'].includes(v.verb)) return '07b';
   if (['patch', 'wait', 'replace'].includes(v.verb)) return '15';
   // prompts/08: config view, get-contexts, use-context, set-context --current; prompts/15: the rest.
   if (v.verb === 'config') return ['view', 'get-contexts', 'use-context', 'set-context', 'current-context'].includes(sub) ? '08' : '15';

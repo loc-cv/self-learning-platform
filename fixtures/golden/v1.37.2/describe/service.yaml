@@ -1,0 +1,166 @@
+# Captured from fixtures/golden/cases/describe/service.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: describe/service
+description: "describe service for each type: named and numbered ports with their endpoints (more than three are cut), a headless Service, a LoadBalancer with a local traffic policy, an ExternalName, a selector nothing matches; several Services by label."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl describe service api
+    exit: 0
+    stdout: |
+      Name:                     api
+      Namespace:                default
+      Labels:                   team=payments
+                                tier=backend
+      Annotations:              example.com/description:
+                                  This Service fronts the payments API, which every checkout flow calls, so it is long enough to be folded by describe.
+                                example.com/owner: payments-team
+      Selector:                 app=api
+      Type:                     ClusterIP
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       <<ip>>
+      IPs:                      <<ip>>
+      Port:                     http  80/TCP
+      TargetPort:               web/TCP
+      Endpoints:                <<ip>>:8080,<<ip>>:8080,<<ip>>:8080 + 1 more...
+      Port:                     metrics  9090/TCP
+      TargetPort:               9090/TCP
+      Endpoints:                <<ip>>:9090,<<ip>>:9090,<<ip>>:9090 + 1 more...
+      Session Affinity:         None
+      Internal Traffic Policy:  Cluster
+      Events:                   <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe svc api-headless
+    exit: 0
+    stdout: |
+      Name:                     api-headless
+      Namespace:                default
+      Labels:                   tier=backend
+      Annotations:              <none>
+      Selector:                 app=api
+      Type:                     ClusterIP
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       None
+      IPs:                      None
+      Port:                     <unset>  8080/TCP
+      TargetPort:               8080/TCP
+      Endpoints:                <<ip>>:8080,<<ip>>:8080,<<ip>>:8080 + 1 more...
+      Session Affinity:         None
+      Internal Traffic Policy:  Cluster
+      Events:                   <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe svc api-lb
+    exit: 0
+    stdout: |
+      Name:                     api-lb
+      Namespace:                default
+      Labels:                   <none>
+      Annotations:              <none>
+      Selector:                 app=api
+      Type:                     LoadBalancer
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       <<ip>>
+      IPs:                      <<ip>>
+      Port:                     <unset>  443/TCP
+      TargetPort:               8080/TCP
+      NodePort:                 <unset>  32000/TCP
+      Endpoints:                <<ip>>:8080,<<ip>>:8080,<<ip>>:8080 + 1 more...
+      Session Affinity:         ClientIP
+      External Traffic Policy:  Local
+      Internal Traffic Policy:  Cluster
+      HealthCheck NodePort:     32001
+      Events:                   <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe svc docs
+    exit: 0
+    stdout: |
+      Name:              docs
+      Namespace:         default
+      Labels:            <none>
+      Annotations:       <none>
+      Selector:          <none>
+      Type:              ExternalName
+      IP Families:       <none>
+      IP:                
+      IPs:               <none>
+      External Name:     docs.example.com
+      Session Affinity:  None
+      Events:            <none>
+    stderr: ""
+  - run: kubectl describe svc orphan
+    exit: 0
+    stdout: |
+      Name:                     orphan
+      Namespace:                default
+      Labels:                   <none>
+      Annotations:              <none>
+      Selector:                 app=nothing
+      Type:                     ClusterIP
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       <<ip>>
+      IPs:                      <<ip>>
+      Port:                     <unset>  80/TCP
+      TargetPort:               80/TCP
+      AppProtocol:              http
+      Endpoints:                
+      Session Affinity:         None
+      Internal Traffic Policy:  Cluster
+      Events:                   <none>
+    stderr: ""
+  - run: kubectl describe services -l tier=backend
+    exit: 0
+    stdout: |
+      Name:                     api
+      Namespace:                default
+      Labels:                   team=payments
+                                tier=backend
+      Annotations:              example.com/description:
+                                  This Service fronts the payments API, which every checkout flow calls, so it is long enough to be folded by describe.
+                                example.com/owner: payments-team
+      Selector:                 app=api
+      Type:                     ClusterIP
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       <<ip>>
+      IPs:                      <<ip>>
+      Port:                     http  80/TCP
+      TargetPort:               web/TCP
+      Endpoints:                <<ip>>:8080,<<ip>>:8080,<<ip>>:8080 + 1 more...
+      Port:                     metrics  9090/TCP
+      TargetPort:               9090/TCP
+      Endpoints:                <<ip>>:9090,<<ip>>:9090,<<ip>>:9090 + 1 more...
+      Session Affinity:         None
+      Internal Traffic Policy:  Cluster
+
+
+      Name:                     api-headless
+      Namespace:                default
+      Labels:                   tier=backend
+      Annotations:              <none>
+      Selector:                 app=api
+      Type:                     ClusterIP
+      IP Family Policy:         SingleStack
+      IP Families:              IPv4
+      IP:                       None
+      IPs:                      None
+      Port:                     <unset>  8080/TCP
+      TargetPort:               8080/TCP
+      Endpoints:                <<ip>>:8080,<<ip>>:8080,<<ip>>:8080 + 1 more...
+      Session Affinity:         None
+      Internal Traffic Policy:  Cluster
+    stderr: ""
+    kwok: true

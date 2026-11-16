@@ -4,9 +4,10 @@
 // spec and labels, ValidateUpdate), pkg/registry/apps/deployment/storage/storage.go (status and
 // scale subresources, Status on delete). Field selectors: metadata.name and metadata.namespace only
 // (no conversion function is registered for apps/v1 Deployment).
+// WarningsOnCreate and WarningsOnUpdate (on a generation change) add the template's warnings
+// (apis/core/validation/podwarnings.ts).
 //
-// Not ported: podutil.GetWarningsForPodTemplate (pkg/api/pod/warnings.go is not in the sparse
-// checkout) and DropDisabledTemplateFields (lifecycle.stopSignal is dropped as for Pods).
+// Not ported: DropDisabledTemplateFields (lifecycle.stopSignal is dropped as for Pods).
 
 import type { Strategy, StrategyCtx } from '../../apiserver/types.ts';
 import { cloneJson, isObject, jsonEqual, type Json, type JsonObject } from '../../apimachinery/json.ts';
@@ -14,6 +15,8 @@ import { isDNS1123Label } from '../../apimachinery/validation/names.ts';
 import { defaultDeployment } from '../../apis/apps/v1/defaults.ts';
 import { validateDeployment, validateDeploymentStatusUpdate, validateDeploymentUpdate } from '../../apis/apps/validation/deployment.ts';
 import type { PodValidationOptions } from '../../apis/core/validation/options.ts';
+import { getWarningsForPodTemplate } from '../../apis/core/validation/podwarnings.ts';
+import { newPath } from '../../apimachinery/field.ts';
 import { defaultFieldLabel, objectMetaFields } from '../meta.ts';
 import { dropDisabledTemplateFields } from './template.ts';
 import { scaleOf } from './scale.ts';
@@ -30,6 +33,16 @@ export function podNamePrefixWarning(o: JsonObject): string[] {
   const name = typeof meta(o).name === 'string' ? (meta(o).name as string) : '';
   const msgs = isDNS1123Label(name);
   return msgs.length === 0 ? [] : [`metadata.name: this is used in Pod names and hostnames, which can result in surprising behavior; a DNS label is recommended: [${msgs.join(' ')}]`];
+}
+
+/** GetWarningsForPodTemplate of spec.template. */
+export function templateWarnings(o: JsonObject): string[] {
+  return getWarningsForPodTemplate(newPath('spec', 'template'), obj(obj(o.spec)?.template));
+}
+
+/** WarningsOnUpdate of Deployments and ReplicaSets: the template's warnings when the generation changed. */
+export function templateWarningsOnUpdate(o: JsonObject, old: JsonObject): string[] {
+  return meta(o).generation !== obj(old.metadata)?.generation ? templateWarnings(o) : [];
 }
 
 export const deploymentStrategy: Strategy = {
@@ -55,7 +68,8 @@ export const deploymentStrategy: Strategy = {
   },
   validate: (o, s) => validateDeployment(o, options(s)),
   validateUpdate: (o, old, s) => validateDeploymentUpdate(o, old, options(s)),
-  warningsOnCreate: (o) => podNamePrefixWarning(o),
+  warningsOnCreate: (o) => [...podNamePrefixWarning(o), ...templateWarnings(o)],
+  warningsOnUpdate: (o, old) => templateWarningsOnUpdate(o, old),
   allowCreateOnUpdate: false,
   allowUnconditionalUpdate: true,
   gcPolicy: 'DeleteDependents',

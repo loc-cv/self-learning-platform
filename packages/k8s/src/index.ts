@@ -19,8 +19,11 @@ export { isSchedulerRunning, startScheduler, stopScheduler } from './scheduler/s
 export { isKubeletRunning, startKubelet, stopKubelet, type KubeletNode } from './kubelet/kubelet.ts';
 export { runtimeOf } from './runtime/runtime.ts';
 export type { NodeRuntime, RuntimeContainer, Sandbox, RuntimeImage } from './runtime/types.ts';
+export { GLOBALS as KUBECTL_GLOBALS, VERBS as KUBECTL_VERBS } from './kubectl/kubectl.ts';
+export type { Verb } from './kubectl/cli/command.ts';
+export { STRATEGIES } from './registry/index.ts';
 export { manifest, manifestCommand, type Manifest, type ManifestCommand, type ManifestFlag, type ManifestHelp } from './kubectl/manifest.ts';
-export { helpCommand, helpFlag, helpRun, helpText, optionsCommand, renderHelp, renderUsage, type HelpResult, type Terminal } from './kubectl/help/index.ts';
+export { HELP_RUN, helpCommand, helpFlag, helpRun, helpText, optionsCommand, renderHelp, renderUsage, type HelpResult, type Terminal } from './kubectl/help/index.ts';
 export { convertToTable, applyIncludeObject, type TableSource } from './printers/tablegenerator.ts';
 export { humanDuration, shortHumanDuration, translateTimestampSince } from './printers/duration.ts';
 export { TABLE_PROVENANCE } from './printers/provenance.ts';
@@ -49,7 +52,6 @@ export {
   type TablePrinter,
   type TablePrinterState,
 } from './kubectl/printers/tableprinter.ts';
-export { createObjects } from './testing/objects.ts';
 export {
   decodeManifestStream,
   marshalIndentJson,

@@ -1,0 +1,389 @@
+# Captured from fixtures/golden/cases/describe/node.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: describe/node
+description: describe node with roles, taints, a cordon and Pods with requests and limits (their share of allocatable, the totals); several Nodes by label and by prefix; a missing Node.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl describe node node02
+    exit: 0
+    stdout: |
+      Name:               node02
+      Roles:              gpu,worker
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=node02
+                          kubernetes.io/os=linux
+                          node-role.kubernetes.io/gpu=
+                          node-role.kubernetes.io/worker=
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             dedicated=gpu:NoSchedule
+                          node.kubernetes.io/unschedulable:NoSchedule
+      Unschedulable:      true
+      Lease:
+        HolderIdentity:  controlplane_<<uid:1>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.12
+        Hostname:    node02
+      Capacity:
+        cpu:                2
+        ephemeral-storage:  20134592Ki
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             4010284Ki
+        pods:               110
+      Allocatable:
+        cpu:                2
+        ephemeral-storage:  18556039957
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             3907884Ki
+        pods:               110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c03
+        System UUID:                <<uid:2>>
+        Boot ID:                    <<uid:3>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (2 in total)
+        Namespace                   Name     CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----     ------------  ----------  ---------------  -------------  ---
+        default                     sized    250m (12%)    1 (50%)     300Mi (7%)       1Gi (26%)      <<age>>
+        kube-public                 mixed    100m (5%)     0 (0%)      0 (0%)           0 (0%)         <<age>>
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource           Requests    Limits
+        --------           --------    ------
+        cpu                350m (17%)  1 (50%)
+        memory             300Mi (7%)  1Gi (26%)
+        ephemeral-storage  1Gi (5%)    0 (0%)
+        hugepages-1Gi      0 (0%)      0 (0%)
+        hugepages-2Mi      0 (0%)      0 (0%)
+      Events:
+        Type    Reason          Age      From             Message
+        ----    ------          ----     ----             -------
+        Normal  RegisteredNode  <<age>>  node-controller  Node node02 event: Registered Node node02 in Controller
+    stderr: ""
+    kwok: true
+  - run: kubectl describe nodes -l node-role.kubernetes.io/worker
+    exit: 0
+    stdout: |
+      Name:               node02
+      Roles:              gpu,worker
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=node02
+                          kubernetes.io/os=linux
+                          node-role.kubernetes.io/gpu=
+                          node-role.kubernetes.io/worker=
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             dedicated=gpu:NoSchedule
+                          node.kubernetes.io/unschedulable:NoSchedule
+      Unschedulable:      true
+      Lease:
+        HolderIdentity:  controlplane_<<uid:1>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.12
+        Hostname:    node02
+      Capacity:
+        cpu:                2
+        ephemeral-storage:  20134592Ki
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             4010284Ki
+        pods:               110
+      Allocatable:
+        cpu:                2
+        ephemeral-storage:  18556039957
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             3907884Ki
+        pods:               110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c03
+        System UUID:                <<uid:2>>
+        Boot ID:                    <<uid:3>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (2 in total)
+        Namespace                   Name     CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----     ------------  ----------  ---------------  -------------  ---
+        default                     sized    250m (12%)    1 (50%)     300Mi (7%)       1Gi (26%)      <<age>>
+        kube-public                 mixed    100m (5%)     0 (0%)      0 (0%)           0 (0%)         <<age>>
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource           Requests    Limits
+        --------           --------    ------
+        cpu                350m (17%)  1 (50%)
+        memory             300Mi (7%)  1Gi (26%)
+        ephemeral-storage  1Gi (5%)    0 (0%)
+        hugepages-1Gi      0 (0%)      0 (0%)
+        hugepages-2Mi      0 (0%)      0 (0%)
+      Events:
+        Type    Reason          Age      From             Message
+        ----    ------          ----     ----             -------
+        Normal  RegisteredNode  <<age>>  node-controller  Node node02 event: Registered Node node02 in Controller
+    stderr: ""
+    kwok: true
+  - run: kubectl describe node node0
+    exit: 0
+    stdout: |+
+      Name:               node01
+      Roles:              <none>
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=node01
+                          kubernetes.io/os=linux
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             <none>
+      Unschedulable:      false
+      Lease:
+        HolderIdentity:  controlplane_<<uid:1>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.11
+        Hostname:    node01
+      Capacity:
+        cpu:                2
+        ephemeral-storage:  20134592Ki
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             4010284Ki
+        pods:               110
+      Allocatable:
+        cpu:                2
+        ephemeral-storage:  18556039957
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             3907884Ki
+        pods:               110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c02
+        System UUID:                <<uid:4>>
+        Boot ID:                    <<uid:5>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (0 in total)
+        Namespace                   Name    CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----    ------------  ----------  ---------------  -------------  ---
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource           Requests  Limits
+        --------           --------  ------
+        cpu                0 (0%)    0 (0%)
+        memory             0 (0%)    0 (0%)
+        ephemeral-storage  0 (0%)    0 (0%)
+        hugepages-1Gi      0 (0%)    0 (0%)
+        hugepages-2Mi      0 (0%)    0 (0%)
+
+      Name:               node02
+      Roles:              gpu,worker
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=node02
+                          kubernetes.io/os=linux
+                          node-role.kubernetes.io/gpu=
+                          node-role.kubernetes.io/worker=
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             dedicated=gpu:NoSchedule
+                          node.kubernetes.io/unschedulable:NoSchedule
+      Unschedulable:      true
+      Lease:
+        HolderIdentity:  controlplane_<<uid:1>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.12
+        Hostname:    node02
+      Capacity:
+        cpu:                2
+        ephemeral-storage:  20134592Ki
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             4010284Ki
+        pods:               110
+      Allocatable:
+        cpu:                2
+        ephemeral-storage:  18556039957
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             3907884Ki
+        pods:               110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c03
+        System UUID:                <<uid:2>>
+        Boot ID:                    <<uid:3>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (2 in total)
+        Namespace                   Name     CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----     ------------  ----------  ---------------  -------------  ---
+        default                     sized    250m (12%)    1 (50%)     300Mi (7%)       1Gi (26%)      <<age>>
+        kube-public                 mixed    100m (5%)     0 (0%)      0 (0%)           0 (0%)         <<age>>
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource           Requests    Limits
+        --------           --------    ------
+        cpu                350m (17%)  1 (50%)
+        memory             300Mi (7%)  1Gi (26%)
+        ephemeral-storage  1Gi (5%)    0 (0%)
+        hugepages-1Gi      0 (0%)      0 (0%)
+        hugepages-2Mi      0 (0%)      0 (0%)
+
+    stderr: ""
+    kwok: true
+  - run: kubectl describe node nope
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (NotFound): nodes "nope" not found
+  - run: kubectl describe node/node01 --show-events=false
+    exit: 0
+    stdout: |
+      Name:               node01
+      Roles:              <none>
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=node01
+                          kubernetes.io/os=linux
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             <none>
+      Unschedulable:      false
+      Lease:
+        HolderIdentity:  controlplane_<<uid:1>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.11
+        Hostname:    node01
+      Capacity:
+        cpu:                2
+        ephemeral-storage:  20134592Ki
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             4010284Ki
+        pods:               110
+      Allocatable:
+        cpu:                2
+        ephemeral-storage:  18556039957
+        hugepages-1Gi:      0
+        hugepages-2Mi:      0
+        memory:             3907884Ki
+        pods:               110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c02
+        System UUID:                <<uid:4>>
+        Boot ID:                    <<uid:5>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (0 in total)
+        Namespace                   Name    CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----    ------------  ----------  ---------------  -------------  ---
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource           Requests  Limits
+        --------           --------  ------
+        cpu                0 (0%)    0 (0%)
+        memory             0 (0%)    0 (0%)
+        ephemeral-storage  0 (0%)    0 (0%)
+        hugepages-1Gi      0 (0%)    0 (0%)
+        hugepages-2Mi      0 (0%)    0 (0%)
+    stderr: ""
+    kwok: true

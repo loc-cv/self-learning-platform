@@ -19,6 +19,11 @@ export interface BuilderInput {
   fieldSelector?: string;
   /** SingleResourceType(): watch takes one type only. */
   singleResourceType?: boolean;
+  /**
+   * ResourceTypeOrNameArgs(allowEmptySelector, …): whether a type alone selects all its objects
+   * (get: true, the default) or is an error without a name, selector or --all (delete: false).
+   */
+  allowEmptySelector?: boolean;
 }
 
 /** One request of the plan: a list (selector visit) or a get by name. */
@@ -148,7 +153,7 @@ export function buildPlan(input: BuilderInput): Plan | KubectlError {
     resources = splitResourceArgument(args[0] as string);
     names = args.slice(1);
     // ResourceTypeOrNameArgs(allowEmptySelector=true) with only a type selects everything.
-    if (args.length === 1 && labelSelector === undefined) labelSelector = '';
+    if (args.length === 1 && labelSelector === undefined && input.allowEmptySelector !== false) labelSelector = '';
   }
 
   const fieldSelector = input.fieldSelector;

@@ -224,6 +224,12 @@ export const GO_CHECKOUT: UpstreamCheckout = {
     'src/syscall',
     // strconv.Quote and CanBackquote: the %q and %#q of arguments in cobra's and kubectl's messages (07a)
     'src/strconv',
+    // sort.SliceStable's insertion sort and symMerge: the order strategic merge patch gives list
+    // items its comparison cannot place (apimachinery strategicpatch normalizeSliceOrder) (07b)
+    'src/sort',
+    // filepath.Glob, Match and Walk: how `kubectl create -f` and `apply -f` expand a pattern
+    // that names no file, and the order they read a directory in (07b)
+    'src/path/filepath',
   ],
 };
 

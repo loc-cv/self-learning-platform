@@ -56,8 +56,9 @@ const ALLOWED_FORMATS = [
   'wide',
   'yaml',
 ];
-/** Formats the simulator prints. */
-const SIMULATED_FORMATS = new Set(['', 'wide', 'json', 'yaml', 'name']);
+/** Formats the simulator prints besides the default table. */
+const PRINTED_FORMATS = ['wide', 'json', 'yaml', 'name'];
+const SIMULATED_FORMATS = new Set(['', ...PRINTED_FORMATS]);
 
 type Format = 'table' | 'wide' | 'json' | 'yaml' | 'name';
 
@@ -223,7 +224,7 @@ function* fetch(s: Session, plan: Plan, o: Options, table: boolean): Op<{ infos:
  * upstream: staging/src/k8s.io/cli-runtime/pkg/resource/helper.go EnhanceListError (the subject
  * is the mapping's GroupVersionResource, printed `<group>/<version>, Resource=<resource>`).
  */
-function enhanceListError(status: Status, visit: Extract<Visit, { kind: 'list' }>): Status {
+export function enhanceListError(status: Status, visit: Extract<Visit, { kind: 'list' }>): Status {
   if (status.reason !== 'BadRequest' && status.reason !== 'NotFound') return status;
   const m = visit.mapping;
   const subj = `${m.group}/${m.version}, Resource=${m.resource}`;
@@ -427,6 +428,11 @@ export const getVerb: Verb = {
     'allow-missing-template-keys': 'only matters to template output formats, which print a notice',
     'show-managed-fields': 'objects have no managedFields (DIV-015)',
   },
+  partial: {
+    'output-watch-events': 'every value',
+    'server-print': '`--server-print=false`',
+  },
+  outputFormats: { allowed: ALLOWED_FORMATS, simulated: PRINTED_FORMATS },
   run,
 };
 

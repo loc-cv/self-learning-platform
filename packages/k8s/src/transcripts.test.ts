@@ -2,12 +2,13 @@
 // topology: a login shell of root on the control plane, in /root, after the cluster has settled.
 //
 // Header lines this package reads besides tags and cols:
-//   # objects: <file>     manifests (relative to the transcript) created through the API server
-//                         before the session, as `kubectl create -f` would send them; repeatable.
-//                         A stand-in until phase 07b's `kubectl create` and `apply` can be setup steps.
+//   # file: <path>        a file next to the transcript (path relative to it), placed at the same
+//                         relative path in the session user's home directory before the session,
+//                         as the user would have written it; repeatable. Objects come from setup
+//                         lines: `% kubectl create -f workloads.yaml`, then `% sleep 30` to settle.
 //   # machine: <name>     where the session opens (default: the topology's entry)
 //   # user: <name>        who logs in (default: the topology's entry)
-//   # settle: <seconds>   virtual time to run after the build and the objects (default 10)
+//   # settle: <seconds>   virtual time to run after the build, before the session (default 10)
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';

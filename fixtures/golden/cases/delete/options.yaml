@@ -1,0 +1,49 @@
+description: >-
+  kubectl delete's options and their output: --wait=false, --now, --grace-period, --all, -A with a
+  selector, -o name, client and server dry runs (an object named is not fetched first, so a client
+  dry run of a missing one still prints), forced deletion's warning, the cluster-scope warning, the
+  deprecated boolean forms of --cascade and --dry-run, and a wait that times out on a finalizer.
+setup:
+  - do: kubectl create namespace scratch
+  - do: kubectl create namespace other
+  - do: kubectl run a --image=nginx:1.27 --labels=app=a
+  - do: kubectl run b --image=nginx:1.27 --labels=app=b
+  - do: kubectl run c --image=nginx:1.27 --labels=app=c
+  - do: kubectl run d --image=nginx:1.27 --labels=app=d
+  - do: kubectl run e --image=nginx:1.27 --labels=app=e
+  - do: kubectl run f --image=nginx:1.27 --labels=app=f
+  - do: kubectl run g --image=nginx:1.27 --labels=app=g
+  - do: kubectl run p1 --image=nginx:1.27 -n scratch
+  - do: kubectl run p2 --image=nginx:1.27 -n scratch
+  - do: kubectl create configmap tagged -n scratch --from-literal=a=1
+  - do: kubectl create configmap tagged -n other --from-literal=a=1
+  - do: kubectl label configmap tagged -n scratch tier=x
+  - do: kubectl label configmap tagged -n other tier=x
+  - do: kubectl create configmap held --from-literal=a=1
+  - do: >-
+      kubectl patch configmap held -p '{"metadata":{"finalizers":["example.com/hold"]}}'
+steps:
+  - run: kubectl delete pod a --wait=false
+  - run: kubectl delete pod b --now
+  - run: kubectl delete pod c --grace-period=5
+  - run: kubectl delete pod d -o name
+  - run: kubectl delete pod e --dry-run=client
+  - run: kubectl delete pod missing --dry-run=client
+  - run: kubectl delete pod e --dry-run=server
+  - run: kubectl delete pod missing --dry-run=server
+  - run: kubectl delete pod e --dry-run=server -o name
+  - run: kubectl get pod e -o name
+  - run: kubectl delete pod e --force
+  - run: kubectl delete pod f --grace-period=0
+  - run: kubectl delete pod g --grace-period=0 --force -o name
+  - run: kubectl delete pods --all -n scratch
+  - run: kubectl get pods -n scratch
+  - run: kubectl delete configmaps -A -l tier=x
+  - run: kubectl delete namespace other -n scratch --wait=false
+  - run: kubectl delete pod missing --cascade=false
+  - run: kubectl delete pod missing --cascade=true --ignore-not-found
+  - run: kubectl delete configmap held --timeout=2s
+  - run: kubectl get configmap held -o name
+  - do: >-
+      kubectl patch configmap held --type=merge -p '{"metadata":{"finalizers":null}}'
+  - run: kubectl delete pods,configmaps -l app=nothing --dry-run=server

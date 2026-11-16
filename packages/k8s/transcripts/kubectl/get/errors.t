@@ -1,6 +1,8 @@
 # kubectl get: what fails, where it is printed, and what the simulator does not simulate.
-# objects: workloads.yaml
-# settle: 30
+# file: workloads.yaml
+# settle: 0
+% kubectl create -f workloads.yaml
+% sleep 30
 $ kubectl get pod missing
 Error from server (NotFound): pods "missing" not found
 [exit 1]
@@ -62,6 +64,6 @@ $ kubectl get cronjobs
 $ kubectl get pods -f pod.yaml
 [sim] kubectl: the flag --filename is not simulated yet
 [exit 250]
-$ kubectl describe pods
-[sim] kubectl: the command "kubectl describe" is not simulated yet
+$ kubectl top pods
+[sim] kubectl: the command "kubectl top pod" is not simulated yet
 [exit 250]

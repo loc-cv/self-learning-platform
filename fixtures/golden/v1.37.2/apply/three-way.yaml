@@ -1,0 +1,401 @@
+# Captured from fixtures/golden/cases/apply/three-way.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: apply/three-way
+description: "kubectl apply's three-way merge: fields and list items removed from the manifest are removed from the object (an env var and a container port by their merge keys, a label, an annotation), changes made by other clients survive unless the manifest owns the field, output formats, dry runs, and apply's own errors."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl apply -f app-v1.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/app created
+    stderr: ""
+  - run: kubectl apply -f app-v2.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/app configured
+    stderr: ""
+  - objects:
+      - ref: deployment/app
+        object:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              deployment.kubernetes.io/revision: "2"
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"app"},"name":"app","namespace":"default"},"spec":{"replicas":0,"selector":{"matchLabels":{"app":"app"}},"template":{"metadata":{"labels":{"app":"app"}},"spec":{"containers":[{"env":[{"name":"MODE","value":"staging"}],"image":"nginx:1.27","name":"web","ports":[{"containerPort":80,"name":"http"}]}]}}}}
+            creationTimestamp: <<time>>
+            generation: 2
+            labels:
+              app: app
+            name: app
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            progressDeadlineSeconds: 600
+            replicas: 0
+            revisionHistoryLimit: 10
+            selector:
+              matchLabels:
+                app: app
+            strategy:
+              rollingUpdate:
+                maxSurge: 25%
+                maxUnavailable: 25%
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  app: app
+              spec:
+                containers:
+                  - env:
+                      - name: MODE
+                        value: staging
+                    image: nginx:1.27
+                    imagePullPolicy: IfNotPresent
+                    name: web
+                    ports:
+                      - containerPort: 80
+                        name: http
+                        protocol: TCP
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                dnsPolicy: ClusterFirst
+                restartPolicy: Always
+                schedulerName: default-scheduler
+                securityContext: {}
+                terminationGracePeriodSeconds: 30
+          status:
+            conditions:
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: Deployment has minimum availability.
+                reason: MinimumReplicasAvailable
+                status: "True"
+                type: Available
+              - lastTransitionTime: <<time>>
+                lastUpdateTime: <<time>>
+                message: ReplicaSet "app-<<hash:1>>" has successfully progressed.
+                reason: NewReplicaSetAvailable
+                status: "True"
+                type: Progressing
+            observedGeneration: 2
+            terminatingReplicas: 0
+  - run: kubectl apply -f cm.yaml
+    exit: 0
+    stdout: |
+      configmap/settings created
+    stderr: ""
+  - run: kubectl label configmap settings extra=yes
+    exit: 0
+    stdout: |
+      configmap/settings labeled
+    stderr: ""
+  - run: kubectl patch configmap settings -p '{"metadata":{"annotations":{"touched":"yes"}}}'
+    exit: 0
+    stdout: |
+      configmap/settings patched
+    stderr: ""
+  - run: kubectl apply -f cm-v2.yaml
+    exit: 0
+    stdout: |
+      configmap/settings configured
+    stderr: ""
+  - run: kubectl get configmap settings -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "10"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"10"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"settings","namespace":"default"}}
+          touched: "yes"
+        creationTimestamp: "<<time>>"
+        labels:
+          extra: "yes"
+        name: settings
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+    stderr: ""
+  - run: kubectl patch configmap settings -p '{"data":{"a":"99"}}'
+    exit: 0
+    stdout: |
+      configmap/settings patched
+    stderr: ""
+  - run: kubectl apply -f cm-v2.yaml
+    exit: 0
+    stdout: |
+      configmap/settings configured
+    stderr: ""
+  - run: kubectl apply -f cm-v2.yaml
+    exit: 0
+    stdout: |
+      configmap/settings unchanged
+    stderr: ""
+  - run: kubectl apply -f two.yaml -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      items:
+      - apiVersion: v1
+        data:
+          k: v
+        kind: ConfigMap
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: |
+              {"apiVersion":"v1","data":{"k":"v"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"two-a","namespace":"default"}}
+          creationTimestamp: "<<time>>"
+          name: two-a
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:3>>
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          annotations:
+            kubectl.kubernetes.io/last-applied-configuration: |
+              {"apiVersion":"v1","kind":"ConfigMap","metadata":{"annotations":{},"name":"two-b","namespace":"default"}}
+          creationTimestamp: "<<time>>"
+          name: two-b
+          namespace: default
+          resourceVersion: "<<rv>>"
+          uid: <<uid:4>>
+      kind: List
+      metadata: {}
+    stderr: ""
+  - run: kubectl apply -f two.yaml -o json
+    exit: 0
+    stdout: |
+      {
+          "kind": "List",
+          "apiVersion": "v1",
+          "metadata": {},
+          "items": [
+              {
+                  "apiVersion": "v1",
+                  "data": {
+                      "k": "v"
+                  },
+                  "kind": "ConfigMap",
+                  "metadata": {
+                      "annotations": {
+                          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"data\":{\"k\":\"v\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"two-a\",\"namespace\":\"default\"}}\n"
+                      },
+                      "creationTimestamp": "<<time>>",
+                      "name": "two-a",
+                      "namespace": "default",
+                      "resourceVersion": "<<rv>>",
+                      "uid": "<<uid:3>>"
+                  }
+              },
+              {
+                  "apiVersion": "v1",
+                  "kind": "ConfigMap",
+                  "metadata": {
+                      "annotations": {
+                          "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"two-b\",\"namespace\":\"default\"}}\n"
+                      },
+                      "creationTimestamp": "<<time>>",
+                      "name": "two-b",
+                      "namespace": "default",
+                      "resourceVersion": "<<rv>>",
+                      "uid": "<<uid:4>>"
+                  }
+              }
+          ]
+      }
+    stderr: ""
+  - run: kubectl apply -f two.yaml -o name
+    exit: 0
+    stdout: |
+      configmap/two-a
+      configmap/two-b
+    stderr: ""
+  - run: kubectl apply -f cm.yaml --dry-run=client -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "1"
+        b: "2"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"1","b":"2"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"settings","namespace":"default"}}
+          touched: "yes"
+        creationTimestamp: "<<time>>"
+        labels:
+          extra: "yes"
+        name: settings
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+    stderr: ""
+  - run: kubectl apply -f cm.yaml --dry-run=server -o name
+    exit: 0
+    stdout: |
+      configmap/settings
+    stderr: ""
+  - run: kubectl apply -f cm.yaml --dry-run
+    exit: 0
+    stdout: |
+      configmap/settings configured (dry run)
+    stderr: |
+      W<<time>> <<pid>> helpers.go:714] --dry-run is deprecated and can be replaced with --dry-run=client.
+  - run: kubectl get configmap settings -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        a: "10"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"a":"10"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"settings","namespace":"default"}}
+          touched: "yes"
+        creationTimestamp: "<<time>>"
+        labels:
+          extra: "yes"
+        name: settings
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:2>>
+    stderr: ""
+  - run: kubectl apply -f nulls.yaml
+    exit: 0
+    stdout: |
+      configmap/nulls created
+    stderr: ""
+  - run: kubectl get configmap nulls -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        x: "1"
+      kind: ConfigMap
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/last-applied-configuration: |
+            {"apiVersion":"v1","data":{"true":null,"x":"1"},"kind":"ConfigMap","metadata":{"annotations":{},"labels":{"a":null},"name":"nulls","namespace":"default"}}
+        creationTimestamp: "<<time>>"
+        name: nulls
+        namespace: default
+        resourceVersion: "<<rv>>"
+        uid: <<uid:5>>
+    stderr: ""
+  - run: kubectl apply -f noname.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: error when retrieving current configuration of:
+      Resource: "/v1, Resource=configmaps", GroupVersionKind: "/v1, Kind=ConfigMap"
+      Name: "", Namespace: "default"
+      from server for: "noname.yaml": resource name may not be empty
+  - run: kubectl apply -f generated.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: from gen-: cannot use generate name with apply
+  - run: kubectl apply -f other-ns.yaml -n default
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the namespace from the provided object "kube-public" does not match the namespace "default". You must pass '--namespace=kube-public' to perform this operation.
+  - run: kubectl apply -f two.yaml -o wide
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: unable to match a printer suitable for the output format "wide", allowed formats are: go-template,go-template-file,json,jsonpath,jsonpath-as-json,jsonpath-file,kyaml,name,template,templatefile,yaml
+  - run: kubectl apply -f two.yaml --prune
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: all resources selected for prune without explicitly passing --all. To prune all resources, pass the --all flag. If you did not mean to prune all resources, specify a label selector
+  - run: kubectl apply -f two.yaml --force-conflicts
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --force-conflicts only works with --server-side
+  - run: kubectl apply -f two.yaml --subresource=status
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --subresource can only be specified for --server-side
+  - run: kubectl apply -f two.yaml --dry-run=server --force
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: --dry-run=server cannot be used with --force
+  - run: kubectl apply -f two.yaml --cascade=sideways
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: invalid cascade value (sideways). Must be "background", "foreground", or "orphan"
+  - run: kubectl apply
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: must specify one of -f and -k
+  - run: kubectl apply x -f two.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: Unexpected args: [x]
+      See 'kubectl apply -h' for help and examples
+  - run: kubectl apply -f missing.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      error: the path "missing.yaml" does not exist
+  - objects:
+      - ref: configmap/settings
+        object:
+          apiVersion: v1
+          data:
+            a: "10"
+          kind: ConfigMap
+          metadata:
+            annotations:
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"v1","data":{"a":"10"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"settings","namespace":"default"}}
+              touched: yes
+            creationTimestamp: <<time>>
+            labels:
+              extra: yes
+            name: settings
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+      - ref: configmap/two-a
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            annotations:
+              kubectl.kubernetes.io/last-applied-configuration: |
+                {"apiVersion":"v1","data":{"k":"v"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"two-a","namespace":"default"}}
+            creationTimestamp: <<time>>
+            name: two-a
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>

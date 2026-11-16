@@ -1,0 +1,182 @@
+description: >-
+  kubectl create -f: standard input, multi-document YAML, a JSON object, a JSON stream and a JSON
+  List, directories with and without -R, already-exists among several objects, output formats,
+  dry runs, namespaces, selectors, and the errors of reading and decoding manifests.
+files:
+  multi.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: multi-a
+      labels:
+        tier: a
+    data:
+      k: v
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: multi-b
+      labels:
+        tier: b
+  one.json: |
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {"name": "from-json", "annotations": {"note": "<b>&</b>"}},
+      "data": {"k": "v"}
+    }
+  stream.json: |
+    {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "stream-a"}}
+    {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "stream-b"}}
+  list.json: |
+    {
+      "apiVersion": "v1",
+      "kind": "List",
+      "items": [
+        {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "list-a"}},
+        {"apiVersion": "v1", "kind": "Secret", "metadata": {"name": "list-b"}, "stringData": {"p": "q"}}
+      ]
+    }
+  list.yaml: |
+    apiVersion: v1
+    kind: ConfigMapList
+    items:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: typed-list-a
+    - metadata:
+        name: typed-list-b
+  dir/a.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: dir-a
+  dir/b.yml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: dir-b
+  dir/notes.txt: |
+    not a manifest
+  dir/sub/c.json: |
+    {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "dir-c"}}
+  empty-dir/readme.md: |
+    nothing here
+  empty.yaml: |
+    # only a comment
+  ns.yaml: |
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: team
+      namespace: ignored
+  in-team.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: in-team
+      namespace: team
+  noname.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    data:
+      a: b
+  numberlabel.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: numberlabel
+      labels:
+        version: 1.0
+  scalar.yaml: |
+    just a string
+  nokind.yaml: |
+    apiVersion: v1
+    metadata:
+      name: nokind
+  noversion.yaml: |
+    kind: ConfigMap
+    metadata:
+      name: noversion
+  badversion.yaml: |
+    apiVersion: a/b/c
+    kind: ConfigMap
+    metadata:
+      name: badversion
+  mixed.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: mixed-ok
+    ---
+    apiVersion: example.com/v1
+    kind: Widget
+    metadata:
+      name: w
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: mixed-ok-2
+    ---
+    apiVersion: v1
+    kind: [broken
+  saved.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: saved
+    data:
+      a: "1"
+steps:
+  - run: kubectl create -f -
+    stdin: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: from-stdin
+  - run: kubectl create -f multi.yaml
+  - run: kubectl create -f multi.yaml
+  - run: kubectl create -f one.json -o yaml
+  - run: kubectl create -f stream.json -o name
+  - run: kubectl create -f list.json
+  - run: kubectl create -f list.yaml
+  - run: kubectl create -f dir
+  - run: kubectl create -f dir/ -R --dry-run=client
+  - run: kubectl create -R -f dir
+  - run: kubectl create -f empty-dir
+  - run: kubectl create -f empty.yaml
+  - run: kubectl create -f one.json,multi.yaml
+  - run: kubectl create -f - -f -
+    stdin: ""
+  - run: kubectl create -f 'mu*.yaml' --dry-run=server
+  - run: kubectl create -f 'nothing*.yaml'
+  - run: kubectl create -f '[.yaml'
+  - run: kubectl create -f ns.yaml
+  - run: kubectl create -f in-team.yaml -n default
+  - run: kubectl create -f in-team.yaml -n team -o json
+  - run: kubectl create -f multi.yaml -l tier=b --dry-run=client -o name
+  - run: kubectl create -f multi.yaml -l 'tier in (a' --dry-run=client
+  - run: kubectl create -f noname.yaml
+  - run: kubectl create -f numberlabel.yaml
+  - run: kubectl create -f scalar.yaml
+  - run: kubectl create -f scalar.yaml --validate=false
+  - run: kubectl create -f nokind.yaml --validate=false
+  - run: kubectl create -f noversion.yaml
+  - run: kubectl create -f badversion.yaml
+  - run: kubectl create -f nokind.yaml --validate=warn
+  - run: kubectl create -f mixed.yaml
+  - run: kubectl create -f mixed.yaml --validate=false
+  - run: kubectl create -f saved.yaml --save-config -o yaml
+  - run: kubectl apply -f saved.yaml
+  - run: kubectl create -f saved.yaml --dry-run
+  - run: kubectl create -f saved.yaml --dry-run=true
+  - run: kubectl create -f saved.yaml --dry-run=bogus
+  - run: kubectl create -f saved.yaml --validate=bogus
+  - run: kubectl create -f saved.yaml -o wide
+  - run: kubectl create -o wide
+  - run: kubectl create configmaps
+  - run: kubectl create -f saved.yaml -k dir
+  - objects: [configmap/from-json, configmap/saved, -n team configmap/in-team]

@@ -130,6 +130,24 @@ export function resourceExpiredError(message: string): Status {
   return failure(410, 'Expired', message);
 }
 
+/**
+ * responsewriters.ErrorToAPIStatus of an error that is not a Status (a plain Go error from deep
+ * inside a handler): code 500, no reason (StatusReasonUnknown is empty, so omitted), the error's
+ * text as the message.
+ */
+export function unknownStatusError(message: string): Status {
+  return { kind: 'Status', apiVersion: 'v1', metadata: {}, status: 'Failure', message, code: 500 };
+}
+
+/**
+ * errors.NewGenericServerResponse(code, "", GroupResource{}, "", serverMessage, 0, false) for 422
+ * and 5xx, as interpretStrategicMergePatchError builds them: the server message is not shown.
+ */
+export function genericServerResponse(code: number, serverMessage: string): Status {
+  if (code === 422) return failure(422, 'Invalid', 'the server rejected our request due to an error in our request', {});
+  return failure(code, 'InternalError', `an error on the server (${q(serverMessage)}) has prevented the request from succeeding`, {});
+}
+
 export function internalError(err: string): Status {
   return failure(500, 'InternalError', `Internal error occurred: ${err}`, { causes: [{ reason: '', message: err, field: '' }] });
 }

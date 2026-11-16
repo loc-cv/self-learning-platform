@@ -31,6 +31,18 @@ export const KNOWN: KnownEntry[] = [
   { case: 'configmaps/create-and-read', step: 8, cause: ROOT_CA, reason: 'configmap/kube-root-ca.crt is not found' },
   { case: 'configmaps/list-output', step: 5, cause: 'DIV-015', reason: '--show-managed-fields shows no managedFields' },
   {
+    case: 'scheduling/preemption',
+    step: 0,
+    cause: 'STATUS: Default admission plugins other than NamespaceLifecycle are missing (phase 20b)',
+    reason: 'the Priority admission plugin forbids a Pod that sets preemptionPolicy while naming a PriorityClass; without it the Pod is created',
+  },
+  ...[2, 3, 4].map((step) => ({
+    case: 'apply/overwrite',
+    step,
+    cause: 'DIV-015',
+    reason: "the three-way merge conflict prints the live object, whose managedFields are missing here (and whose resourceVersion, inside the JSON, the normalizer leaves as captured); the conflict and the rest of the text are the same",
+  })),
+  {
     case: 'controllers/gc-orphan-foreground',
     step: 8,
     cause: 'FIDELITY §6.5',

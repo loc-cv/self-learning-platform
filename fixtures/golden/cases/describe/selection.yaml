@@ -1,0 +1,79 @@
+description: >-
+  Which objects describe prints: by name, TYPE/NAME, several names, a label selector, a name
+  prefix, across namespaces; events only for a single object unless --show-events is given; what
+  it prints when nothing matches, a name is missing, or the arguments are wrong.
+files:
+  pods.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: web-1
+      labels:
+        app: web
+        tier: front
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node01
+      containers:
+      - name: nginx
+        image: nginx:1.27
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: web-2
+      labels:
+        app: web
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node02
+      containers:
+      - name: nginx
+        image: nginx:1.27
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: db-1
+      labels:
+        app: db
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node01
+      containers:
+      - name: redis
+        image: nginx:1.27
+setup:
+  - do: kubectl create -f pods.yaml
+  - do: kubectl wait --for=condition=Ready pod --all --timeout=60s
+steps:
+  - run: kubectl describe pod web-1
+    kwok: true
+  - run: kubectl describe pod/web-2
+    kwok: true
+  - run: kubectl describe pods web-1 web-2
+    kwok: true
+  - run: kubectl describe pods -l app=web
+    kwok: true
+  - run: kubectl describe pods -l app=web --show-events
+    kwok: true
+  - run: kubectl describe pods -l app=none
+  - run: kubectl describe pods -A -l app=none
+  - run: kubectl describe pods -A -l app=db
+    kwok: true
+  - run: kubectl describe pod web
+    kwok: true
+  - run: kubectl describe pods we --show-events=true
+    kwok: true
+  - run: kubectl describe pod nothere
+  - run: kubectl describe pod web-1 missing
+    kwok: true
+  - run: kubectl describe pods,services web-1
+  - run: kubectl describe pods,services nothere
+  - run: kubectl describe pod web -n kube-system
+  - run: kubectl describe pod web-1 -n nowhere
+  - run: kubectl describe
+  - run: kubectl describe pod web-1 -l app=web
+  - run: kubectl describe pods -l 'app in (a'
+  - run: kubectl describe pod -A web-1
+  - run: kubectl describe pods/web-1 pods

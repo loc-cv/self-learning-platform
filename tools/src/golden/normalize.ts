@@ -55,7 +55,8 @@ const HASH = /(?<=[a-z0-9]-|hash=|hash: |hash": ")(?=[456789]*[bcdf])[456789bcdf
 const SUFFIX = /(?<=[a-z0-9>]-)[bcdfghjklmnpqrstvwxz2456789]{5}(?![a-z0-9-])/g;
 // Event names: <object>.<UnixNano in hex>. upstream: staging/src/k8s.io/client-go/tools/record/event.go makeEvent
 const EVENT_HEX = /(?<=[a-z0-9>])\.[0-9a-f]{15,17}(?![0-9a-z])/g;
-const RV = /(?<=resourceVersion"?: ")[0-9]+(?=")/g;
+// Also compact JSON in a message (`"resourceVersion":"303"`, a three-way merge conflict).
+const RV = /(?<=resourceVersion"?: ?")[0-9]+(?=")/g;
 const NODEPORT_TEXT = /(?<=[0-9]:|^)3[0-2][0-9]{3}(?=\/(?:TCP|UDP|SCTP)\b)/g;
 const NODEPORT_YAML = /(?<=nodePort"?: )[0-9]+/g;
 // klog's header: Lmmdd hh:mm:ss.uuuuuu threadid file:line] (k8s.io/klog/v2 klog.go formatHeader)

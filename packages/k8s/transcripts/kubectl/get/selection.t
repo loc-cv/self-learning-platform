@@ -1,6 +1,8 @@
 # kubectl get: several types and names, categories, namespaces, selectors, label columns.
-# objects: workloads.yaml
-# settle: 30
+# file: workloads.yaml
+# settle: 0
+% kubectl create -f workloads.yaml
+% sleep 30
 $ kubectl get all
 NAME                       READY   STATUS    RESTARTS   AGE
 pod/web-5d66c95fd4-dm95j   1/1     Running   0          30s

@@ -45,10 +45,15 @@ style references. Check `docs/FIDELITY.md`'s divergence register for the feature
    solution, and a second where a different valid approach exists; target time and difficulty;
    prediction prompts where an outcome is surprising; a debrief with the root cause, the mental
    model, why the solution works, common wrong turns, and "in reality" notes (including where a real
-   distribution such as RKE2 differs, when I'd meet it at work).
+   distribution such as RKE2 differs, when I'd meet it at work). Show, then tell: every lesson,
+   lab and incident has figures, the debrief opens with the cause as a picture, anything that
+   unfolds in time is a scene, and the prose keeps only what a figure cannot say. If the view
+   provider cannot draw what an item needs, extend it or record the gap; don't fall back to text.
 3. **Play each item** through script mode or the terminal player, on at least two seeds: solve it a
    second way than the reference solution, try the lazy fix the constraints should block, and read
-   the ticket as someone who doesn't know the answer. Fix what you find.
+   the ticket as someone who doesn't know the answer. Look at every figure in the browser, in each
+   variant: it must be readable at the panel's width and must not give the cause away in the
+   ticket. Fix what you find.
 4. **Sequence**: place the items in the track with prerequisites, so the worked example comes
    before the bare ticket and the bare ticket before the incident.
 5. **Validate**: `npm run content:check` on five seeds per item, the authoring lint, and
@@ -62,6 +67,8 @@ yourself against the authoring guide before accepting it. Don't translate; that 
 - Every item passes `content:check` on five seeds and the authoring lint with no waivers.
 - Each item was played, not only validated; your summary names the alternative solution you tried
   for each lab and incident.
+- Every lesson, lab and incident has at least one figure, and your summary includes screenshots of
+  three debriefs.
 - Coverage for the target's competencies is shown before and after.
 - Engine gaps met while writing are in `STATUS.md` with the item idea that needs them.
 - `STATUS.md` records this run under R1.

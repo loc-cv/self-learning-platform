@@ -1005,6 +1005,8 @@ phase 26b; until then a setup that needs a taint edits the Node, which is a real
 path and leaves no annotation a `taint` would not leave either. A learner who reaches for
 `kubectl taint` gets the `[sim]` notice; in the scheduling lab that is the forbidden fix anyway.
 
+## Phase 10 (2026-11-16)
+
 **D-103 — Content reaches the browser through the bundler.** Answers D-100's open question.
 `apps/web/vite.config.ts` reads the packs with `loadPacks()` at build time (Node) and serves them
 as the virtual module `virtual:simlab/content`, to the page and to the worker (which Vite bundles
@@ -1059,8 +1061,9 @@ the overlay that the file does not exist yet. Long lines wrap (vim's 'wrap'). Th
 other messages (bad regex, marks) are its own words; DIV-014 says so.
 
 **D-108 — Workspace shortcuts are Ctrl+Shift chords.** A terminal sends the same byte for
-Ctrl+Shift+letter as for Ctrl+letter, so the chords cost the shell nothing, and the chosen ones
-are not reserved by browsers: Enter check, H hint, E new terminal, X close terminal, 1…9 switch,
+Ctrl+Shift+letter as for Ctrl+letter, so the chords cost the shell nothing, and the browser gives
+each of the chosen ones to the page first (it still acts on some unless the page claims them:
+D-112): Enter check, H hint, E new terminal, X close terminal, 1…9 switch,
 L panel, Space pause, O lab list, C copy, ? shortcuts. Ctrl+Shift+V is never handled: the browser's
 paste event reaches xterm.js. They are caught in the capture phase, before xterm.js or CodeMirror.
 Ctrl-] keeps its readline meaning in the browser (the lab commands are buttons). Escape that
@@ -1090,3 +1093,59 @@ at the real current time, rounded to the second (`docs/SCENARIO_FORMAT.md` §5.2
 `?lab=<id>&seed=<n>` opens that variant directly (tests, sharing a variant with yourself later).
 The clock in the top bar is virtual time spent in the item over every attempt: it stops while
 paused and while the page is closed.
+
+## R3 after Checkpoint A (2026-11-17)
+
+**D-112 — A workspace chord is claimed every time.** The page used to claim Ctrl+Shift+C only
+when the terminal had a selection; otherwise Chrome got the chord and opened DevTools
+(`FEEDBACK.md`, Chrome on Windows 11; reproduced in Chromium: `defaultPrevented` was false). Every
+chord of `shortcuts.ts` now has its default prevented whether or not it has something to do.
+Ctrl+Shift+C copies the terminal's selection, or else the text selected in the lab panel or the
+editor. Ctrl+Shift+PageUp and PageDown go to the previous and the next terminal, wrapping: on the
+owner's machine Ctrl+Shift+1 does nothing at all (something outside the page takes it; here it
+works), and a second way must not depend on the digits. Unclaimed, Chrome moves the browser tab
+with those two. Ctrl+PageUp/PageDown, which terminal emulators use, cannot be had: they switch
+browser tabs and never reach a page.
+
+**D-113 — Ctrl+W, Ctrl+T and Ctrl+N reach the shell in full screen and in an installed window.**
+In an ordinary tab Chrome and Edge act on these keys without showing them to the page, so no
+code can give them to readline (unix-word-rubout, transpose-chars, next-history). Chromium's
+`BrowserCommandController::IsReservedCommandOrKey`
+(chrome/browser/ui/browser_command_controller.cc, read 2026-11-17) reserves nothing for app
+windows ("In Apps mode, no keys are reserved") and, in full screen, only the commands that leave
+it. So: (1) the page has a web app manifest (`apps/web/public/manifest.webmanifest`, icons
+rendered from `icon.svg`) and can be installed as an app window; (2) Ctrl+Shift+F and a top bar
+button enter full screen, requesting the Keyboard Lock first, as its specification recommends
+(wicg.github.io/keyboard-lock), so Escape reaches vim and holding Escape leaves full screen;
+browsers without the API still enter full screen; (3) wherever the page does get one of the three
+keys and neither the terminal nor the editor used it (vim's normal mode, no focus), the page
+prevents the default in the bubble phase, so the window is not closed. The capture phase would be
+wrong: CodeMirror ignores a key event whose default is already prevented. The shortcut list says
+all this, and that an extension adding vim keys to pages (Vimium) takes Escape before the editor
+sees it and must exclude the page: the owner's "Escape leaves the tab" was Vimium. Not verified
+on Chrome for Windows from here: the headless shell has no browser window, so the tests cover the
+page's side (the keys are prevented, full screen is entered, the manifest is served).
+
+**D-114 — The gap summary and handled marks.** `npm run gaps:summary` groups `data/gaps.jsonl` by
+key (`tools/src/gaps/summary.ts`); R3 asked for a script and none existed. `--handle <key> --note
+<text>` appends a mark to `data/gaps.handled.jsonl`. A mark closes a group until a newer record
+arrives. Marks stay local with the log (`data/` is git-ignored); the decisions themselves are in
+`docs/feedback-log.md`.
+
+**D-115 — The visual layer comes before the learning loop.** Decided by the owner at Checkpoint A
+and recorded in `PLAN.md` §15 (2026-11-17): phases 10b (design language, view contract, renderer,
+live X-ray) and 10c (figures in content, scenes, the three labs rewritten), then Checkpoint A2,
+then 11. Phase 13 keeps the trace audit, the "Why?" inspector, the timeline, the replay of an
+attempt, time controls and assist levels. The registry kind `visualizer` is a placeholder until
+10b defines `view`. Things this run decided for those phases, so they are not reopened: one
+renderer of our own in SVG rather than a diagram library (Mermaid and the like would bring a
+generic look, a large bundle and a second visual language); figures are views of simulated worlds,
+validated per seed by `content:check`; hand-drawn diagrams use the same shape vocabulary; a
+ticket's figure never shows the cause; exam tasks have no figures; the X-ray stays help that
+counts in the rating, while figures in lessons and debriefs are teaching and cost nothing.
+
+**D-116 — Tests may take 30 s.** Vitest's default timeout is 5 s. The lab tests take about 1.5 s
+each on an idle machine; during this run another project's jobs held every core (load average 18)
+and one lab test timed out, failing the gate with nothing wrong. The engine is deterministic and
+runs in virtual time, so a slow test means a busy workstation, not a hang; a real hang still fails,
+after 30 s.

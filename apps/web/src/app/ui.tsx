@@ -69,6 +69,8 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M10 14h5.5" />
     </>
   ),
+  expand: <path d="M3.5 7.5v-4h4M16.5 7.5v-4h-4M3.5 12.5v4h4M16.5 12.5v4h-4" />,
+  shrink: <path d="M7.5 3.5v4h-4M12.5 3.5v4h4M7.5 16.5v-4h-4M12.5 16.5v-4h4" />,
   flag: (
     <>
       <path d="M4.5 17.5V3.5" />

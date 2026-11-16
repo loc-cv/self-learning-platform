@@ -84,3 +84,125 @@ test('plain editor keys: Ctrl+S saves, Ctrl+X closes, the choice is remembered',
   await waitForPrompt(page);
   expect(await page.evaluate(() => localStorage.getItem('simlab.settings.v1'))).toContain('"editorKeys":"plain"');
 });
+
+// FEEDBACK 2026-11-17 (Chrome on Windows): Ctrl+Shift+C opened DevTools, Ctrl+W closed the tab,
+// Ctrl+Shift+1 did nothing, and the tab's close button drew its icon off-center.
+
+test('workspace chords are claimed every time; Ctrl+W, Ctrl+T, Ctrl+N never fall through', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await openLab(page, 'k8s.workloads.deployment-service-01', 1);
+  await page.evaluate(() => {
+    const w = window as unknown as { keys: Record<string, boolean> };
+    w.keys = {};
+    window.addEventListener('keydown', (e) => setTimeout(() => (w.keys[`${e.ctrlKey ? 'C-' : ''}${e.shiftKey ? 'S-' : ''}${e.code}`] = e.defaultPrevented), 0), true);
+  });
+  const claimed = (k: string): Promise<boolean | undefined> => page.evaluate((key) => (window as unknown as { keys: Record<string, boolean> }).keys[key], k);
+
+  // With nothing selected in the terminal the chord is still the page's, and it copies what is
+  // selected elsewhere (the ticket).
+  await page.keyboard.press('Control+Shift+C');
+  await expect.poll(() => claimed('C-S-KeyC')).toBe(true);
+  await page.locator('.lab-head h1, .lab-title').first().dblclick();
+  const word = await page.evaluate(() => window.getSelection()?.toString() ?? '');
+  expect(word).not.toBe('');
+  await page.keyboard.press('Control+Shift+C');
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(word);
+
+  // Previous and next terminal, wrapping.
+  await page.getByRole('button', { name: /Another terminal/ }).click();
+  await page.getByRole('button', { name: /Another terminal/ }).click();
+  await expect(page.locator('.tab')).toHaveCount(3);
+  const active = (): Promise<number> => page.evaluate(() => [...document.querySelectorAll('.tab')].findIndex((t) => t.classList.contains('is-active')));
+  await expect.poll(active).toBe(2);
+  await page.keyboard.press('Control+Shift+PageDown');
+  await expect.poll(active).toBe(0);
+  await page.keyboard.press('Control+Shift+PageUp');
+  await expect.poll(active).toBe(2);
+  await page.keyboard.press('Control+Shift+PageUp');
+  await expect.poll(active).toBe(1);
+  await page.keyboard.press('Control+Shift+Digit1');
+  await expect.poll(active).toBe(0);
+  expect(await claimed('C-S-PageUp')).toBe(true);
+  expect(await claimed('C-S-PageDown')).toBe(true);
+  await waitForPrompt(page);
+
+  // Ctrl+W is unix-word-rubout in the shell and never the browser's, wherever the focus is.
+  await page.keyboard.type('echo one two');
+  await page.keyboard.press('Control+w');
+  await page.keyboard.type('three');
+  await page.evaluate(() => window.__simlab.enter());
+  expect(await screen(page)).toMatch(/\none three\n/);
+  expect(await claimed('C-KeyW')).toBe(true);
+  await page.keyboard.type('vim keys.txt');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.editor-overlay')).toBeVisible();
+  // vim's normal mode: Ctrl+W is the window prefix, which the overlay does not have.
+  // (Lower-case key names: vim reads the key's character, and "W" would be <C-W>.)
+  for (const k of ['w', 't', 'n']) {
+    await page.evaluate(() => ((window as unknown as { keys: Record<string, boolean> }).keys = {}));
+    await page.keyboard.press(`Control+${k}`);
+    await expect.poll(() => claimed(`C-Key${k.toUpperCase()}`)).toBe(true);
+  }
+  await page.keyboard.press('Escape');
+  await page.keyboard.type('ione two');
+  await page.keyboard.press('Control+w');
+  await expect(page.locator('.cm-content')).toHaveText('one ');
+});
+
+test('full screen from the top bar and by chord', async ({ page }) => {
+  await openLab(page, 'k8s.workloads.deployment-service-01', 1);
+  const full = (): Promise<boolean> => page.evaluate(() => document.fullscreenElement !== null);
+  await page.getByRole('button', { name: /^Full screen/ }).click();
+  await expect.poll(full).toBe(true);
+  await expect(page.getByRole('button', { name: /^Leave full screen/ })).toHaveAttribute('aria-pressed', 'true');
+  // The terminal keeps the keyboard.
+  expect(await run(page, 'echo still-here')).toContain('still-here');
+  await page.keyboard.press('Control+Shift+F');
+  await expect.poll(full).toBe(false);
+  await expect(page.getByRole('button', { name: /^Full screen/ })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('the page is installable: a manifest with icons the server serves', async ({ page, request }) => {
+  await page.goto('/');
+  const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+  const res = await request.get(href ?? '');
+  expect(res.headers()['content-type']).toContain('application/manifest+json');
+  const manifest = (await res.json()) as { display: string; start_url: string; icons: { src: string; sizes: string }[] };
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.icons.map((i) => i.sizes)).toEqual(['any', '192x192', '512x512']);
+  for (const icon of manifest.icons) expect((await request.get(icon.src)).ok(), icon.src).toBe(true);
+});
+
+test('icons sit in the middle of their buttons, at 100%, 125% and 150% display scaling', async ({ browser }) => {
+  for (const deviceScaleFactor of [1, 1.25, 1.5]) {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor });
+    const page = await context.newPage();
+    await openLab(page, 'k8s.workloads.deployment-service-01', 1);
+    await page.getByRole('button', { name: /Another terminal/ }).click();
+    await expect(page.locator('.tab')).toHaveCount(2);
+    // The close button shows on hover.
+    await page.locator('.tab').first().hover();
+    const off = await page.evaluate(() => {
+      const out: string[] = [];
+      for (const b of document.querySelectorAll('button')) {
+        const kids = [...b.childNodes].filter((n) => n.nodeType === 1 || (n.textContent ?? '').trim() !== '');
+        const icon = kids[0] as Element | undefined;
+        if (kids.length !== 1 || icon?.nodeName.toLowerCase() !== 'svg') continue;
+        const r = b.getBoundingClientRect();
+        const i = icon.getBoundingClientRect();
+        if (r.width === 0) continue;
+        const dx = i.left + i.width / 2 - (r.left + r.width / 2);
+        const dy = i.top + i.height / 2 - (r.top + r.height / 2);
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) out.push(`${b.getAttribute('aria-label') ?? b.title}: ${dx.toFixed(2)}, ${dy.toFixed(2)}`);
+      }
+      // The new-terminal button sits on the tabs' line.
+      const tab = document.querySelector('.tab')?.getBoundingClientRect();
+      const plus = document.querySelector('.tab-new')?.getBoundingClientRect();
+      if (tab && plus && Math.abs(tab.top + tab.height / 2 - (plus.top + plus.height / 2)) > 1) out.push('the new-terminal button is off the tabs line');
+      return { out, checked: document.querySelectorAll('button > svg:only-child').length };
+    });
+    expect(off.checked).toBeGreaterThan(4);
+    expect(off.out, `at ${deviceScaleFactor}x`).toEqual([]);
+    await context.close();
+  }
+});

@@ -18,6 +18,7 @@ async function start(): Promise<{ url: string; data: string }> {
   mkdirSync(join(dist, 'assets'), { recursive: true });
   writeFileSync(join(dist, 'index.html'), '<!doctype html><title>Simlab</title>');
   writeFileSync(join(dist, 'assets', 'app-1a2b.js'), 'export {}');
+  writeFileSync(join(dist, 'manifest.webmanifest'), '{"name":"Simlab"}');
   const data = join(dir, 'data');
   const server = await listen({ port: 0, handlers: [apiMiddleware(data), staticMiddleware(dist)] });
   servers.push(server);
@@ -45,6 +46,7 @@ describe('the app server', () => {
     const asset = await fetch(`${url}/assets/app-1a2b.js`);
     expect(asset.headers.get('cache-control')).toContain('immutable');
     expect((await fetch(`${url}/missing.js`)).status).toBe(404);
+    expect((await fetch(`${url}/manifest.webmanifest`)).headers.get('content-type')).toBe('application/manifest+json; charset=utf-8');
     expect((await fetch(`${url}/..%2f..%2f..%2fetc%2fpasswd`)).status).toBe(403);
     expect(await (await fetch(`${url}/%2e%2e/%2e%2e/etc/passwd`)).text()).toContain("<title>Simlab</title>");
   });

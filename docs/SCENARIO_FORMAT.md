@@ -1299,6 +1299,7 @@ debrief: |
 
 | Topic | Phase |
 |---|---|
+| Figures: `figure` blocks in the ticket, in debrief blocks and in lesson steps (`view`, `compare`, `scene`, `diagram`; `PLAN.md` §6.5 and §8), their validation and their text units | 10c |
 | `lesson`, `card` and `exam` items; prediction prompts; the rest of `pack.yaml` (tracks, skill descriptions) | 11 |
 | Authoring style guide and content tooling | 14 |
 | Topology parameters (none exist yet; the templates are in §5.1) | the first phase whose content needs a variant |

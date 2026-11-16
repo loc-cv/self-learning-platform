@@ -29,7 +29,10 @@ anything is built.
    - what is deliberately not simulated, and how content will stay honest about it;
    - the ground-truth strategy: which real binaries can run on this workstation as an oracle
      (without Docker), what must come from upstream source or documentation;
-   - topologies, checks, faults, view provider;
+   - topologies, checks, faults;
+   - the views: the entities and relations of this domain's world in the renderer's shape
+     vocabulary (`PLAN.md` §6.5), and the three or four pictures and scenes that carry its mental
+     models; say if the vocabulary lacks a shape, since that is a core change;
    - a content outline (tracks, item counts per type) and five fully worked example items;
    - the build split: what fits in one stage B session and what needs another.
 4. Confirm the spec with me before ending the session.
@@ -39,7 +42,8 @@ anything is built.
 Build the plugin package to the spec: state slice, behavior models, programs with completion,
 checks, faults, topologies, package catalog entries, view provider, coverage and provenance
 registration, oracle tooling and golden fixtures, transcripts and simulation tests. The five
-example items from the spec become real content and must pass `content:check`. Core packages change
+example items from the spec become real content with their figures and must pass `content:check`.
+Core packages change
 only for domain-neutral improvements, each recorded in `docs/decisions.md`.
 
 ## Stage C — Content
@@ -51,7 +55,8 @@ from coverage, write complete items, play each one, sequence the track, validate
 
 - **A**: the spec exists, pins a version with sources, states its non-goals, and I confirmed it.
 - **B**: `npm run check` is green; the domain's golden and transcript tests pass; the boundary lint
-  from phase 34 passes; the app works with this pack alone and together with the others; the five
-  example items pass `content:check`.
+  from phase 34 passes; the app works with this pack alone and together with the others; the X-ray
+  shows this domain's world and the renderer did not change for it; the five example items pass
+  `content:check`, figures included.
 - **C**: as in R1.
 - Every stage updates `STATUS.md`, and `docs/ADDING_A_DOMAIN.md` if the procedure taught something.

@@ -563,7 +563,7 @@ ones that concern machines.
 | `fault` | kernel | host, domains | `learn` runner |
 | `step` | kernel | host, domains | `learn` runner (setup and solution steps) |
 | `topology` | kernel | domains | `learn` runner, CLI |
-| `visualizer` | kernel | domains | web X-ray |
+| `visualizer` | kernel | domains | web X-ray. A placeholder: phase 10b replaces it with the `view` contract (`PLAN.md` §6.5), registered by the host and by domains and consumed by the X-ray, figures in content and the debrief's replay |
 | `program` | host | host, domains | shell, systemd |
 | `completion` | host | host, domains | TTY line editor |
 | `fileProvider` | host | host, domains | VFS generated files |

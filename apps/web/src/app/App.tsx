@@ -10,7 +10,8 @@ import { EditorOverlay, type SaveResult } from './EditorOverlay.tsx';
 import { createGapSink, type GapEntry, type SinkState } from './gaps.ts';
 import { ItemPicker } from './ItemPicker.tsx';
 import { LabPanel } from './LabPanel.tsx';
-import { matchShortcut } from './shortcuts.ts';
+import { isBrowserChord, matchShortcut, neighbourTab } from './shortcuts.ts';
+import { isFullscreen, toggleFullscreen, watchFullscreen } from './fullscreen.ts';
 import { createStore, type Settings } from './storage.ts';
 import { TerminalView, type Tab, type TerminalHandle } from './Terminal.tsx';
 import { TopBar, type Popover } from './TopBar.tsx';
@@ -48,6 +49,8 @@ export function App() {
   const [gaps, setGaps] = useState<GapEntry[]>([]);
   const [sinkState, setSinkState] = useState<SinkState>('idle');
   const [popover, setPopover] = useState<Popover>();
+  const [fullscreen, setFullscreen] = useState(isFullscreen);
+  useEffect(() => watchFullscreen(setFullscreen), []);
   const [storageWarning, setStorageWarning] = useState(false);
   const [engineError, setEngineError] = useState<string>();
   const handles = useRef(new Map<number, TerminalHandle>());
@@ -285,13 +288,21 @@ export function App() {
       }
       const m = matchShortcut(e);
       if (m) {
-        if (m.id === 'copy') {
-          const h = current.current.activeTab === undefined ? undefined : handles.current.get(current.current.activeTab);
-          if (h?.hasSelection()) void navigator.clipboard?.writeText(h.selection());
-          else return;
-        }
+        // Claimed every time: a chord the page leaves alone is the browser's (Ctrl+Shift+C
+        // opens DevTools in Chrome).
         e.preventDefault();
         e.stopPropagation();
+        if (m.id === 'copy') {
+          // The terminal's selection, or text selected in the lab panel or the editor.
+          const h = current.current.activeTab === undefined ? undefined : handles.current.get(current.current.activeTab);
+          const text = h?.hasSelection() ? h.selection() : (window.getSelection()?.toString() ?? '');
+          if (text !== '') void navigator.clipboard?.writeText(text);
+          return;
+        }
+        if (m.id === 'fullscreen') {
+          toggleFullscreen();
+          return;
+        }
         const ready = phase.kind === 'ready';
         if (m.id === 'check' && ready) void act('check');
         else if (m.id === 'hint' && ready) void act('hint');
@@ -299,6 +310,11 @@ export function App() {
         else if (m.id === 'closeTerminal' && ready && current.current.activeTab !== undefined) closeTerminal(current.current.activeTab);
         else if (m.id === 'tab') {
           const t = current.current.tabs[m.index ?? 0];
+          if (t) setActiveTab(t.key);
+        } else if (m.id === 'prevTab' || m.id === 'nextTab') {
+          const ts = current.current.tabs;
+          const at = ts.findIndex((t) => t.key === current.current.activeTab);
+          const t = ts[neighbourTab(Math.max(at, 0), ts.length, m.id === 'prevTab' ? -1 : 1)];
           if (t) setActiveTab(t.key);
         } else if (m.id === 'panel') togglePanel();
         else if (m.id === 'pause' && ready) togglePause();
@@ -323,6 +339,18 @@ export function App() {
     window.addEventListener('keydown', down, true);
     return () => window.removeEventListener('keydown', down, true);
   }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, togglePause, focusTerminal]);
+
+  // In full screen or an installed app window the browser hands over Ctrl+W, Ctrl+T and Ctrl+N.
+  // The terminal and vim's insert mode use them; where nothing does (vim's normal mode, no
+  // focus), the browser must still not close the window (shortcuts.ts). Bubble phase, after the
+  // terminal and the editor: CodeMirror ignores a key whose default is already prevented.
+  useEffect(() => {
+    const keep = (e: KeyboardEvent): void => {
+      if (isBrowserChord(e)) e.preventDefault();
+    };
+    window.addEventListener('keydown', keep);
+    return () => window.removeEventListener('keydown', keep);
+  }, []);
 
   // Returning to the window returns to the terminal.
   useEffect(() => {
@@ -381,6 +409,11 @@ export function App() {
         togglePause={togglePause}
         togglePanel={togglePanel}
         openLabs={() => setPicker((v) => !v)}
+        fullscreen={fullscreen}
+        toggleFullscreen={() => {
+          toggleFullscreen();
+          focusTerminal();
+        }}
       />
       {storageWarning ? <div className="banner banner-warn">Browser storage is full or unavailable: a reload would lose this attempt.</div> : null}
       {engineError ? (

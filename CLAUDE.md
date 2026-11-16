@@ -9,6 +9,7 @@ practice with spaced repetition.
 - `STATUS.md` — which phase is done, carry-over work, handoff notes. Read it at the start of every session.
 - `prompts/` — one prompt per phase, plus repeatable prompts (`R1`–`R5`).
 - `docs/` — detailed specs, written and kept current by the phases that build each subsystem.
+  `docs/feedback-log.md` records what each R3 run did with the owner's feedback.
 - `memory/` — standing preferences and feedback from the owner; `memory/MEMORY.md` is the index.
   Save new feedback here, in the repository, so it moves with the project; machine-local memory
   doesn't.
@@ -68,6 +69,8 @@ npm run kubeadm:capture [-- --check]   # what the real kubeadm init writes and c
 npm run images:capture [-- --check]    # what Docker Hub and registry.k8s.io answer for the listed images (digests, configs,
                                       # files, errors), into fixtures/reference/images/ and packages/k8s/src/runtime/images/catalog.data.ts
 npm run fidelity:report       # provenance of every output unit (docs/FIDELITY.md §3)
+npm run gaps:summary [-- --all]   # data/gaps.jsonl grouped by key, open groups first (what R3 reads);
+                                  # -- --handle <key> --note <text> marks a group handled
 npm run coverage:generate [-- --check]   # write docs/COVERAGE.md's generated kubectl section from the
                                          # manifest and the registrations (the gate fails when stale)
 node tools/src/strategicpatch/extract-tests.ts [--check]  # copy upstream's patch_test.go tables into
@@ -112,13 +115,14 @@ packages/learn     content model, scenario runner, checks, grader, skills, FSRS,
 packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml
 apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side, tested in
                    Node), src/app (App, Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
-                   LabPanel, TopBar, ItemPicker, storage, the probe for tests), src/protocol.ts (page ↔
-                   worker messages), vite.config.ts (bundles the content packs, D-103), e2e/ (Playwright)
+                   LabPanel, TopBar, ItemPicker, storage, shortcuts and fullscreen, the probe for tests),
+                   src/protocol.ts (page ↔ worker messages), vite.config.ts (bundles the content packs,
+                   D-103), public/ (web app manifest and icons, D-113), e2e/ (Playwright)
 apps/server        the local server: built app or Vite middleware, POST /api/gaps → data/gaps.jsonl
 apps/cli
 tools/             upstream fetch, OpenAPI processing (openapi/), oracle and golden capture, transcript capture,
                    coverage generation (coverage/), content validation and schema generation (content/),
-                   update check;
+                   the gap log summary (gaps/), update check;
                    tools/eslint holds the two lint rules, their fixtures and the dependency table
 docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against
@@ -229,6 +233,9 @@ that first.
 - Tickets describe a goal or a symptom the way a real ticket would, never the commands to type.
 - Every item names its skills and curriculum competencies, has a hint ladder, a debrief with the
   mental model and "in reality" notes, parameters for variation, and at least one reference solution.
+- Show, then tell (`PLAN.md` §5, §6.5; from phase 10c): lessons, labs and incidents carry figures
+  rendered from the simulated world, the debrief opens with one, and prose keeps only what a
+  figure cannot say. A ticket's figure never shows the cause. Exam tasks have no figures.
 
 ## Things that are deliberately absent
 

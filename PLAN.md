@@ -44,10 +44,14 @@ plug in without touching the core.
 - Mock exam scores per curriculum domain are tracked, and every CKA and CKAD competency is covered
   by at least one lesson, several drills, one lab and one troubleshooting item.
 - I can open the app, press one button and get today's time-boxed session without deciding what to study.
+- Every concept is shown as well as told: each lesson, lab and incident carries at least one figure
+  drawn from the simulated world, and the debrief can replay my own attempt (§5, §6.5).
 
 **Extensibility**
 - A new domain is added as a plugin package plus a content pack. The kernel, the host substrate and
   the learning layer don't change. This is proven by building a second domain (Linux), not asserted.
+- A new domain shows its world through the same view contract (§6.5): the renderer, the figures and
+  the replay need no change for it.
 
 ## 3. Principles (non-negotiable)
 
@@ -62,8 +66,8 @@ plug in without touching the core.
    source code at the pinned version, official docs, or a captured real output, and says which.
 4. **Deterministic.** Same scenario, seed and input log give the same world, always. Time is
    virtual. Every lab runs headlessly in tests.
-5. **Learning science is a feature, not decoration.** Retrieval, spacing, interleaving, variation
-   and feedback are built into the product loop (§5).
+5. **Learning science is a feature, not decoration.** Retrieval, spacing, interleaving, variation,
+   pictures beside words, and feedback are built into the product loop (§5).
 6. **Domain-agnostic core.** Kubernetes is the first plugin, not the foundation. Linux hosts are the
    foundation.
 7. **Maintainable by one person plus Claude Code.** Simple, well-tested components. Few
@@ -154,9 +158,17 @@ help, and what feedback I get. It is domain-agnostic.
 - **Faded guidance.** The same skill appears as a worked example, then a completion task, then a
   bare ticket, then inside an incident. Hints form a ladder (nudge, direction, exact command) and
   using them lowers the rating.
-- **Feedback that explains.** The debrief shows which checks passed, the reference solution next to
-  my command history, the causal trace from the engine (why the Pod was Pending, which controller did
-  what), the mental model, and "in reality" notes where the simulator or a real distribution differs.
+- **Show, then tell.** A simulator can show what a real system hides, and a picture next to a
+  few words teaches more than the words alone. Tickets, lessons and debriefs carry **figures**. A
+  figure is a view of a simulated world (the item's world at the start, the world once solved, my
+  world now, or a small scripted run played step by step), rendered by the same code as the live
+  view of the system, so it cannot drift from what the simulator does. Prose says what a figure
+  cannot; a debrief that is only text is a defect (§6.5, §8).
+- **Feedback that explains.** The debrief opens with figures of the cause and the fix. It shows
+  which checks passed, the reference solution next to my command history, a replay of my own
+  attempt with the causal trace from the engine (why the Pod was Pending, which controller did
+  what, what changed when my fix landed), the mental model, and "in reality" notes where the
+  simulator or a real distribution differs.
 - **Self-explanation and calibration.** I write the root cause in one sentence before the debrief,
   and rate my confidence before checking. Both are stored.
 - **Errors feed review.** Failed checks, repeated command errors and hint use are recorded per skill
@@ -183,7 +195,7 @@ terms, resource names, commands, flags and code stay in English inside Vietnames
 ```mermaid
 flowchart TB
   subgraph Apps
-    WEB[apps/web<br/>terminal, lesson panel, X-ray, dashboard, exam]
+    WEB[apps/web<br/>terminal, lesson panel, views and X-ray, dashboard, exam]
     SRV[apps/server<br/>static files + progress persistence]
     CLI[apps/cli<br/>headless runner, terminal player, tools]
   end
@@ -231,9 +243,9 @@ the same code runs in a browser Web Worker and in Node for tests.
   they serve scenario setup, checks and checkpoints.
 - **Fork for checks.** Checks run against a fork of the world, so grading never disturbs my session.
 - **Trace bus.** Components emit structured cause records ("scheduler rejected node01: untolerated
-  taint"). The X-ray view, the debrief and tests consume them.
+  taint"). The X-ray view, figures, the debrief and tests consume them.
 - **Plugin registry.** A plugin registers programs, state slices, actors and event handlers,
-  topology templates, check functions, fault injectors, completions and visualizer data providers.
+  topology templates, check functions, fault injectors, completions and view providers (§6.5).
 
 ### 6.2 Host substrate
 
@@ -269,8 +281,33 @@ possible ("the app crash-loops because `DB_HOST` is wrong") and what later domai
 ### 6.4 Adding a domain
 
 A domain is one plugin package plus one content pack: state slice, behavior models, programs,
-checks, faults, topology templates, optional visualizer data, and content. `docs/ADDING_A_DOMAIN.md`
+checks, faults, topology templates, a view provider, and content. `docs/ADDING_A_DOMAIN.md`
 (phase 34) holds the checklist, written from the experience of adding Linux.
+
+### 6.5 Views
+
+The visual layer is one mechanism with several surfaces, and it knows no domain.
+
+- **View provider.** A plugin turns a world into a **view model**: entities (stable id, kind,
+  label, what contains them, state, a few facts), typed relations between them (owns, runs on,
+  selects, routes to, mounts), and, from the trace, what happened and why. It is a pure function
+  of world state, so it works on the live world, on a fork, and on a world rebuilt by replay. Each
+  domain describes its kinds with a small fixed vocabulary of shapes the renderer knows; the
+  renderer, `learn` and the apps never name a Pod or a systemd unit.
+- **Renderer.** One renderer draws every view model: containment (machines hold processes, nodes
+  hold Pods), relations as links, state as styling, change as motion. Something moves only when
+  the world changed or the trace recorded a cause.
+- **Surfaces.** (1) **X-ray**: the live view of the world beside the terminal. It is help: using
+  it is recorded and lowers the rating, and exam mode turns it off. (2) **Figures** in tickets,
+  lessons and debriefs (§8): a view of a named world, two views compared, a hand-drawn concept
+  diagram in the same vocabulary, or a **scene**, a scripted run the engine really executes and I
+  step through. (3) **Replay**: the debrief plays my attempt from its input log, with the causes.
+- **Honesty.** Views follow principles 1 to 3. A view shows what the model holds and nothing else:
+  no decorative traffic, no internals the engine does not simulate. Where the model is coarser
+  than reality (reachability, not packets), the figure says so and links the divergence register.
+  A hand-drawn diagram is prose in another form and is held to the same sources as prose.
+- **The look.** The app's design language (type, spacing, depth, motion, the colors of states) is
+  defined once in `docs/DESIGN.md` and shared by the interface and the views.
 
 ## 7. Kubernetes plugin design
 
@@ -363,8 +400,28 @@ debrief: |
   Root cause, the mental model, the reference solution explained, and "in reality" notes.
 ```
 
+Figures are blocks inside the ticket, a lesson step or the debrief (the format is specified in
+`docs/SCENARIO_FORMAT.md` by phase 10c):
+
+```yaml
+debrief:
+  - figure:
+      kind: compare                # view | compare | scene | diagram
+      left:  { of: start }         # the world after setup
+      right: { of: solved }        # the world after the reference solution
+      focus: { namespace: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Node] }
+      show: [taints, tolerations]
+      caption: The taint kept every Pod off `{{ssdNode}}` until the Pod template tolerated it.
+  - text: |
+      What the figure cannot say: a toleration permits, it never attracts.
+```
+
+A ticket's figure shows only what the ticket states, the way a real ticket might attach a sketch
+of the setup; it never shows the cause. Exam tasks carry no figures.
+
 Rules that tests enforce for every item and several seeds: the schema is valid; the checks **fail**
-on the untouched world; every reference solution **passes**; hints and debrief exist. Vietnamese
+on the untouched world; every reference solution **passes**; hints and debrief exist; every figure
+resolves (its focus selects something, its scene runs without a gap). Vietnamese
 text lives in `<id>.vi.yaml` next to the item. Phase 00 writes the full format specification with
 three worked examples (a CKAD workload task, a CKA node troubleshooting task, a chained incident).
 
@@ -400,6 +457,10 @@ Checks are functions registered by plugins (`k8s.*`, `host.*`, `net.reach`) plus
   quality gate never needs the network.
 - **Divergence register.** `docs/FIDELITY.md` lists where the simulator knowingly differs from
   reality. Debriefs link to relevant entries.
+- **Views are output too.** A view is rendered from world state and the trace, so it cannot show
+  something the terminal would contradict; a test compares the two. Words a view prints that a
+  real tool also prints (a status, an event reason) come from the same sources as the tool's
+  output.
 - **Update check.** A tool compares the pin with upstream releases and the recorded curricula with
   the current official ones, and writes a report of needed changes. It can run on a schedule.
 
@@ -407,12 +468,16 @@ Checks are functions registered by plugins (`k8s.*`, `host.*`, `net.reach`) plus
 
 A local web app, started with one command.
 
-- **Workspace.** Terminal tabs (xterm.js), a panel for the lesson or ticket with check, hint and
-  reset actions, and an optional X-ray view of the world (nodes, Pods, Services, health, the causal
-  trace) that exam mode turns off. A speed control and "skip to next event".
+- **Workspace.** Terminal tabs (xterm.js), a panel for the lesson or ticket with its figures and
+  check, hint and reset actions, and an optional X-ray view of the world (machines, nodes, Pods,
+  Services, health, the causal trace) that exam mode turns off. A speed control and "skip to next
+  event".
 - **Home.** Today's session, mastery by skill and curriculum domain, due counts, recent mistakes,
   and a content browser for free practice.
-- **Debrief.** As described in §5.
+- **Debrief.** As described in §5: figures first, then the replay of my attempt, then prose.
+- **Look.** One design language (`docs/DESIGN.md`) for the interface and the views: a clear type
+  scale and spacing rhythm, depth that separates the areas of the workspace, motion only where
+  something changed. The system on screen is what gives the product its character.
 - **Exam mode.** Timer, task list with flags and weights, no hints, no X-ray, score report per
   domain; results feed the scheduler.
 - **Terminal player.** `npm run play` puts me in a simulated machine from my real terminal, and
@@ -479,12 +544,20 @@ the remainder in `STATUS.md`; rerun the same prompt.
 - 10 Web app: terminal, lab panel, editor overlay
 
 **Checkpoint A.** I play the three labs and write `FEEDBACK.md`. Exit: the criteria of §2
-"Realism" hold for the slice, and I decide to continue. Then run `prompts/R3`.
+"Realism" hold for the slice, and I decide to continue. Then run `prompts/R3`. (Done 2026-11-17:
+the terminal feels real; the product is all text and looks bland. Hence 10b and 10c.)
+
+- 10b Visual foundation: design language, view model, renderer, live X-ray
+- 10c Figures in content: views, comparisons, diagrams, scenes; the three labs retrofitted
+
+**Checkpoint A2.** I play the three labs again with the X-ray and the figures. Exit: the labs show
+the system as well as describe it, and I'd rather use this than a text-only lab. Then run
+`prompts/R3` if `FEEDBACK.md` has entries.
 
 **M2 — Learning loop**
 - 11 Learning core: content model, i18n, progress log, skills, FSRS, daily queue, local server
 - 12 Learning UI: home, item flows, hints, prediction, debrief, language toggle
-- 13 X-ray view, causal trace, time controls
+- 13 Causal trace, replay of my attempt, time controls
 - 14 Curriculum map, skill graph, authoring guide, content tooling
 - R1 run for `k8s-foundations`
 
@@ -525,7 +598,8 @@ using it. Then run `prompts/R3`.
 - R4 New domain (spec, engine, content)
 - R5 Kubernetes version bump
 
-Engine phases from 15 onward each ship a few items that exercise the new features. R1 runs fill the
+Engine phases from 15 onward each ship a few items that exercise the new features, extend their
+domain's view provider for what they add, and give those items figures. R1 runs fill the
 curriculum: interleave them with engine phases as soon as the features a target needs exist, so
 there is always fresh material to learn from while the platform grows.
 
@@ -540,6 +614,8 @@ there is always fresh material to learn from while the platform grows.
 | **Behavior models are curated.** Unknown images don't exist in the simulated registry. | A catalog of common images; scenarios declare extra ones; pulling an unknown image fails the way a missing image does, and the gap is logged. |
 | **Network realism.** No packets, no iptables rules, no tcpdump. | The reachability model returns client-visible outcomes; packet-level tools are non-goals. |
 | **Content volume and quality.** Hundreds of items. | An authoring guide, strict automated validation, variants, R1 runs per domain, my review at checkpoints. |
+| **Walls of text.** Content that reads like every other lab, and that I stop reading. | Figures are part of the format and required by the authoring rules; prose says only what a figure cannot; the replay shows my own attempt (§5, §6.5). |
+| **A picture that lies.** A diagram drifts from what the simulator does, or implies detail the model lacks. | Views are rendered from world state by one renderer and validated per seed; motion only for recorded causes; coarse models say so (§6.5, §9). |
 | **Curriculum and version drift.** The exams follow new releases within weeks. | A single version pin, per-version data, the update check, R5. |
 | **Context overflow in a build session.** | Phases sized for one session, a carry-over protocol, subagents for bulky reading. |
 | **Unverified kubelet and node output.** The local oracle has no real kubelet. | Upstream source for those strings; tier 2 capture (phase 32) whenever a machine with Docker is available. |
@@ -573,3 +649,17 @@ there is always fresh material to learn from while the platform grows.
   - The workstation's own tools (§9) are now bash 5.2, GNU coreutils 9.4 and systemd 255. Their
     versions and how to capture from them are in `docs/FIDELITY.md` §2.1. It still has no Docker,
     so tier 2 stays optional as written.
+- **2026-11-17** After Checkpoint A (`docs/feedback-log.md`), decided by me when asked:
+  - The visual layer comes next, before the learning loop: phases 10b and 10c, then Checkpoint A2
+    (§13). My verdict on the slice was that the terminal feels real, but the content is a wall of
+    text, the debrief has no visual presentation, the interface looks bland (dull type and
+    spacing, flat, and nothing shows the system), and a dynamic picture of the system would teach
+    better, for Kubernetes and for the later domains alike.
+  - Views became a first-class mechanism (§5 "Show, then tell", §6.5, §8 figures, §9, §10).
+    Before, the plan had one visual surface, the X-ray panel of phase 13, optional and counted as
+    help. Now one view contract and one renderer serve the X-ray, figures in content, and the
+    replay of my attempt in the debrief. A domain's view provider is required, not optional (§6.4).
+  - Phase 13 keeps what needs the learning loop: the trace audit, the "Why?" inspector, the
+    timeline, the replay, time controls and assist levels. Its view contract and panel moved to 10b.
+  - A text-only debrief is a defect from 10c on (§5); phases 12, 14, R1, R4 and 34 were revised
+    to build on figures.

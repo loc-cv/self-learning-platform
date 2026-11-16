@@ -1,6 +1,6 @@
 # Phase 11 — Learning core: content model, progress, skills, scheduling, persistence
 
-**Milestone** M2 · **Needs** 10 and Checkpoint A · Follow the session protocol in `CLAUDE.md`.
+**Milestone** M2 · **Needs** 10c and Checkpoint A2 · Follow the session protocol in `CLAUDE.md`.
 
 ## Goal
 
@@ -10,24 +10,28 @@ heavily tested logic plus a tiny local server.
 
 ## Read first
 
-`PLAN.md` §5, §8. `docs/SCENARIO_FORMAT.md`.
+`PLAN.md` §5, §8. `docs/SCENARIO_FORMAT.md` (figures included).
 
 ## Build
 
-- **Content model for every item type**: `lesson` (ordered steps: prose, prediction prompt, guided
-  task with checks), `drill`, `lab`, `incident`, `card` (prompt, expected answer, optional
-  auto-check by choice or by command), `exam` (definition only; the mode comes in phase 31). Pack
+- **Content model for every item type**: `lesson` (ordered steps: prose, figure or scene,
+  prediction prompt, guided task with checks), `drill`, `lab`, `incident`, `card` (prompt, an
+  optional figure, expected answer, optional auto-check by choice or by command), `exam`
+  (definition only, no figures; the mode comes in phase 31). Pack
   manifest, tracks (ordered paths through items), skills with prerequisites. Extend the schema,
   loader and `content:check`. Write `docs/LEARNING_MODEL.md`.
-- **Vietnamese sidecars**: `<id>.vi.yaml` per item with a source hash per text unit; resolution
+- **Vietnamese sidecars**: `<id>.vi.yaml` per item with a source hash per text unit (figure
+  captions, notes and alt texts are text units); resolution
   with fallback to English and a status (translated, missing, outdated); `npm run content:i18n`
   prints a report and never fails the gate.
 - **Progress log**: append-only events (attempt started and finished, check results, hints,
-  solution viewed, prediction answers, confidence, self-explanation, rating, card reviews), with a
+  X-ray opened, solution viewed, prediction answers, confidence, self-explanation, rating, card
+  reviews), with a
   schema version. A reducer derives everything else: per-item scheduling state, per-skill mastery,
   mistake counts, streaks, per-domain statistics.
 - **Scheduling**: FSRS through a maintained library, target retention configurable (default 0.9).
-  Automatic rating from performance (passed, time against target, hints, solution viewed) with a
+  Automatic rating from performance (passed, time against target, hints, X-ray use, solution
+  viewed) with a
   manual override. A new variant seed on every review.
 - **Daily queue**: due reviews first, then new items from the active track whose prerequisites are
   met; interleaved across skills; no two consecutive items on one skill; fitted to a time box using

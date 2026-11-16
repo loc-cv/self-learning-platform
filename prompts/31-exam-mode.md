@@ -24,7 +24,8 @@ record the date.
   to connect to. Switching tasks keeps each world's state and terminal history; time passes only in
   the task being worked on, or globally, according to the blueprint.
 - **Exam UI**: countdown, task list with weights, flag for review, a notepad, next and previous,
-  the task text beside the terminal; no hints, no X-ray, no solution, no check button; a confirm
+  the task text beside the terminal; no hints, no X-ray, no figures, no solution, no check button;
+  a confirm
   step before finishing; automatic finish at time zero.
 - **Reference material**: `kubectl explain` and `--help` work as usual. State clearly in the UI
   that the real exam allows the official documentation in a browser, and that this platform doesn't

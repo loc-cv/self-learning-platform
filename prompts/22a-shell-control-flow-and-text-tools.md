@@ -27,6 +27,18 @@ get decides the priorities.
 - **`watch`** (`-n`, `-d` optional), redrawing in virtual time and stopping on Ctrl-C.
 - **Shell comforts**: `PS1`, `~/.bashrc` sourced at login (so aliases and `export do=…` persist
   within a lab), `!!` and `!$` history expansion, `Ctrl-Z` gets a notice.
+- **The exam's presets** (deferred here by R3, 2026-11-17: I typed `k get po` three times and got
+  `k: command not found`). The official exam instructions say every exam host has "`kubectl` with
+  `k` alias and Bash autocompletion" pre-configured
+  (docs.linuxfoundation.org/tc-docs/certification/tips-cka-and-ckad). Once `~/.bashrc` is read,
+  the Kubernetes topologies write those lines into the session user's `.bashrc` on the hosts a
+  learner logs in to, so `k` and its completion work from the first prompt and `cat ~/.bashrc`
+  shows why. Decide whether an item may opt out, and record it.
+- **`vim` without a file name** (deferred here by R3, 2026-11-17: hit twice). Real vim opens an
+  empty buffer; `:w` answers `E32: No file name` and `:w name` writes the file. Today the program
+  prints a `[sim]` notice. It needs the editor request without a path, a save that names the
+  file, vim's messages captured into `fixtures/reference/vim/messages.json`, and the same in the
+  terminal player.
 
 **Ground truth.** Verify every tool against the real one on this workstation and freeze the results
 as transcripts. Capture in the clean bash from `docs/FIDELITY.md` §2.1: in your own shell `find`

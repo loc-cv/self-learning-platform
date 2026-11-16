@@ -1,6 +1,6 @@
 # Phase 12 — Learning UI: home, item flows, hints, prediction, debrief, languages
 
-**Milestone** M2 · **Needs** 11 · Follow the session protocol in `CLAUDE.md`.
+**Milestone** M2 · **Needs** 11, 10c · Follow the session protocol in `CLAUDE.md`.
 
 ## Goal
 
@@ -10,7 +10,8 @@ understanding. The interface should get out of the way of practice.
 
 ## Read first
 
-`PLAN.md` §5, §10. `docs/LEARNING_MODEL.md`.
+`PLAN.md` §5, §6.5, §10. `docs/LEARNING_MODEL.md`. `docs/DESIGN.md`: every screen of this phase is
+built in that design language, and mastery, due counts and trends are drawn, not listed.
 
 ## Build
 
@@ -19,13 +20,15 @@ understanding. The interface should get out of the way of practice.
 - **Session runner**: presents queued items one after another, shows progress and remaining time,
   allows skip and stop, and survives a reload.
 - **Item views**:
-  - Lesson: steps with prose beside the live terminal; guided tasks advance when their checks pass.
+  - Lesson: steps with figures, scenes and short prose beside the live terminal; guided tasks
+    advance when their checks pass.
   - Drill, lab, incident: the workspace from phase 10 with target time, confidence prompt before
     checking, and a "give up and see the solution" path that is recorded.
   - Card: prompt, answer entry or reveal, self-rating or auto-check.
 - **Prediction prompts**: ask before a marked step, lock in the answer, then show what happened.
 - **Hints**: the ladder, one rung at a time, each use recorded and reflected in the rating.
-- **Debrief**: check results with explanations, my command history beside the reference solution,
+- **Debrief**: the item's figures first, then check results with explanations, my command
+  history beside the reference solution,
   the self-explanation prompt (written before the model answer is revealed), the mental model and
   "in reality" notes, the derived rating with a one-click override, and the next review date.
 - **Languages**: a global EN / VI / side-by-side setting for all prose, remembered; badges for
@@ -37,7 +40,8 @@ understanding. The interface should get out of the way of practice.
 
 ## Not in this phase
 
-The X-ray view and the causal trace in the debrief (phase 13). Exam mode (phase 31). Authoring new
+The causal trace, the "Why?" inspector and the replay of my attempt in the debrief (phase 13; the
+X-ray and the figures exist since 10b and 10c). Exam mode (phase 31). Authoring new
 content (phase 14 and R1).
 
 ## Exit criteria

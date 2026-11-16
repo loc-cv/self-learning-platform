@@ -1,8 +1,14 @@
 // The workspace's keyboard shortcuts. All use Ctrl+Shift: a terminal sends the same byte for
-// Ctrl+Shift+<letter> as for Ctrl+<letter>, so taking the shifted chords costs the shell nothing,
-// and none of these is a chord the browser keeps for itself.
+// Ctrl+Shift+<letter> as for Ctrl+<letter>, so taking the shifted chords costs the shell nothing.
+// The browser gives every one of them to the page first, but it acts on some itself unless the
+// page claims the event (Chrome: Ctrl+Shift+C opens DevTools, Ctrl+Shift+PageUp/PageDown moves
+// the browser tab), so the workspace claims each chord here every time, whether or not it has
+// something to do (docs/decisions.md D-112).
+//
+// Chords the browser never gives to a page in an ordinary tab (Ctrl+W, Ctrl+T, Ctrl+N) cannot be
+// shortcuts at all; `isBrowserChord` is for the windows where the page does get them (D-113).
 
-export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy';
+export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'prevTab' | 'nextTab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy' | 'fullscreen';
 
 export interface ShortcutInfo {
   id: Shortcut;
@@ -16,10 +22,12 @@ export const SHORTCUTS: ShortcutInfo[] = [
   { id: 'newTerminal', keys: 'Ctrl+Shift+E', what: 'Open another terminal' },
   { id: 'closeTerminal', keys: 'Ctrl+Shift+X', what: 'Close this terminal' },
   { id: 'tab', keys: 'Ctrl+Shift+1…9', what: 'Go to terminal 1…9' },
+  { id: 'prevTab', keys: 'Ctrl+Shift+PgUp / PgDn', what: 'Go to the previous / next terminal' },
   { id: 'panel', keys: 'Ctrl+Shift+L', what: 'Show or hide the lab panel' },
   { id: 'pause', keys: 'Ctrl+Shift+Space', what: 'Pause or resume time' },
   { id: 'labs', keys: 'Ctrl+Shift+O', what: 'Open the lab list' },
   { id: 'copy', keys: 'Ctrl+Shift+C / V', what: 'Copy the selection / paste' },
+  { id: 'fullscreen', keys: 'Ctrl+Shift+F', what: 'Full screen: every key reaches the shell' },
   { id: 'help', keys: 'Ctrl+Shift+?', what: 'Show these shortcuts' },
 ];
 
@@ -52,6 +60,12 @@ export function matchShortcut(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'a
       return { id: 'labs' };
     case 'KeyC':
       return { id: 'copy' };
+    case 'KeyF':
+      return { id: 'fullscreen' };
+    case 'PageUp':
+      return { id: 'prevTab' };
+    case 'PageDown':
+      return { id: 'nextTab' };
     case 'Slash':
       return { id: 'help' };
     default:
@@ -62,4 +76,21 @@ export function matchShortcut(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'a
 /** Ctrl+Shift+V: the terminal must not see it as Ctrl+V, so the browser's paste event reaches it. */
 export function isPasteChord(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey' | 'code'>): boolean {
   return e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.code === 'KeyV';
+}
+
+/**
+ * Ctrl+W, Ctrl+T, Ctrl+N: close tab, new tab and new window in the browser; unix-word-rubout,
+ * transpose-chars and next-history in the shell. In an ordinary tab the browser acts on them and
+ * the page never sees the key. In full screen and in an installed app window the page gets them
+ * (Chromium: chrome/browser/ui/browser_command_controller.cc IsReservedCommandOrKey, "In Apps
+ * mode, no keys are reserved"; in fullscreen only the exit and fullscreen commands are), and the
+ * workspace then keeps the browser from acting on one the terminal or the editor left alone.
+ */
+export function isBrowserChord(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey' | 'code'>): boolean {
+  return e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && (e.code === 'KeyW' || e.code === 'KeyT' || e.code === 'KeyN');
+}
+
+/** The terminal to go to from `active` (0-based) among `count`, wrapping at the ends. */
+export function neighbourTab(active: number, count: number, step: -1 | 1): number {
+  return count === 0 ? 0 : (active + step + count) % count;
 }

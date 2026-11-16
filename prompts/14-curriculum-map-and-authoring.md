@@ -10,7 +10,8 @@ written in later sessions are consistent and teach well.
 
 ## Read first
 
-`PLAN.md` §4.1, §5, §8. `docs/curriculum/`. `docs/LEARNING_MODEL.md`. `docs/SCENARIO_FORMAT.md`.
+`PLAN.md` §4.1, §5, §6.5, §8. `docs/curriculum/`. `docs/LEARNING_MODEL.md`.
+`docs/SCENARIO_FORMAT.md`. The "Figures" guide phase 10c left in `docs/AUTHORING.md`.
 Re-check the official CKA and CKAD curricula on the web and update `docs/curriculum/` if they changed.
 
 ## Build
@@ -23,18 +24,24 @@ Re-check the official CKA and CKAD curricula on the web and update `docs/curricu
   data in the Kubernetes content pack.
 - **`docs/CURRICULUM_MAP.md`**: for every competency, its skills, the engine features each skill
   needs and the phase that delivers them, the planned items by type, and a simulation-difficulty
-  flag. Call out what the simulator can only approximate and how the content will say so.
+  flag. For each skill, name its picture: the view or scene that makes its mental model visible,
+  and whether the view provider can draw it yet. Call out what the simulator can only approximate
+  and how the content will say so.
 - **Tracks**: a CKAD path and a CKA path as ordered sequences respecting prerequisites, with their
   shared trunk, and a real-world operations track.
 - **`docs/AUTHORING.md`**: how to write each item type. Tickets that state a goal or a symptom and
   never leak the method; hint ladders; debriefs (root cause, mental model, why the solution works,
-  "in reality" notes); prediction prompts; choosing parameters so variants differ meaningfully;
+  "in reality" notes); figures (show, then tell: which kind for which idea, what a ticket's
+  figure may show, the debrief opening with the cause as a picture, how little prose may remain,
+  scenes for anything that unfolds in time); prediction prompts; choosing parameters so variants
+  differ meaningfully;
   difficulty and target-time calibration; cards that test understanding and not trivia; common
   mistakes; Vietnamese translation rules. Include one exemplary item of each type.
 - **Tooling**: `npm run content:new` scaffolds an item; `npm run content:coverage` reports
   competencies and skills against existing items and shows gaps; lint rules for the mechanical parts
-  of the guide (missing debrief sections, a ticket containing a solution command, no parameters,
-  target time missing, unknown skill or competency ID).
+  of the guide (missing debrief sections, a lesson, lab or incident without a figure, a debrief
+  over its word budget, a ticket containing a solution command, no parameters, target time
+  missing, unknown skill or competency ID). `content:coverage` also lists items without figures.
 
 ## Not in this phase
 

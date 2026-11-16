@@ -25,6 +25,7 @@
     "golden:capture": "node tools/src/golden/capture.ts",
     "golden:kubectl-manifest": "node tools/src/golden/kubectl_manifest.ts",
     "golden:diff": "node tools/src/golden/kubectl/report.ts",
+    "gaps:summary": "node tools/src/gaps/summary.ts",
     "fidelity:report": "node tools/src/fidelity/report.ts",
     "coverage:generate": "node tools/src/coverage/generate.ts",
     "kubeadm:capture": "node tools/src/kubeadm/capture.ts",

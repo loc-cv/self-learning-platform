@@ -25,6 +25,10 @@ domain-specific reasons, that is a design defect to fix here, before more domain
   text processing on logs, SSH between hosts. Include three incidents with chained causes.
 - **Substrate gaps**: whatever these items need that the host lacks, add in `packages/host` with
   transcripts verified against the real tools on this workstation. Keep it to what the items use.
+- **The host's view**: extend the host view provider of phase 10b to what these items teach:
+  units and their states, processes, listening sockets, mounts, users, and a connection attempt's
+  path between hosts. Every item gets figures, as `docs/AUTHORING.md` requires. This is the proof
+  that the view layer is domain-agnostic: the renderer must not change.
 - **Extensibility audit**: search the code for Kubernetes knowledge outside `packages/k8s` and its
   content pack (in `kernel`, `host`, `learn`, the apps, tooling, the X-ray UI, exam assembly,
   coverage reports, the home screen's domain grouping). Move each finding behind the plugin
@@ -45,8 +49,10 @@ hardening: later runs of R1 for the Linux pack, driven by what I want to learn.
 
 ## Exit criteria
 
-- The app runs with only the Linux pack: home, daily session, items, X-ray (generic host view),
-  debrief, and a short exam assembled from Linux items if phase 31 is done.
+- The app runs with only the Linux pack: home, daily session, items with their figures, X-ray
+  (the host view), debrief with replay, and a short exam assembled from Linux items if phase 31 is
+  done. The renderer and the view contract did not change for Linux, or each change is recorded as
+  a domain-neutral improvement.
 - A lint rule or test fails if `kernel`, `host` or `learn` imports a domain package, or if an app
   names a domain-specific concept outside its one wiring module.
 - All Linux items pass `content:check`; `content:coverage` reports per pack.

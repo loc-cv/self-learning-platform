@@ -23,6 +23,8 @@ interface Props {
   togglePause(): void;
   togglePanel(): void;
   openLabs(): void;
+  fullscreen: boolean;
+  toggleFullscreen(): void;
 }
 
 function Pop({ children, onClose, label }: { children: ReactNode; onClose(): void; label: string }) {
@@ -102,6 +104,9 @@ export function TopBar(p: Props) {
           <span className="sim-tag">[sim]</span>
           <span className="gap-count">{p.gaps.length}</span>
         </Button>
+        <Button variant="ghost" small shortcut="Ctrl+Shift+F" title={p.fullscreen ? 'Leave full screen' : 'Full screen: Ctrl+W, Ctrl+T and Ctrl+N reach the shell'} aria-pressed={p.fullscreen} onClick={p.toggleFullscreen}>
+          <Icon name={p.fullscreen ? 'shrink' : 'expand'} />
+        </Button>
         <Button variant="ghost" small className="topbar-trigger" title="Settings" onClick={toggle('settings')}>
           <Icon name="gear" />
         </Button>
@@ -167,6 +172,12 @@ export function TopBar(p: Props) {
             </tbody>
           </table>
           <p className="pop-foot">Every other key goes to the shell, Ctrl+C, Ctrl+R and Tab included.</p>
+          <p className="pop-foot">
+            In a browser tab, Chrome and Edge keep <kbd>Ctrl+W</kbd>, <kbd>Ctrl+T</kbd> and <kbd>Ctrl+N</kbd> for themselves. In full screen, or with Simlab installed as an app (the install button in the address bar), they reach the shell.
+          </p>
+          <p className="pop-foot">
+            An extension that adds vim keys to pages (Vimium) takes <kbd>Esc</kbd> before the editor sees it: exclude this address in the extension's settings.
+          </p>
         </Pop>
       ) : null}
     </header>

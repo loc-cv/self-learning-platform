@@ -285,8 +285,13 @@ interface GapRecord {
 }
 ```
 
-- The sink writes every occurrence. Grouping by `key` and counting is done when reading.
-  `prompts/R3` works from the grouped view, most frequent first.
+- The sink writes every occurrence. Grouping by `key` and counting is done when reading:
+  `npm run gaps:summary` prints the groups, most frequent first, and `prompts/R3` works from that
+  view. A triage run marks the groups it dealt with (`npm run gaps:summary -- --handle <key>
+  --note <what was decided>`): a mark is one line in `data/gaps.handled.jsonl` (`key`, `at`,
+  `note`). A group with a record newer than its latest mark is open again, so a deferred gap I
+  keep hitting comes back by itself. What a run decided is kept in `docs/feedback-log.md`, which
+  is in the repository; the marks, like the log, are local.
 - Headless content validation and tests collect gap records in memory and fail on any.
 - The file is append-only and local. It contains command lines I typed; it is under `data/`,
   which is git-ignored.

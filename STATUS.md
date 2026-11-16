@@ -27,12 +27,18 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 08 `prompts/08-kubectl-2.md`
 - [x] 09 `prompts/09-scenarios-and-first-labs.md`
 - [x] 10 `prompts/10-web-app.md`
-- [ ] **Checkpoint A** — play the three labs, write `FEEDBACK.md`, then run `prompts/R3-feedback-and-gap-triage.md`
+- [x] **Checkpoint A** — played 2026-11-16; R3 run 2026-11-17 (`docs/feedback-log.md`). Verdict: the
+  terminal feels real; the product is all text and looks bland. The visual layer therefore comes
+  next (`PLAN.md` §15)
+- [ ] 10b `prompts/10b-visual-foundation.md`
+- [ ] 10c `prompts/10c-figures-and-scenes.md`
+- [ ] **Checkpoint A2** — play the three labs again with the X-ray and the figures, write
+  `FEEDBACK.md`; run R3 if it has entries
 
 **M2 — Learning loop**
 - [ ] 11 `prompts/11-learning-core.md`
 - [ ] 12 `prompts/12-learning-ui.md`
-- [ ] 13 `prompts/13-xray-and-time-controls.md`
+- [ ] 13 `prompts/13-trace-replay-and-time-controls.md`
 - [ ] 14 `prompts/14-curriculum-map-and-authoring.md`
 - [ ] R1 run, target `k8s-foundations`
 - [ ] **Checkpoint B** — use the daily session for a week, write `FEEDBACK.md`, run R3
@@ -82,7 +88,8 @@ Edit the target line at the top of the prompt file, or name the target in your m
 - `prompts/R1-content-pack.md` — content for one area. Interleave runs with engine phases once the
   features a target needs exist. Runs completed: none
 - `prompts/R2-translation-pass.md` — Vietnamese translation. Runs completed: none
-- `prompts/R3-feedback-and-gap-triage.md` — fix what `FEEDBACK.md` and the gap log report
+- `prompts/R3-feedback-and-gap-triage.md` — fix what `FEEDBACK.md` and the gap log report. Runs
+  completed: 2026-11-17 after Checkpoint A (`docs/feedback-log.md`)
 - `prompts/R4-new-domain.md` — add a domain (three stages)
 - `prompts/R5-version-bump.md` — move to a new Kubernetes version
 
@@ -214,6 +221,35 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
 
+## Deferred by R3
+
+Entries of `FEEDBACK.md` and the gap log that a triage run assigned to a planned phase. The phase
+that takes one removes it here. Details and evidence: `docs/feedback-log.md`.
+
+- **10b** — the look: dull type and spacing, flat with no depth, nothing shows the system (not
+  color). Two directions as screenshots for the owner to choose from. Also the view contract and
+  the live X-ray.
+- **10c** — figures in tickets and debriefs, scenes, the three labs rewritten with at most half
+  their prose.
+- **13** — the debrief replays the attempt with its causes.
+- **16a** — nginx "built by" lines for every nginx tag in the catalog (16 gap records; the
+  carry-over item "image facts read by hand" below is the same work).
+- **18b** — `kubectl top` (1 gap record).
+- **22a** — `alias k=kubectl` and kubectl completion preset in the session user's `.bashrc`, as on
+  the exam's hosts (3 gap records); `vim` without a file name (2); the `for` loop (1). All three
+  are in the phase's prompt.
+- **22b** — `less` (1 gap record).
+
+## Candidates
+
+Ideas worth keeping. Not commitments; none has a phase.
+
+- An "about this figure" link from a view to the divergence register entry it depends on.
+- The owner's Ctrl+Shift+1 does nothing on Windows and the cause is unknown; if another chord
+  disappears the same way, make the workspace chords configurable.
+- A notice in the editor when it loses focus with no pointer action, naming extensions that take
+  Escape. Today the shortcut list explains it.
+
 ## Carry-over
 
 Unfinished work from a phase, precise enough for the next session to continue.
@@ -276,6 +312,49 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-17 — **R3 after Checkpoint A.** Feedback and gap triage; the plan changed.
+  - The owner's verdict: typing and the supported commands feel real. The content is too much
+    text with no visual aid, the debrief needs a visual presentation, a dynamic picture of the
+    system would teach better (for later domains too), and the UI is bland. Four shortcut
+    problems in Chrome on Windows and one off-center button. No entry was *wrong*.
+  - Plan change, decided by the owner when asked (`PLAN.md` §15, D-115): the visual layer comes
+    next. New phases 10b (design language, view contract, renderer, live X-ray) and 10c (figures
+    in content, scenes, the three labs rewritten), then Checkpoint A2, then 11. `PLAN.md` gained
+    §5 "Show, then tell", §6.5 Views, figures in §8, two risks in §14. Prompts written: 10b, 10c.
+    Prompts revised: 11 (figures in the content model, X-ray use in the rating), 12 (built in
+    the design language, figures in lessons and debriefs), 13 (renamed
+    `13-trace-replay-and-time-controls.md`: trace audit, "Why?", timeline, replay, time controls,
+    assist levels; its view contract and panel moved to 10b), 14 (figures in the authoring guide,
+    the curriculum map and the lint), R1, R4, 34 (a view provider and figures are required), 31
+    (no figures in exams), 22a (the exam's `k` alias preset, `vim` without a file name), R3 (the
+    summary tool; too-large work is re-planned, not squeezed in).
+  - Fixed, each with a test (D-112, D-113): Ctrl+Shift+C is claimed every time and copies any
+    selection; Ctrl+Shift+PageUp/PageDown switch terminals; full screen with keyboard lock
+    (Ctrl+Shift+F, top bar) and a web app manifest so Ctrl+W, Ctrl+T and Ctrl+N reach the shell;
+    the close button's icon is centered and the + sits on the tabs' line; the shortcut list
+    explains the browser's keys and Vimium. New: `apps/web/src/app/fullscreen.ts`,
+    `apps/web/public/` (manifest, icons), `npm run gaps:summary` (`tools/src/gaps/`, D-114),
+    `docs/feedback-log.md`.
+  - Fixed on the way: Vitest's 5 s default timeout failed the gate once while another project's
+    jobs held every core (a lab test that takes 1.5 s); tests may now take 30 s (D-116).
+    `docs/decisions.md`: phase 10's decisions got their own heading, and D-108's claim that the
+    chosen chords "are not reserved by browsers" was corrected.
+  - Not verified from here: Chrome for Windows itself. The headless shell has no browser window,
+    so "Ctrl+W no longer closes the tab in full screen or the installed window" rests on
+    Chromium's source (D-113) and the page-side tests. `FEEDBACK.md` lists four things for the
+    owner to confirm.
+  - Surprises. CodeMirror ignores a key event whose default was prevented in the capture phase,
+    so the guard for Ctrl+W, Ctrl+T and Ctrl+N runs in the bubble phase. Playwright's
+    `Control+W` sends the character `W`, which vim reads as `<C-W>`, not `<C-w>`: use lower-case
+    key names when testing vim. The owner runs the Vimium extension, which takes Escape before
+    any page; nothing in the page can prevent that. The gap log's nginx records (16 of 26) have
+    no item: they are from development runs of the terminal player, not from the owner.
+  - For 10b. Read `docs/feedback-log.md` and D-115 first: the decisions about the renderer (our
+    own SVG, no diagram library), figures as views of simulated worlds, and what a ticket's
+    figure may show are made. The icon in `apps/web/public/` is the current brand mark; replace
+    the three files if the look changes it (the PNGs are renders of `icon.svg`). Test at 125% and
+    150% scaling, as `e2e/workspace.spec.ts` does: the owner's screen is scaled.
 
 - 2026-11-16 — **Phase 10 done.** Web app: terminal, lab panel, editor overlay.
   - Built. `apps/web` (Vite 8, React 19, xterm.js 6, CodeMirror 6 with `@replit/codemirror-vim`,

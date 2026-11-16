@@ -62,6 +62,31 @@ function open(r: Rig, req = 1): string {
 }
 
 describe('the web engine session', () => {
+  test('the debrief comes with figures built on forks, outside the attempt', () => {
+    const r = rig();
+    r.send({ type: 'start', item: 'k8s.troubleshooting.broken-rollout-01', seed: 2, startTime: START });
+    const ready = r.last('ready');
+    expect(ready.lab.ticket.map((b) => ('figure' in b ? b.figure.kind : 'text' in b ? 'text' : 'failed'))).toEqual(['text']);
+    const tty = open(r);
+    r.type(tty, 'kubectl get ns');
+    const clock = r.engine.kernel?.now;
+    r.send({ type: 'lab', req: 7, action: 'debrief' });
+    const res = r.last('lab.result');
+    if (res.result.action !== 'debrief') throw new Error('not a debrief');
+    const kinds = res.result.blocks.map((b) => ('figure' in b ? b.figure.kind : 'text' in b ? 'text' : 'failed'));
+    expect(kinds.slice(0, 2)).toEqual(['compare', 'scene']);
+    expect(kinds).not.toContain('failed');
+    // The log gained only the debrief action, the time spent building figures is not the
+    // learner's, and the attempt replays to the same world: the figures' forks touched nothing.
+    const attempt = r.last('attempt').attempt;
+    expect(attempt.current.inputs.filter((x) => x.kind === 'learn.action').map((x) => x['action'])).toEqual(['debrief']);
+    expect(r.engine.kernel?.now).toBe(clock);
+    const again = rig();
+    again.send({ type: 'start', item: 'k8s.troubleshooting.broken-rollout-01', seed: 2, startTime: START, resume: attempt });
+    expect(again.last('ready').resumed).toBe(true);
+    expect(again.engine.kernel?.hash()).toBe(r.engine.kernel?.hash());
+  });
+
   test('starts a lab, runs commands in a terminal and grades it', () => {
     const r = rig();
     r.send({ type: 'start', item: BUILD, seed: 2, startTime: START });

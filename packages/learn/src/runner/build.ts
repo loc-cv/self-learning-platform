@@ -34,7 +34,7 @@ export function buildBaseline(variant: Variant, registry: Registry, options: Bui
   const topology = registry.get<TopologySpec>(TOPOLOGY, variant.topology);
   if (!topology) throw new ItemError(`no topology named ${variant.topology}`);
   if (variant.item.world.images && Object.keys(variant.item.world.images).length > 0) {
-    // docs/SCENARIO_FORMAT.md §14: declared images arrive with the first item that needs one.
+    // docs/SCENARIO_FORMAT.md §15: declared images arrive with the first item that needs one.
     throw new ItemError('declared images (world.images) are not supported yet');
   }
   const hub = createPortHub();

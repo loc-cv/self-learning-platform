@@ -192,6 +192,34 @@ the printers' column names. A test compares the X-ray with `kubectl get pods -A 
 every Kubernetes word out of the view contract, the renderer and the X-ray pane
 (`apps/web/src/view/nodomain.test.ts`).
 
+### 6.5 Figures
+
+Figures in tickets and debriefs (`docs/SCENARIO_FORMAT.md` §11) are drawn by the same renderer in
+its **still** mode: as tall as their content at the pane's width (and never shorter while shown, so
+stepping a scene does not make the page jump), no zoom, pan or selection, every relation drawn at
+its resting strength, and the facts the figure names drawn under each card's status or each
+container's header, one line per fact or per entry of a list fact (three at most, then "+N more"),
+the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in the middle to fit.
+
+- **Panel.** The canvas's bench (`--canvas-bg`, the dot grid) in a box with `--r-md` and a hairline,
+  a micro-label title above the drawing for each side of a comparison. A comparison sits side by
+  side from 760px of figure width and stacked below that, which is how it reads in the lab panel;
+  the enlarge button opens the figure in a dialog (`--raised`, `--elev-3`) wide enough for two.
+- **Caption** above the figure in `--fs-body` medium; **notes** below it in `--fs-sm`, each with its
+  number in a round badge; a cited divergence id in a small code chip after the note.
+- **Marks.** A highlight is a dashed 2px outline in the accent around the entity; a note's number
+  is a round badge in `--accent-bg` on the entity's top right; a comparison's change is a badge on
+  the top left: `+` only on the right and `•` changed (both in `--accent-bg`), `−` only on the left
+  (`--text-muted`), and an entity only on the left keeps a dashed outline but full strength: in a
+  comparison of start and solved it is the broken state the figure is about. Marks
+  point; they are never a state, so they use the accent and never a state color.
+- **Scenes.** Under the drawing: previous and next, the frame count in tabular figures, Replay, and
+  one dot per frame (past frames `--text-faint`, the current one the accent). The frame's caption
+  below, with its number in a badge, in a region a screen reader announces. Moving between frames
+  is the renderer's ordinary motion; Replay advances on its own only when motion is not reduced.
+- **Diagrams** use the shapes and states as world views do; an author picks the state that tells
+  the story (a normal scheduling pass is drawn healthy).
+
 ## 7. Surfaces of the interface
 
 - **Top bar**: the floor's darkest pane, `--topbar-h`, brand, lab title, clock, notices, the

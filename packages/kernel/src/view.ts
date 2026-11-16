@@ -55,6 +55,12 @@ export type RelationType = (typeof RELATION_TYPES)[number];
 export interface ViewFact {
   label: string;
   value: string;
+  /**
+   * For a fact that is a list (labels, flags): its entries in the order shown, each starting with
+   * its key (`disktype=ssd`). `value` is the whole list as the domain's tool prints it. A figure can
+   * show some entries by key (docs/SCENARIO_FORMAT.md §11).
+   */
+  items?: string[];
 }
 
 export interface ViewEntity {

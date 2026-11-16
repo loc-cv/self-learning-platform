@@ -31,7 +31,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
   terminal feels real; the product is all text and looks bland. The visual layer therefore comes
   next (`PLAN.md` §15)
 - [x] 10b `prompts/10b-visual-foundation.md`
-- [ ] 10c `prompts/10c-figures-and-scenes.md`
+- [x] 10c `prompts/10c-figures-and-scenes.md`
 - [ ] **Checkpoint A2** — play the three labs again with the X-ray and the figures, write
   `FEEDBACK.md`; run R3 if it has entries
 
@@ -226,8 +226,6 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 Entries of `FEEDBACK.md` and the gap log that a triage run assigned to a planned phase. The phase
 that takes one removes it here. Details and evidence: `docs/feedback-log.md`.
 
-- **10c** — figures in tickets and debriefs, scenes, the three labs rewritten with at most half
-  their prose.
 - **13** — the debrief replays the attempt with its causes.
 - **16a** — nginx "built by" lines for every nginx tag in the catalog (16 gap records; the
   carry-over item "image facts read by hand" below is the same work).
@@ -309,6 +307,61 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-17 — **Phase 10c done.** Figures in content: views, comparisons, scenes, diagrams; the
+  three labs rewritten around them.
+  - Format (`docs/SCENARIO_FORMAT.md` §11, new; Validation, sidecar, examples and "not covered" are
+    now §12 to §15): `ticket` and `debrief` take blocks of prose and figures, each with `when`.
+    Kinds `view` (`of: start | solved | now`), `compare` (left, right, differences marked),
+    `scene` (frames of steps on a fork, the item's baseline or a small world of its own), `diagram`
+    (hand-drawn in the shape vocabulary). `focus` (`scope`, `kinds`, `entities`, `system`), `show`
+    (fact labels, list facts cut by `keys`), `highlight`, `notes` (with `divergence`), `caption`,
+    `alt`. Schema `$defs.prose`, `block`, `figure`, `focus`, `showItem`, `note`, `diagramNote`, so
+    phase 11's lesson steps can use the blocks. Sidecar units for captions, alt texts, notes, frame
+    captions, panel titles and diagram labels. Decisions D-121 to D-128.
+  - Engine: `packages/learn/src/figure/` (blocks, focus and marks, `figureWorlds` and
+    `renderFigure`), `Lab.render`, validation rule 9 (`figureProblems`; the debrief must open with a
+    figure; ticket figures are a view of start/now or a diagram with explicit `show`; cited
+    divergences must exist, checked by `content:check` against `docs/FIDELITY.md`). The view
+    contract's facts gained `items` (list entries); the k8s provider gives Labels, Taints,
+    Allocatable, Requests, Node-Selectors, Selector their entries and Pods a Tolerations fact
+    (`tolerationString`, `sortedTaints` from describe). The counter test plugin has a view provider.
+    The JSON Schema validator reports the closest `oneOf` alternative better (`const`
+    discriminator, then matching type).
+  - Web: `Figure.tsx` (panels, notes, change legend, scene stepping and Replay, an enlarge dialog),
+    `ViewCanvas` `still` mode with `marks` (outline, note badges, change badges), facts drawn on
+    cards and under headers (`factLayout`: labels beside values or above them, values wrapped at
+    `=`, `:`, `/`), the worker renders ticket figures at start and debrief figures on request and
+    does not count that time. `npm run lab` prints `[Figure]`, caption and alt text.
+  - The three labs. Prose per variant (old → new words): scheduling taint 303 → 131, selector
+    291 → 140, memory 293 → 133; rollout tag 344 → 147, name 363 → 158, registry 347 → 149; build
+    321 → 128. Scheduling: a ticket view (Pending Pods with no node, which the ticket now states),
+    a comparison per cause (taints, `disktype` labels, tolerations / node selectors / requests and
+    allocatable memory) with notes, a diagram of filter-then-score. Rollout: a comparison of start
+    and solved (selector, labels, images, the progress-deadline note) and a five-frame scene of a
+    four-replica rollout stalling on the variant's bad image, then fixed. Its ticket figure was
+    dropped: the Deployment's `3/3` would have said more than the ticket. Build: a ticket diagram
+    of what is asked, a view of the solved world (ownership chain, Service routes, notes on
+    selectors and ports) and a view of the learner's world.
+  - Fixed on the way: DIV-043 registered (the default admission plugins' fields are missing, a
+    known shortcut that had no register entry); the worked examples in the spec gained figures;
+    `PLAN.md` §8's figure example used `namespace` where the format says `scope`.
+  - Surprises. Any `learn.action` changes the world hash, so "rendering changed nothing" is tested
+    by replaying the stored attempt to the same hash. A still drawing measured before its pane had a
+    width kept a one-column height. A start-vs-solved comparison marks almost every left entity as
+    removed; fading them hid the broken state, so they keep full strength. Generated Pod names
+    differ between worlds, so `now` vs `solved` comparisons mark everything; the build lab shows two
+    views instead.
+  - Verified: `npm run e2e` 30 browser tests (`e2e/figures.spec.ts` new: each lab's ticket and
+    debrief figures, the comparison's marks, the enlarge dialog, stepping and replaying the scene,
+    reduced motion). Screenshots of every debrief are written by `figures.spec.ts`. Read latency
+    p95 measured 24–29 ms with a machine load average of 15 from other jobs; the previous commit
+    measured 27–31 ms under the same load, so the figures add nothing. `xray.spec.ts`'s locators
+    are now scoped to `.xray`: the ticket's figure draws the same ids.
+  - Known gaps. Text widths are still estimated, not measured. The diagram's links can pass behind
+    note badges. A `compare` places both sides side by side only from 760px; in the default lab
+    panel they stack (the enlarge dialog shows them side by side). Not verified on Windows at 125%
+    and 150% scaling; the figures use the same SVG and fonts as the X-ray.
 
 - 2026-11-17 — **Phase 10b done.** Design language, view contract, providers, renderer, live X-ray.
   - The look. Two directions shown as screenshots of the real workspace running the scheduling lab

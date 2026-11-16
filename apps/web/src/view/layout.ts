@@ -12,12 +12,77 @@ import type { Shape, ViewEntity, ViewKind, ViewModel } from '@simlab/kernel';
 /** Leaf cards: a fixed height, a width between these that fills the container's columns. */
 export const CARD = { min: 140, max: 210, h: 46 } as const;
 export const GAP = 8;
+/** One line of facts under a card's status, or under a container's header (figures show facts). */
+export const FACT_LINE = 14;
+/** At most this many entries of one list fact are drawn; the rest are counted on one more line. */
+const MAX_ENTRIES = 3;
 const BAND_GAP = 16;
 const PAD = { host: { top: 34, side: 8, bottom: 8 }, scope: { top: 30, side: 10, bottom: 10 }, lane: { top: 28, side: 10, bottom: 10 } } as const;
 /** Containers inside a host: a header and a thinner frame. */
 const NESTED_PAD = { top: 32, side: 6, bottom: 6 } as const;
 
 export type BoxShape = Shape;
+
+/** A line of facts as drawn: a label, a value, or (side by side) both. */
+export interface FactLine {
+  label: string;
+  text: string;
+}
+
+/** Estimated widths of the facts' type (--fs-xs): the label's sans face and the value's code face. */
+export const FACT_CHAR = { label: 6, value: 6.6 } as const;
+/** A value column narrower than this many characters puts each label on a line of its own. */
+const MIN_VALUE_CHARS = 16;
+
+/** A value cut into lines of at most `cap` characters, after a `=`, `:`, `/`, `,` or space where it can. */
+export function wrapValue(text: string, cap: number, maxLines = 3): string[] {
+  const out: string[] = [];
+  let rest = text;
+  while (rest.length > cap && out.length < maxLines - 1) {
+    let cut = -1;
+    for (let i = Math.min(cap, rest.length - 1); i >= Math.ceil(cap / 2); i--) {
+      if ('=:/, '.includes(rest.charAt(i - 1))) {
+        cut = i;
+        break;
+      }
+    }
+    if (cut < 0) cut = cap;
+    out.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
+  }
+  out.push(rest);
+  return out;
+}
+
+export interface FactLayout {
+  /** Width of the label column when labels sit beside their values; 0 when they stand above. */
+  labelW: number;
+  lines: FactLine[];
+}
+
+/**
+ * The lines an entity's facts take in `width`: one per entry of a list fact (a few at most), one per
+ * other fact. Labels sit in a column of their own when the values keep room enough beside it;
+ * otherwise each label takes a line above its values.
+ */
+export function factLayout(e: ViewEntity, width: number): FactLayout {
+  if (e.facts.length === 0) return { labelW: 0, lines: [] };
+  const labelW = Math.max(...e.facts.map((f) => f.label.length)) * FACT_CHAR.label + 8;
+  const beside = (width - labelW) / FACT_CHAR.value >= MIN_VALUE_CHARS;
+  const cap = Math.max(4, Math.floor((width - (beside ? labelW : 0)) / FACT_CHAR.value));
+  const lines: FactLine[] = [];
+  for (const f of e.facts) {
+    const entries = f.items ?? [f.value];
+    const shown = entries.slice(0, MAX_ENTRIES);
+    if (entries.length > MAX_ENTRIES) shown.push(`+${entries.length - MAX_ENTRIES} more`);
+    if (!beside) lines.push({ label: f.label, text: '' });
+    shown.forEach((t, i) => wrapValue(t, cap).forEach((piece, j) => lines.push({ label: beside && i === 0 && j === 0 ? f.label : '', text: piece })));
+  }
+  return { labelW: beside ? labelW : 0, lines };
+}
+
+/** Room the facts leave on a card or under a header: the width minus the inset they are drawn at. */
+export const factWidth = (shape: Shape, w: number, container: boolean): number => w - (container ? 24 : shape === 'endpoint' ? 52 : 28);
 
 export interface Box {
   id: string;
@@ -90,6 +155,8 @@ export interface LayoutInput {
   /** The entities to draw (after filtering); leaving ones are added. */
   visible: (e: ViewEntity) => boolean;
   width: number;
+  /** Draw the entities' facts (figures); the live view shows them on selection instead. */
+  facts?: boolean;
 }
 
 interface Item {
@@ -121,6 +188,7 @@ export function layout(input: LayoutInput, memory: Memory): Layout {
 
   const boxes: Box[] = [];
   const lanes: Lane[] = [];
+  const extra = (e: ViewEntity, shape: Shape, w: number, container = false): number => (input.facts ? factLayout(e, factWidth(shape, w, container)).lines.length * FACT_LINE : 0);
   const W = Math.max(input.width, CARD.min + 2 * PAD.lane.side);
 
   /** Columns of leaf cards that fit an inner width, and their width. */
@@ -150,27 +218,34 @@ export function layout(input: LayoutInput, memory: Memory): Layout {
       const c = cols(inner);
       const cw = cardW(inner, c);
       const rows = Math.ceil(lslots.length / c);
-      lslots.forEach((id, i) => {
-        const k = id === null ? undefined : leaves.find((l) => l.e.id === id);
-        if (!k) return;
-        const bx = x + (i % c) * (cw + GAP);
-        const by = y + h + Math.floor(i / c) * (CARD.h + GAP);
-        boxes.push({ id: k.e.id, entity: k.e, shape: k.shape, x: bx, y: by, w: cw, h: CARD.h, depth: depth + 1, leaving: k.leaving });
+      const items = lslots.map((id) => (id === null ? undefined : leaves.find((l) => l.e.id === id)));
+      // A row is as tall as its tallest card (cards with facts are taller).
+      const rowH = Array.from({ length: rows }, (_, r) => Math.max(CARD.h, ...items.slice(r * c, (r + 1) * c).map((k) => (k ? CARD.h + extra(k.e, k.shape, cw) : 0))));
+      let ry = y + h;
+      rowH.forEach((rh, r) => {
+        items.slice(r * c, (r + 1) * c).forEach((k, j) => {
+          if (!k) return;
+          boxes.push({ id: k.e.id, entity: k.e, shape: k.shape, x: x + j * (cw + GAP), y: ry, w: cw, h: CARD.h + extra(k.e, k.shape, cw), depth: depth + 1, leaving: k.leaving });
+        });
+        ry += rh + GAP;
       });
-      h += rows * CARD.h + (rows - 1) * GAP;
+      h += rowH.reduce((a, b) => a + b, 0) + (rows - 1) * GAP;
     }
     return h;
   };
 
   /** A container box with its children; returns its height. */
   const box = (n: Item, x: number, y: number, w: number, depth: number, nested: boolean): number => {
-    const pad = nested && n.shape === 'host' ? NESTED_PAD : n.shape === 'host' ? PAD.host : PAD.scope;
+    const base = nested && n.shape === 'host' ? NESTED_PAD : n.shape === 'host' ? PAD.host : PAD.scope;
+    // Facts sit under the header, before the children.
+    const facts = extra(n.e, n.shape, w, true);
+    const pad = { ...base, top: base.top + (facts > 0 ? facts + 4 : 0) };
     const b: Box = { id: n.e.id, entity: n.e, shape: n.shape, x, y, w, h: 0, depth, leaving: n.leaving };
     boxes.push(b);
     const inner = w - 2 * pad.side;
     const used = place(n.e.id, n.kids, x + pad.side, y + pad.top, inner, depth);
     b.h = pad.top + (used > 0 ? used + pad.bottom : 0);
-    if (used === 0) b.h = pad.top;
+    if (used === 0) b.h = pad.top + (facts > 0 ? base.bottom : 0);
     return b.h;
   };
 

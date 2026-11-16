@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RelationType, ViewEntity, ViewModel, ViewRelation, ViewState } from '@simlab/kernel';
-import { CARD, emptyMemory, fit, layout, type Box, type Layout, type Memory } from './layout.ts';
+import { CARD, emptyMemory, FACT_CHAR, FACT_LINE, factLayout, factWidth, fit, layout, type Box, type Layout, type Memory } from './layout.ts';
 import { visibility, type ScopeFilter } from './filter.ts';
 
 /** How long a leaving entity stays to fade out (ms); matches --motion-exit in styles.css. */
@@ -33,16 +33,35 @@ export interface CanvasHandle {
   zoom(factor: number): void;
 }
 
+/** How an entity differs from the other drawing of a pair. */
+export type ChangeMark = 'added' | 'removed' | 'changed';
+
+/** What a figure points at: entities to outline, numbered notes, and the differences of a pair. */
+export interface CanvasMarks {
+  highlight?: readonly string[];
+  /** Entity id → the numbers of the notes on it. */
+  notes?: Readonly<Record<string, readonly number[]>>;
+  changes?: Readonly<Record<string, ChangeMark>>;
+}
+
 export interface ViewCanvasProps {
   model: ViewModel;
   filter: ScopeFilter;
   selected?: string;
-  onSelect(id: string | undefined): void;
+  onSelect?(id: string | undefined): void;
   reducedMotion: boolean;
   /** Called once with the handle for the toolbar's buttons. */
   handle?(h: CanvasHandle): void;
   label: string;
+  /**
+   * A still drawing (a figure): as tall as its content at the pane's width, the entities' facts
+   * drawn on them, no zoom, pan or selection. Changes of the model still animate (a scene).
+   */
+  still?: boolean;
+  marks?: CanvasMarks;
 }
+
+const CHANGE_GLYPH: Record<ChangeMark, string> = { added: '+', removed: '−', changed: '•' };
 
 const STATE_WORD: Record<ViewState, string> = { healthy: 'healthy', progressing: 'progressing', degraded: 'degraded', failed: 'failed', unknown: 'unknown' };
 
@@ -67,8 +86,11 @@ export function Glyph({ state, x, y }: { state: ViewState; x: number; y: number 
 function outline(shape: Box['shape'], w: number, h: number): string {
   const r = 7;
   switch (shape) {
-    case 'endpoint':
-      return `M ${h / 2} 0 H ${w - h / 2} A ${h / 2} ${h / 2} 0 0 1 ${w - h / 2} ${h} H ${h / 2} A ${h / 2} ${h / 2} 0 0 1 ${h / 2} 0 Z`;
+    case 'endpoint': {
+      // A pill: round ends of a plain card's height; a card made taller by facts keeps them.
+      const e = Math.min(h, CARD.h) / 2;
+      return `M ${e} 0 H ${w - e} A ${e} ${e} 0 0 1 ${w} ${e} V ${h - e} A ${e} ${e} 0 0 1 ${w - e} ${h} H ${e} A ${e} ${e} 0 0 1 0 ${h - e} V ${e} A ${e} ${e} 0 0 1 ${e} 0 Z`;
+    }
     case 'store':
       return `M 0 6 Q 0 0 ${w / 2} 0 Q ${w} 0 ${w} 6 V ${h - 4} Q ${w} ${h} ${w - 4} ${h} H 4 Q 0 ${h} 0 ${h - 4} Z`;
     case 'rule':
@@ -147,8 +169,70 @@ function useWidth(ref: React.RefObject<HTMLElement | null>): { w: number; h: num
   return size;
 }
 
+/**
+ * Facts as lines, the value in code type and middle-shortened to fit: the label in a column of its
+ * own when there is room, otherwise on a line above its values (layout.ts factLayout).
+ */
+function Facts({ b, x, y, container }: { b: Box; x: number; y: number; container: boolean }) {
+  const width = factWidth(b.shape, b.w, container);
+  const { labelW, lines } = factLayout(b.entity, width);
+  if (lines.length === 0) return null;
+  const chars = Math.max(4, Math.floor((width - labelW) / FACT_CHAR.value));
+  return (
+    <g className="vfacts" transform={`translate(${x} ${y})`}>
+      {lines.map((l, i) => (
+        <text key={i} className="vfact" y={(i + 1) * FACT_LINE - 3}>
+          {l.label ? <tspan className="vfact-label">{l.label}</tspan> : null}
+          {l.text ? (
+            <tspan className="vfact-value" x={labelW}>
+              {fit(l.text, chars)}
+            </tspan>
+          ) : null}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+/** Outlines, note numbers and change glyphs, over everything, placed like the boxes they mark. */
+function Marks({ boxes, marks }: { boxes: readonly Box[]; marks: CanvasMarks }) {
+  const hl = new Set(marks.highlight ?? []);
+  return (
+    <g className="vlayer-marks" aria-hidden="true">
+      {boxes.map((b) => {
+        const notes = marks.notes?.[b.id] ?? [];
+        const change = marks.changes?.[b.id];
+        if (!hl.has(b.id) && notes.length === 0 && !change) return null;
+        return (
+          <g key={b.id} className="vmark" style={{ transform: `translate(${b.x}px, ${b.y}px)` }}>
+            {hl.has(b.id) ? <rect className="vmark-highlight" x={-3} y={-3} width={b.w + 6} height={b.h + 6} rx={b.shape === 'endpoint' ? (Math.min(b.h, CARD.h) + 6) / 2 : 12} /> : null}
+            {change ? (
+              <g className={`vmark-change is-${change}`} transform="translate(0 0)">
+                <circle r={8} />
+                <text textAnchor="middle" y={4}>
+                  {CHANGE_GLYPH[change]}
+                </text>
+              </g>
+            ) : null}
+            {notes.map((n, i) => (
+              <g key={n} className="vmark-note" transform={`translate(${b.w - 4 - i * 20} 0)`}>
+                <circle r={9} />
+                <text textAnchor="middle" y={4}>
+                  {n}
+                </text>
+              </g>
+            ))}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 export function ViewCanvas(props: ViewCanvasProps) {
-  const { model, filter, selected, onSelect, reducedMotion } = props;
+  const { model, filter, reducedMotion, still = false, marks } = props;
+  const selected = still ? undefined : props.selected;
+  const onSelect = (id: string | undefined): void => props.onSelect?.(id);
   const wrap = useRef<HTMLDivElement>(null);
   const size = useWidth(wrap);
   const memory = useRef<Memory>(emptyMemory());
@@ -192,10 +276,18 @@ export function ViewCanvas(props: ViewCanvasProps) {
     memoryKey.current = key;
   }
   const lay: Layout = useMemo(
-    () => layout({ model, visible, width, leaving: new Map([...leaving].map(([id, x]) => [id, x.e])) }, memory.current),
+    () => layout({ model, visible, width, facts: still, leaving: new Map([...leaving].map(([id, x]) => [id, x.e])) }, memory.current),
     // memoryKey changes reset the memory above; the layout depends on it through `width` and `filter`.
-    [model, visible, width, leaving],
+    [model, visible, width, leaving, still],
   );
+  // A still drawing never shrinks while it is shown at one width, so stepping through a scene does
+  // not make the page jump. Before the pane has a width there is nothing to measure.
+  const stillHeight = useRef({ key: '', h: 0 });
+  if (still && size.w > 0) {
+    if (stillHeight.current.key !== memoryKey.current) stillHeight.current = { key: memoryKey.current, h: 0 };
+    stillHeight.current.h = Math.max(stillHeight.current.h, lay.height + 2 * MARGIN);
+  }
+  const stillH = stillHeight.current.h;
   const byId = useMemo(() => new Map(lay.boxes.map((b) => [b.id, b])), [lay]);
   if (seen.current === undefined && lay.boxes.length > 0) seen.current = new Set(lay.boxes.map((b) => b.id));
   // Arrivals fade and grow in, with the Web Animations API: a class would be dropped by the next
@@ -214,7 +306,7 @@ export function ViewCanvas(props: ViewCanvasProps) {
 
   // The visible part of the drawing (zoom and pan).
   const [vb, setVb] = useState<ViewBoxRect | undefined>(undefined);
-  const view: ViewBoxRect = vb ?? { x: -MARGIN, y: -MARGIN, w: Math.max(1, size.w), h: Math.max(1, size.h) };
+  const view: ViewBoxRect = still ? { x: -MARGIN, y: -MARGIN, w: Math.max(1, size.w), h: Math.max(1, stillH) } : (vb ?? { x: -MARGIN, y: -MARGIN, w: Math.max(1, size.w), h: Math.max(1, size.h) });
   const zoomOf = (r: ViewBoxRect): number => (size.w > 0 ? size.w / r.w : 1);
   const clampVb = useCallback(
     (r: ViewBoxRect): ViewBoxRect => {
@@ -349,6 +441,23 @@ export function ViewCanvas(props: ViewCanvasProps) {
     const k = kinds.get(b.entity.kind);
     return `${k?.label ?? b.entity.kind} ${b.entity.label}: ${b.entity.status ?? STATE_WORD[b.entity.state]}${b.entity.status ? `, ${STATE_WORD[b.entity.state]}` : ''}`;
   };
+  const changeClass = (id: string): string => {
+    const c = marks?.changes?.[id];
+    return c ? ` is-${c}` : '';
+  };
+  /** A live view's entities are buttons; a still drawing's are parts of one image. */
+  const interactive = (b: Box) =>
+    still
+      ? {}
+      : {
+          tabIndex: b.leaving ? -1 : 0,
+          role: 'button',
+          'aria-pressed': selected === b.id,
+          'aria-label': entityLabel(b),
+          onClick: choose(b.id),
+          onKeyDown: choose(b.id),
+          onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+        };
   const choose = (id: string) => (e: React.MouseEvent | React.KeyboardEvent) => {
     if ('key' in e && e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
@@ -357,17 +466,14 @@ export function ViewCanvas(props: ViewCanvasProps) {
   };
 
   return (
-    <div ref={wrap} className={`vcanvas${reducedMotion ? ' motion-reduced' : ''}`} onKeyDown={onKeyDown}>
+    <div ref={wrap} className={`vcanvas${still ? ' is-still' : ''}${reducedMotion ? ' motion-reduced' : ''}`} onKeyDown={still ? undefined : onKeyDown} style={still ? { height: stillH } : undefined}>
       <svg
-        role="group"
+        role={still ? 'img' : 'group'}
         aria-label={props.label}
         width={size.w}
-        height={size.h}
+        height={still ? stillH : size.h}
         viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-        onWheel={onWheel}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
+        {...(still ? {} : { onWheel, onPointerDown, onPointerMove, onPointerUp })}
       >
         <g className="vlayer-lanes">
           {lay.lanes.map((l) => (
@@ -388,15 +494,9 @@ export function ViewCanvas(props: ViewCanvasProps) {
               <g
                 key={b.id}
                 data-id={b.id}
-                className={`vbox vbox-${b.shape}${nested ? ' is-nested' : ''} state-${b.entity.state}${b.entity.muted ? ' is-muted' : ''}${b.leaving ? ' is-leaving' : ''}${selected === b.id ? ' is-selected' : ''}${dim(b.id)}`}
+                className={`vbox vbox-${b.shape}${nested ? ' is-nested' : ''} state-${b.entity.state}${b.entity.muted ? ' is-muted' : ''}${b.leaving ? ' is-leaving' : ''}${selected === b.id ? ' is-selected' : ''}${changeClass(b.id)}${dim(b.id)}`}
                 style={{ transform: `translate(${b.x}px, ${b.y}px)` }}
-                tabIndex={b.leaving ? -1 : 0}
-                role="button"
-                aria-pressed={selected === b.id}
-                aria-label={entityLabel(b)}
-                onClick={choose(b.id)}
-                onKeyDown={choose(b.id)}
-                onPointerDown={(e) => e.stopPropagation()}
+                {...interactive(b)}
               >
                 <rect className="vbox-frame" style={{ width: b.w, height: b.h }} rx={b.shape === 'host' ? (nested ? 8 : 12) : 10} />
                 {b.shape === 'host' ? <rect className="vbox-head" style={{ width: b.w, height: nested ? 26 : 28 }} rx={nested ? 8 : 12} /> : null}
@@ -412,6 +512,7 @@ export function ViewCanvas(props: ViewCanvasProps) {
                     </tspan>
                   ) : null}
                 </text>
+                {still ? <Facts b={b} x={12} y={(nested ? 26 : 28) + 4} container /> : null}
               </g>
             );
           })}
@@ -427,25 +528,21 @@ export function ViewCanvas(props: ViewCanvasProps) {
         <g className="vlayer-leaves">
           {leaves.map((b) => {
             const k = kinds.get(b.entity.kind);
-            const line = subline(b.w - (b.shape === 'endpoint' ? 52 : 36), b.entity.status ?? (b.entity.facts[0] ? `${b.entity.facts[0].label} ${b.entity.facts[0].value}` : ''), k?.label ?? '');
+            // The live view shows the first fact when there is no status; a still one draws its facts below.
+            const first = still ? undefined : b.entity.facts[0];
+            const line = subline(b.w - (b.shape === 'endpoint' ? 52 : 36), b.entity.status ?? (first ? `${first.label} ${first.value}` : ''), k?.label ?? '');
             return (
               <g
                 key={b.id}
                 data-id={b.id}
-                className={`vbox vcard vbox-${b.shape} state-${b.entity.state}${b.entity.muted ? ' is-muted' : ''}${b.leaving ? ' is-leaving' : ''}${selected === b.id ? ' is-selected' : ''}${dim(b.id)}`}
+                className={`vbox vcard vbox-${b.shape} state-${b.entity.state}${b.entity.muted ? ' is-muted' : ''}${b.leaving ? ' is-leaving' : ''}${selected === b.id ? ' is-selected' : ''}${changeClass(b.id)}${dim(b.id)}`}
                 style={{ transform: `translate(${b.x}px, ${b.y}px)` }}
-                tabIndex={b.leaving ? -1 : 0}
-                role="button"
-                aria-pressed={selected === b.id}
-                aria-label={entityLabel(b)}
-                onClick={choose(b.id)}
-                onKeyDown={choose(b.id)}
-                onPointerDown={(e) => e.stopPropagation()}
+                {...interactive(b)}
               >
                 <g className="vcard-body">
-                  {b.shape === 'workload' ? <path className="vcard-stack" d={outline('workload', b.w - 8, CARD.h)} transform="translate(4 -4)" /> : null}
-                  <path className="vcard-frame" d={outline(b.shape, b.w, CARD.h)} />
-                  <rect className="vcard-accent" x={b.shape === 'endpoint' ? 14 : 0} y={b.shape === 'endpoint' ? 14 : 8} width={3} height={b.shape === 'endpoint' ? CARD.h - 28 : CARD.h - 16} rx={1.5} />
+                  {b.shape === 'workload' ? <path className="vcard-stack" d={outline('workload', b.w - 8, b.h)} transform="translate(4 -4)" /> : null}
+                  <path className="vcard-frame" d={outline(b.shape, b.w, b.h)} />
+                  <rect className="vcard-accent" x={b.shape === 'endpoint' ? 14 : 0} y={b.shape === 'endpoint' ? 14 : 8} width={3} height={b.shape === 'endpoint' ? CARD.h - 28 : b.h - 16} rx={1.5} />
                   <Glyph state={b.entity.state} x={b.shape === 'endpoint' ? 28 : 16} y={17} />
                   <text className="vcard-title" x={b.shape === 'endpoint' ? 40 : 28} y={21}>
                     {fit(b.entity.label, charsFor(b.w - (b.shape === 'endpoint' ? 52 : 36), 12))}
@@ -458,11 +555,13 @@ export function ViewCanvas(props: ViewCanvasProps) {
                       </tspan>
                     ) : null}
                   </text>
+                  {still ? <Facts b={b} x={b.shape === 'endpoint' ? 40 : 16} y={CARD.h - 6} container={false} /> : null}
                 </g>
               </g>
             );
           })}
         </g>
+        {marks ? <Marks boxes={lay.boxes} marks={marks} /> : null}
       </svg>
     </div>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { ViewEntity, ViewModel } from '@simlab/kernel';
-import { assignSlots, emptyMemory, fit, layout, type Box, type Layout } from './layout.ts';
+import { assignSlots, CARD, emptyMemory, FACT_LINE, factLayout, fit, layout, wrapValue, type Box, type Layout } from './layout.ts';
 
 const e = (id: string, kind: string, container?: string, extra: Partial<ViewEntity> = {}): ViewEntity => ({ id, kind, label: id, state: 'healthy', facts: [], ...(container ? { container } : {}), ...extra });
 
@@ -98,4 +98,41 @@ test('slots: kept, freed, refilled in order', () => {
 test('names keep their start and their end', () => {
   expect(fit('web-5d7f9c8b6d-x2x9k', 12)).toBe('web-5d…x2x9k');
   expect(fit('short', 12)).toBe('short');
+});
+
+describe('facts in a still drawing', () => {
+  const e = (facts: { label: string; value: string; items?: string[] }[]) => ({ id: 'x', kind: 'k', label: 'x', state: 'healthy' as const, facts });
+
+  test('long values wrap at natural breaks instead of being cut', () => {
+    expect(wrapValue('dedicated=shop:NoSchedule', 22)).toEqual(['dedicated=shop:', 'NoSchedule']);
+    expect(wrapValue('node-role.kubernetes.io/control-plane:NoSchedule', 25)).toEqual(['node-role.kubernetes.io/', 'control-plane:NoSchedule']);
+    expect(wrapValue('short', 22)).toEqual(['short']);
+    expect(wrapValue('x'.repeat(30), 10)).toEqual(['x'.repeat(10), 'x'.repeat(10), 'x'.repeat(10)]);
+  });
+
+  test('labels sit beside values when there is room, above them when not', () => {
+    const facts = e([{ label: 'Labels', value: 'a=1,b=2', items: ['a=1', 'b=2'] }, { label: 'Images', value: 'nginx:1.31.8' }]);
+    expect(factLayout(facts, 300)).toEqual({ labelW: 44, lines: [{ label: 'Labels', text: 'a=1' }, { label: '', text: 'b=2' }, { label: 'Images', text: 'nginx:1.31.8' }] });
+    expect(factLayout(facts, 120).lines).toEqual([{ label: 'Labels', text: '' }, { label: '', text: 'a=1' }, { label: '', text: 'b=2' }, { label: 'Images', text: '' }, { label: '', text: 'nginx:1.31.8' }]);
+    expect(factLayout(e([{ label: 'L', value: '', items: ['1', '2', '3', '4', '5'] }]), 300).lines.map((l) => l.text)).toEqual(['1', '2', '3', '+2 more']);
+  });
+
+  test('a card is as tall as its facts, and a row as its tallest card', () => {
+    const model: ViewModel = {
+      t: 0,
+      kinds: [{ kind: 'p', shape: 'process', label: 'P', plural: 'Ps' }],
+      entities: [
+        { id: 'a', kind: 'p', label: 'a', state: 'healthy', facts: [{ label: 'F', value: 'v' }] },
+        { id: 'b', kind: 'p', label: 'b', state: 'healthy', facts: [] },
+      ],
+      relations: [],
+    };
+    const lay = layout({ model, visible: () => true, width: 420, facts: true }, emptyMemory());
+    const [a, b] = ['a', 'b'].map((id) => lay.boxes.find((x) => x.id === id));
+    // One fact with a short value: one line beside its label.
+    expect(a?.h).toBe(CARD.h + FACT_LINE * factLayout(a?.entity as ViewEntity, (a?.w ?? 0) - 28).lines.length);
+    expect(a?.h).toBe(CARD.h + FACT_LINE);
+    expect(b?.h).toBe(CARD.h);
+    expect(layout({ model, visible: () => true, width: 600 }, emptyMemory()).boxes.every((x) => x.h === CARD.h)).toBe(true);
+  });
 });

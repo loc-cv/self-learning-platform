@@ -121,19 +121,31 @@ world:
             - { path: "{.status.conditions[*].reason}", equals: Unschedulable }
       timeout: 1m
     - advance: 5m
-ticket: |
-  **`{{app}}` never started** (namespace `{{ns}}`)
+ticket:
+  - text: |
+      **`{{app}}` never started** (namespace `{{ns}}`)
 
-  The `{{app}}` Deployment was rolled out a few minutes ago, and none of its {{replicas}} Pods has
-  started: they are all Pending. Get every replica running.
+      The `{{app}}` Deployment was rolled out a few minutes ago, and none of its {{replicas}} Pods has
+      started: they are all Pending, and none has been given a node, though all three nodes are
+      Ready. Get every replica running.
+  - figure:
+      kind: view
+      of: start
+      focus: { scope: "{{ns}}", kinds: [Deployment, Pod, Node] }
+      show: []
+      caption: "`{{app}}` a few minutes after the rollout."
+      alt: >-
+        The Deployment {{app}} in namespace {{ns}} has 0 of {{replicas}} Pods ready. All
+        {{replicas}} Pods are Pending in the lane of Pods with no node. The three nodes,
+        controlplane, node01 and node02, are Ready and run none of them.
+  - text: |
+      What has to stay true:
 
-  What has to stay true:
-
-  - `{{app}}` needs local SSD storage, so its Pods must only ever run on nodes labelled
-    `disktype=ssd`.
-  - Each replica requests exactly 256Mi of memory; capacity planning depends on that number.
-  - The nodes stay as they are: do not change their labels or taints.
-  - Fix the existing Deployment; do not delete and recreate it.
+      - `{{app}}` needs local SSD storage, so its Pods must only ever run on nodes labelled
+        `disktype=ssd`.
+      - Each replica requests exactly 256Mi of memory; capacity planning depends on that number.
+      - The nodes stay as they are: do not change their labels or taints.
+      - Fix the existing Deployment; do not delete and recreate it.
 hints:
   - >-
     A Pod stays Pending when the scheduler finds no node for it, and the scheduler says why. Look
@@ -318,46 +330,114 @@ solutions:
           with: { namespace: "{{ns}}", name: "{{app}}" }
         timeout: 3m
 debrief:
+  - when: { cause: taint }
+    figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Node] }
+      show: [Taints, { fact: Labels, keys: [disktype] }, Tolerations]
+      notes:
+        - on: "Node/{{ssdNode}}"
+          text: "The only node the node selector leaves, and it carries the taint `dedicated={{ns}}:NoSchedule`."
+        - on: Node/controlplane
+          text: kubeadm taints the control plane node, so the scheduler rejected it as well.
+        - text: >-
+            A real API server also gives every Pod two tolerations, for nodes that are not ready
+            or unreachable; the simulator does not add them yet.
+          divergence: DIV-043
+      caption: >-
+        The taint on `{{ssdNode}}` kept every Pod off the only node labelled `disktype=ssd`, until
+        the Pod template tolerated it.
+      alt: >-
+        Left, at the start: {{replicas}} Pods with no toleration wait with no node; {{ssdNode}} is
+        labelled disktype=ssd and tainted dedicated={{ns}}:NoSchedule. Right, solved: a new
+        ReplicaSet's {{replicas}} Pods tolerate dedicated={{ns}}:NoSchedule and run on
+        {{ssdNode}}; the old ReplicaSet has none.
+  - when: { cause: selector }
+    figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Node] }
+      show: [{ fact: Labels, keys: [disktype] }, Node-Selectors, Taints]
+      notes:
+        - on: "Node/{{ssdNode}}"
+          text: "Labelled `disktype=ssd`, in lower case."
+        - on: Node/controlplane
+          text: kubeadm taints the control plane node, so the scheduler rejected it as well.
+      caption: >-
+        The node is labelled `disktype=ssd`; the Pods asked for `disktype=SSD`, which no node
+        carries.
+      alt: >-
+        Left, at the start: {{replicas}} Pods whose node selector is disktype=SSD wait with no
+        node, while {{ssdNode}} is labelled disktype=ssd. Right, solved: a new ReplicaSet's
+        {{replicas}} Pods select disktype=ssd and run on {{ssdNode}}.
+  - when: { cause: memory }
+    figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Node] }
+      show: [Requests, { fact: Labels, keys: [disktype] }, { fact: Allocatable, keys: [memory] }, Taints]
+      notes:
+        - on: "Node/{{ssdNode}}"
+          text: The only node the node selector leaves, and it cannot allocate 8Gi.
+        - on: Node/controlplane
+          text: kubeadm taints the control plane node, so the scheduler rejected it as well.
+      caption: >-
+        Each Pod asked for 8Gi of memory, more than any node can allocate; asking for 256Mi, they
+        fit on `{{ssdNode}}`.
+      alt: >-
+        Left, at the start: {{replicas}} Pods requesting memory=8Gi wait with no node; every node
+        can allocate less memory than that. Right, solved: a new ReplicaSet's {{replicas}} Pods
+        request memory=256Mi and run on {{ssdNode}}.
+  - figure:
+      kind: diagram
+      caption: >-
+        For each Pod, the scheduler's filters remove every node it cannot run on, then scoring
+        ranks the nodes that are left and the Pod is bound to the best one.
+      alt: >-
+        A Pending Pod passes three filters in turn, TaintToleration, NodeAffinity and
+        NodeResourcesFit, and then scoring.
+      entities:
+        - { id: pod, shape: process, kind: Pod, label: a new Pod, state: progressing, status: Pending }
+        - { id: taints, shape: rule, kind: filter, label: TaintToleration, state: healthy }
+        - { id: affinity, shape: rule, kind: filter, label: NodeAffinity, state: healthy }
+        - { id: fit, shape: rule, kind: filter, label: NodeResourcesFit, state: healthy }
+        - { id: score, shape: rule, kind: score, label: scoring plugins, state: healthy }
+      relations:
+        - { type: uses, from: pod, to: taints }
+        - { type: uses, from: taints, to: affinity }
+        - { type: uses, from: affinity, to: fit }
+        - { type: uses, from: fit, to: score }
+      notes:
+        - { on: taints, text: Removes nodes with a taint the Pod does not tolerate. }
+        - { on: affinity, text: Removes nodes whose labels the node selector or node affinity does not match. }
+        - { on: fit, text: Removes nodes without room for the Pod's requests. }
+        - { on: score, text: "Ranks the rest. When no node is left, the Pod stays Pending." }
   - text: |
-      **Mental model.** The scheduler places a Pod in two passes. Filters remove every node the
-      Pod cannot run on, scores rank the rest. A Pod stays Pending when the filters leave
-      nothing, and the scheduler then records a `FailedScheduling` event whose message counts the
-      rejected nodes per reason: `0/3 nodes are available: …`. That message is the first thing to
-      read for any Pending Pod (`kubectl -n {{ns}} describe pod <pod>`, or `kubectl -n {{ns}} get
-      events`). Three filters reject nodes most often: taints the Pod does not tolerate, labels
-      its node selector or node affinity does not find, and resource requests that do not fit
-      in what the node can still allocate.
+      **Read the scheduler's reason first.** For a Pod it cannot place, the scheduler records a
+      `FailedScheduling` event that counts the rejected nodes per reason
+      (`0/3 nodes are available: …`): `kubectl -n {{ns}} describe pod <pod>`, or
+      `kubectl -n {{ns}} get events`.
   - when: { cause: taint }
     text: |
-      **Root cause.** `{{ssdNode}}`, the only node labelled `disktype=ssd`, carries the taint
-      `dedicated={{ns}}:NoSchedule`. The node selector left only that node, and the taint
-      repelled every Pod that does not tolerate it. A taint is a node saying "keep away unless
-      you say otherwise"; a toleration is the Pod saying otherwise. A toleration permits, it never
-      attracts: the node selector is still what keeps `{{app}}` on SSD nodes, which the grader
-      checked by scaling the Deployment to six replicas.
+      A toleration permits, it never attracts: the node selector still keeps `{{app}}` on SSD
+      nodes, which the grader checked by scaling to six replicas.
   - when: { cause: selector }
     text: |
-      **Root cause.** The node is labelled `disktype=ssd`; the Deployment selected
-      `disktype: SSD`. Label keys and values are case-sensitive, so no node matched. Removing the
-      node selector would also have started the Pods, on any node; the grader scaled the
-      Deployment to six replicas to see whether they stay on SSD nodes. Node affinity with
-      `operator: In` is an equally valid way to state the requirement.
+      Labels are case-sensitive. Deleting the node selector would also have started the Pods, on
+      any node; the grader scaled to six replicas to check. Node affinity with `operator: In`
+      states the same requirement.
   - when: { cause: memory }
     text: |
-      **Root cause.** Each Pod requested 8Gi of memory, and no node has that much allocatable
-      (`kubectl describe node` shows `Allocatable` and what is already requested). The scheduler
-      sums requests, not real usage: a Pod that would use 100Mi still needs a node with 8Gi free
-      on paper. Removing the request would also have started the Pods and taken away what the
-      scheduler and capacity planning rely on.
+      The scheduler adds up requests, not real usage. Deleting the request would also have started
+      the Pods, and taken away the number capacity planning relies on.
   - text: |
-      **Reference solution.** `kubectl -n {{ns}} edit deployment {{app}}` changes the Pod
-      template; the Deployment then rolls out a new ReplicaSet, whose Pods the scheduler places.
-      Editing a Pending Pod directly does not work: almost everything in a Pod's spec is
-      immutable, and the ReplicaSet would create new Pods from the old template anyway. Applying a
-      corrected manifest is the same change made declaratively.
+      **The fix belongs in the Pod template**, by `kubectl edit` or a corrected manifest: a Pending
+      Pod's spec is almost all immutable, and its ReplicaSet would recreate it from the old
+      template. A changed template rolls out a new ReplicaSet, as the comparison shows.
 
-      **In reality.** The scheduler retries Pending Pods when something relevant changes (a node
-      added, a taint removed, another Pod deleted), not on a timer, so a fix takes effect within
-      seconds. The control plane node carries its own taint,
-      `node-role.kubernetes.io/control-plane:NoSchedule`, which is why it counted among the
-      rejected nodes too.
+      **In reality** the scheduler retries Pending Pods when something relevant changes (a node, a
+      taint, a deleted Pod), not on a timer.

@@ -18,3 +18,7 @@ export { BUILTIN_STEP_NAMES } from './runner/builtin.ts';
 export * from './lab.ts';
 export * from './validate.ts';
 export * from './show.ts';
+export * from './figure/types.ts';
+export * from './figure/focus.ts';
+export * from './figure/render.ts';
+export * from './figure/blocks.ts';

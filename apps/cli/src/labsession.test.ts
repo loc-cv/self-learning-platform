@@ -58,7 +58,12 @@ describe('npm run lab', () => {
     const passing = t.cmd('check');
     expect(passing).not.toContain('✗');
     expect(passing).toContain('Solved.');
-    expect(t.cmd('debrief')).toContain('Two faults, one release.');
+    // A terminal cannot draw figures: each shows its caption and its alt text.
+    const debrief = plain(t.cmd('debrief'));
+    expect(debrief).toMatch(/^\[Figure\] Two faults, one release: the Service selected no Pod, and the new ReplicaSet's image could not be pulled\.\nLeft, at the start: /);
+    expect(debrief).toContain('[Figure] A rolling update stalls on an image that cannot be pulled');
+    expect(debrief).toContain('Mental model.');
+
     expect(t.session.lab.events.map((e) => e.kind)).toEqual(['start', 'hint', 'check', 'hint', 'hint', 'check']);
     expect(t.session.lab.solutionViewed).toBe(false);
   });

@@ -409,9 +409,10 @@ debrief:
       kind: compare                # view | compare | scene | diagram
       left:  { of: start }         # the world after setup
       right: { of: solved }        # the world after the reference solution
-      focus: { namespace: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Node] }
-      show: [taints, tolerations]
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Node] }
+      show: [Taints, Tolerations]
       caption: The taint kept every Pod off `{{ssdNode}}` until the Pod template tolerated it.
+      alt: Left, at the start, …; right, solved, …
   - text: |
       What the figure cannot say: a toleration permits, it never attracts.
 ```

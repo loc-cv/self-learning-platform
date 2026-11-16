@@ -51,7 +51,8 @@ describe('parameters and placeholders', () => {
     const seed = [1, 2, 3, 4, 5, 6].find((s) => resolveParams(item, s)['how'] === 'twice') as number;
     const v = variantOf(item, seed);
     expect(v.solutions.map((s) => s.name)).toEqual(['Bump twice']);
-    expect(v.debrief).toBe('Counters go up.\n\nYou bumped twice.\n');
+    expect(v.debrief.slice(1)).toEqual([{ text: 'Counters go up.' }, { text: 'You bumped twice.' }]);
+    expect(v.debrief[0]).toMatchObject({ figure: { kind: 'compare', caption: `The counter went from 1 to ${String(v.params['target'])}.` } });
     expect(v.checks[0]?.with['value']).toBe(v.params['target']);
     expect(v.checks[0]?.weight).toBe(2);
   });
@@ -209,7 +210,7 @@ describe('a lab session', () => {
   test('hints are a ladder whose use is recorded; reset starts again from the baseline', () => {
     const lab = createLab(counterItem(), registry, { seed: 2 });
     const target = lab.variant.params['target'] as number;
-    expect(lab.ticket).toBe(`Make the counter reach ${target}.`);
+    expect(lab.ticket).toEqual([{ text: `Make the counter reach ${target}.` }]);
     expect(lab.check().passed).toBe(false);
     expect(lab.nextHint()).toEqual({ index: 0, text: 'Look at the counter.' });
     lab.kernel.advance(10_000);

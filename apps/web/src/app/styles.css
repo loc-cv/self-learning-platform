@@ -1874,3 +1874,296 @@ kbd {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
+
+/* Figures (docs/DESIGN.md §6.5): views of simulated worlds in the ticket and the debrief, drawn by
+   the renderer in its still mode, on the canvas's bench, with a caption above and notes below. */
+.figure {
+  margin: var(--sp-4) 0 var(--sp-5);
+  container-type: inline-size;
+}
+
+.figure-caption {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  font: var(--fw-medium) var(--fs-body)/var(--lh-tight) var(--font-ui);
+  color: var(--text);
+}
+
+.figure-caption > span {
+  flex: 1;
+  padding-top: var(--sp-1);
+}
+
+.figure-caption code {
+  font-size: var(--fs-sm);
+}
+
+.figure-expand {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.figure-panel {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background-color: var(--canvas-bg);
+  background-image: radial-gradient(var(--canvas-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+  box-shadow: 0 1px 0 var(--bevel) inset;
+  overflow: hidden;
+}
+
+.figure-panel-title {
+  padding: var(--sp-2) var(--sp-3) 0;
+  font: var(--fw-semibold) var(--fs-xs)/1 var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.figure-pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+}
+
+@container (min-width: 760px) {
+  .figure-pair {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.vcanvas.is-still {
+  position: relative;
+  inset: auto;
+  touch-action: auto;
+}
+
+.vcanvas.is-still .vbox {
+  cursor: default;
+}
+
+/* In a still drawing nothing is selected, so relations are shown as they are. */
+.vcanvas.is-still .vlink {
+  opacity: 0.7;
+}
+
+.vfact {
+  font-size: var(--fs-xs);
+}
+
+.vfact-label {
+  fill: var(--text-faint);
+  font-family: var(--font-ui);
+  font-weight: var(--fw-medium);
+}
+
+.vfact-value {
+  fill: var(--text-muted);
+  font-family: var(--font-code);
+}
+
+/* Marks: what a figure points at. The accent marks a pointer, never a state. An entity only on the
+   left keeps full strength (it is the broken state a comparison is about): a badge and a dashed
+   outline tell it apart. */
+.vmark {
+  pointer-events: none;
+  transition: transform var(--motion-move) var(--ease-standard);
+}
+
+.vmark-highlight {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+
+.vmark-note circle {
+  fill: var(--accent-bg);
+  stroke: var(--canvas-bg);
+  stroke-width: 2;
+}
+
+.vmark-note text,
+.vmark-change text {
+  fill: var(--accent-ink);
+  font: var(--fw-bold) var(--fs-xs) var(--font-ui);
+}
+
+.vmark-change circle {
+  fill: var(--text-muted);
+  stroke: var(--canvas-bg);
+  stroke-width: 2;
+}
+
+.vmark-change.is-added circle,
+.vmark-change.is-changed circle {
+  fill: var(--accent-bg);
+}
+
+.vmark-change text {
+  fill: var(--accent-ink);
+}
+
+.vbox.is-removed .vcard-frame,
+.vbox.is-removed > .vbox-frame {
+  stroke-dasharray: 4 3;
+}
+
+.figure-notes {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.figure-notes li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  margin-top: var(--sp-1);
+}
+
+.figure-note-n,
+.scene-caption-n,
+.figure-change {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent-ink);
+  font: var(--fw-bold) var(--fs-xs)/1 var(--font-ui);
+}
+
+.figure-change.is-removed {
+  background: var(--text-muted);
+}
+
+.figure-divergence {
+  flex: none;
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  font: var(--fs-xs)/1.5 var(--font-code);
+  color: var(--text-muted);
+}
+
+.figure-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.figure-legend > span {
+  display: inline-flex;
+  gap: var(--sp-1);
+  align-items: center;
+}
+
+.scene-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-top: var(--sp-2);
+}
+
+.scene-count {
+  min-width: 44px;
+  text-align: center;
+  font: var(--fw-medium) var(--fs-sm)/1 var(--font-code);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.scene-dots {
+  display: flex;
+  gap: var(--sp-1);
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.scene-dots li {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  transition: background var(--motion-base) var(--ease-standard);
+}
+
+.scene-dots li.is-past {
+  background: var(--text-faint);
+}
+
+.scene-dots li.is-current {
+  background: var(--accent);
+}
+
+.scene-caption {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  margin: var(--sp-2) 0 0;
+  min-height: calc(2 * var(--lh-body) * var(--fs-body));
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+.figure.is-failed {
+  padding: var(--sp-3);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-md);
+  background: var(--bad-bg);
+  font-size: var(--fs-sm);
+}
+
+.figure-alt {
+  color: var(--text-muted);
+}
+
+.figure-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+.figure-dialog {
+  position: relative;
+  width: min(1200px, 94vw);
+  max-height: 92vh;
+  overflow: auto;
+  padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  box-shadow: var(--elev-3);
+  outline: none;
+}
+
+.figure-dialog-close {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+}
+
+.figure.is-large {
+  margin: 0;
+}
+
+.figure.is-large .figure-caption {
+  padding-right: var(--sp-8);
+  font-size: var(--fs-lg);
+}

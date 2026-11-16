@@ -29,7 +29,7 @@ async function openXray(page: Page): Promise<void> {
   await page.keyboard.press('Control+Shift+Y');
   expect(await prevented).toBe(true);
   await expect(page.locator('.xray')).toBeVisible();
-  await expect(page.locator('.vcanvas .vbox').first()).toBeVisible();
+  await expect(page.locator('.xray .vcanvas .vbox').first()).toBeVisible();
 }
 
 const box = async (page: Page, selector: string) => {
@@ -45,12 +45,12 @@ test('the scheduling lab: Pending Pods outside every node, then Running on node0
   await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
   await expect(page.locator('.xray')).toHaveCount(0);
   await openXray(page);
-  const pods = page.locator('[data-id^="k8s/Pod/billing/worker-"]');
+  const pods = page.locator('.xray [data-id^="k8s/Pod/billing/worker-"]');
   await expect(pods).toHaveCount(3);
   for (const label of await pods.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))) expect(label).toMatch(/^Pod worker-\S+: Pending, degraded$/);
-  await expect(page.locator('.vlane-label')).toHaveText('Pods with no node');
-  const lane = await box(page, '.vlane-frame');
-  const nodes = await Promise.all(['controlplane', 'node01', 'node02'].map((n) => box(page, `[data-id="k8s/Node/${n}"] .vbox-frame`)));
+  await expect(page.locator('.xray .vlane-label')).toHaveText('Pods with no node');
+  const lane = await box(page, '.xray .vlane-frame');
+  const nodes = await Promise.all(['controlplane', 'node01', 'node02'].map((n) => box(page, `.xray [data-id="k8s/Node/${n}"] .vbox-frame`)));
   for (const p of await pods.all()) {
     const b = await p.boundingBox();
     if (!b) throw new Error('no box');
@@ -64,11 +64,11 @@ test('the scheduling lab: Pending Pods outside every node, then Running on node0
   // The keyboard reaches every entity: arrows move the selection, Escape clears it.
   const first = await pods.first().getAttribute('data-id');
   await page.keyboard.press('ArrowRight');
-  const moved = await page.locator('.vbox.is-selected').getAttribute('data-id');
+  const moved = await page.locator('.xray .vbox.is-selected').getAttribute('data-id');
   expect(moved).not.toBe(first);
-  await expect(page.locator(`[data-id="${moved}"]`)).toBeFocused();
+  await expect(page.locator(`.xray [data-id="${moved}"]`)).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.vbox.is-selected')).toHaveCount(0);
+  await expect(page.locator('.xray .vbox.is-selected')).toHaveCount(0);
   await pods.first().click();
   await page.screenshot({ path: `${SHOTS}/xray-pending.png` });
 
@@ -83,12 +83,12 @@ test('the scheduling lab: Pending Pods outside every node, then Running on node0
   await waitForPrompt(page);
   expect(await screen(page)).toContain('deployment.apps/worker edited');
   await advance(page, 90_000);
-  const running = page.locator('[data-id^="k8s/Pod/billing/worker-"][aria-label$=": Running, healthy"]');
+  const running = page.locator('.xray [data-id^="k8s/Pod/billing/worker-"][aria-label$=": Running, healthy"]');
   await expect(running).toHaveCount(3);
-  await expect(page.locator('.vlane')).toHaveCount(0);
+  await expect(page.locator('.xray .vlane')).toHaveCount(0);
   // Positions and sizes settle after the move transition.
   await page.waitForTimeout(800);
-  const node01 = await box(page, '[data-id="k8s/Node/node01"] .vbox-frame');
+  const node01 = await box(page, '.xray [data-id="k8s/Node/node01"] .vbox-frame');
   for (const p of await running.all()) {
     const b = await p.boundingBox();
     if (!b) throw new Error('no box');
@@ -108,7 +108,7 @@ for (const theme of ['dark', 'light'] as const) {
     await run(page, 'kubectl -n shop get pods');
     await page.screenshot({ path: `${SHOTS}/workspace-${theme}-xray-closed.png` });
     await openXray(page);
-    await page.locator('[data-id^="k8s/Service/shop/"]').first().click();
+    await page.locator('.xray [data-id^="k8s/Service/shop/"]').first().click();
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${SHOTS}/workspace-${theme}-xray-open.png` });
   });
@@ -120,7 +120,7 @@ test('a 30-Pod rollout with the X-ray open: keystrokes still echo at once, no lo
   await run(page, 'kubectl create deployment big --image=nginx:1.31.8 --replicas=30');
   await advance(page, 60_000);
   await openXray(page);
-  await expect(page.locator('[data-id^="k8s/Pod/default/big-"][aria-label$="healthy"]')).toHaveCount(30, { timeout: 30_000 });
+  await expect(page.locator('.xray [data-id^="k8s/Pod/default/big-"][aria-label$="healthy"]')).toHaveCount(30, { timeout: 30_000 });
   await run(page, 'clear');
   await page.evaluate(() => {
     const w = window as unknown as { __long: number[] };
@@ -144,7 +144,7 @@ test('a 30-Pod rollout with the X-ray open: keystrokes still echo at once, no lo
   const p95 = sorted[Math.ceil(0.95 * sorted.length) - 1] as number;
   console.log(`rollout of 30 Pods, X-ray open: keystroke echo p50 ${sorted[Math.floor(sorted.length / 2)]?.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms (${keys.length} keys); long tasks ${long.length}, longest ${Math.max(0, ...long).toFixed(0)} ms`);
   // The rollout went through while we typed.
-  await expect(page.locator('[data-id^="k8s/Deployment/default/big"]')).toHaveAttribute('aria-label', /: 30\/30, healthy$/, { timeout: 30_000 });
+  await expect(page.locator('.xray [data-id^="k8s/Deployment/default/big"]')).toHaveAttribute('aria-label', /: 30\/30, healthy$/, { timeout: 30_000 });
   expect(p95).toBeLessThan(50);
   expect(Math.max(0, ...long)).toBeLessThan(200);
 });
@@ -156,13 +156,13 @@ test('reduced motion: change is instant, from the system or the setting', async 
     await settings(page, { motion: how === 'setting' ? 'reduced' : 'system' });
     await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
     await openXray(page);
-    const pod = page.locator('[data-id^="k8s/Pod/billing/worker-"]').first();
+    const pod = page.locator('.xray [data-id^="k8s/Pod/billing/worker-"]').first();
     expect(await pod.evaluate((el) => getComputedStyle(el).transitionDuration.split(',').every((d) => parseFloat(d) === 0))).toBe(true);
     // A Pod that goes away leaves at once: no fading copy stays behind.
     await page.locator('.terminal-slot.is-active').click();
     await run(page, 'kubectl -n billing delete pod --all --wait=false');
     await advance(page, 5_000);
-    await expect(page.locator('.vbox.is-leaving')).toHaveCount(0);
+    await expect(page.locator('.xray .vbox.is-leaving')).toHaveCount(0);
     await ctx.close();
   }
   // Without either, the same Pod moves with a transition.
@@ -171,7 +171,7 @@ test('reduced motion: change is instant, from the system or the setting', async 
   await settings(page, {});
   await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
   await openXray(page);
-  const pod = page.locator('[data-id^="k8s/Pod/billing/worker-"]').first();
+  const pod = page.locator('.xray [data-id^="k8s/Pod/billing/worker-"]').first();
   expect(await pod.evaluate((el) => parseFloat(getComputedStyle(el).transitionDuration))).toBeGreaterThan(0);
   await ctx.close();
 });

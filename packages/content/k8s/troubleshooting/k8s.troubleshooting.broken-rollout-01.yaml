@@ -196,49 +196,135 @@ solutions:
           with: { namespace: "{{ns}}", name: "{{app}}" }
         timeout: 3m
 debrief:
-  - text: |
-      **Two faults, one release.** The outage and the stuck rollout looked like one problem, and
-      they were two.
+  - figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Service] }
+      show: [{ fact: Selector, keys: [app, app.kubernetes.io/name] }, { fact: Labels, keys: [app, app.kubernetes.io/name] }, Images]
+      notes:
+        - on: "Service/{{app}}"
+          text: "Selects `app.kubernetes.io/name={{app}}`, a label no Pod carried: no endpoints, so every request failed."
+        - on: "Deployment/{{app}}"
+          text: >-
+            Past its progress deadline (`progressDeadlineSeconds`, 600 s by default): its
+            `Progressing` condition is `False` with reason `ProgressDeadlineExceeded`, which is what
+            release pipelines watch.
+      caption: >-
+        Two faults, one release: the Service selected no Pod, and the new ReplicaSet's image could
+        not be pulled.
+      alt: >-
+        Left, at the start: the Service selects app.kubernetes.io/name={{app}} and reaches no Pod;
+        the old ReplicaSet's Pods, labelled app={{app}}, run nginx:1.14.2, and the new
+        ReplicaSet's Pods fail to pull their image. Right, solved: one ReplicaSet runs
+        nginx:1.31.8 and the Service sends traffic to all {{replicas}} of its Pods.
+  - figure:
+      kind: scene
+      world:
+        setup:
+          - apply: |
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: {{ns}}
+              ---
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: {{app}}
+                namespace: {{ns}}
+              spec:
+                replicas: 4
+                selector:
+                  matchLabels:
+                    app: {{app}}
+                template:
+                  metadata:
+                    labels:
+                      app: {{app}}
+                  spec:
+                    containers:
+                      - name: {{app}}
+                        image: nginx:1.14.2
+              ---
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: {{app}}
+                namespace: {{ns}}
+              spec:
+                selector:
+                  app: {{app}}
+                ports:
+                  - port: 80
+                    targetPort: 80
+          - until:
+              assert: k8s.rollout
+              with: { namespace: "{{ns}}", name: "{{app}}" }
+            timeout: 3m
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Service] }
+      show: [Images]
+      frames:
+        - caption: "Before the release: four Pods of `nginx:1.14.2`, all behind the Service."
+        - caption: >-
+            The release changes the image. The Deployment creates a new ReplicaSet with two Pods
+            and lets one old Pod go: of four replicas, 25% may be extra (`maxSurge`, rounded up)
+            and 25% missing (`maxUnavailable`, rounded down).
+          steps:
+            - { run: "kubectl -n {{ns}} set image deployment/{{app}} {{app}}=nginx:1.31.80", when: { badImage: tag } }
+            - { run: "kubectl -n {{ns}} set image deployment/{{app}} {{app}}=ngnix:1.31.8", when: { badImage: name } }
+            - { run: "kubectl -n {{ns}} set image deployment/{{app}} {{app}}=mirror.corp.example/library/nginx:1.31.8", when: { badImage: registry } }
+            - advance: 1s
+        - caption: >-
+            The image cannot be pulled, so the new Pods never become ready and the rollout waits.
+            The Service selects them but sends them nothing; the old Pods keep serving. A bad
+            image alone is a stuck rollout, not an outage.
+          steps:
+            - advance: 1m
+        - caption: >-
+            The image is fixed. The broken ReplicaSet's Pods go at once, a third ReplicaSet starts
+            Pods, and each one that becomes ready lets an old one go.
+          steps:
+            - run: kubectl -n {{ns}} set image deployment/{{app}} {{app}}=nginx:1.31.8
+            - advance: 3s
+        - caption: >-
+            Done: every Pod runs `nginx:1.31.8`. The two older ReplicaSets stay, scaled to zero,
+            so the Deployment can roll back to them.
+          steps:
+            - until:
+                assert: k8s.rollout
+                with: { namespace: "{{ns}}", name: "{{app}}" }
+              timeout: 3m
+      caption: A rolling update stalls on an image that cannot be pulled, while the old ReplicaSet keeps serving.
+      alt: >-
+        Five frames of a rollout of four replicas in a small world of its own, with a Service that
+        selects the Pods. The new ReplicaSet gets two Pods whose image pull fails and the old one
+        keeps three ready Pods, which the Service keeps routing to. After the image is fixed, a
+        third ReplicaSet's Pods replace the old ones until only it has Pods.
   - when: { badImage: tag }
     text: |
-      **The rollout.** The release set the image to `nginx:1.31.80`. The repository exists, the
-      tag does not, so the registry answered "not found" and the kubelet reported `ErrImagePull`,
-      then `ImagePullBackOff` while it waited to try again.
+      **The image.** `nginx:1.31.80`: the repository exists, the tag does not, so the registry
+      answered "not found". The kubelet reported `ErrImagePull`, then `ImagePullBackOff` while it
+      waited to try again.
   - when: { badImage: name }
     text: |
-      **The rollout.** The release set the image to `ngnix:1.31.8`. There is no such repository
-      on Docker Hub, and Docker Hub answers a missing repository the way it answers a private one:
-      "pull access denied, repository does not exist or may require authorization". The kubelet
-      reported `ErrImagePull`, then `ImagePullBackOff` while it waited to try again.
+      **The image.** `ngnix:1.31.8`: Docker Hub answers a missing repository the way it answers a
+      private one, "pull access denied, repository does not exist or may require authorization".
+      The kubelet reported `ErrImagePull`, then `ImagePullBackOff` while it waited to try again.
   - when: { badImage: registry }
     text: |
-      **The rollout.** The release pulled from `mirror.corp.example`, a registry host that does
-      not resolve, so the pull failed before any registry was asked ("no such host"). The kubelet
-      reported `ErrImagePull`, then `ImagePullBackOff` while it waited to try again.
+      **The image.** `mirror.corp.example` does not resolve, so the pull failed before any registry
+      was asked ("no such host"). The kubelet reported `ErrImagePull`, then `ImagePullBackOff`
+      while it waited to try again.
   - text: |
-      A rolling update creates new Pods before it removes old ones (`maxSurge` 25% rounded up,
-      `maxUnavailable` 25% rounded down, so here at most one old Pod goes first). New Pods that
-      never become ready stop the rollout where it is, and the old ReplicaSet keeps serving. So a
-      bad image alone causes a stuck rollout, not an outage.
+      **Mental model.** A Service that does not answer: what does it select, and does anything
+      ready carry that label now (`kubectl -n {{ns}} get endpointslices`, then
+      `get pods --show-labels`)? A rollout that does not finish: look at its newest Pods. A
+      selector that matches nothing is valid, so nothing complained.
 
-      **The outage.** The Service selected `app.kubernetes.io/name={{app}}`, a label no Pod
-      carried. A selector that matches nothing is valid, so nothing complained: the Service just
-      had no endpoints. `kubectl -n {{ns}} get endpointslices` shows it at once, and
-      `kubectl -n {{ns}} get pods --show-labels` shows why.
+      **Either selector fix is valid**: point the Service back at `app={{app}}`, or add
+      `app.kubernetes.io/name` to the Pod template (the Deployment's own selector is immutable, its
+      template's labels are not). Recreating the Service would have given it a new cluster IP.
 
-      **Mental model.** For a Service that does not answer, ask "what does it select, and does
-      anything ready carry that label right now?" For a rollout that does not finish, look at
-      the newest Pods: whatever keeps them from becoming ready is what holds the rollout.
-
-      **Either fix of the selector is valid.** Pointing the Service back at `app={{app}}` undoes
-      the half-done migration; adding `app.kubernetes.io/name` to the Pod template completes it.
-      The Deployment's own `spec.selector` is immutable, but its template may carry more labels
-      than the selector names. Recreating the Service would also have worked, with a new cluster
-      IP, which is what the ticket ruled out.
-
-      **In reality.** `kubectl rollout undo` would have restored the old image and been the right
-      first move during an outage of the Deployment itself. Here it would not have brought the
-      site back, because the outage was in the Service, and it would have rolled back the release
-      the ticket required. If nothing is done, the rollout is marked failed after
-      `progressDeadlineSeconds` (600 s by default): the Deployment's `Progressing` condition turns
-      `False` with reason `ProgressDeadlineExceeded`, which is what release pipelines watch.
+      **In reality** `kubectl rollout undo`, which restores the previous template, is often the
+      right first move; here the outage was in the Service, and the ticket required the release.

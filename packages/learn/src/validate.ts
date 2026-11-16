@@ -1,4 +1,4 @@
-// Content validation (docs/SCENARIO_FORMAT.md §11): what `npm run content:check` enforces for
+// Content validation (docs/SCENARIO_FORMAT.md §12): what `npm run content:check` enforces for
 // every item. Static rules need only the item and the registry; the run rules build the world
 // for several seeds and grade it untouched (it must fail) and after each reference solution (it
 // must pass): CLAUDE.md hard rule 6.
@@ -12,6 +12,9 @@ import { BUILTIN_STEP_NAMES } from './runner/builtin.ts';
 import { buildBaseline, ItemError, startSession, type Baseline, type BuildOptions } from './runner/build.ts';
 import { grade, type GradeReport } from './runner/grader.ts';
 import { runSteps, StepFailure, stepKind } from './runner/steps.ts';
+import { figuresOf } from './figure/blocks.ts';
+import { figureWorlds, renderFigure, renderProblems } from './figure/render.ts';
+import type { Block, Figure } from './figure/types.ts';
 
 export interface StaticContext {
   registry: Registry;
@@ -21,6 +24,8 @@ export interface StaticContext {
   skills: ReadonlySet<string>;
   /** The file's base name without `.yaml`, which must equal the id. */
   fileId?: string;
+  /** Ids of the divergence register (docs/FIDELITY.md §5); when given, a figure's note must cite one of them. */
+  divergences?: ReadonlySet<string>;
 }
 
 const schemaCache = new WeakMap<Registry, JsonObject>();
@@ -57,9 +62,37 @@ function whens(value: unknown, path: string, out: { path: string; when: JsonObje
   }
 }
 
-/** Every step of an item, with its path: setup, solutions, checks' `after` and `until`. */
+/** The figures of a prose field, with their paths. */
+function rawFigures(value: string | readonly Block[], field: string): { path: string; figure: Figure }[] {
+  if (typeof value === 'string') return [];
+  return value.flatMap((b, i) => ('figure' in b ? [{ path: `${field}[${i}].figure`, figure: b.figure }] : []));
+}
+
+/** The steps a figure runs: a scene's own world and its frames. */
+function figureSteps(path: string, f: Figure): { path: string; step: Step }[] {
+  if (f.kind !== 'scene') return [];
+  const out: { path: string; step: Step }[] = [];
+  (f.world?.setup ?? []).forEach((st, j) => out.push({ path: `${path}.world.setup[${j}]`, step: st }));
+  f.frames.forEach((fr, k) => (fr.steps ?? []).forEach((st, j) => out.push({ path: `${path}.frames[${k}].steps[${j}]`, step: st })));
+  return out;
+}
+
+/**
+ * What a ticket's figure may be (§11): a view of the start or of the learner's world, or a
+ * diagram, never the solved world, a comparison or a scene; and a view names the facts it shows,
+ * so a reviewer sees at a glance that none of them gives the cause away.
+ */
+function ticketFigureProblems(path: string, f: Figure): string[] {
+  if (f.kind === 'compare' || f.kind === 'scene') return [`${path}: a ticket's figure is a view or a diagram, not a ${f.kind}`];
+  if (f.kind === 'view' && f.of === 'solved') return [`${path}: a ticket's figure never shows the solved world`];
+  if (f.kind === 'view' && f.show === undefined) return [`${path}: a ticket's view names the facts it shows (\`show\`, [] for none)`];
+  return [];
+}
+
+/** Every step of an item, with its path: setup, solutions, checks' `after` and `until`, scenes. */
 function allSteps(item: Item): { path: string; step: Step }[] {
   const out: { path: string; step: Step }[] = [];
+  for (const { path, figure } of [...rawFigures(item.ticket, 'ticket'), ...rawFigures(item.debrief, 'debrief')]) out.push(...figureSteps(path, figure));
   (item.world.setup ?? []).forEach((s, i) => out.push({ path: `world.setup[${i}]`, step: s }));
   item.solutions.forEach((s, i) => (Array.isArray(s) ? s : s.steps).forEach((st, j) => out.push({ path: `solutions[${i}]${Array.isArray(s) ? '' : '.steps'}[${j}]`, step: st })));
   item.checks.forEach((c, i) => (c.after ?? []).forEach((st, j) => out.push({ path: `checks[${i}].after[${j}]`, step: st })));
@@ -102,6 +135,13 @@ export function staticProblems(raw: Json, ctx: StaticContext): string[] {
   for (const name of Object.keys(params)) if (!used.has(name)) out.push(`world.params.${name} is never used`);
   const ids = item.checks.map((c) => c.id);
   for (const id of new Set(ids)) if (ids.filter((x) => x === id).length > 1) out.push(`checks: id ${id} is used twice`);
+  for (const { path, figure } of rawFigures(item.ticket, 'ticket')) out.push(...ticketFigureProblems(path, figure));
+  if (ctx.divergences) {
+    for (const { path, figure } of [...rawFigures(item.ticket, 'ticket'), ...rawFigures(item.debrief, 'debrief')]) {
+      const notes = [...(figure.notes ?? []), ...(figure.kind === 'scene' ? figure.frames.flatMap((f) => f.notes ?? []) : [])];
+      for (const n of notes) if (n.divergence !== undefined && !ctx.divergences.has(n.divergence)) out.push(`${path}: ${n.divergence} is not in the divergence register (docs/FIDELITY.md)`);
+    }
+  }
   for (const { path, step } of allSteps(item)) {
     try {
       const kind = stepKind(step, ctx.registry);
@@ -140,6 +180,13 @@ export function variantProblems(v: Variant, registry: Registry): string[] {
     }
   };
   v.setup.forEach((s, i) => stepArgs(`setup[${i}]`, s));
+  [...figuresOf(v.ticket).map((f, i) => ({ f, where: `ticket figure ${i + 1}` })), ...figuresOf(v.debrief).map((f, i) => ({ f, where: `debrief figure ${i + 1}` }))].forEach(({ f, where }) => {
+    if (f.kind !== 'scene') return;
+    (f.world?.setup ?? []).forEach((st, j) => stepArgs(`${where}.world.setup[${j}]`, st));
+    f.frames.forEach((fr, k) => (fr.steps ?? []).forEach((st, j) => stepArgs(`${where}.frames[${k}][${j}]`, st)));
+  });
+  // PLAN.md §5: the debrief opens with figures of the cause and the fix; prose alone is a defect.
+  if (!v.debrief[0] || !('figure' in v.debrief[0])) out.push('the debrief of this variant does not open with a figure');
   v.solutions.forEach((s, i) => s.steps.forEach((st, j) => stepArgs(`solution ${i + 1}[${j}]`, st)));
   for (const c of v.checks) {
     checkArgs(`check ${c.id}`, c.assert, c.with);
@@ -233,7 +280,22 @@ export function runSeed(item: Item, seed: number, registry: Registry, options: B
       if (c.status !== 'pass') result.problems.push(`${solutionName(v, i)}: check ${c.id} ${c.status === 'error' ? `could not be evaluated: ${c.error ?? ''}` : `fails: wanted ${c.expected}; ${c.observed}`}`);
     }
   });
+  result.problems.push(...figureProblems(v, baseline, registry, options));
   return result;
+}
+
+/**
+ * Every figure of a variant resolves (§11): its worlds build, its focus selects something, what it
+ * highlights and notes exists, a scene runs without a gap and every frame changes something. `now`
+ * is shown as the untouched start.
+ */
+export function figureProblems(v: Variant, baseline: Baseline, registry: Registry, options: BuildOptions = {}): string[] {
+  const env = { registry, baseline, build: options };
+  const worlds = figureWorlds(env);
+  const out: string[] = [];
+  const all = [...figuresOf(v.ticket).map((f, i) => ({ f, where: `ticket figure ${i + 1}` })), ...figuresOf(v.debrief).map((f, i) => ({ f, where: `debrief figure ${i + 1}` }))];
+  for (const { f, where } of all) out.push(...renderProblems(renderFigure(f, worlds, env), true).map((p) => `${where} (${f.kind}): ${p}`));
+  return out;
 }
 
 export { matches };

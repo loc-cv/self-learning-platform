@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ViewModel } from '@simlab/kernel';
-import type { Item } from '@simlab/learn';
+import type { Item, RenderedBlock } from '@simlab/learn';
 import type { Clock, LabAction, LabInfo, LabState, OpenEditor, ResumeProblem } from '../protocol.ts';
 import { itemById } from '../content.ts';
 import { createEngineClient, type EngineClient } from './engine.ts';
@@ -41,7 +41,7 @@ export function App() {
   const [picker, setPicker] = useState(false);
   const [lab, setLab] = useState<LabInfo>();
   const [labState, setLabState] = useState<LabState>();
-  const [debrief, setDebrief] = useState<string>();
+  const [debrief, setDebrief] = useState<RenderedBlock[]>();
   const [solutions, setSolutions] = useState<{ name: string; text: string }[]>();
   const [busy, setBusy] = useState<LabAction>();
   const [note, setNote] = useState<string>();
@@ -243,7 +243,7 @@ export function App() {
       setBusy(undefined);
       setLabState(state);
       if (result.action === 'hint' && !result.hint) setNote(`No more hints: all ${state.hints.length} are shown. Solutions shows the reference solutions.`);
-      if (result.action === 'debrief') setDebrief(result.text);
+      if (result.action === 'debrief') setDebrief(result.blocks);
       if (result.action === 'solutions') setSolutions(result.solutions);
       if (result.action === 'reset') {
         for (const t of current.current.tabs) if (t.tty) client.forget(t.tty);
@@ -484,7 +484,7 @@ export function App() {
       <main className="workspace">
         {phase.kind === 'ready' && lab && labState && settings.panelOpen ? (
           <>
-            <LabPanel lab={lab} state={labState} {...(debrief ? { debrief } : {})} {...(solutions ? { solutions } : {})} {...(busy ? { busy } : {})} {...(note ? { note } : {})} act={(a) => void act(a)} />
+            <LabPanel lab={lab} state={labState} reducedMotion={reducedMotion} {...(debrief ? { debrief } : {})} {...(solutions ? { solutions } : {})} {...(busy ? { busy } : {})} {...(note ? { note } : {})} act={(a) => void act(a)} />
             <div className="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the lab panel" tabIndex={0} onPointerDown={startPanelDrag} onKeyDown={nudgePanel} />
           </>
         ) : null}

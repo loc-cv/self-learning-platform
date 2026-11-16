@@ -7,7 +7,7 @@
 import { ENGINE_VERSION, hashNode, type Json, type Millis, type Ports, type SessionHeader, type SessionLog } from '@simlab/kernel';
 import { KUBERNETES_TAG } from '@simlab/k8s';
 import { competencyIds, findItem, loadPacks, skillIds } from '@simlab/content';
-import { buildBaseline, openLab, showSolution, staticProblems, variantOf, type Baseline, type GradeReport, type Item, type Lab } from '@simlab/learn';
+import { blocksText, buildBaseline, openLab, showSolution, staticProblems, variantOf, type Baseline, type Figure, type GradeReport, type Item, type Lab, type VariantBlock } from '@simlab/learn';
 import { createPlayer, type Player, type PlayerIo } from './player.ts';
 import { registry, UsageError } from './world.ts';
 
@@ -46,6 +46,15 @@ export function renderMarkdown(text: string): string {
     .replace(/\*\*([^*]+)\*\*/g, `${BOLD}$1${OFF}`)
     .replace(/`([^`]+)`/g, `${CYAN}$1${OFF}`)
     .replace(/\n$/, '');
+}
+
+/**
+ * Prose and figures for a terminal: a figure cannot be drawn here, so it shows its caption and its
+ * alt text (docs/SCENARIO_FORMAT.md §11); the web app draws it.
+ */
+export function renderBlocks(blocks: readonly VariantBlock[]): string {
+  const figure = (f: Figure): string => `${DIM}[Figure]${OFF} ${f.caption.trim()}\n${DIM}${f.alt.trim()}${OFF}`;
+  return renderMarkdown(blocksText(blocks, figure));
 }
 
 export function loadItem(id: string): Item {
@@ -142,7 +151,7 @@ export function createLabSession(opts: LabSessionOptions, io: PlayerIo): LabSess
       case '?':
         return HELP.replace(/\n$/, '');
       case 'ticket':
-        return renderMarkdown(lab.ticket);
+        return renderBlocks(lab.ticket);
       case 'hint': {
         const h = lab.nextHint();
         player.action('hint', h ? { index: h.index } : null);
@@ -159,7 +168,7 @@ export function createLabSession(opts: LabSessionOptions, io: PlayerIo): LabSess
       case 'debrief':
         if (!solved && !confirm('debrief')) return `The lab is not solved yet, and the debrief gives the answer away. Type ${CYAN}debrief${OFF} again to read it anyway.`;
         player.action('debrief');
-        return renderMarkdown(lab.debrief);
+        return renderBlocks(lab.debrief);
       case 'solution':
       case 'solutions': {
         if (!confirm(line)) return `Viewing the reference solutions is recorded and lowers the rating. Type ${CYAN}${line}${OFF} again to see them.`;
@@ -193,7 +202,7 @@ export function createLabSession(opts: LabSessionOptions, io: PlayerIo): LabSess
       return player;
     },
     command,
-    intro: () => `${BOLD}${item.title}${OFF}  ${DIM}${item.id}, seed ${opts.seed}, about ${item.targetMinutes} min${OFF}\n\n${renderMarkdown(lab.ticket)}\n\n${DIM}Ctrl-] opens the lab prompt: check, hint, ticket, debrief, solution, reset, quit.${OFF}`,
+    intro: () => `${BOLD}${item.title}${OFF}  ${DIM}${item.id}, seed ${opts.seed}, about ${item.targetMinutes} min${OFF}\n\n${renderBlocks(lab.ticket)}\n\n${DIM}Ctrl-] opens the lab prompt: check, hint, ticket, debrief, solution, reset, quit.${OFF}`,
     finish() {
       return [...logs, player.finish()];
     },

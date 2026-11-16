@@ -124,17 +124,33 @@ export function printPodTolerationsMultiline(w: PrefixWriter, title: string, tol
       w.write(LEVEL_0, initialIndent);
       w.write(LEVEL_0, innerIndent);
     }
-    const key = s(t.key);
-    const value = s(t.value);
-    const effect = s(t.effect);
-    w.write(LEVEL_0, key);
-    if (value !== '') w.write(LEVEL_0, `=${value}`);
-    if (effect !== '') w.write(LEVEL_0, `:${effect}`);
-    // operator Exists with no value tolerates everything of its key (or everything at all)
-    if (t.operator === 'Exists' && value === '') w.write(LEVEL_0, key !== '' || effect !== '' ? ' op=Exists' : 'op=Exists');
-    if (typeof t.tolerationSeconds === 'number') w.write(LEVEL_0, ` for ${t.tolerationSeconds}s`);
-    w.write(LEVEL_0, '\n');
+    w.write(LEVEL_0, `${tolerationString(t)}\n`);
   });
+}
+
+/** One toleration as printPodTolerationsMultiline writes it: `key=value:Effect op=Exists for Ns`. */
+export function tolerationString(t: JsonObject): string {
+  const key = s(t.key);
+  const value = s(t.value);
+  const effect = s(t.effect);
+  let out = key;
+  if (value !== '') out += `=${value}`;
+  if (effect !== '') out += `:${effect}`;
+  // operator Exists with no value tolerates everything of its key (or everything at all)
+  if (t.operator === 'Exists' && value === '') out += key !== '' || effect !== '' ? ' op=Exists' : 'op=Exists';
+  if (typeof t.tolerationSeconds === 'number') out += ` for ${t.tolerationSeconds}s`;
+  return out;
+}
+
+/** Taints in the order printNodeTaintsMultiline prints them (by effect, then key). */
+export function sortedTaints(taints: Json | undefined): JsonObject[] {
+  const key = (t: JsonObject) => `${s(t.effect)},${s(t.key)}`;
+  return sortBy(objs(taints), (a, c) => compareGoStrings(key(a), key(c)) < 0);
+}
+
+/** Tolerations in the order printPodTolerationsMultiline prints them (by key). */
+export function sortedTolerations(tolerations: Json | undefined): JsonObject[] {
+  return sortBy(objs(tolerations), (a, c) => compareGoStrings(s(a.key), s(c.key)) < 0);
 }
 
 // strings.TrimSpace: unicode.IsSpace, which differs from String.prototype.trim (U+0085 is a space to

@@ -11,11 +11,11 @@
 import { compareCodeUnits, type ProvenanceSpec, type ViewEntity, type ViewFact, type ViewKind, type ViewPart, type ViewProviderSpec, type ViewRelation, type ViewState, type World } from '@simlab/kernel';
 import { machineViewId, type HostSlice } from '@simlab/host';
 import type { JsonObject } from '../apimachinery/json.ts';
-import { formatLabels, selectorFromSet, selectorMatches, selectorEmpty } from '../apimachinery/labels.ts';
+import { formatLabels, labelsString, selectorFromSet, selectorMatches, selectorEmpty } from '../apimachinery/labels.ts';
 import type { ApiServerConfig } from '../apiserver/config.ts';
 import { K8S, storeList, type EtcdData, type K8sSlice } from '../apiserver/store.ts';
 import { strategyFor } from '../apiserver/strategies.ts';
-import { taintString } from '../kubectl/describe/common.ts';
+import { sortedTaints, sortedTolerations, taintString, tolerationString } from '../kubectl/describe/common.ts';
 import { printHandler } from '../printers/handlers.ts';
 import { bool, metadata, num, obj, objs, str, strMap, type GenerateOptions } from '../printers/helpers.ts';
 
@@ -85,17 +85,39 @@ const condition = (o: JsonObject, type: string): JsonObject | undefined => objs(
 /** The controller owner reference, as the garbage collector and controllers read it. */
 const controllerRef = (o: JsonObject): JsonObject | undefined => objs(metadata(o).ownerReferences).find((r) => bool(r.controller));
 
-const labelsFact = (o: JsonObject): ViewFact => ({ label: 'Labels', value: formatLabels(strMap(metadata(o).labels)) });
+/** A list fact: the entries as `value` joins them, and each entry for a figure that shows some by key. */
+function listFact(label: string, items: string[], value: string): ViewFact {
+  return items.length > 0 ? { label, value, items } : { label, value };
+}
 
-/** `cpu=100m, memory=64Mi` for each container that requests something. */
-function requests(pod: JsonObject): string | undefined {
-  const parts: string[] = [];
-  for (const c of objs(obj(pod.spec).containers)) {
+/** Labels as labels.FormatLabels prints them (sorted `k=v`, `<none>`). */
+const labelSetFact = (label: string, set: Record<string, string>): ViewFact => {
+  const s = labelsString(set);
+  return listFact(label, s === '' ? [] : s.split(','), formatLabels(set));
+};
+
+const labelsFact = (o: JsonObject): ViewFact => labelSetFact('Labels', strMap(metadata(o).labels));
+
+/**
+ * A workload's Selector column (metav1.FormatLabelSelector), with its entries when it is made of
+ * matchLabels alone: an expression (`tier in (a,b)`) holds commas of its own, so it is not split.
+ */
+function selectorFact(o: JsonObject, printed: string): ViewFact {
+  const sel = obj(obj(o.spec).selector);
+  const expressions = objs(sel.matchExpressions);
+  const s = labelsString(strMap(sel.matchLabels));
+  return listFact('Selector', expressions.length === 0 && s !== '' ? s.split(',') : [], printed);
+}
+
+/** `memory=256Mi` per resource a container requests, prefixed by the container when there are several. */
+function requests(pod: JsonObject): ViewFact | undefined {
+  const containers = objs(obj(pod.spec).containers);
+  const items: string[] = [];
+  for (const c of containers) {
     const r = strMap(obj(c.resources).requests);
-    const names = Object.keys(r).sort(compareCodeUnits);
-    if (names.length > 0) parts.push(`${str(c.name)}: ${names.map((n) => `${n}=${r[n] as string}`).join(', ')}`);
+    for (const n of Object.keys(r).sort(compareCodeUnits)) items.push(`${containers.length > 1 ? `${str(c.name)}: ` : ''}${n}=${r[n] as string}`);
   }
-  return parts.length > 0 ? parts.join('; ') : undefined;
+  return items.length > 0 ? listFact('Requests', items, items.join(', ')) : undefined;
 }
 
 /** Waiting reasons of a container that is still being started, not one that failed. */
@@ -180,15 +202,17 @@ export function k8sView(world: World): ViewPart {
     nodeNames.add(name);
     byUid.set(uidOf(node), nodeId(name));
     const c = cells('', 'Node', node, now);
-    const taints = objs(obj(node.spec).taints).map(taintString);
+    // As kubectl describe node prints them: sorted by effect and key, `<none>` when empty.
+    const taints = sortedTaints(obj(node.spec).taints).map(taintString);
     const alloc = strMap(obj(node.status).allocatable);
+    const allocItems = Object.keys(alloc).sort(compareCodeUnits).map((k) => `${k}=${alloc[k] as string}`);
     const facts: ViewFact[] = [
       { label: 'Status', value: c['Status'] ?? '' },
       { label: 'Roles', value: c['Roles'] ?? '' },
       { label: 'Internal-IP', value: c['Internal-IP'] ?? '' },
-      { label: 'Taints', value: taints.length > 0 ? taints.join(', ') : '<none>' },
+      listFact('Taints', taints, taints.length > 0 ? taints.join(', ') : '<none>'),
       labelsFact(node),
-      { label: 'Allocatable', value: Object.keys(alloc).sort(compareCodeUnits).map((k) => `${k}=${alloc[k] as string}`).join(', ') },
+      listFact('Allocatable', allocItems, allocItems.join(', ')),
     ];
     const e: ViewEntity = { id: nodeId(name), kind: KINDS.node, label: name, state: nodeState(node), status: c['Status'] ?? '', facts };
     // The kubelet registers its Node under the machine's hostname (kubelet --hostname-override unset).
@@ -216,10 +240,12 @@ export function k8sView(world: World): ViewPart {
       { label: 'Node', value: c['Node'] ?? '' },
       labelsFact(pod),
     ];
-    const selector = strMap(obj(pod.spec).nodeSelector);
-    if (Object.keys(selector).length > 0) facts.push({ label: 'Node-Selectors', value: formatLabels(selector) });
+    // Node-Selectors and Tolerations as kubectl describe pod titles and prints them.
+    facts.push(labelSetFact('Node-Selectors', strMap(obj(pod.spec).nodeSelector)));
+    const tolerations = sortedTolerations(obj(pod.spec).tolerations).map(tolerationString);
+    facts.push(listFact('Tolerations', tolerations, tolerations.length > 0 ? tolerations.join(', ') : '<none>'));
     const req = requests(pod);
-    if (req !== undefined) facts.push({ label: 'Requests', value: req });
+    if (req !== undefined) facts.push(req);
     const state = podState(pod);
     podStates.set(id, state);
     const e: ViewEntity = { id, kind: KINDS.pod, label: name, state, status: c['Status'] ?? '', facts };
@@ -251,7 +277,7 @@ export function k8sView(world: World): ViewPart {
       { label: 'Up-to-date', value: c['Up-to-date'] ?? '' },
       { label: 'Available', value: c['Available'] ?? '' },
       { label: 'Images', value: c['Images'] ?? '' },
-      { label: 'Selector', value: c['Selector'] ?? '' },
+      selectorFact(dep, c['Selector'] ?? ''),
     ];
     const e = inNs({ id, kind: KINDS.deployment, label: nameOf(dep), state: deploymentState(dep), status: c['Ready'] ?? '', facts }, ns);
     if (num(obj(dep.spec).replicas) === 0) e.muted = true;
@@ -274,7 +300,7 @@ export function k8sView(world: World): ViewPart {
       { label: 'Current', value: c['Current'] ?? '' },
       { label: 'Ready', value: c['Ready'] ?? '' },
       { label: 'Images', value: c['Images'] ?? '' },
-      { label: 'Selector', value: c['Selector'] ?? '' },
+      selectorFact(rs, c['Selector'] ?? ''),
     ];
     const e = inNs({ id, kind: KINDS.replicaSet, label: nameOf(rs), state, facts }, ns);
     if (desired === 0 && num(status.replicas) === 0) e.muted = true;
@@ -313,7 +339,7 @@ export function k8sView(world: World): ViewPart {
       { label: 'Type', value: c['Type'] ?? '' },
       { label: 'Cluster-IP', value: c['Cluster-IP'] ?? '' },
       { label: 'Port(s)', value: c['Port(s)'] ?? '' },
-      { label: 'Selector', value: c['Selector'] ?? '' },
+      listFact('Selector', spec.selector === undefined ? [] : labelsString(strMap(spec.selector)).split(',').filter((x) => x !== ''), c['Selector'] ?? ''),
     ];
     let state: ViewState = 'healthy';
     if (str(spec.type) !== 'ExternalName') state = ready.size === 0 ? 'failed' : ready.size < total ? 'degraded' : 'healthy';

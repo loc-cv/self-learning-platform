@@ -6,7 +6,7 @@ this document is the contract for the runner (phase 09), the content tooling (ph
 authors. Lessons, cards and exams reuse these parts and are specified in phase 11.
 
 Machine-readable form: `docs/schema/item.schema.json` and `docs/schema/sidecar.schema.json`
-(JSON Schema 2020-12). A test validates the worked examples in §13 against them, so the examples
+(JSON Schema 2020-12). A test validates the worked examples in §14 against them, so the examples
 use only what this document defines.
 
 ## 1. Files
@@ -15,7 +15,7 @@ use only what this document defines.
 packages/content/<pack>/
   pack.yaml                      pack id, title, the skills it defines (`id`, `title`); phase 11 adds the rest
   <area>/<id>.yaml               one item per file; the file name is the item id
-  <area>/<id>.vi.yaml            optional Vietnamese sidecar (§12)
+  <area>/<id>.vi.yaml            optional Vietnamese sidecar (§13)
 ```
 
 - YAML 1.2, UTF-8, LF line endings. Prose fields are Markdown.
@@ -35,11 +35,11 @@ packages/content/<pack>/
 | `difficulty` | yes | 1–5 | 1 one step with guidance … 5 several interacting causes |
 | `targetMinutes` | yes | number | Time a fluent engineer needs; the rating compares against it |
 | `world` | yes | map | Topology, parameters, images, setup (§4, §5) |
-| `ticket` | yes | Markdown | The task or symptom, as a real ticket would state it |
+| `ticket` | yes | Markdown or blocks | The task or symptom, as a real ticket would state it; blocks may hold figures (§11) |
 | `hints` | yes | list | Ladder from nudge to exact command (§10) |
 | `checks` | yes | list | What "solved" means (§7) |
 | `solutions` | yes | list | Reference solutions; each must pass every check (§10) |
-| `debrief` | yes | Markdown or blocks | Root cause, mental model, solution explained, "in reality" notes |
+| `debrief` | yes | Markdown or blocks | Opens with figures of the cause and the fix (§11), then root cause, mental model, solution explained, "in reality" notes |
 
 Unknown fields are errors.
 
@@ -106,7 +106,8 @@ world:
   A placeholder in the middle of a plain scalar needs no quotes: `run: kubectl -n {{ns}} get pods`.
 - Substitution is textual and happens before embedded YAML (an `apply` body) is parsed.
 
-**`when`.** Steps, checks, hints, named solutions and debrief blocks may carry `when`. The block
+**`when`.** Steps, checks, hints, named solutions and ticket and debrief blocks (prose or
+figures) may carry `when`. The block
 exists only for parameter values that match.
 
 ```yaml
@@ -409,7 +410,7 @@ when the file is stale.
   every argument map of every variant is validated again against the registered schema itself.
 - The engine validates with its own JSON Schema validator for the subset these schemas use
   (`packages/learn/src/item/jsonschema.ts`, D-093); a test checks that it agrees with Ajv.
-- The worked examples in §13 use checks of later phases; their test adds stand-ins with the
+- The worked examples in §14 use checks of later phases; their test adds stand-ins with the
   phase 00 argument schemas (`tools/src/docs/planned.ts`), which each phase replaces with the
   real check.
 
@@ -437,13 +438,158 @@ Give more than one when the task has clearly different valid paths (imperative a
 fix the label or fix the selector): they prove that the checks grade state and not a path.
 End a solution with an `until` step for what the world must converge to.
 
-**Debrief.** Markdown, or a list of `{ text, when? }` blocks concatenated in order. It contains:
-the root cause in one or two sentences; the mental model that makes the cause findable next time;
-the reference solution explained; "in reality" notes where a real cluster or distribution differs
-or where the simulator diverges (link `docs/FIDELITY.md` register entries by id). Quoted real
-output in a debrief follows the grounding rule like any other output.
+**Debrief.** Markdown, or a list of blocks shown in order: `{ text, when? }` for prose and
+`{ figure, when? }` for a figure (§11). Every variant's debrief opens with a figure (`PLAN.md` §5:
+the debrief shows the cause and the fix first; one that is only text is a defect), and the prose
+keeps what a figure cannot say: the root cause in a sentence where the figure needs one; the
+mental model that makes the cause findable next time; the reference solution explained; "in
+reality" notes where a real cluster or distribution differs or where the simulator diverges (link
+`docs/FIDELITY.md` register entries by id). Quoted real output in a debrief follows the grounding
+rule like any other output. `docs/AUTHORING.md` ("Figures") says how much text may remain.
 
-## 11. Validation
+The ticket takes the same two forms. A ticket's figure is a sketch of what the ticket states (§11).
+
+## 11. Figures
+
+A figure is a picture of a simulated world, or a hand-drawn one in the same vocabulary, inside the
+ticket, the debrief or (phase 11) a lesson step (`PLAN.md` §5 "Show, then tell", §6.5). The view
+providers of the plugins turn a world into a view model (`docs/ARCHITECTURE.md` §2.13); a figure
+names which world and which part of it, and the web app draws it with the renderer of the X-ray
+(`docs/DESIGN.md` §6.5). So a figure cannot drift from what the simulator does: change the engine
+and the figure changes with it.
+
+```yaml
+debrief:
+  - when: { cause: taint }
+    figure:
+      kind: compare                       # view | compare | scene | diagram
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Node] }
+      show: [Taints, { fact: Labels, keys: [disktype] }, Tolerations]
+      notes:
+        - on: "Node/{{ssdNode}}"
+          text: "The only node the node selector leaves, tainted `dedicated={{ns}}:NoSchedule`."
+      caption: The taint kept every Pod off `{{ssdNode}}` until the Pod template tolerated it.
+      alt: Left, at the start, … Right, solved, …
+  - text: |
+      A toleration permits, it never attracts: …
+```
+
+### 11.1 Every figure
+
+| Field | Required | Meaning |
+|---|---|---|
+| `kind` | yes | `view`, `compare`, `scene` or `diagram` |
+| `caption` | yes | One sentence above the figure: what to see in it. Markdown inline |
+| `alt` | yes | What the figure shows, in words: for a screen reader, and printed instead of the figure by `npm run lab` |
+| `focus` | no | Which part of the world (below). Not for diagrams |
+| `show` | no | The facts drawn on the cards (below). Required in a ticket's `view` |
+| `highlight` | no | Entities to outline |
+| `notes` | no | Numbered notes: `{ on?, text, divergence? }`; `on` names entities, the number is drawn on them and the text below the figure |
+
+Placeholders are substituted in every string of a figure, and a figure block takes `when` like a
+prose block, so one item holds a figure per fault variant.
+
+**Naming entities.** A reference is `<Kind>/<name>` in the view's own words: the kind's label
+(`Deployment`, `Node`) and the entity's label (`{{app}}`). `*` matches any run of characters:
+`Pod/{{app}}-*`. A reference may name several entities; it must name at least one.
+
+**`focus`** selects what is drawn. Without it, everything but the platform's own entities
+(`kube-system`) is drawn.
+
+| Key | Meaning |
+|---|---|
+| `scope` | A scope's label, or a list (`"{{ns}}"`): entities that belong to another scope are left out; entities that belong to none (Nodes) stay |
+| `kinds` | Kind labels: only entities of these kinds |
+| `entities` | References: only these entities |
+| `system` | `true` to include the platform's own entities |
+
+An entity keeps its container when the container is drawn too, when it is a scope the focus names,
+or when its kind sits in containers of that kind (a Pod pulls in its Node, so a selected Pod is
+never drawn as unscheduled); otherwise it moves up to the nearest container that stays. Relations
+are drawn between the entities that stay.
+
+**`show`** names facts by the labels the view gives them (the printers' column names: `Labels`,
+`Selector`, `Images`, `Taints`, `Tolerations`, `Requests`, `Allocatable`, `Port(s)`, …), case
+insensitive, in the order written. `{ fact: Labels, keys: [disktype] }` draws only the entries of
+a list fact whose key is one of `keys` (`disktype=ssd`); an entity with none of them draws no line
+for that fact. Without `show`, cards carry their name and status only.
+
+**`notes` and divergences.** Where the model is coarser than reality in what the figure shows, a
+note says so and names the register entry: `divergence: DIV-043` (`PLAN.md` §6.5 "Honesty").
+Content validation checks that the id is in `docs/FIDELITY.md`.
+
+### 11.2 Kinds
+
+**`view`**: one world. `of` is `start` (the baseline, after setup), `solved` (a fork of the
+baseline after the first reference solution of the variant) or `now` (the learner's world when the
+figure is shown).
+
+**`compare`**: two worlds side by side, `left` and `right`, each `{ of, title? }`. The default
+titles are "At the start", "Solved" and "Your world now". What only the right has is marked `+`,
+what only the left has `−`, and what both have but differently (state, status, container, the
+facts shown) `•` on the right. `highlight` and `notes` apply to both sides; a reference must name
+something on at least one.
+
+**`scene`**: a scripted run the engine executes, stepped through frame by frame.
+
+```yaml
+figure:
+  kind: scene
+  world:                         # optional: a small world of its own; absent, the item's baseline
+    setup: [ … ]                 # steps, as in world.setup; `topology` defaults to the item's
+  focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Service] }
+  show: [Images]
+  frames:                        # at least two
+    - caption: Before the release …
+    - caption: The release changes the image …
+      steps:                     # steps, as in setup and solutions, `when` included
+        - run: kubectl -n {{ns}} set image deployment/{{app}} {{app}}=nginx:1.31.80
+        - advance: 1s
+  caption: …
+  alt: …
+```
+
+The first frame is the world before any frame's steps (or after its own steps). Each frame runs its
+steps on the scene's fork and takes the view; a frame may add `highlight` and `notes` of its own,
+numbered after the figure's. The renderer animates from frame to frame; the learner steps forward
+and back, and Replay plays from the first frame, one frame every few seconds. Under reduced motion
+nothing plays by itself.
+
+**`diagram`**: entities and relations written by hand in the renderer's shape vocabulary, for ideas
+that are not world state (the scheduler filtering, then scoring). Each entity is `{ id, shape,
+label, kind?, container?, state?, status?, facts? }` with a shape and a state from
+`docs/DESIGN.md` §5 and §6.1; relations are `{ type, from, to }` with the view contract's types;
+`highlight` and notes' `on` name entities by `id`. A diagram is prose in another form: its words
+follow the grounding rule like any other text.
+
+### 11.3 Worlds
+
+`start` and `solved` are built once per attempt on forks of the baseline, and a scene runs on a fork
+of its own (of the baseline, or of a world built from its `world`). None of them touches the
+learner's session world or its input log, and the time they take is not the learner's. `now` is
+read from the session world and never changed. A view or comparison of `now` may come out empty (the
+learner deleted everything); it then draws an empty panel.
+
+### 11.4 What a figure may show
+
+- **In a ticket**, a figure shows only what the ticket states, the way a real ticket might attach a
+  sketch of the setup; it never shows the cause. So a ticket's figure is a `view` of `start` or
+  `now`, or a `diagram`; never `solved`, a comparison or a scene; and a ticket's `view` writes
+  `show` explicitly (`[]` for none), so a reviewer sees at a glance which facts it reveals.
+- **In a debrief** a figure may show everything.
+- **Exam items** (phase 31) carry no figures.
+- Views follow `PLAN.md` §6.5 "Honesty": no decorative motion, and a note with the divergence id
+  where the model is coarser than reality.
+
+### 11.5 Where figures appear
+
+The lab panel draws figures in the ticket and the debrief; each can open larger in a dialog.
+`npm run lab` in a terminal prints `[Figure]`, the caption and the alt text in their place.
+Captions, alt texts, notes, frame captions and panel titles are text units (§13).
+
+## 12. Validation
 
 `npm run content:check` enforces, for every item and several seeds (1 to 5, then more until
 every `pick` value a `when` depends on has appeared; `--seeds N` changes the 5):
@@ -459,11 +605,17 @@ every `pick` value a `when` depends on has appeared; `--seeds N` changes the 5):
    ladder is complete, and every argument map satisfies its registered schema.
 8. Check ids are unique; every check has a title; every parameter is used; solutions inject no
    faults; topology parameters satisfy the topology's schema.
+9. Figures (§11), for every variant: the debrief opens with a figure; every figure resolves (its
+   worlds build, its focus selects at least one entity in each world, `now` standing for the
+   start); highlighted and noted entities exist; a scene runs without a failed step or a gap and
+   each frame differs from the one before; a diagram is a valid view model; a ticket's figure keeps
+   to §11.4; cited divergences are in the register. A figure under `when` is checked with the
+   variants it belongs to.
 
 Rules 5 and 6 are CLAUDE.md hard rule 6. A check that passes on the untouched world and exists
 only to guard a constraint is fine, as long as some other check fails.
 
-## 12. Vietnamese sidecar
+## 13. Vietnamese sidecar
 
 English in the item file is canonical. Vietnamese lives next to it in `<id>.vi.yaml`, one entry
 per text unit, each with the hash of the English text it was translated from.
@@ -489,7 +641,13 @@ units:
 | `hints.<n>` | Hint at index `n` (zero-based) |
 | `checks.<id>.title` | Title of the check with that id |
 | `debrief` | The debrief when it is one string |
-| `debrief.<n>` | Debrief block at index `n` |
+| `debrief.<n>` | Debrief prose block at index `n` |
+| `ticket.<n>` | Ticket prose block at index `n`, when the ticket is a list of blocks |
+| `<field>.<n>.caption`, `<field>.<n>.alt` | Caption and alt text of the figure at index `n` of `ticket` or `debrief` |
+| `<field>.<n>.notes.<m>` | Text of the figure's note at index `m` |
+| `<field>.<n>.frames.<m>.caption`, `<field>.<n>.frames.<m>.notes.<k>` | A scene frame's caption and notes |
+| `<field>.<n>.left.title`, `<field>.<n>.right.title` | A comparison's panel titles, when written |
+| `<field>.<n>.entities.<id>.label` | The label of a diagram's entity |
 | `solutions.<n>.name` | Name of the named solution at index `n` |
 
 **Source hash.** `sha256:` followed by the first 16 hexadecimal digits of the SHA-256 of the
@@ -514,7 +672,7 @@ whitespace removed from each line, leading and trailing blank lines removed.
   affected units outdated; that is the intended behavior.
 - An entry whose key matches no unit of the item is reported as orphaned.
 
-## 13. Worked examples
+## 14. Worked examples
 
 Three complete items. They are written to run: the features they need arrive in the phases
 named in each introduction, and the items then move to `packages/content/`.
@@ -700,31 +858,44 @@ solutions:
           assert: k8s.rollout
           with: { namespace: "{{ns}}", name: api }
         timeout: 5m
-debrief: |
-  **What was asked.** Three independent changes: a ConfigMap, a reference to it from the Pod
-  template, and two fields of the Deployment (`replicas` and the rolling update strategy).
+debrief:
+  - figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod] }
+      show: [Images]
+      caption: >-
+        The new Pod template rolled out as a new ReplicaSet with {{replicas}} Pods, one at a time,
+        while the old Pods kept serving.
+      alt: >-
+        Left, at the start: Deployment api with one ReplicaSet and its Pods. Right, solved: a
+        second ReplicaSet owns {{replicas}} running Pods and the first has none.
+  - text: |
+      **What was asked.** Three independent changes: a ConfigMap, a reference to it from the Pod
+      template, and two fields of the Deployment (`replicas` and the rolling update strategy).
 
-  **Mental model.** A container's environment is fixed when the container starts. A ConfigMap
-  reference (`valueFrom.configMapKeyRef` for one key, `envFrom.configMapRef` for all keys) is
-  resolved by the kubelet at that moment. So the value follows the ConfigMap only across a
-  restart: changing the ConfigMap changes nothing in running Pods, and `kubectl rollout restart`
-  is what makes new Pods pick it up. Copying the value into `env.value` works today and breaks
-  this property, which is why the task is graded by changing the ConfigMap and looking again.
+      **Mental model.** A container's environment is fixed when the container starts. A ConfigMap
+      reference (`valueFrom.configMapKeyRef` for one key, `envFrom.configMapRef` for all keys) is
+      resolved by the kubelet at that moment. So the value follows the ConfigMap only across a
+      restart: changing the ConfigMap changes nothing in running Pods, and `kubectl rollout restart`
+      is what makes new Pods pick it up. Copying the value into `env.value` works today and breaks
+      this property, which is why the task is graded by changing the ConfigMap and looking again.
 
-  **Rollout safety.** `maxUnavailable` and `maxSurge` both default to 25%
-  (upstream: `pkg/apis/apps/v1/defaults.go`). The surge is rounded up and the unavailable count is
-  rounded down (upstream: `pkg/controller/deployment/util/deployment_util.go` `ResolveFenceposts`).
-  Setting `maxUnavailable: 0` states the requirement explicitly instead of relying on rounding,
-  and it requires `maxSurge` to be greater than zero.
+      **Rollout safety.** `maxUnavailable` and `maxSurge` both default to 25%
+      (upstream: `pkg/apis/apps/v1/defaults.go`). The surge is rounded up and the unavailable count is
+      rounded down (upstream: `pkg/controller/deployment/util/deployment_util.go` `ResolveFenceposts`).
+      Setting `maxUnavailable: 0` states the requirement explicitly instead of relying on rounding,
+      and it requires `maxSurge` to be greater than zero.
 
-  **Reference solution.** `kubectl create configmap … --from-literal`, `kubectl set env
-  --from=configmap/api-config` (it adds one `configMapKeyRef` entry per key), `kubectl scale`, and
-  a patch of `spec.strategy.rollingUpdate.maxUnavailable`. Writing the manifest and applying it
-  is equally valid and is what you would commit to Git.
+      **Reference solution.** `kubectl create configmap … --from-literal`, `kubectl set env
+      --from=configmap/api-config` (it adds one `configMapKeyRef` entry per key), `kubectl scale`, and
+      a patch of `spec.strategy.rollingUpdate.maxUnavailable`. Writing the manifest and applying it
+      is equally valid and is what you would commit to Git.
 
-  **In reality.** A ConfigMap mounted as a volume is different: the kubelet refreshes the files
-  in running Pods after a delay, with no restart. Only environment variables and `subPath` mounts
-  are frozen at start.
+      **In reality.** A ConfigMap mounted as a volume is different: the kubelet refreshes the files
+      in running Pods after a delay, with no restart. Only environment variables and `subPath` mounts
+      are frozen at start.
 ```
 
 Its Vietnamese sidecar, `k8s.workloads.configmap-env-rollout-01.vi.yaml`. Not every unit is
@@ -915,6 +1086,16 @@ solutions:
           with: { node: "{{node}}" }
         timeout: 5m
 debrief:
+  - figure:
+      kind: view
+      of: start
+      focus: { kinds: [Node, Pod], scope: default }
+      show: [Taints]
+      highlight: ["Node/{{node}}"]
+      caption: "`{{node}}` is NotReady, and the `reports` Pods are still bound to it."
+      alt: >-
+        Three nodes; {{node}} is NotReady, with the taint the node lifecycle controller adds,
+        and the two Pods of reports are still drawn on it.
   - text: |
       **Mental model.** Nobody watches a node from outside. The kubelet on the node reports the
       node's status to the API server and renews a Lease. When the reports stop, the node
@@ -1247,59 +1428,73 @@ solutions:
           assert: k8s.rollout
           with: { namespace: "{{ns}}", name: api }
         timeout: 5m
-debrief: |
-  **Root causes.** Three independent changes, each harmless-looking:
+debrief:
+  - figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod, Service] }
+      show: [Selector, { fact: Labels, keys: [app, role] }]
+      caption: >-
+        Three causes hid one another: the `api` Service selected no Pod, the frontend Pods lost
+        `role: frontend`, and the new `api` Pods never became ready.
+      alt: >-
+        Left, at the start: the api Service selects app={{wrongApp}} and reaches no Pod, the
+        frontend Pods carry no role label, and api's new ReplicaSet has Pods that are not ready.
+        Right, solved: the Service routes to every api Pod, the frontend Pods are labelled
+        role=frontend, and one ReplicaSet of api runs every replica.
+  - text: |
+      **Root causes.** Three independent changes, each harmless-looking:
 
-  1. The `api` Service selected `app: {{wrongApp}}`. No Pod has that label, so the Service had
-     no endpoints.
-  2. The `frontend` Pod template lost its `role: frontend` label. The NetworkPolicy
-     `api-allow-frontend` admits only Pods with that label, so frontend traffic to `api` was
-     dropped.
-  3. ConfigMap `api-config` set `DB_HOST` to `{{wrongHost}}`, a name that resolves to nothing.
-     Pods of the new ReplicaSet could not reach the database, failed their readiness probe, and
-     the rollout waited for them indefinitely.
+      1. The `api` Service selected `app: {{wrongApp}}`. No Pod has that label, so the Service had
+         no endpoints.
+      2. The `frontend` Pod template lost its `role: frontend` label. The NetworkPolicy
+         `api-allow-frontend` admits only Pods with that label, so frontend traffic to `api` was
+         dropped.
+      3. ConfigMap `api-config` set `DB_HOST` to `{{wrongHost}}`, a name that resolves to nothing.
+         Pods of the new ReplicaSet could not reach the database, failed their readiness probe, and
+         the rollout waited for them indefinitely.
 
-  **Why they hid one another.** A request passes the Service first, then the policy. With no
-  endpoints the connection fails at the Service, and nothing tells you a policy would have
-  dropped it next. And the third fault caused no outage at all: a rolling update keeps the old
-  Pods until new ones are ready, so the old ReplicaSet kept serving with the old, correct
-  configuration. It would have become an outage at the next node drain.
+      **Why they hid one another.** A request passes the Service first, then the policy. With no
+      endpoints the connection fails at the Service, and nothing tells you a policy would have
+      dropped it next. And the third fault caused no outage at all: a rolling update keeps the old
+      Pods until new ones are ready, so the old ReplicaSet kept serving with the old, correct
+      configuration. It would have become an outage at the next node drain.
 
-  **Mental model.** Labels are the wiring. A Service finds Pods by label; a NetworkPolicy
-  selects the Pods it protects by label and the peers it admits by label; a Deployment owns Pods
-  by label. None of these references is checked when you write it: a selector that matches
-  nothing is valid. So for every hop ask "what does this select, and does anything carry that
-  label right now?" `kubectl get endpointslices`, `kubectl get pods --show-labels` and
-  `kubectl describe networkpolicy` answer it.
+      **Mental model.** Labels are the wiring. A Service finds Pods by label; a NetworkPolicy
+      selects the Pods it protects by label and the peers it admits by label; a Deployment owns Pods
+      by label. None of these references is checked when you write it: a selector that matches
+      nothing is valid. So for every hop ask "what does this select, and does anything carry that
+      label right now?" `kubectl get endpointslices`, `kubectl get pods --show-labels` and
+      `kubectl describe networkpolicy` answer it.
 
-  The two failures also look different from the client, and that is the fastest way to tell
-  them apart: a Service without endpoints refuses the connection at once, while a policy drop
-  lets the client wait until it times out.
+      The two failures also look different from the client, and that is the fastest way to tell
+      them apart: a Service without endpoints refuses the connection at once, while a policy drop
+      lets the client wait until it times out.
 
-  **Method.** Test hop by hop and retest after each fix. When a symptom changes from "refused"
-  to "timeout", you fixed something and found the next layer; that is progress, not a failed fix.
+      **Method.** Test hop by hop and retest after each fix. When a symptom changes from "refused"
+      to "timeout", you fixed something and found the next layer; that is progress, not a failed fix.
 
-  **The stuck rollout.** `kubectl rollout status` waits, `kubectl get pods` shows a new Pod that
-  is running and never ready, and its log names what it cannot reach. The variable came from a
-  ConfigMap through `envFrom`, so the fix is in the ConfigMap, followed by a rollout restart:
-  environment variables are read when a container starts.
+      **The stuck rollout.** `kubectl rollout status` waits, `kubectl get pods` shows a new Pod that
+      is running and never ready, and its log names what it cannot reach. The variable came from a
+      ConfigMap through `envFrom`, so the fix is in the ConfigMap, followed by a rollout restart:
+      environment variables are read when a container starts.
 
-  **Either fix for the policy is valid.** Restoring the label keeps the policy as security wrote
-  it. Changing the policy to select `app: frontend` is equally correct here; in a real team it
-  is the change that needs a review. What is not acceptable, and what the checks reject, is
-  deleting the policy or admitting everything.
+      **Either fix for the policy is valid.** Restoring the label keeps the policy as security wrote
+      it. Changing the policy to select `app: frontend` is equally correct here; in a real team it
+      is the change that needs a review. What is not acceptable, and what the checks reject, is
+      deleting the policy or admitting everything.
 
-  **In reality.** Whether a NetworkPolicy has any effect depends on the network plugin; with a
-  plugin that does not implement policies, the object is accepted and ignored. This cluster's
-  plugin enforces them. And real incidents rarely announce how many causes they have: the
-  ticket's "several people changed things" was the hint to keep testing after the first fix.
+      **In reality.** Whether a NetworkPolicy has any effect depends on the network plugin; with a
+      plugin that does not implement policies, the object is accepted and ignored. This cluster's
+      plugin enforces them. And real incidents rarely announce how many causes they have: the
+      ticket's "several people changed things" was the hint to keep testing after the first fix.
 ```
 
-## 14. Not covered yet
+## 15. Not covered yet
 
 | Topic | Phase |
 |---|---|
-| Figures: `figure` blocks in the ticket, in debrief blocks and in lesson steps (`view`, `compare`, `scene`, `diagram`; `PLAN.md` §6.5 and §8), their validation and their text units | 10c |
 | `lesson`, `card` and `exam` items; prediction prompts; the rest of `pack.yaml` (tracks, skill descriptions) | 11 |
 | Authoring style guide and content tooling | 14 |
 | Topology parameters (none exist yet; the templates are in §5.1) | the first phase whose content needs a variant |

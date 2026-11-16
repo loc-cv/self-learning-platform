@@ -54,6 +54,9 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   close: <path d="M5.5 5.5l9 9M14.5 5.5l-9 9" />,
+  prev: <path d="M12.5 4.5L7 10l5.5 5.5" />,
+  next: <path d="M7.5 4.5L13 10l-5.5 5.5" />,
+  enlarge: <path d="M11.5 3.5h5v5M8.5 16.5h-5v-5M16.5 3.5l-5.5 5.5M3.5 16.5L9 11" />,
   list: <path d="M7 5.5h9M7 10h9M7 14.5h9M3.8 5.5h.4M3.8 10h.4M3.8 14.5h.4" />,
   gear: (
     <>

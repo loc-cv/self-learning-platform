@@ -25,15 +25,51 @@ world:
         kind: Namespace
         metadata:
           name: {{ns}}
-ticket: |
-  The `{{app}}` team needs its service running in the namespace `{{ns}}`, which already exists.
+ticket:
+  - text: |
+      The `{{app}}` team needs its service running in the namespace `{{ns}}`, which already exists.
 
-  - A Deployment named `{{app}}` runs {{replicas}} replicas of the image `nginx:1.31.8`. Its Pods
-    carry the label `app={{app}}`, and the container declares port 80.
-  - A Service named `{{app}}`, of type ClusterIP, makes the Pods reachable inside the cluster on
-    port {{port}} and forwards that traffic to port 80 of the Pods.
-  - Keep the manifests in `/root/{{app}}.yaml` on `controlplane`. The team will rebuild the
-    application from that file alone: applying it must bring back both objects in `{{ns}}`.
+      - A Deployment named `{{app}}` runs {{replicas}} replicas of the image `nginx:1.31.8`. Its Pods
+        carry the label `app={{app}}`, and the container declares port 80.
+      - A Service named `{{app}}`, of type ClusterIP, makes the Pods reachable inside the cluster on
+        port {{port}} and forwards that traffic to port 80 of the Pods.
+      - Keep the manifests in `/root/{{app}}.yaml` on `controlplane`. The team will rebuild the
+        application from that file alone: applying it must bring back both objects in `{{ns}}`.
+  - figure:
+      kind: diagram
+      caption: What the team asked for.
+      alt: >-
+        In namespace {{ns}}, a Deployment {{app}} owns {{replicas}} Pods of nginx:1.31.8 labelled
+        app={{app}}, and a ClusterIP Service {{app}} on port {{port}} sends traffic to port 80 of
+        those Pods.
+      entities:
+        - { id: ns, shape: scope, kind: Namespace, label: "{{ns}}", state: healthy }
+        - id: deployment
+          shape: workload
+          kind: Deployment
+          label: "{{app}}"
+          container: ns
+          state: healthy
+          status: "{{replicas}}/{{replicas}}"
+          facts: [{ label: Images, value: nginx:1.31.8 }]
+        - id: service
+          shape: endpoint
+          kind: Service
+          label: "{{app}}"
+          container: ns
+          state: healthy
+          status: ClusterIP
+          facts: [{ label: Port(s), value: "{{port}}/TCP" }]
+        - id: pods
+          shape: process
+          kind: Pods
+          label: "{{replicas}} replicas"
+          container: ns
+          state: healthy
+          facts: [{ label: Labels, value: "app={{app}}" }, { label: Ports, value: 80/TCP }]
+      relations:
+        - { type: owns, from: deployment, to: pods }
+        - { type: routesTo, from: service, to: pods }
 hints:
   - >-
     Two objects with different jobs: one keeps the Pods running, the other gives them one stable
@@ -170,33 +206,52 @@ solutions:
           assert: k8s.rollout
           with: { namespace: "{{ns}}", name: "{{app}}" }
         timeout: 3m
-debrief: |
-  **What was asked.** Two objects and a file. The Deployment keeps {{replicas}} Pods of
-  `nginx:1.31.8` running; the Service gives them one address inside the cluster; the file is the
-  record from which the whole application can be rebuilt.
+debrief:
+  - figure:
+      kind: view
+      of: solved
+      focus: { scope: "{{ns}}", kinds: [Namespace, Deployment, ReplicaSet, Pod, Service] }
+      show: [{ fact: Labels, keys: [app] }, { fact: Selector, keys: [app] }, Port(s)]
+      notes:
+        - on: "Deployment/{{app}}"
+          text: >-
+            Owns a ReplicaSet, which owns the Pods. Each finds its Pods by the label `app={{app}}`
+            (the ReplicaSet adds `pod-template-hash`), which the Pod template must carry; nothing
+            points at a Pod by name.
+        - on: "Service/{{app}}"
+          text: >-
+            Finds its Pods by the same label. The EndpointSlice controller writes the address of
+            every ready Pod it selects, with `targetPort` 80 resolved, into EndpointSlices: what
+            arrives on port {{port}} of the cluster IP lands on port 80 of a Pod.
+      caption: >-
+        The solved world: the chain of owners from the Deployment to its Pods, and the Service
+        sending traffic to every ready Pod.
+      alt: >-
+        In namespace {{ns}}, Deployment {{app}} owns a ReplicaSet that owns {{replicas}} running
+        Pods labelled app={{app}}, spread over node01 and node02. Service {{app}}, selector
+        app={{app}}, port {{port}}, routes to each of them.
+  - figure:
+      kind: view
+      of: now
+      focus: { scope: "{{ns}}", kinds: [Namespace, Deployment, ReplicaSet, Pod, Service] }
+      show: [{ fact: Labels, keys: [app] }, { fact: Selector, keys: [app] }, Port(s)]
+      caption: Your world as you left it, drawn the same way.
+      alt: >-
+        Namespace {{ns}} in the learner's own world now, with its Deployments, ReplicaSets, Pods
+        and Services.
+  - text: |
+      `kubectl -n {{ns}} get endpointslices` answers "is my Service connected to my Pods?",
+      whatever the YAML says.
 
-  **Mental model.** Nothing in Kubernetes points at a Pod by name. The Deployment owns its Pods
-  through the label selector in `spec.selector`, which must match the labels of its Pod
-  template. The Service finds Pods the same way: the EndpointSlice controller lists the ready
-  Pods that match the Service's `selector` and writes their addresses, with the `targetPort`
-  resolved, into EndpointSlices. `port` is what clients connect to on the Service's cluster IP;
-  `targetPort` is where the traffic lands in the Pod. So `kubectl -n {{ns}} get endpointslices`
-  answers "is my Service connected to my Pods?", whatever the YAML says.
+      **The file.** The grader deleted both objects and applied `/root/{{app}}.yaml` alone. Without
+      `metadata.namespace` in the file, the objects would have landed in `default`: the `-n` you
+      typed while working is not in the file. Generating with `-n {{ns}} --dry-run=client -o yaml`
+      writes it in.
 
-  **The file.** The grader deleted both objects and applied `/root/{{app}}.yaml` on its own. A
-  manifest without `metadata.namespace` would then have created the objects in `default`,
-  because the namespace you passed with `-n` while working is not in the file. Generating with
-  `-n {{ns}} --dry-run=client -o yaml` writes the namespace into each manifest.
+      **Reference solutions.** `kubectl create deployment` and `kubectl create service clusterip`
+      with `--dry-run=client -o yaml` write correct drafts fast, which the exam rewards; the
+      Service selects `app={{app}}`, the label the Deployment's Pods get. Writing by hand is as
+      valid. `kubectl expose` works only against the live Deployment.
 
-  **Reference solutions.** `kubectl create deployment` and `kubectl create service clusterip`
-  with `--dry-run=client -o yaml` produce correct drafts quickly, which is what the exam rewards.
-  `create service clusterip {{app}}` selects `app={{app}}`, the label `create deployment {{app}}`
-  puts on the Pods. Writing the manifests by hand is equally valid. `kubectl expose deployment`
-  also creates a matching Service, but only against the live Deployment, so its manifest still
-  has to end up in the file.
-
-  **In reality.** `containerPort` is informational: a container listens on whatever port its
-  process opens, and the Service would reach port 80 even without the declaration. Declaring it
-  documents the Pod and lets a Service refer to the port by name. The generated drafts contain
-  `status: {}` and `resources: {}`; both are harmless, and many teams delete them before
-  committing the file.
+      **In reality** `containerPort` is informational: the container listens wherever its process
+      does. The drafts' `status: {}` and `resources: {}` are harmless.

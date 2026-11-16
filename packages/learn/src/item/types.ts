@@ -2,6 +2,7 @@
 // The schema (schema.ts) is what guarantees these shapes; the types only name them.
 
 import type { Json } from '@simlab/kernel';
+import type { Block, VariantBlock } from '../figure/types.ts';
 
 export type JsonObject = { [key: string]: Json };
 
@@ -32,7 +33,8 @@ export interface CheckDecl {
 
 export type SolutionDecl = Step[] | { name: string; steps: Step[]; when?: When };
 
-export type Debrief = string | { text: string; when?: When }[];
+/** Markdown, or blocks of prose and figures (§10, §11). */
+export type Debrief = string | Block[];
 
 export interface World {
   topology: string;
@@ -53,7 +55,8 @@ export interface Item {
   difficulty: number;
   targetMinutes: number;
   world: World;
-  ticket: string;
+  /** Markdown, or blocks of prose and figures (§10, §11). */
+  ticket: string | Block[];
   hints: Hint[];
   checks: CheckDecl[];
   solutions: SolutionDecl[];
@@ -93,9 +96,9 @@ export interface Variant {
   startTime?: number;
   entry?: { machine: string; user: string };
   setup: Step[];
-  ticket: string;
+  ticket: VariantBlock[];
   hints: string[];
   checks: Check[];
   solutions: Solution[];
-  debrief: string;
+  debrief: VariantBlock[];
 }

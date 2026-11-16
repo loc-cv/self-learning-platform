@@ -4,7 +4,7 @@
 
 import type { Checkpoint, GapEvent, LoggedInput, Millis, SessionLog, ViewModel } from '@simlab/kernel';
 import type { EditorRequest } from '@simlab/host';
-import type { GradeReport } from '@simlab/learn';
+import type { GradeReport, RenderedBlock } from '@simlab/learn';
 
 /** What the page keeps in browser storage to resume an attempt by replay (§2.8). */
 export interface StoredAttempt {
@@ -49,7 +49,8 @@ export interface LabInfo {
   seed: number;
   targetMinutes: number;
   difficulty: number;
-  ticket: string;
+  /** Prose and rendered figures (figures of the start world, built when the attempt starts). */
+  ticket: RenderedBlock[];
   hintCount: number;
   /** For gap records: the page does not load the engine packages. */
   engine: { version: string; kubernetes: string };
@@ -85,7 +86,8 @@ export interface OpenEditor {
 export type LabResult =
   | { action: 'check'; report: GradeReport }
   | { action: 'hint'; hint?: { index: number; text: string } }
-  | { action: 'debrief'; text: string }
+  /** Prose and figures, rendered when asked for: `now` is the world at that moment. */
+  | { action: 'debrief'; blocks: RenderedBlock[] }
   | { action: 'solutions'; solutions: { name: string; text: string }[] }
   | { action: 'reset' };
 

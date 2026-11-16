@@ -1,7 +1,7 @@
 // A tiny plugin for testing the runner without a domain: one slice with a counter and a file
 // list, a topology, steps, checks and a fault over it. Test support only.
 
-import { CHECK, createRegistry, FAULT, STEP, TOPOLOGY, type CheckSpec, type Contribution, type FaultSpec, type Json, type Plugin, type Registry, type SliceSpec, type StepSpec, type TopologySpec } from '@simlab/kernel';
+import { CHECK, createRegistry, FAULT, STEP, TOPOLOGY, VIEW, type CheckSpec, type Contribution, type FaultSpec, type Json, type Plugin, type Registry, type SliceSpec, type StepSpec, type TopologySpec, type ViewProviderSpec } from '@simlab/kernel';
 import type { Item } from './item/types.ts';
 
 export interface CounterSlice {
@@ -108,6 +108,26 @@ const zero: FaultSpec = {
   },
 };
 
+/** The box and its counter, for figures: the counter's state is healthy from 5 up. */
+const view: ViewProviderSpec = {
+  name: 'counter',
+  view(world) {
+    const c = world.slices['counter'] as CounterSlice | undefined;
+    if (!c) return { kinds: [], entities: [], relations: [] };
+    return {
+      kinds: [
+        { kind: 'counter.Box', shape: 'host', label: 'Box', plural: 'Boxes' },
+        { kind: 'counter.Counter', shape: 'process', label: 'Counter', plural: 'Counters', placedIn: 'counter.Box', unplaced: 'Counters with no box' },
+      ],
+      entities: [
+        { id: 'box', kind: 'counter.Box', label: 'box', state: 'healthy', facts: [] },
+        { id: 'box/counter', kind: 'counter.Counter', label: 'counter', container: 'box', state: c.value >= 5 ? 'healthy' : 'degraded', status: String(c.value), facts: [{ label: 'Value', value: String(c.value) }, { label: 'Touched', value: String(c.touched) }] },
+      ],
+      relations: [],
+    };
+  },
+};
+
 export const counterPlugin: Plugin = {
   name: 'counter',
   slice: {
@@ -129,6 +149,7 @@ export const counterPlugin: Plugin = {
     [STEP]: [bump, later, unsupported, failing] as unknown as Contribution[],
     [CHECK]: [atLeast, unchanged, vandal, broken] as unknown as Contribution[],
     [FAULT]: [zero] as unknown as Contribution[],
+    [VIEW]: [view] as unknown as Contribution[],
   },
 };
 
@@ -161,6 +182,11 @@ export function counterItem(): Item {
       { name: 'Bump once', when: { how: 'once' }, steps: [{ bump: '{{target}}' }] },
       { name: 'Bump twice', when: { how: 'twice' }, steps: [{ bump: 2 }, { bump: '{{target}}' }] },
     ],
-    debrief: [{ text: 'Counters go up.' }, { text: 'You bumped once.', when: { how: 'once' } }, { text: 'You bumped twice.', when: { how: 'twice' } }],
+    debrief: [
+      { figure: { kind: 'compare', left: { of: 'start' }, right: { of: 'solved' }, show: ['Value'], caption: 'The counter went from 1 to {{target}}.', alt: 'The counter on the box, before and after.' } },
+      { text: 'Counters go up.' },
+      { text: 'You bumped once.', when: { how: 'once' } },
+      { text: 'You bumped twice.', when: { how: 'twice' } },
+    ],
   } as unknown as Item;
 }

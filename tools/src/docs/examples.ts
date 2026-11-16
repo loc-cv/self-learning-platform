@@ -21,7 +21,7 @@ export function extractBlocks(markdown: string): Block[] {
   return blocks;
 }
 
-/** docs/SCENARIO_FORMAT.md §12: normalization and hash of an English text unit. */
+/** docs/SCENARIO_FORMAT.md §13: normalization and hash of an English text unit. */
 export function sourceHash(text: string): string {
   const normalized = text
     .replace(/\r\n/g, '\n')

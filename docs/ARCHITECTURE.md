@@ -659,7 +659,7 @@ interface ViewEntity {
   scope?: string;                // a scope entity it belongs to when that is not its container
   state: ViewState;              // healthy | progressing | degraded | failed | unknown
   status?: string;               // the state in the domain's words, from the code that prints it
-  facts: { label: string; value: string }[];
+  facts: { label: string; value: string; items?: string[] }[];   // items: a list fact's entries
   muted?: boolean; system?: boolean;
 }
 interface ViewRelation { type: RelationType; from: string; to: string }  // owns, selects, routesTo, runsOn, mounts, uses
@@ -676,6 +676,19 @@ sends no request, so building a view changes nothing.
 
 The web worker builds the view of the session world while the X-ray is open, at most every 200 ms
 of real time and only sends it when it changed (`apps/web/src/engine/session.ts`, D-119).
+
+**Figures** (phase 10c, `docs/SCENARIO_FORMAT.md` §11) are views too, rendered in `learn`
+(`packages/learn/src/figure/`), which knows them only through the kernel's view contract:
+`focusView` trims a view model to a figure's focus and facts, `markPanel` resolves its highlights and
+notes, `markChanges` marks the differences of a comparison, `renderFigure` builds the worlds a
+figure names (`figureWorlds`: `start` and `solved` on forks of the baseline, made once per lab;
+`now` the session world, read only) and runs a scene on a fork of its own with the runner's steps,
+taking one view per frame. The result is a `RenderedFigure`, plain data: the worker renders the
+ticket's figures when the attempt starts and the debrief's when it is asked for
+(`Lab.render`), and sends them to the page, whose `Figure` component draws them with the X-ray's
+renderer in its still mode. Content validation renders every figure of every sampled variant
+(`figureProblems`). Rendering never touches the session world or the input log, and the worker
+does not count the time it takes as the learner's (D-121, D-122).
 
 ## 3. Host substrate
 

@@ -142,11 +142,21 @@ export function validateSchema(root: Schema, value: Json): SchemaError[] {
    * kind key the value has (a `run` step with a bad modifier is reported as a `run` step).
    */
   const closest = (tries: SchemaError[][], path: string, alternatives?: Json[]): SchemaError[] => {
-    if (alternatives && isObject(value)) {
+    if (alternatives) {
+      // A discriminator: the alternative whose `const` property the value has (`kind: scene`).
+      const own = at(value, path);
+      const named = alternatives.findIndex((a) => {
+        const props = isObject(a) && isObject(a['properties']) ? a['properties'] : undefined;
+        return props !== undefined && isObject(own) && Object.entries(props).some(([k, p]) => isObject(p) && p['const'] !== undefined && own[k] === p['const']);
+      });
+      if (named >= 0 && (tries[named]?.length ?? 0) > 0) return tries[named] as SchemaError[];
       const keyed = alternatives.findIndex((a, i) => isObject(a) && Array.isArray(a['required']) && typeof a['required'][0] === 'string' && pathValueHas(path, a['required'][0] as string) && (tries[i]?.length ?? 0) > 0);
       if (keyed >= 0) return tries[keyed] as SchemaError[];
     }
-    const best = tries.reduce((a, b) => (b.length < a.length ? b : a));
+    // Alternatives of the value's own type, whose errors are deeper inside it, come first.
+    const deeper = tries.filter((t) => t.length > 0 && t.every((e) => e.path !== path));
+    const pool = deeper.length > 0 ? deeper : tries;
+    const best = pool.reduce((a, b) => (b.length < a.length ? b : a));
     return best.length === 1 ? best : [{ path, message: 'matches none of the allowed forms' }];
   };
 

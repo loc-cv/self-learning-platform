@@ -158,8 +158,7 @@ export const ITEM_SCHEMA_BASE: { [key: string]: Json } = {
       "additionalProperties": false
     },
     "ticket": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "#/$defs/prose"
     },
     "hints": {
       "type": "array",
@@ -228,32 +227,7 @@ export const ITEM_SCHEMA_BASE: { [key: string]: Json } = {
       }
     },
     "debrief": {
-      "oneOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "properties": {
-              "text": {
-                "type": "string",
-                "minLength": 1
-              },
-              "when": {
-                "$ref": "#/$defs/when"
-              }
-            },
-            "required": [
-              "text"
-            ],
-            "additionalProperties": false
-          }
-        }
-      ]
+      "$ref": "#/$defs/prose"
     }
   },
   "required": [
@@ -273,6 +247,559 @@ export const ITEM_SCHEMA_BASE: { [key: string]: Json } = {
   ],
   "additionalProperties": false,
   "$defs": {
+    "prose": {
+      "description": "Markdown, or a list of blocks of prose and figures (docs/SCENARIO_FORMAT.md \u00a710, \u00a711)",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/block"
+          }
+        }
+      ]
+    },
+    "block": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "when": {
+              "$ref": "#/$defs/when"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "figure": {
+              "$ref": "#/$defs/figure"
+            },
+            "when": {
+              "$ref": "#/$defs/when"
+            }
+          },
+          "required": [
+            "figure"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "entityRef": {
+      "type": "string",
+      "pattern": "^[^/]+/.+$",
+      "description": "`<Kind>/<name>` as the view names them; `*` matches any run of characters"
+    },
+    "focus": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        },
+        "kinds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "entities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/entityRef"
+          }
+        },
+        "system": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "showItem": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fact": {
+              "type": "string",
+              "minLength": 1
+            },
+            "keys": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "fact",
+            "keys"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "note": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "$ref": "#/$defs/entityRef"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "divergence": {
+          "type": "string",
+          "pattern": "^DIV-[0-9]{3}$"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "diagramNote": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "string",
+          "description": "The id of a diagram entity"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "divergence": {
+          "type": "string",
+          "pattern": "^DIV-[0-9]{3}$"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "figure": {
+      "oneOf": [
+        {
+          "title": "view",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "view"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "of": {
+              "enum": [
+                "start",
+                "solved",
+                "now"
+              ]
+            },
+            "focus": {
+              "$ref": "#/$defs/focus"
+            },
+            "show": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/showItem"
+              }
+            },
+            "highlight": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/entityRef"
+              }
+            },
+            "notes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "caption",
+            "alt",
+            "of"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "compare",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "compare"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "left": {
+              "type": "object",
+              "properties": {
+                "of": {
+                  "enum": [
+                    "start",
+                    "solved",
+                    "now"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "of"
+              ],
+              "additionalProperties": false
+            },
+            "right": {
+              "type": "object",
+              "properties": {
+                "of": {
+                  "enum": [
+                    "start",
+                    "solved",
+                    "now"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "of"
+              ],
+              "additionalProperties": false
+            },
+            "focus": {
+              "$ref": "#/$defs/focus"
+            },
+            "show": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/showItem"
+              }
+            },
+            "highlight": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/entityRef"
+              }
+            },
+            "notes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "caption",
+            "alt",
+            "left",
+            "right"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "scene",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "scene"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "world": {
+              "type": "object",
+              "properties": {
+                "topology": {
+                  "type": "string"
+                },
+                "setup": {
+                  "$ref": "#/$defs/steps"
+                }
+              },
+              "required": [
+                "setup"
+              ],
+              "additionalProperties": false
+            },
+            "frames": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "steps": {
+                    "$ref": "#/$defs/steps"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "highlight": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/entityRef"
+                    }
+                  },
+                  "notes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/$defs/note"
+                    }
+                  }
+                },
+                "required": [
+                  "caption"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "focus": {
+              "$ref": "#/$defs/focus"
+            },
+            "show": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/showItem"
+              }
+            },
+            "highlight": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/entityRef"
+              }
+            },
+            "notes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "caption",
+            "alt",
+            "frames"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "diagram",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "diagram"
+            },
+            "caption": {
+              "type": "string",
+              "minLength": 1
+            },
+            "alt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entities": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "shape": {
+                    "enum": [
+                      "host",
+                      "scope",
+                      "workload",
+                      "process",
+                      "endpoint",
+                      "store",
+                      "rule"
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "container": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "enum": [
+                      "healthy",
+                      "progressing",
+                      "degraded",
+                      "failed",
+                      "unknown"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "facts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "value": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "shape",
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "owns",
+                      "selects",
+                      "routesTo",
+                      "runsOn",
+                      "mounts",
+                      "uses"
+                    ]
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "highlight": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/diagramNote"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "caption",
+            "alt",
+            "entities"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
     "when": {
       "type": "object",
       "minProperties": 1,

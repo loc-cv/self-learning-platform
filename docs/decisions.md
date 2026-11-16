@@ -995,7 +995,7 @@ the package entry point, because the boundary rule allows no subpath imports; `c
 engine package. Phase 10 decides how items reach the browser (the server, or the bundler).
 
 **D-101 — The worked examples are validated with stand-ins for planned checks.** The examples in
-`docs/SCENARIO_FORMAT.md` §13 use `host.unit`, `net.reach`, `k8s.nodeReady` and faults that later
+`docs/SCENARIO_FORMAT.md` §14 use `host.unit`, `net.reach`, `k8s.nodeReady` and faults that later
 phases build, so the generated schema refuses them. `tools/src/docs/planned.ts` registers
 stand-ins with the phase 00 argument schemas and the phase that builds each; a test fails as soon
 as a real plugin registers one of the names, so the stand-in is removed in the same phase.
@@ -1191,3 +1191,58 @@ to the state is always the printer's (`printPod` STATUS, `printNode` STATUS, `pr
 READY), so the X-ray never contradicts `kubectl get`. The namespaces Kubernetes creates for itself
 (`kube-system`, `kube-public`, `kube-node-lease`) and everything in them are `system`: the X-ray's
 default filter hides them.
+
+## Phase 10c (2026-11-17)
+
+**D-121 — Figures are rendered in `learn`, from the kernel's view contract.** A figure names worlds
+and parts of them; `learn` builds those worlds with its own runner (forks of the baseline, a scene's
+fork or small world) and trims the view models with `focusView`, so the logic is domain-agnostic
+and runs in the worker, in Node for content validation and in tests alike. Kinds, scopes and facts
+are matched by the labels the view model gives them (`Deployment`, `shop`, `Taints`), and entities
+by `<Kind>/<label>` with `*` wildcards; `learn` never names a kind. The web app receives
+`RenderedFigure`s, plain data, and draws them with `ViewCanvas` in a `still` mode (fixed height,
+facts on the cards, no zoom, pan or selection), as the 10b handoff proposed, rather than a second
+renderer.
+
+**D-122 — When figures are built, and what they may cost.** The ticket's figures are rendered when
+an attempt starts (start-world views only, a few milliseconds); the debrief's when the learner asks
+for it: the solved world runs the first reference solution on a fork (about 0.2 s), a scene builds
+its own world and runs its frames (about 0.4 s for the rollout scene). The worker resets its real
+clock after rendering, so virtual time does not jump by the time it took. `start` and `solved` are
+built once per lab and kept. A figure that cannot be built shows its caption, its alt text and the
+problem in its place; content validation makes that a defect, so a learner should never see one.
+
+**D-123 — The focus pulls in placement containers, and nothing else.** A figure that selects Pods but
+not Nodes would otherwise draw every scheduled Pod in the "Pods with no node" lane, which would be
+false. An entity whose kind is `placedIn` a container kind keeps that container in the figure; any
+other container outside the focus is dropped and its content moves up (a Node without its machine).
+The focus's own scopes are kept as containers. Facts are drawn only when `show` names them, and a
+list fact (`items`) can be cut to some keys, because a kubeadm node carries six labels and a figure
+about `disktype` needs one.
+
+**D-124 — What a ticket's figure may be.** A `view` of `start` or `now`, or a `diagram`; never the
+solved world, a comparison or a scene, all of which show the change that fixes the problem. A
+ticket's `view` must write `show` (`[]` for none), so a reviewer sees which facts it reveals; the
+cards' state glyphs and status words are always drawn, so the focus must leave out what would give
+the cause away (the broken-rollout ticket shows the Deployment and the Service, not the Pods whose
+image pull fails). Every variant's debrief must open with a figure (`PLAN.md` §5).
+
+**D-125 — A `now` figure may be empty; other worlds may not.** The learner may have deleted what a
+figure of `now` selects; it then draws an empty panel. Content validation, where `now` stands for
+the untouched start, still requires the focus to select something. A scene's frame must differ from
+the one before in its focused view (without the time), so a scene never shows two identical
+pictures; a step that reports a gap fails the scene as it fails setup.
+
+**D-126 — Scenes step; Replay plays.** Nothing plays when a scene appears. The learner steps with
+Previous and Next; Replay goes back to the first frame and, unless motion is reduced, advances one
+frame every 2.6 s (`FRAME_MS`) until the last, so a caption of two lines can be read. Under reduced
+motion Replay only returns to the first frame. Transitions between frames are the renderer's usual
+motion (`docs/DESIGN.md` §4).
+
+**D-127 — Figure focus uses `scope`, not `namespace`.** `PLAN.md` §8's example wrote `focus: {
+namespace: … }`; the format says `scope`, the view contract's word for a namespace, so the key means
+the same thing in every domain. The example in `PLAN.md` was updated to match.
+
+**D-128 — Figures in a terminal are their caption and alt text.** `npm run lab` prints `[Figure]`,
+the caption and the alt text where a figure stands. An ASCII drawing would be a second renderer to
+keep honest; the alt text is written for exactly this reader.

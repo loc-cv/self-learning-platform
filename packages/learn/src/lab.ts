@@ -5,6 +5,8 @@
 // turns them into the progress log.
 
 import type { Kernel, Millis, Ports, Registry } from '@simlab/kernel';
+import type { RenderedBlock, VariantBlock } from './figure/types.ts';
+import { figureWorlds, renderFigure, renderProblems } from './figure/render.ts';
 import type { Item, Solution, Step, Variant } from './item/types.ts';
 import { variantOf } from './item/variant.ts';
 import { buildBaseline, startSession, type Baseline, type BuildOptions } from './runner/build.ts';
@@ -25,7 +27,8 @@ export interface Lab {
   readonly baseline: Baseline;
   /** The session world; replaced by `reset`. */
   readonly kernel: Kernel;
-  readonly ticket: string;
+  /** The ticket's prose and figures. */
+  readonly ticket: VariantBlock[];
   /** How many hints exist for this variant, and how many were shown. */
   readonly hintCount: number;
   readonly hintsShown: number;
@@ -46,7 +49,13 @@ export interface Lab {
    * learner's terminal). Throws `StepFailure`. For tests and demonstrations.
    */
   run(steps: readonly Step[], label?: string): void;
-  readonly debrief: string;
+  /** The debrief's prose and figures. */
+  readonly debrief: VariantBlock[];
+  /**
+   * Blocks with their figures rendered: `start` and `solved` on forks of the baseline (built once),
+   * scenes on their own forks, `now` from the session world as it is. Nothing is changed.
+   */
+  render(blocks: readonly VariantBlock[]): RenderedBlock[];
   readonly events: readonly LabEvent[];
 }
 
@@ -59,13 +68,15 @@ export interface LabOptions extends BuildOptions {
 export function createLab(item: Item, registry: Registry, options: LabOptions): Lab {
   const variant = variantOf(item, options.seed);
   const baseline = buildBaseline(variant, registry, options);
-  return openLab(baseline, registry, options.ports);
+  return openLab(baseline, registry, options.ports, options);
 }
 
 /** A lab over a baseline that is already built (content validation builds one per seed). */
-export function openLab(baseline: Baseline, registry: Registry, ports?: Ports): Lab {
+export function openLab(baseline: Baseline, registry: Registry, ports?: Ports, build: BuildOptions = {}): Lab {
   const variant = baseline.variant;
   let world = startSession(baseline, ports);
+  const env = { registry, baseline, build };
+  const worlds = figureWorlds(env, () => world.kernel.world);
   let shown = 0;
   let viewed = false;
   const events: LabEvent[] = [{ kind: 'start', t: world.kernel.now }];
@@ -112,6 +123,14 @@ export function openLab(baseline: Baseline, registry: Registry, ports?: Ports): 
       runSteps(world.kernel, steps, { registry, entry: baseline.entry, hub: world.hub, baseline: baseline.kernel.world }, label);
     },
     debrief: variant.debrief,
+    render(blocks) {
+      return blocks.map((b): RenderedBlock => {
+        if (!('figure' in b)) return { text: b.text };
+        const r = renderFigure(b.figure, worlds, env);
+        const problems = renderProblems(r, false);
+        return r.figure && problems.length === 0 ? { figure: r.figure } : { failed: { caption: b.figure.caption, alt: b.figure.alt, problems } };
+      });
+    },
     events,
   };
 }

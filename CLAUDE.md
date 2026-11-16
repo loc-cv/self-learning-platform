@@ -114,11 +114,12 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
                    (src/item the item types, variants and the generated schema with its validator,
                    src/runner steps, check evaluation, grader and baselines, src/lab.ts a learner's
-                   attempt, src/validate.ts content validation, src/testing.ts a counter plugin for tests)
+                   attempt, src/figure figures: blocks, focus and marks, rendering worlds and scenes,
+                   src/validate.ts content validation, src/testing.ts a counter plugin for tests)
 packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml
 apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side, tested in
                    Node), src/app (App, Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
-                   LabPanel, TopBar, ItemPicker, XRay, storage, shortcuts and fullscreen, the probe for tests,
+                   LabPanel, Figure (figures in the ticket and debrief), TopBar, ItemPicker, XRay, storage, shortcuts and fullscreen, the probe for tests,
                    styles.css with the design tokens of docs/DESIGN.md, fonts.ts the bundled font),
                    src/view (the renderer: layout.ts, filter.ts, ViewCanvas.tsx; no domain names),
                    src/protocol.ts (page ↔ worker messages), vite.config.ts (bundles the content packs,
@@ -232,7 +233,7 @@ that first.
 ## Content conventions
 
 - Items live in `packages/content/<pack>/`; the format is specified in `docs/SCENARIO_FORMAT.md`
-  and the style in `docs/AUTHORING.md` (from phase 12).
+  and the style in `docs/AUTHORING.md` (its "Figures" guide from phase 10c; phase 14 completes it).
 - English is canonical. Vietnamese goes in `<id>.vi.yaml` sidecars and reads naturally for a
   Vietnamese DevOps engineer; resource names, commands, flags, paths and code stay in English.
 - Tickets describe a goal or a symptom the way a real ticket would, never the commands to type.

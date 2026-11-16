@@ -5,6 +5,7 @@
 import { initialPrngState, randomOver, type Json } from '@simlab/kernel';
 import { parseDuration, parseStartTime } from './duration.ts';
 import type { Check, CheckDecl, Item, JsonObject, Params, Solution, Step, Variant, When } from './types.ts';
+import { resolveBlocks } from '../figure/blocks.ts';
 
 /** The PRNG stream parameters are drawn from: a function of the item id and the seed only. */
 export function paramStream(id: string): string {
@@ -89,11 +90,6 @@ function resolveCheck(c: CheckDecl, params: Params, where: string): Check {
 
 const text = (value: Json): string => (typeof value === 'string' ? value : JSON.stringify(value));
 
-/** Joins debrief blocks as Markdown paragraphs. */
-function joinBlocks(blocks: string[]): string {
-  return blocks.map((b) => b.replace(/\s+$/, '')).join('\n\n') + '\n';
-}
-
 export function variantOf(item: Item, seed: number, params: Params = resolveParams(item, seed)): Variant {
   const w = item.world;
   const hints: string[] = [];
@@ -106,10 +102,6 @@ export function variantOf(item: Item, seed: number, params: Params = resolvePara
     if (Array.isArray(s)) solutions.push({ steps: resolveSteps(s, params, `solutions[${i}]`) });
     else if (matches(s.when, params)) solutions.push({ name: text(substituteString(s.name, params, `solutions[${i}].name`)), steps: resolveSteps(s.steps, params, `solutions[${i}].steps`) });
   });
-  const debrief =
-    typeof item.debrief === 'string'
-      ? text(substituteString(item.debrief, params, 'debrief'))
-      : joinBlocks(item.debrief.flatMap((b, i) => (matches(b.when, params) ? [text(substituteString(b.text, params, `debrief[${i}]`))] : [])));
   const v: Variant = {
     item,
     seed,
@@ -117,11 +109,11 @@ export function variantOf(item: Item, seed: number, params: Params = resolvePara
     topology: w.topology,
     topologyParams: w.topologyParams ?? {},
     setup: resolveSteps(w.setup, params, 'world.setup'),
-    ticket: text(substituteString(item.ticket, params, 'ticket')),
+    ticket: resolveBlocks(item.ticket, params, 'ticket'),
     hints,
     checks: item.checks.flatMap((c, i) => (matches(c.when, params) ? [resolveCheck(c, params, `checks[${i}]`)] : [])),
     solutions,
-    debrief,
+    debrief: resolveBlocks(item.debrief, params, 'debrief'),
   };
   if (w.startTime !== undefined) v.startTime = parseStartTime(w.startTime);
   if (w.entry) v.entry = { ...w.entry };

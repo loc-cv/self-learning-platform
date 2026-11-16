@@ -3,15 +3,17 @@
 // first, in the words `npm run lab` uses (apps/cli/src/labsession.ts).
 
 import { useEffect, useRef, useState } from 'react';
-import type { CheckReport, GradeReport } from '@simlab/learn';
+import type { CheckReport, GradeReport, RenderedBlock } from '@simlab/learn';
 import type { LabAction, LabInfo, LabState } from '../protocol.ts';
 import { renderInline, renderMarkdown } from './markdown.ts';
 import { Button, Dots, Icon } from './ui.tsx';
+import { Blocks } from './Figure.tsx';
 
 interface Props {
   lab: LabInfo;
   state: LabState;
-  debrief?: string;
+  debrief?: RenderedBlock[];
+  reducedMotion: boolean;
   solutions?: { name: string; text: string }[];
   busy?: LabAction;
   /** A short message from the last action (no more hints). */
@@ -118,7 +120,9 @@ export function LabPanel(p: Props) {
         </div>
       </header>
       <div className="lab-scroll" ref={scroller}>
-        <section className="ticket markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(p.lab.ticket) }} />
+        <section className="ticket">
+          <Blocks blocks={p.lab.ticket} reducedMotion={p.reducedMotion} />
+        </section>
         {p.state.report ? <Report r={p.state.report} /> : null}
         {p.state.hints.length > 0 ? (
           <section className="lab-section">
@@ -140,7 +144,7 @@ export function LabPanel(p: Props) {
             <header className="section-head">
               <h2>Debrief</h2>
             </header>
-            <div className="markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(p.debrief) }} />
+            <Blocks blocks={p.debrief} reducedMotion={p.reducedMotion} />
           </section>
         ) : null}
         {p.solutions ? (

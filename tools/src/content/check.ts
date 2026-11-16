@@ -1,11 +1,12 @@
 // npm run content:check [-- --seeds N] [--verbose] [<item-id> …]
 //
-// Content validation (docs/SCENARIO_FORMAT.md §11) for every item of every pack, or the named
+// Content validation (docs/SCENARIO_FORMAT.md §12) for every item of every pack, or the named
 // ones: the schema and the static rules, then for each seed (1 to N, default 5, plus whatever
 // seeds it takes to reach every value a `when` depends on) setup completes without a `[sim]`
 // notice, the untouched world fails, and every reference solution passes. Exit status 1 when
 // anything is wrong. Part of `npm run check`.
 
+import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { competencyIds, loadPacks, skillIds, type ItemFile } from '@simlab/content';
 import { runSeed, seedsFor, staticProblems, type GradeReport, type Item, type SeedResult } from '@simlab/learn';
@@ -19,10 +20,16 @@ export interface ItemReport {
   ms: number;
 }
 
-export function checkItem(f: ItemFile, opts: { seeds: number; skills: ReadonlySet<string>; competencies: ReadonlySet<string> }): ItemReport {
+/** The ids of the divergence register: the rows of docs/FIDELITY.md that start with `| DIV-NNN |`. */
+export function divergenceIds(): Set<string> {
+  const text = readFileSync(new URL('../../../docs/FIDELITY.md', import.meta.url), 'utf8');
+  return new Set([...text.matchAll(/^\| (DIV-\d{3}) \|/gm)].map((m) => m[1] as string));
+}
+
+export function checkItem(f: ItemFile, opts: { seeds: number; skills: ReadonlySet<string>; competencies: ReadonlySet<string>; divergences?: ReadonlySet<string> }): ItemReport {
   const start = performance.now();
   const report: ItemReport = { id: f.fileId, file: f.file, problems: [], seeds: [], ms: 0 };
-  report.problems.push(...staticProblems(f.raw, { registry: contentRegistry, skills: opts.skills, competencies: opts.competencies, fileId: f.fileId }));
+  report.problems.push(...staticProblems(f.raw, { registry: contentRegistry, skills: opts.skills, competencies: opts.competencies, fileId: f.fileId, divergences: opts.divergences ?? divergenceIds() }));
   if (report.problems.length === 0) {
     const item = f.raw as unknown as Item;
     const { seeds, uncovered } = seedsFor(item, opts.seeds);
@@ -57,7 +64,7 @@ function main(argv: string[]): number {
   const packs = loadPacks();
   const files = packs.flatMap((p) => p.items).filter((f) => ids.length === 0 || ids.includes(f.fileId));
   for (const id of ids) if (!files.some((f) => f.fileId === id)) console.error(`content:check: no item ${id}`);
-  const opts = { seeds, skills: skillIds(packs), competencies: competencyIds() };
+  const opts = { seeds, skills: skillIds(packs), competencies: competencyIds(), divergences: divergenceIds() };
   let bad = ids.length > files.length ? 1 : 0;
   for (const f of files) {
     const r = checkItem(f, opts);

@@ -247,7 +247,7 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
       let result;
       try {
         result = replay(resume.current, () => {
-          lab = openLab(baseline, registry, ports);
+          lab = openLab(baseline, registry, ports, { startTime });
           a.lab = lab;
           return lab.kernel;
         });
@@ -276,7 +276,7 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
       a.inputsAtCheckpoint = log.checkpoints[log.checkpoints.length - 1]?.inputs ?? 0;
       a.checkpointAt = log.checkpoints[log.checkpoints.length - 1]?.t ?? baseline.kernel.now;
     } else {
-      lab = openLab(baseline, registry, ports);
+      lab = openLab(baseline, registry, ports, { startTime });
       a.lab = lab;
       a.recorder = createRecorder(lab.kernel, header);
       a.inputsAtCheckpoint = 0;
@@ -290,7 +290,7 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
     for (const [id] of full.editors) if (host(full).editors[id]?.state !== 'open') full.editors.delete(id);
     push({
       type: 'ready',
-      lab: { id: item.id, title: item.title, seed, targetMinutes: item.targetMinutes, difficulty: item.difficulty, ticket: lab.ticket, hintCount: lab.hintCount, engine: { version: ENGINE_VERSION, kubernetes: KUBERNETES_TAG } },
+      lab: { id: item.id, title: item.title, seed, targetMinutes: item.targetMinutes, difficulty: item.difficulty, ticket: lab.render(lab.ticket), hintCount: lab.hintCount, engine: { version: ENGINE_VERSION, kubernetes: KUBERNETES_TAG } },
       state: labState(full),
       ttys: ttyInfo(full),
       editors: [...full.editors.values()],
@@ -327,7 +327,9 @@ export function createEngine(items: readonly Item[], emit: (m: FromWorker) => vo
       case 'debrief':
         act('debrief');
         a.debriefSeen = true;
-        result = { action, text: a.lab.debrief };
+        // Figures build their worlds on forks (a solution, a scene): the time that takes is not the learner's.
+        result = { action, blocks: a.lab.render(a.lab.debrief) };
+        last = clock();
         break;
       case 'solutions':
         act('solution');

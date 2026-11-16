@@ -1,0 +1,18 @@
+description: A Pod that only the control plane matches waits on its taint; removing the taint schedules it there; the taint is put back.
+setup:
+  - do: kubectl run on-cp --image=nginx:1.27 --overrides='{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""}}}'
+  - until: kubectl get events --field-selector involvedObject.name=on-cp,reason=FailedScheduling -o name
+    match: event
+steps:
+  - run: kubectl get pod on-cp
+  - run: kubectl describe pod on-cp
+  - run: kubectl taint nodes controlplane node-role.kubernetes.io/control-plane-
+  - do: kubectl wait --for=condition=Ready pod/on-cp --timeout=60s
+  - run: kubectl get pod on-cp -o wide
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=on-cp
+  - run: kubectl describe pod on-cp
+    kwok: true
+  - objects: [pod/on-cp]
+  - run: kubectl taint nodes controlplane node-role.kubernetes.io/control-plane:NoSchedule
+  - run: kubectl get node controlplane -o jsonpath={.spec.taints}

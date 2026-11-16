@@ -65,6 +65,8 @@ export const UPSTREAM_SPARSE_PATHS: readonly string[] = [
   'staging/src/k8s.io/pod-security-admission',
   // shared helpers used by kubectl and controllers: tolerations, node affinity, resource math
   'staging/src/k8s.io/component-helpers',
+  // the scheduler framework's interfaces, Status codes and config types (06a)
+  'staging/src/k8s.io/kube-scheduler',
   // CRD types, structural schema validation (20c)
   'staging/src/k8s.io/apiextensions-apiserver/pkg/apis',
   'staging/src/k8s.io/apiextensions-apiserver/pkg/apiserver',

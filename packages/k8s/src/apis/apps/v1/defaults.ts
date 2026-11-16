@@ -1,8 +1,8 @@
-// Defaulting of apps/v1 Deployments and ReplicaSets on the versioned JSON.
-// upstream: pkg/apis/apps/v1/defaults.go SetDefaults_Deployment, SetDefaults_ReplicaSet, and
-// pkg/apis/apps/v1/zz_generated.defaults.go SetObjectDefaults_Deployment /
-// SetObjectDefaults_ReplicaSet: the kind's own defaults, then the pod template's
-// (SetDefaults_PodSpec and the walk below it, never SetDefaults_Pod).
+// Defaulting of apps/v1 Deployments, ReplicaSets and DaemonSets on the versioned JSON.
+// upstream: pkg/apis/apps/v1/defaults.go SetDefaults_Deployment, SetDefaults_ReplicaSet,
+// SetDefaults_DaemonSet, and pkg/apis/apps/v1/zz_generated.defaults.go SetObjectDefaults_Deployment /
+// SetObjectDefaults_ReplicaSet / SetObjectDefaults_DaemonSet: the kind's own defaults, then the pod
+// template's (SetDefaults_PodSpec and the walk below it, never SetDefaults_Pod).
 
 import { isObject, type JsonObject } from '../../../apimachinery/json.ts';
 import { defaultPodTemplateSpec } from '../../core/v1/defaults/pod.ts';
@@ -39,5 +39,21 @@ export function defaultDeployment(d: JsonObject): void {
 export function defaultReplicaSet(rs: JsonObject): void {
   const s = spec(rs);
   if (typeof s.replicas !== 'number') s.replicas = 1;
+  defaultPodTemplateSpec(template(s));
+}
+
+/** SetObjectDefaults_DaemonSet. */
+export function defaultDaemonSet(ds: JsonObject): void {
+  const s = spec(ds);
+  if (!isObject(s.updateStrategy)) s.updateStrategy = {};
+  const strategy = s.updateStrategy as JsonObject;
+  if (typeof strategy.type !== 'string' || strategy.type === '') strategy.type = 'RollingUpdate';
+  if (strategy.type === 'RollingUpdate') {
+    if (!isObject(strategy.rollingUpdate)) strategy.rollingUpdate = {};
+    const ru = strategy.rollingUpdate as JsonObject;
+    if (ru.maxUnavailable === undefined || ru.maxUnavailable === null) ru.maxUnavailable = 1;
+    if (ru.maxSurge === undefined || ru.maxSurge === null) ru.maxSurge = 0;
+  }
+  if (typeof s.revisionHistoryLimit !== 'number') s.revisionHistoryLimit = 10;
   defaultPodTemplateSpec(template(s));
 }

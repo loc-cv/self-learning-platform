@@ -133,9 +133,17 @@ world:
 
 ### 5.1 Topology
 
-`topology` names a registered topology template (`PLAN.md` §7: `kubeadm-1cp-2w` is the default,
-with `controlplane`, `node01`, `node02` and a student workstation). `topologyParams` are validated
-against the schema the topology registers. A topology builds a healthy, settled world.
+`topology` names a registered topology template. `topologyParams` are validated against the
+schema the topology registers. A topology builds a healthy, settled world.
+
+| Topology | Machines | Entry | Parameters |
+|---|---|---|---|
+| `kubeadm-1cp-2w` (the default) | `controlplane` (kubeadm control plane, tainted), `node01`, `node02` | root on `controlplane` | none yet |
+| `kubeadm-1n` | `controlplane`, control plane and worker, untainted | root on `controlplane` | none yet |
+| `ubuntu-1` | `node01`, a plain Ubuntu server | `student` on `node01` | none |
+
+`PLAN.md` §7 also plans a student workstation in `kubeadm-1cp-2w`; it is added by the first phase
+that can reach it (D-055). What each Kubernetes topology contains: `docs/ARCHITECTURE.md` §4.7.
 
 ### 5.2 Entry and start time
 
@@ -1237,6 +1245,6 @@ debrief: |
 |---|---|
 | `lesson`, `card` and `exam` items; prediction prompts; `pack.yaml`; skill definitions | 11 |
 | Authoring style guide and content tooling | 14 |
-| Topology templates and their parameters | 06a, then each phase that adds one |
+| Topology parameters (none exist yet; the templates are in §5.1) | the first phase whose content needs a variant |
 | Image catalog format; any behavior model field beyond §5.4 | 06b |
 | Exam task weights and per-domain scoring | 31 |

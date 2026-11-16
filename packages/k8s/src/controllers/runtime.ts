@@ -94,6 +94,7 @@ function save(ctx: Ctx, st: ControllerState): void {
 
 /** The user a controller acts as: its service account in kube-system. */
 export function controllerUser(spec: ControllerSpec): UserInfo {
+  if (spec.user) return spec.user;
   return {
     username: `system:serviceaccount:kube-system:${spec.serviceAccount}`,
     groups: ['system:serviceaccounts', 'system:serviceaccounts:kube-system', 'system:authenticated'],
@@ -171,7 +172,7 @@ function consume(ctx: Ctx, spec: ControllerSpec, id: string, index: number, subs
   for (const e of takeEvents(ctx, subscription)) {
     const ev: ControllerEvent = { type: e.type, object: e.object, ...(e.old ? { old: e.old } : {}), ...(initial ? { initial: true } : {}) };
     const cause = describeEvent(w.resource, ev);
-    for (const key of w.keys(ev, read)) enqueue(ctx, id, key, spec.latency, cause);
+    for (const key of w.keys(ev, read, (stateOf(ctx, id) as ControllerState).data)) enqueue(ctx, id, key, spec.latency, cause);
   }
   const waiter = ctx.subscribe(watchTopic(subscription), WATCH_EVENT, { controller: id, subscription });
   const st = stateOf(ctx, id) as ControllerState;

@@ -3,10 +3,10 @@
 
 import { bootKernel, createRegistry, DEFAULT_START_TIME, ENGINE_VERSION, TOPOLOGY, type Kernel, type Plugin, type Ports, type SessionHeader, type TopologyInfo, type TopologySpec } from '@simlab/kernel';
 import { hostPlugin } from '@simlab/host';
-import { KUBERNETES_TAG } from '@simlab/k8s';
+import { k8sPlugin, KUBERNETES_TAG } from '@simlab/k8s';
 
-/** Every plugin the tools load. Kubernetes registers its own from phase 05a. */
-export const PLUGINS: Plugin[] = [hostPlugin];
+/** Every plugin the tools load. */
+export const PLUGINS: Plugin[] = [hostPlugin, k8sPlugin];
 
 export const registry = createRegistry(PLUGINS);
 

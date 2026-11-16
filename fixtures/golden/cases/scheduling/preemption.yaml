@@ -1,0 +1,71 @@
+description: Both workers too full for a 1-CPU Pod although it fits their allocatable, so preemption is tried and finds no lower-priority victim; the same with preemptionPolicy Never (which needs a PriorityClass); both are scheduled on node02 once the Pod using it is deleted.
+files:
+  never-without-class.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: never-without-class
+    spec:
+      preemptionPolicy: Never
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          requests:
+            cpu: "1"
+  pods.yaml: |
+    apiVersion: scheduling.k8s.io/v1
+    kind: PriorityClass
+    metadata:
+      name: high-no-preempt
+    value: 1000
+    preemptionPolicy: Never
+    description: Scheduled ahead of others, never preempts.
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: cpu-1
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          requests:
+            cpu: "1"
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: cpu-1-never
+    spec:
+      priorityClassName: high-no-preempt
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          requests:
+            cpu: "1"
+setup:
+  - do: kubectl run fill-node01 --image=nginx:1.27 --overrides='{"spec":{"nodeSelector":{"kubernetes.io/hostname":"node01"},"containers":[{"name":"fill","image":"nginx:1.27","resources":{"requests":{"cpu":"1500m"}}}]}}'
+  - do: kubectl run fill-node02 --image=nginx:1.27 --overrides='{"spec":{"nodeSelector":{"kubernetes.io/hostname":"node02"},"containers":[{"name":"fill","image":"nginx:1.27","resources":{"requests":{"cpu":"1500m"}}}]}}'
+  - do: kubectl wait --for=condition=Ready pod/fill-node01 pod/fill-node02 --timeout=60s
+steps:
+  - run: kubectl create -f never-without-class.yaml
+  - run: kubectl create -f pods.yaml
+  - until: kubectl get events --field-selector reason=FailedScheduling -o name
+    match: '(?:\n.*){1}'
+  - run: kubectl get pods -o wide
+    kwok: true
+  - run: kubectl describe pod cpu-1
+  - run: kubectl describe pod cpu-1-never
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+  - objects: [pod/cpu-1, pod/cpu-1-never]
+  - run: kubectl delete pod fill-node02
+  - do: kubectl wait --for=condition=Ready pod/cpu-1 pod/cpu-1-never --timeout=60s
+  - run: kubectl get pods -o wide
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=cpu-1
+  - run: kubectl get events --field-selector involvedObject.name=cpu-1-never
+  - objects: [pod/cpu-1, pod/cpu-1-never]

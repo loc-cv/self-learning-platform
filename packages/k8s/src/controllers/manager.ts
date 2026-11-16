@@ -46,7 +46,7 @@ export interface ControllerManagerOptions {
 /** Starts the controllers of a controller manager against `server`. */
 export function startControllerManager(ctx: Ctx, server: ApiServerConfig, opts: ControllerManagerOptions = {}): void {
   const instance = opts.instance ?? KUBE_CONTROLLER_MANAGER;
-  const registered = controllerSpecs(ctx).map((s) => s.name);
+  const registered = controllerSpecs(ctx).filter((s) => s.component === 'kube-controller-manager').map((s) => s.name);
   const wanted = opts.controllers ?? registered;
   for (const name of wanted) if (!registered.includes(name)) throw new Error(`unknown controller ${name}`);
   const rank = (n: string): number => {

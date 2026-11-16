@@ -1,0 +1,83 @@
+description: Required node affinity the cluster cannot satisfy (a label no node has; matchFields naming a node that does not exist), preferred node affinity steering a Deployment to node02, and the FailedScheduling Events as events.k8s.io/v1 stores them.
+files:
+  prefers.yaml: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: prefers-node02
+    spec:
+      replicas: 4
+      selector:
+        matchLabels:
+          app: prefers-node02
+      template:
+        metadata:
+          labels:
+            app: prefers-node02
+        spec:
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 80
+                preference:
+                  matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                    - node02
+          containers:
+          - name: app
+            image: nginx:1.27
+  pods.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: affinity-ssd
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: disktype
+                operator: In
+                values:
+                - ssd
+      containers:
+      - name: app
+        image: nginx:1.27
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: affinity-node03
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchFields:
+              - key: metadata.name
+                operator: In
+                values:
+                - node03
+      containers:
+      - name: app
+        image: nginx:1.27
+setup:
+  # The Deployment is placed first, so that no Pod it binds can requeue the pending ones.
+  - do: kubectl create -f prefers.yaml
+  - do: kubectl rollout status deployment/prefers-node02 --timeout=60s
+  - do: kubectl create -f pods.yaml
+  - until: kubectl get events --field-selector reason=FailedScheduling -o name
+    match: '(?:\n.*){1}'
+steps:
+  - run: kubectl get pods -o wide
+    kwok: true
+  - run: kubectl describe pod affinity-ssd
+  - run: kubectl describe pod affinity-node03
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+  - objects: [pod/affinity-ssd, pod/affinity-node03]
+  - request: GET /apis/events.k8s.io/v1/namespaces/default/events?fieldSelector=reason%3DFailedScheduling
+    keep: [kind, apiVersion, items]

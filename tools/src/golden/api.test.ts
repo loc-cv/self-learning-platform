@@ -59,7 +59,7 @@ function check(results: StepResult[], name: string): void {
   }
 }
 
-describe.each(['api/crud', 'api/lifecycle', 'api/validation', 'api/defaults'])('%s', (name) => {
+describe.each(['api/crud', 'api/lifecycle', 'api/validation', 'api/defaults', 'api/daemonset'])('%s', (name) => {
   test('responses equal the real API server', () => {
     check(runRequests(loadFixture(name)), name);
   });

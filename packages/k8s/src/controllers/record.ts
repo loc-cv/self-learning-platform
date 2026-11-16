@@ -123,7 +123,7 @@ function evict<V extends { u: number }>(cache: Record<string, V>): void {
 }
 
 /** A unique event-name timestamp: the clock in ns, counted up within one virtual millisecond. */
-function nextNano(st: RecorderState, now: Millis): bigint {
+export function nextNano(st: { lastNano: string }, now: Millis): bigint {
   let n = BigInt(now) * 1_000_000n;
   const last = BigInt(st.lastNano);
   if (n <= last) n = last + 1n;
@@ -243,7 +243,7 @@ export function recordEvent(ctx: Ctx, rec: RecorderRef, obj: ApiObject, type: Ev
 }
 
 /** GenerateEventName: `<name>.<ns in hex>`, or a UUID when that is not a valid name. */
-function eventName(refName: string, nano: bigint, ctx: Ctx): string {
+export function eventName(refName: string, nano: bigint, ctx: Ctx): string {
   const name = `${refName}.${nano.toString(16)}`;
   if (isDNS1123Subdomain(name).length === 0) return name;
   // uuid.New(): a version 4 UUID.

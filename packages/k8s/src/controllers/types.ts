@@ -33,8 +33,12 @@ export interface Reader {
 export interface WatchSpec {
   /** `group/version/resource`, or `version/resource` for the core group. */
   resource: string;
-  /** The work queue keys an event produces (the controller's event handler). */
-  keys(ev: ControllerEvent, read: Reader): string[];
+  /**
+   * The work queue keys an event produces (the controller's event handler). `data` is the
+   * controller's bookkeeping (SyncCtx.data), read-only here: the scheduler's queueing hints
+   * consult the Pods it holds as unschedulable.
+   */
+  keys(ev: ControllerEvent, read: Reader, data: Readonly<Record<string, Json>>): string[];
 }
 
 export type SyncResult =
@@ -67,12 +71,17 @@ export interface ControllerSpec {
   /** Upstream controller name, as `--controllers` names it: `deployment`, `replicaset`. */
   name: string;
   /** The component that runs it. */
-  component: 'kube-controller-manager';
+  component: 'kube-controller-manager' | 'kube-scheduler';
   /**
    * Service account the controller acts as (kubeadm runs the controller manager with
    * --use-service-account-credentials=true): `deployment-controller`.
    */
   serviceAccount: string;
+  /**
+   * The identity when it is not a service account: kube-scheduler authenticates with its
+   * kubeconfig's client certificate as `system:kube-scheduler`.
+   */
+  user?: { username: string; groups: string[] };
   /** EventSource.Component of its event recorder, when it records events. */
   eventSource?: string;
   watches: WatchSpec[];

@@ -1,0 +1,2151 @@
+# Captured from fixtures/golden/cases/api/daemonset.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: api/daemonset
+description: DaemonSets through the raw API. Defaulting (minimal, kube-proxy as kubeadm writes it, OnDelete, percentages), the template generation annotation, validation of the selector, the update strategy and the pod template, generation on spec, template and metadata changes, the immutable selector, and the status subresource. The real DaemonSet controller writes status in the background, so the case waits for it to observe each generation (its writes show in managedFields, which the differential test ignores, DIV-015), the responses of later steps keep only metadata and spec, and status is only written with PUT, whose response is the status just written. kube-proxy gets no Pods (its ServiceAccount does not exist); the others' Pods never become ready, so their status settles once a generation is observed.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: minimal
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+      status:
+        numberReady: 4
+    code: 201
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: minimal
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 0
+        revisionHistoryLimit: 10
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+  - request: GET /apis/apps/v1/namespaces/default/daemonsets?fieldSelector=status.numberReady%3D0
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: '"status.numberReady" is not a known field selector: only "metadata.name", "metadata.namespace"'
+      reason: BadRequest
+      code: 400
+  - request: POST /apis/apps/v1/namespaces/kube-system/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        labels:
+          k8s-app: kube-proxy
+        name: kube-proxy
+        namespace: kube-system
+      spec:
+        selector:
+          matchLabels:
+            k8s-app: kube-proxy
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+        template:
+          metadata:
+            labels:
+              k8s-app: kube-proxy
+          spec:
+            priorityClassName: system-node-critical
+            containers:
+            - name: kube-proxy
+              image: registry.k8s.io/kube-proxy:v1.37.2
+              imagePullPolicy: IfNotPresent
+              command:
+              - /usr/local/bin/kube-proxy
+              - --config=/var/lib/kube-proxy/config.conf
+              - --hostname-override=$(NODE_NAME)
+              securityContext:
+                privileged: true
+              volumeMounts:
+              - mountPath: /var/lib/kube-proxy
+                name: kube-proxy
+              - mountPath: /run/xtables.lock
+                name: xtables-lock
+                readOnly: false
+              - mountPath: /lib/modules
+                name: lib-modules
+                readOnly: true
+              env:
+                - name: NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
+            hostNetwork: true
+            serviceAccountName: kube-proxy
+            volumes:
+            - name: kube-proxy
+              configMap:
+                name: kube-proxy
+            - name: xtables-lock
+              hostPath:
+                path: /run/xtables.lock
+                type: FileOrCreate
+            - name: lib-modules
+              hostPath:
+                path: /lib/modules
+            tolerations:
+            - operator: Exists
+            nodeSelector:
+              kubernetes.io/os: linux
+    code: 201
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        labels:
+          k8s-app: kube-proxy
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+                f:labels:
+                  .: {}
+                  f:k8s-app: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:k8s-app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"kube-proxy"}:
+                        .: {}
+                        f:command: {}
+                        f:env:
+                          .: {}
+                          k:{"name":"NODE_NAME"}:
+                            .: {}
+                            f:name: {}
+                            f:valueFrom:
+                              .: {}
+                              f:fieldRef: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:securityContext:
+                          .: {}
+                          f:privileged: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                        f:volumeMounts:
+                          .: {}
+                          k:{"mountPath":"/lib/modules"}:
+                            .: {}
+                            f:mountPath: {}
+                            f:name: {}
+                            f:readOnly: {}
+                          k:{"mountPath":"/run/xtables.lock"}:
+                            .: {}
+                            f:mountPath: {}
+                            f:name: {}
+                          k:{"mountPath":"/var/lib/kube-proxy"}:
+                            .: {}
+                            f:mountPath: {}
+                            f:name: {}
+                    f:dnsPolicy: {}
+                    f:hostNetwork: {}
+                    f:nodeSelector: {}
+                    f:priorityClassName: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:serviceAccount: {}
+                    f:serviceAccountName: {}
+                    f:terminationGracePeriodSeconds: {}
+                    f:tolerations: {}
+                    f:volumes:
+                      .: {}
+                      k:{"name":"kube-proxy"}:
+                        .: {}
+                        f:configMap:
+                          .: {}
+                          f:defaultMode: {}
+                          f:name: {}
+                        f:name: {}
+                      k:{"name":"lib-modules"}:
+                        .: {}
+                        f:hostPath:
+                          .: {}
+                          f:path: {}
+                          f:type: {}
+                        f:name: {}
+                      k:{"name":"xtables-lock"}:
+                        .: {}
+                        f:hostPath:
+                          .: {}
+                          f:path: {}
+                          f:type: {}
+                        f:name: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            k8s-app: kube-proxy
+        template:
+          metadata:
+            labels:
+              k8s-app: kube-proxy
+          spec:
+            volumes:
+              - name: kube-proxy
+                configMap:
+                  name: kube-proxy
+                  defaultMode: 420
+              - name: xtables-lock
+                hostPath:
+                  path: /run/xtables.lock
+                  type: FileOrCreate
+              - name: lib-modules
+                hostPath:
+                  path: /lib/modules
+                  type: ""
+            containers:
+              - name: kube-proxy
+                image: registry.k8s.io/kube-proxy:v1.37.2
+                command:
+                  - /usr/local/bin/kube-proxy
+                  - --config=/var/lib/kube-proxy/config.conf
+                  - --hostname-override=$(NODE_NAME)
+                env:
+                  - name: NODE_NAME
+                    valueFrom:
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: spec.nodeName
+                resources: {}
+                volumeMounts:
+                  - name: kube-proxy
+                    mountPath: /var/lib/kube-proxy
+                  - name: xtables-lock
+                    mountPath: /run/xtables.lock
+                  - name: lib-modules
+                    readOnly: true
+                    mountPath: /lib/modules
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+                securityContext:
+                  privileged: true
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            nodeSelector:
+              kubernetes.io/os: linux
+            serviceAccountName: kube-proxy
+            serviceAccount: kube-proxy
+            hostNetwork: true
+            securityContext: {}
+            schedulerName: default-scheduler
+            tolerations:
+              - operator: Exists
+            priorityClassName: system-node-critical
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 0
+        revisionHistoryLimit: 10
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: ondelete
+      spec:
+        selector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values: [ondelete]
+        updateStrategy:
+          type: OnDelete
+          rollingUpdate: {}
+        revisionHistoryLimit: 0
+        minReadySeconds: 10
+        template:
+          metadata:
+            labels:
+              app: ondelete
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 201
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: ondelete
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+              f:spec:
+                f:minReadySeconds: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - ondelete
+        template:
+          metadata:
+            labels:
+              app: ondelete
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: OnDelete
+          rollingUpdate:
+            maxUnavailable: 0
+            maxSurge: 0
+        minReadySeconds: 10
+        revisionHistoryLimit: 0
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: surge
+        annotations:
+          deprecated.daemonset.template.generation: "5"
+          team: infra
+      spec:
+        selector:
+          matchLabels:
+            app: surge
+        updateStrategy:
+          rollingUpdate:
+            maxSurge: 10%
+            maxUnavailable: 0
+        template:
+          metadata:
+            labels:
+              app: surge
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 201
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: surge
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "5"
+          team: infra
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+                  f:team: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: surge
+        template:
+          metadata:
+            labels:
+              app: surge
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 0
+            maxSurge: 10%
+        revisionHistoryLimit: 10
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets?dryRun=All
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: negative
+        annotations:
+          deprecated.daemonset.template.generation: "-3"
+      spec:
+        selector:
+          matchLabels:
+            app: negative
+        template:
+          metadata:
+            labels:
+              app: negative
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 201
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: negative
+        namespace: default
+        uid: <<uid:5>>
+        generation: 1
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: negative
+        template:
+          metadata:
+            labels:
+              app: negative
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 0
+        revisionHistoryLimit: 10
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: badgen
+        annotations:
+          deprecated.daemonset.template.generation: two
+      spec:
+        selector:
+          matchLabels:
+            app: badgen
+        template:
+          metadata:
+            labels:
+              app: badgen
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 400
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet in version "v1" cannot be handled as a DaemonSet: strconv.ParseInt: parsing "two": invalid syntax'
+      reason: BadRequest
+      code: 400
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: noselector
+      spec:
+        template:
+          metadata:
+            labels:
+              app: noselector
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "noselector" is invalid: spec.template.metadata.labels: Invalid value: {"app":"noselector"}: `selector` does not match template `labels`'
+      reason: Invalid
+      details:
+        name: noselector
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"app":"noselector"}: `selector` does not match template `labels`'
+            field: spec.template.metadata.labels
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: mismatch
+      spec:
+        selector:
+          matchLabels:
+            app: one
+        template:
+          metadata:
+            labels:
+              app: two
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "mismatch" is invalid: spec.template.metadata.labels: Invalid value: {"app":"two"}: `selector` does not match template `labels`'
+      reason: Invalid
+      details:
+        name: mismatch
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"app":"two"}: `selector` does not match template `labels`'
+            field: spec.template.metadata.labels
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: empty
+      spec:
+        selector: {}
+        template:
+          metadata:
+            labels:
+              app: empty
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "empty" is invalid: spec.selector: Invalid value: {}: empty selector is invalid for daemonset'
+      reason: Invalid
+      details:
+        name: empty
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: {}: empty selector is invalid for daemonset"
+            field: spec.selector
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: bogus
+      spec:
+        selector:
+          matchLabels:
+            app: bogus
+        updateStrategy:
+          type: Recreate
+        template:
+          metadata:
+            labels:
+              app: bogus
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "bogus" is invalid: spec.updateStrategy: Unsupported value: {"Type":"Recreate","RollingUpdate":null}: supported values: "RollingUpdate", "OnDelete"'
+      reason: Invalid
+      details:
+        name: bogus
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: {"Type":"Recreate","RollingUpdate":null}: supported values: "RollingUpdate", "OnDelete"'
+            field: spec.updateStrategy
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: bogus
+      spec:
+        selector:
+          matchLabels:
+            app: bogus
+        updateStrategy:
+          type: Rolling
+          rollingUpdate:
+            maxUnavailable: 2
+        template:
+          metadata:
+            labels:
+              app: bogus
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "bogus" is invalid: spec.updateStrategy: Unsupported value: {"Type":"Rolling","RollingUpdate":{"MaxUnavailable":2,"MaxSurge":0}}: supported values: "RollingUpdate", "OnDelete"'
+      reason: Invalid
+      details:
+        name: bogus
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: {"Type":"Rolling","RollingUpdate":{"MaxUnavailable":2,"MaxSurge":0}}: supported values: "RollingUpdate", "OnDelete"'
+            field: spec.updateStrategy
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: zero
+      spec:
+        selector:
+          matchLabels:
+            app: zero
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 0
+        template:
+          metadata:
+            labels:
+              app: zero
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "zero" is invalid: spec.updateStrategy.rollingUpdate.maxUnavailable: Required value: cannot be 0 when maxSurge is 0'
+      reason: Invalid
+      details:
+        name: zero
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueRequired
+            message: "Required value: cannot be 0 when maxSurge is 0"
+            field: spec.updateStrategy.rollingUpdate.maxUnavailable
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: both
+      spec:
+        selector:
+          matchLabels:
+            app: both
+        updateStrategy:
+          rollingUpdate:
+            maxSurge: 1
+        template:
+          metadata:
+            labels:
+              app: both
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "both" is invalid: spec.updateStrategy.rollingUpdate.maxSurge: Invalid value: 1: may not be set when maxUnavailable is non-zero'
+      reason: Invalid
+      details:
+        name: both
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: 1: may not be set when maxUnavailable is non-zero"
+            field: spec.updateStrategy.rollingUpdate.maxSurge
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: percent
+      spec:
+        selector:
+          matchLabels:
+            app: percent
+        updateStrategy:
+          rollingUpdate:
+            maxUnavailable: 150%
+            maxSurge: lots
+        template:
+          metadata:
+            labels:
+              app: percent
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "DaemonSet.apps \"percent\" is invalid: [spec.updateStrategy.rollingUpdate.maxSurge: Invalid value: \"lots\": a valid percent string must be a numeric string followed by an ending '%' (e.g. '1%',  or '93%', regex used for validation is '[0-9]+%'), spec.updateStrategy.rollingUpdate.maxUnavailable: Invalid value: \"150%\": must not be greater than 100%]"
+      reason: Invalid
+      details:
+        name: percent
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"lots\": a valid percent string must be a numeric string followed by an ending '%' (e.g. '1%',  or '93%', regex used for validation is '[0-9]+%')"
+            field: spec.updateStrategy.rollingUpdate.maxSurge
+          - reason: FieldValueInvalid
+            message: 'Invalid value: "150%": must not be greater than 100%'
+            field: spec.updateStrategy.rollingUpdate.maxUnavailable
+      code: 422
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: Bad_Name
+      spec:
+        minReadySeconds: -1
+        revisionHistoryLimit: -2
+        selector:
+          matchLabels:
+            app: bad
+        updateStrategy:
+          rollingUpdate:
+            maxUnavailable: -1
+        template:
+          metadata:
+            labels:
+              app: bad
+          spec:
+            restartPolicy: OnFailure
+            activeDeadlineSeconds: 30
+            containers:
+            - name: app
+              image: nginx:1.27
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: "DaemonSet.apps \"Bad_Name\" is invalid: [metadata.name: Invalid value: \"Bad_Name\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'), spec.template.spec.restartPolicy: Unsupported value: \"OnFailure\": supported values: \"Always\", spec.template.spec.activeDeadlineSeconds: Forbidden: activeDeadlineSeconds in DaemonSet is not Supported, spec.minReadySeconds: Invalid value: -1: must be greater than or equal to 0, spec.updateStrategy.rollingUpdate.maxUnavailable: Invalid value: -1: must be greater than or equal to 0, spec.revisionHistoryLimit: Invalid value: -2: must be greater than or equal to 0]"
+      reason: Invalid
+      details:
+        name: Bad_Name
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: \"Bad_Name\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')"
+            field: metadata.name
+          - reason: FieldValueNotSupported
+            message: 'Unsupported value: "OnFailure": supported values: "Always"'
+            field: spec.template.spec.restartPolicy
+          - reason: FieldValueForbidden
+            message: "Forbidden: activeDeadlineSeconds in DaemonSet is not Supported"
+            field: spec.template.spec.activeDeadlineSeconds
+          - reason: FieldValueInvalid
+            message: "Invalid value: -1: must be greater than or equal to 0"
+            field: spec.minReadySeconds
+          - reason: FieldValueInvalid
+            message: "Invalid value: -1: must be greater than or equal to 0"
+            field: spec.updateStrategy.rollingUpdate.maxUnavailable
+          - reason: FieldValueInvalid
+            message: "Invalid value: -2: must be greater than or equal to 0"
+            field: spec.revisionHistoryLimit
+      code: 422
+  - request: PUT /apis/apps/v1/namespaces/default/daemonsets/minimal
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: minimal
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.28
+    keep:
+      - kind
+      - apiVersion
+      - metadata
+      - spec
+    code: 200
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: minimal
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 2
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "2"
+        managedFields:
+          - manager: kube-controller-manager
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:currentNumberScheduled: {}
+                f:desiredNumberScheduled: {}
+                f:numberUnavailable: {}
+                f:observedGeneration: {}
+                f:updatedNumberScheduled: {}
+            subresource: status
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 0
+        revisionHistoryLimit: 10
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"spec":{"minReadySeconds":5,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"20%"}}}}'
+    keep:
+      - kind
+      - apiVersion
+      - metadata
+      - spec
+    code: 200
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: minimal
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 3
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "2"
+        managedFields:
+          - manager: kube-controller-manager
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:currentNumberScheduled: {}
+                f:desiredNumberScheduled: {}
+                f:numberUnavailable: {}
+                f:observedGeneration: {}
+            subresource: status
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+              f:spec:
+                f:minReadySeconds: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 20%
+            maxSurge: 0
+        minReadySeconds: 5
+        revisionHistoryLimit: 10
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"metadata":{"labels":{"tier":"node"},"annotations":{"note":"metadata only","deprecated.daemonset.template.generation":"9"}}}'
+    keep:
+      - kind
+      - apiVersion
+      - metadata
+      - spec
+    code: 200
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: minimal
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 3
+        creationTimestamp: <<time>>
+        labels:
+          tier: node
+        annotations:
+          deprecated.daemonset.template.generation: "2"
+          note: metadata only
+        managedFields:
+          - manager: kube-controller-manager
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:currentNumberScheduled: {}
+                f:desiredNumberScheduled: {}
+                f:numberUnavailable: {}
+                f:observedGeneration: {}
+            subresource: status
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+                  f:note: {}
+                f:labels:
+                  .: {}
+                  f:tier: {}
+              f:spec:
+                f:minReadySeconds: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 20%
+            maxSurge: 0
+        minReadySeconds: 5
+        revisionHistoryLimit: 10
+  - request: PUT /apis/apps/v1/namespaces/default/daemonsets/minimal
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: minimal
+        labels:
+          tier: node
+      spec:
+        minReadySeconds: 5
+        selector:
+          matchLabels:
+            app: minimal
+        updateStrategy:
+          rollingUpdate:
+            maxUnavailable: 20%
+        template:
+          metadata:
+            labels:
+              app: minimal
+              extra: "yes"
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.28
+    keep:
+      - kind
+      - apiVersion
+      - metadata
+      - spec
+    code: 200
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: minimal
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 4
+        creationTimestamp: <<time>>
+        labels:
+          tier: node
+        annotations:
+          deprecated.daemonset.template.generation: "3"
+        managedFields:
+          - manager: kube-controller-manager
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:currentNumberScheduled: {}
+                f:desiredNumberScheduled: {}
+                f:numberUnavailable: {}
+                f:observedGeneration: {}
+            subresource: status
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+                f:labels:
+                  .: {}
+                  f:tier: {}
+              f:spec:
+                f:minReadySeconds: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                      f:extra: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+              extra: yes
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 20%
+            maxSurge: 0
+        minReadySeconds: 5
+        revisionHistoryLimit: 10
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"spec":{"selector":{"matchLabels":{"app":"other"}},"template":{"metadata":{"labels":{"app":"other"}}}}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "minimal" is invalid: spec.selector: Invalid value: {"matchLabels":{"app":"other"}}: field is immutable'
+      reason: Invalid
+      details:
+        name: minimal
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: 'Invalid value: {"matchLabels":{"app":"other"}}: field is immutable'
+            field: spec.selector
+      code: 422
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"spec":{"updateStrategy":{"type":"OnDelete","rollingUpdate":null}}}'
+    keep:
+      - kind
+      - apiVersion
+      - metadata
+      - spec
+    code: 200
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: minimal
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        generation: 5
+        creationTimestamp: <<time>>
+        labels:
+          tier: node
+        annotations:
+          deprecated.daemonset.template.generation: "3"
+        managedFields:
+          - manager: kube-controller-manager
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:currentNumberScheduled: {}
+                f:desiredNumberScheduled: {}
+                f:numberUnavailable: {}
+                f:observedGeneration: {}
+            subresource: status
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  .: {}
+                  f:deprecated.daemonset.template.generation: {}
+                f:labels:
+                  .: {}
+                  f:tier: {}
+              f:spec:
+                f:minReadySeconds: {}
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                      f:extra: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:type: {}
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+              extra: yes
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.28
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: OnDelete
+        minReadySeconds: 5
+        revisionHistoryLimit: 10
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"spec":{"updateStrategy":{"type":"RollingUpdate","rollingUpdate":{"maxUnavailable":0,"maxSurge":0}}}}'
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "minimal" is invalid: spec.updateStrategy.rollingUpdate.maxUnavailable: Required value: cannot be 0 when maxSurge is 0'
+      reason: Invalid
+      details:
+        name: minimal
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueRequired
+            message: "Required value: cannot be 0 when maxSurge is 0"
+            field: spec.updateStrategy.rollingUpdate.maxUnavailable
+      code: 422
+  - request: PUT /apis/apps/v1/namespaces/kube-system/daemonsets/kube-proxy/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        labels:
+          k8s-app: kube-proxy
+      spec:
+        minReadySeconds: 99
+      status:
+        currentNumberScheduled: 3
+        numberMisscheduled: 0
+        desiredNumberScheduled: 3
+        numberReady: 3
+        observedGeneration: 1
+        updatedNumberScheduled: 3
+        numberAvailable: 3
+        collisionCount: 2
+    code: 200
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        labels:
+          k8s-app: kube-proxy
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+        managedFields:
+          - manager: kube-controller-manager
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:status:
+                f:desiredNumberScheduled: {}
+                f:observedGeneration: {}
+            subresource: status
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations: {}
+                f:labels:
+                  .: {}
+                  f:k8s-app: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:k8s-app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"kube-proxy"}:
+                        .: {}
+                        f:command: {}
+                        f:env:
+                          .: {}
+                          k:{"name":"NODE_NAME"}:
+                            .: {}
+                            f:name: {}
+                            f:valueFrom:
+                              .: {}
+                              f:fieldRef: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:securityContext:
+                          .: {}
+                          f:privileged: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                        f:volumeMounts:
+                          .: {}
+                          k:{"mountPath":"/lib/modules"}:
+                            .: {}
+                            f:mountPath: {}
+                            f:name: {}
+                            f:readOnly: {}
+                          k:{"mountPath":"/run/xtables.lock"}:
+                            .: {}
+                            f:mountPath: {}
+                            f:name: {}
+                          k:{"mountPath":"/var/lib/kube-proxy"}:
+                            .: {}
+                            f:mountPath: {}
+                            f:name: {}
+                    f:dnsPolicy: {}
+                    f:hostNetwork: {}
+                    f:nodeSelector: {}
+                    f:priorityClassName: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:serviceAccount: {}
+                    f:serviceAccountName: {}
+                    f:terminationGracePeriodSeconds: {}
+                    f:tolerations: {}
+                    f:volumes:
+                      .: {}
+                      k:{"name":"kube-proxy"}:
+                        .: {}
+                        f:configMap:
+                          .: {}
+                          f:defaultMode: {}
+                          f:name: {}
+                        f:name: {}
+                      k:{"name":"lib-modules"}:
+                        .: {}
+                        f:hostPath:
+                          .: {}
+                          f:path: {}
+                          f:type: {}
+                        f:name: {}
+                      k:{"name":"xtables-lock"}:
+                        .: {}
+                        f:hostPath:
+                          .: {}
+                          f:path: {}
+                          f:type: {}
+                        f:name: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  f:deprecated.daemonset.template.generation: {}
+              f:status:
+                f:collisionCount: {}
+                f:currentNumberScheduled: {}
+                f:numberAvailable: {}
+                f:numberReady: {}
+                f:updatedNumberScheduled: {}
+            subresource: status
+      spec:
+        selector:
+          matchLabels:
+            k8s-app: kube-proxy
+        template:
+          metadata:
+            labels:
+              k8s-app: kube-proxy
+          spec:
+            volumes:
+              - name: kube-proxy
+                configMap:
+                  name: kube-proxy
+                  defaultMode: 420
+              - name: xtables-lock
+                hostPath:
+                  path: /run/xtables.lock
+                  type: FileOrCreate
+              - name: lib-modules
+                hostPath:
+                  path: /lib/modules
+                  type: ""
+            containers:
+              - name: kube-proxy
+                image: registry.k8s.io/kube-proxy:v1.37.2
+                command:
+                  - /usr/local/bin/kube-proxy
+                  - --config=/var/lib/kube-proxy/config.conf
+                  - --hostname-override=$(NODE_NAME)
+                env:
+                  - name: NODE_NAME
+                    valueFrom:
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: spec.nodeName
+                resources: {}
+                volumeMounts:
+                  - name: kube-proxy
+                    mountPath: /var/lib/kube-proxy
+                  - name: xtables-lock
+                    mountPath: /run/xtables.lock
+                  - name: lib-modules
+                    readOnly: true
+                    mountPath: /lib/modules
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+                securityContext:
+                  privileged: true
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            nodeSelector:
+              kubernetes.io/os: linux
+            serviceAccountName: kube-proxy
+            serviceAccount: kube-proxy
+            hostNetwork: true
+            securityContext: {}
+            schedulerName: default-scheduler
+            tolerations:
+              - operator: Exists
+            priorityClassName: system-node-critical
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 0
+        revisionHistoryLimit: 10
+      status:
+        currentNumberScheduled: 3
+        numberMisscheduled: 0
+        desiredNumberScheduled: 3
+        numberReady: 3
+        observedGeneration: 1
+        updatedNumberScheduled: 3
+        numberAvailable: 3
+        collisionCount: 2
+  - request: PUT /apis/apps/v1/namespaces/kube-system/daemonsets/kube-proxy/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        labels:
+          k8s-app: kube-proxy
+      status:
+        currentNumberScheduled: -1
+        numberMisscheduled: -2
+        desiredNumberScheduled: 3
+        numberReady: -3
+        observedGeneration: -4
+        updatedNumberScheduled: -5
+        numberAvailable: -6
+        numberUnavailable: -7
+        collisionCount: 2
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "kube-proxy" is invalid: [status.currentNumberScheduled: Invalid value: -1: must be greater than or equal to 0, status.numberMisscheduled: Invalid value: -2: must be greater than or equal to 0, status.numberReady: Invalid value: -3: must be greater than or equal to 0, status.observedGeneration: Invalid value: -4: must be greater than or equal to 0, status.updatedNumberScheduled: Invalid value: -5: must be greater than or equal to 0, status.numberAvailable: Invalid value: -6: must be greater than or equal to 0, status.numberUnavailable: Invalid value: -7: must be greater than or equal to 0]'
+      reason: Invalid
+      details:
+        name: kube-proxy
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: -1: must be greater than or equal to 0"
+            field: status.currentNumberScheduled
+          - reason: FieldValueInvalid
+            message: "Invalid value: -2: must be greater than or equal to 0"
+            field: status.numberMisscheduled
+          - reason: FieldValueInvalid
+            message: "Invalid value: -3: must be greater than or equal to 0"
+            field: status.numberReady
+          - reason: FieldValueInvalid
+            message: "Invalid value: -4: must be greater than or equal to 0"
+            field: status.observedGeneration
+          - reason: FieldValueInvalid
+            message: "Invalid value: -5: must be greater than or equal to 0"
+            field: status.updatedNumberScheduled
+          - reason: FieldValueInvalid
+            message: "Invalid value: -6: must be greater than or equal to 0"
+            field: status.numberAvailable
+          - reason: FieldValueInvalid
+            message: "Invalid value: -7: must be greater than or equal to 0"
+            field: status.numberUnavailable
+      code: 422
+  - request: PUT /apis/apps/v1/namespaces/kube-system/daemonsets/kube-proxy/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        labels:
+          k8s-app: kube-proxy
+      status:
+        currentNumberScheduled: 3
+        numberMisscheduled: 0
+        desiredNumberScheduled: 3
+        numberReady: 3
+    code: 422
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: 'DaemonSet.apps "kube-proxy" is invalid: status.collisionCount: Invalid value: 0: cannot be decremented'
+      reason: Invalid
+      details:
+        name: kube-proxy
+        group: apps
+        kind: DaemonSet
+        causes:
+          - reason: FieldValueInvalid
+            message: "Invalid value: 0: cannot be decremented"
+            field: status.collisionCount
+      code: 422
+  - request: PUT /apis/apps/v1/namespaces/default/daemonsets/surge/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: surge
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+          team: platform
+      spec:
+        minReadySeconds: 3
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+        conditions:
+        - type: Progressing
+          status: "True"
+          reason: Testing
+          lastTransitionTime: "2026-11-13T09:00:00Z"
+    code: 200
+    response:
+      kind: DaemonSet
+      apiVersion: apps/v1
+      metadata:
+        name: surge
+        namespace: default
+        uid: <<uid:4>>
+        resourceVersion: <<rv>>
+        generation: 1
+        creationTimestamp: <<time>>
+        annotations:
+          deprecated.daemonset.template.generation: "5"
+          team: platform
+        managedFields:
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations: {}
+              f:spec:
+                f:revisionHistoryLimit: {}
+                f:selector: {}
+                f:template:
+                  f:metadata:
+                    f:labels:
+                      .: {}
+                      f:app: {}
+                  f:spec:
+                    f:containers:
+                      k:{"name":"app"}:
+                        .: {}
+                        f:image: {}
+                        f:imagePullPolicy: {}
+                        f:name: {}
+                        f:resources: {}
+                        f:terminationMessagePath: {}
+                        f:terminationMessagePolicy: {}
+                    f:dnsPolicy: {}
+                    f:restartPolicy: {}
+                    f:schedulerName: {}
+                    f:securityContext: {}
+                    f:terminationGracePeriodSeconds: {}
+                f:updateStrategy:
+                  f:rollingUpdate:
+                    .: {}
+                    f:maxSurge: {}
+                    f:maxUnavailable: {}
+                  f:type: {}
+          - manager: unknown
+            operation: Update
+            apiVersion: apps/v1
+            time: <<time>>
+            fieldsType: FieldsV1
+            fieldsV1:
+              f:metadata:
+                f:annotations:
+                  f:deprecated.daemonset.template.generation: {}
+                  f:team: {}
+              f:status:
+                f:conditions:
+                  .: {}
+                  k:{"type":"Progressing"}:
+                    .: {}
+                    f:lastTransitionTime: {}
+                    f:reason: {}
+                    f:status: {}
+                    f:type: {}
+                f:currentNumberScheduled: {}
+                f:desiredNumberScheduled: {}
+            subresource: status
+      spec:
+        selector:
+          matchLabels:
+            app: surge
+        template:
+          metadata:
+            labels:
+              app: surge
+          spec:
+            containers:
+              - name: app
+                image: nginx:1.27
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                imagePullPolicy: IfNotPresent
+            restartPolicy: Always
+            terminationGracePeriodSeconds: 30
+            dnsPolicy: ClusterFirst
+            securityContext: {}
+            schedulerName: default-scheduler
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 0
+            maxSurge: 10%
+        revisionHistoryLimit: 10
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+        conditions:
+          - type: Progressing
+            status: "True"
+            lastTransitionTime: <<time>>
+            reason: Testing
+  - request: DELETE /apis/apps/v1/namespaces/default/daemonsets/ondelete
+    code: 200
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Success
+      details:
+        name: ondelete
+        group: apps
+        kind: daemonsets
+        uid: <<uid:3>>

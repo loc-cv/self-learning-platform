@@ -420,6 +420,10 @@ steps:
                   f:app: {}
                   f:tier: {}
   - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%3Done
+    keep:
+      - kind
+      - apiVersion
+      - items
     code: 200
     response:
       kind: ConfigMapList
@@ -454,6 +458,10 @@ steps:
             k: unconditional
             k2: v2
   - request: GET /api/v1/namespaces/default/configmaps?labelSelector=app%20in%20(two%2Cthree)%2C!patched
+    keep:
+      - kind
+      - apiVersion
+      - items
     code: 200
     response:
       kind: ConfigMapList
@@ -502,6 +510,10 @@ steps:
                       .: {}
                       f:app: {}
   - request: GET /api/v1/namespaces/default/configmaps?labelSelector=tier
+    keep:
+      - kind
+      - apiVersion
+      - items
     code: 200
     response:
       kind: ConfigMapList
@@ -559,6 +571,10 @@ steps:
       reason: BadRequest
       code: 400
   - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name%3Dcm3
+    keep:
+      - kind
+      - apiVersion
+      - items
     code: 200
     response:
       kind: ConfigMapList
@@ -586,6 +602,10 @@ steps:
                       f:app: {}
                       f:tier: {}
   - request: GET /api/v1/namespaces/default/configmaps?fieldSelector=metadata.name!%3Dcm3%2Cmetadata.namespace%3Ddefault&labelSelector=app
+    keep:
+      - kind
+      - apiVersion
+      - items
     code: 200
     response:
       kind: ConfigMapList

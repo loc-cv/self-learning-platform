@@ -346,8 +346,10 @@ kubelet output: fixtures list it under `kwokAuthored`, and steps and objects tha
 `kwok: true` (`docs/FIDELITY.md` §6.5).
 
 **D-037 — Scheduling ties are a token, not a pinned node.** With two identical workers the
-scheduler picks among equal scores at random (upstream: `pkg/scheduler/schedule_one.go`
-`selectHost`). A case that needs `kubectl run` as typed, without a node selector, marks the steps
+scheduler's choice among equal scores varies between runs: it filters nodes in parallel goroutines
+and appends each feasible node when its goroutine finishes, and the score heap then breaks ties by
+that order (upstream: `pkg/scheduler/schedule_one.go` findNodesThatPassFilters,
+`framework/sorted_nodes.go`; corrected in phase 06a, which found no `selectHost` in v1.37). A case that needs `kubectl run` as typed, without a node selector, marks the steps
 whose output shows the placement `anyWorker: true`: `node01`/`node02` become `<<node>>` and their
 addresses `<<ip>>`. Cases where the node matters pin it with a node selector or `nodeName`.
 
@@ -487,3 +489,75 @@ and Pod names equal the real cluster's for the same template. The hash of a temp
 timestamps depends on the controller manager's time zone; the simulator models UTC, Go's
 fallback when the container has no `/etc/localtime` (expected for kubeadm's static Pod image, not
 verified on a running cluster).
+
+**D-054 — The events.k8s.io broadcaster's periodic work runs on an exact grid, and only while a
+series exists.** client-go's `tools/events` broadcaster runs `finishSeries` every 6 minutes and
+`refreshExistingEventSeries` every 30 minutes with `wait.UntilWithContext` from
+`StartRecordingToSinkWithContext`, on goroutines whose periods drift by the time each run takes.
+`packages/k8s/src/controllers/events.ts` keeps the cache in the k8s slice per component and puts
+the ticks exactly on the grid from the broadcaster's start (`startEventsBroadcaster`, or its first
+event). A kernel event is pending only while a cached event has a series; dropping single events
+from the cache, the only other thing a tick does, is applied lazily as of the latest tick
+whenever the broadcaster next acts, which gives the same result. A tick goes before an event
+recorded at the same instant; where both loops tick, `finishSeries` goes first (a finished series
+is then not also refreshed). Cache keys are visited in code-unit order (Go: random map order).
+The series patch is a JSON merge patch with the same result as upstream's strategic merge patch
+(D-052). The broadcaster writes at the instant an event is recorded; its retries (transport
+errors, AlreadyExists after a series' fallback create) cannot occur without a transport and are
+left out. A stopped broadcaster drops events until started again and keeps its event-name clock,
+so a restart at the same virtual instant still names events uniquely.
+
+## Phase 06a (2026-11-16)
+
+**D-055 — Topologies are data: a ClusterDef and one builder.** `packages/k8s/src/topology/`
+defines a cluster as a `ClusterDef` (machines with their role, address, Pod CIDR and machine IDs;
+network ranges; whether the control-plane taint was removed; the entry) and builds every one with
+`buildCluster`. Two are registered: `kubeadm-1cp-2w` and `kubeadm-1n`, a single untainted node, as
+the kubeadm guide's "control plane node isolation" step leaves a one-machine cluster. The values
+D-033 fixed for the oracle now live in the engine; `tools/src/oracle/topology.ts` imports them.
+- The terminal opens as root on `controlplane`, where kubeadm's closing instructions put the
+  admin kubeconfig (`/root/.kube/config`). Every node also has the user `ubuntu`, the default
+  account of Ubuntu's cloud images.
+- `PLAN.md` §7 lists a student workstation in `kubeadm-1cp-2w`. It is not built yet: nothing can
+  use it before `ssh` (phase 25a) or clients outside the cluster (phase 19a), and a machine nobody
+  reaches only slows forks. The first of those phases adds it; content can then set
+  `entry: { machine: workstation, … }` as `docs/SCENARIO_FORMAT.md` §5 shows.
+- No topology parameters yet (`params` is the empty schema); the first one comes with the first
+  item that needs a variant (e.g. `networkPolicy`, phase 19a/29a).
+
+**D-056 — kube-scheduler runs on the controller runtime with upstream's queue semantics.**
+`packages/k8s/src/scheduler/`: the runtime's queue is the active queue (5 ms latency, as D-047).
+A failed Pod is held as unschedulable with the plugins that rejected it and is requeued only when
+one of their queueing hints (EventsToRegister) says Queue for a watched Node or Pod event, when its
+own update matters, or by the leftover flush (30 s grid, after 5 minutes). SchedulerPopFromBackoffQ
+is on in v1.37, so a requeued Pod is retried at once while nothing else waits; the 1–10 s backoff
+applies only when other Pods are queued. Filters, their order, reason strings, status codes and the
+FitError and preemption messages are ported exactly; the default profile's other filters (volumes,
+DRA, topology spread, inter-Pod affinity, declared features) pass for the simulated Pods.
+Scoring ports TaintToleration, NodeAffinity, NodeResourcesFit (LeastAllocated), BalancedAllocation
+and ImageLocality with upstream's integer arithmetic; PodTopologySpread (its system default
+constraints) and InterPodAffinity are phase 20b, so placement among workers can differ from a real
+cluster's when those would break a tie. Ties: the order of feasible nodes is drawn from the PRNG
+stream `k8s.scheduler.filter-order` (D-037), and the score heap is replayed as Go's container/heap.
+Preemption itself is phase 20b; with no PriorityClasses every Pod has priority 0 and has no victims,
+which is what the messages say. The scheduler writes its events through the events.k8s.io recorder
+(D-054) as `default-scheduler`/`default-scheduler-<host>`, binds with the Pod's uid as a
+precondition (which `pods/binding` now checks), and writes PodScheduled=False only when it changed.
+The node lifecycle controller's NoSchedule tainting pass exists because cordoning goes through it:
+its latency (20 ms) keeps the order the golden capture shows, where the scheduler retries an
+uncordoned node before the `node.kubernetes.io/unschedulable` taint is gone.
+
+**D-057 — The cluster is what the real kubeadm writes, captured, minus what has no model yet.**
+`npm run kubeadm:capture` runs the real kubeadm v1.37.2 `init --dry-run` unprivileged (a user and
+UTS namespace, `KUBEADM_INIT_DRYRUN_DIR`) and generates `packages/k8s/src/topology/kubeadm/
+reference.ts`: static Pod manifests (text and objects), kubeconfigs, kubelet files and the 28 API
+objects. The topology writes the files and creates the objects through the API server.
+Left out until their phases: certificate data (kubeconfig `*-data` lines, `cluster-info`'s CA,
+`/etc/kubernetes/pki`; 25b, 28) and RBAC objects (20a). A joined worker's kubelet.conf follows the
+kubelet's bootstrap code (rank 2). The control plane's mirror Pods are built from the manifests
+the way the kubelet does (name suffix, config annotations, Node owner, the NoExecute toleration)
+and kube-proxy's Pods the way the DaemonSet controller does, both seeded as running; their
+`kubernetes.io/config.hash` is an FNV-128a of the manifest, not of the Go struct dump (DIV-019).
+CoreDNS is created by the controllers and bound by the scheduler, and stays Pending until the
+kubelet (06b). There is no CNI agent, so Nodes have no NetworkUnavailable condition; phase 29a
+installs the modeled plugins.

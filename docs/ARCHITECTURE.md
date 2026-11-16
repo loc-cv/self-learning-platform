@@ -331,7 +331,7 @@ interface Random {
   output seeded from the hash (§2.7) of the world seed and the stream name. `int(n)` uses
   rejection sampling, so it has no modulo bias. A test pins the generator to the reference
   algorithm's output.
-- A stream is identified by a name: `k8s.names`, `k8s.scheduler.tiebreak`, `host.pids`.
+- A stream is identified by a name: `k8s.names`, `k8s.scheduler.filter-order`, `host.pids`.
 - A stream's initial state is a pure function of `(world.seed, name)`. It does not depend on the
   order in which streams are first used, so adding a draw in one subsystem never changes what
   another subsystem draws.
@@ -1160,8 +1160,12 @@ interface K8sSlice {
   controllers: Table<ControllerState>;
   /** Event recorder (correlator) state per controller (§4.3). */
   recorders: Table<RecorderState>;
-  // Added by later phases: scheduler and kubelet state, runtimes (sandboxes, containers, images
-  // per node), network (kube-proxy and CNI state per node).
+  /** events.k8s.io/v1 broadcaster state (isomorphic-event cache, series) per component (§4.3). */
+  eventBroadcasters: Table<EventBroadcasterState>;
+  /** Serving API servers by `<address>:<port>` (the topology records its own; phase 27 derives it). */
+  apiServers: Table<ApiServerConfig>;
+  // The scheduler's state is its ControllerState (§4.3). Added by later phases: kubelet state,
+  // runtimes (sandboxes, containers, images per node), network (kube-proxy and CNI state per node).
 }
 ```
 
@@ -1327,7 +1331,8 @@ flowchart TB
 ### 4.3 Controller runtime
 
 Code: `packages/k8s/src/controllers/` — `types.ts` (the contract), `runtime.ts` (queues, watches,
-sync dispatch, retries, start and stop), `record.ts` (the event recorder), `manager.ts`
+sync dispatch, retries, start and stop), `record.ts` (the core/v1 event recorder), `events.ts`
+(the events.k8s.io/v1 event recorder), `manager.ts`
 (kube-controller-manager's start order), `catalog.ts` (the controllers the plugin contributes
 under the registry kind `k8s.controller`), one directory per controller.
 
@@ -1423,11 +1428,32 @@ sequenceDiagram
   upstream. Modeled: the LRU caches evict by a use counter, `PopAny` takes the oldest key, the
   asynchronous broadcaster writes within the sync, and event names use the virtual clock in
   nanoseconds made unique within a millisecond.
+- **events.k8s.io events** (kube-scheduler's `Scheduled` and `FailedScheduling`) go through
+  `events.ts`, a port of client-go's `tools/events` recorder and broadcaster. There is no
+  correlator: an event with the same type, action, reason, reporting controller and instance,
+  `regarding` and `related` as a cached one (the note does not count) is isomorphic. The second
+  occurrence adds `series: {count: 2, lastObservedTime}` to the first Event with a patch (a
+  create under the first name if the Event is gone); later occurrences only count in the cache.
+  The broadcaster's periodic work, on a grid from its start, writes a series' final count at the
+  first 6-minute tick more than 6 minutes after its last observation and forgets it, rewrites
+  every series every 30 minutes, and forgets single events at the first tick more than 6 minutes
+  after them. A kernel event is pending only while a series is cached (`k8s.events.tick`);
+  singletons are forgotten lazily. Modeled choices: D-054.
 - Controllers act as their own identity and go through authorization like any client.
-- The **scheduler** (phase 06a) uses the same runtime: its queue holds unscheduled Pods, `sync`
-  runs the filter and score plugins and binds through `pods/binding`, and a Pod that fits nowhere
-  is retried when a relevant object changes. Every filter decision is a trace record; the
-  `FailedScheduling` event message is built from the filter results with upstream's format.
+- The **scheduler** (`packages/k8s/src/scheduler/`, D-056) uses the same runtime as the
+  component `kube-scheduler` (identity `system:kube-scheduler`). `snapshot.ts` builds the NodeInfos
+  from the store, `cycle.ts` runs one scheduling cycle (PreFilter, Filter with the first rejecting
+  plugin per node, the FitError and preemption messages, Score, the score heap), `plugins/` holds
+  the filter and score plugins, `hints.ts` the queueing hints, `scheduler.ts` the queue: a failed
+  Pod is held as unschedulable with its rejecting plugins in the controller's data, the Pod and
+  Node watch handlers requeue it when a hint says Queue (watch handlers receive the controller's
+  data for this), and the leftover flush retries it after five minutes. It binds through
+  `pods/binding` with the Pod's uid as precondition, writes PodScheduled=False when it changed,
+  and records `Scheduled` and `FailedScheduling` through the events.k8s.io recorder. Trace kinds:
+  `scheduler.filter` (one per node: the plugin, its reasons and status code), `scheduler.score`,
+  `scheduler.bound`, `scheduler.unschedulable`, all caused by the `controller.sync` record.
+  `startScheduler`/`stopScheduler` start and stop it with its events broadcaster; phase 27 ties
+  them to the static Pod's process.
 - Time-driven controllers (CronJob, node lifecycle, HPA, TTL, the Deployment progress deadline)
   schedule their own next wake with `requeueAfter` or `enqueueAfter`, computed from the object,
   so nothing polls.
@@ -1558,6 +1584,23 @@ The data is a JSON string in a TypeScript module, parsed on first use and cached
 state (§2.12). Measured with `npm run bench:schema` (phase 05a, this workstation): the schema is
 223 KiB (26 KiB gzipped) and the registry 28 KiB (3 KiB); parsing the schema takes about 4 ms,
 building all 760 types reachable from the 142 kinds about 17 ms, the registry about 1.4 ms.
+
+
+### 4.7 Cluster topologies
+
+`packages/k8s/src/topology/` (D-055, D-057). A topology is a `ClusterDef` in `cluster.ts`: nodes
+with role, address, Pod CIDR and machine IDs, the network ranges, whether the control-plane taint
+was removed, and the entry. `build.ts` turns any of them into a world, in this order: the machines
+(`createMachine`, `buildUbuntuBase` with the user `ubuntu`), kubeadm's files on each node
+(`kubeadm.ts`: manifests, kubeconfigs, kubelet files, root's kubeconfig, the kubeadm, kubelet and
+kubectl binaries), the API server's bootstrap and its entry in `apiServers`, each Node and its
+Lease as a healthy kubelet leaves them (`nodes.ts`), kubeadm's API objects in kubeadm's order, the
+control plane's mirror Pods and kube-proxy's Pods as running objects, then the controller manager
+and the scheduler, which create and bind CoreDNS. File texts and objects come from the real
+kubeadm (`kubeadm/reference.ts`, generated by `npm run kubeadm:capture`). Registered topologies:
+`kubeadm-1cp-2w` (controlplane, node01, node02; entry root@controlplane) and `kubeadm-1n` (one
+untainted node). Building `kubeadm-1cp-2w` and running ten virtual seconds takes about 0.3 s; a
+fork of the result about 0.3 ms.
 
 ## 5. The hard questions, answered in one place
 

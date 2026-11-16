@@ -1,0 +1,369 @@
+# Captured from fixtures/golden/cases/scheduling/mixed-reasons.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: scheduling/mixed-reasons
+description: Every node fails for a different reason (node01 cordoned, node02 short of memory, the control plane's taint); preemption either finds no victim (the request fits node02's allocatable) or cannot help (it exceeds every node's).
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME       READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      mem-1gi    0/1     Pending   0          <<age>>   <none>   <none>   <none>           <none>
+      mem-8gi    0/1     Pending   0          <<age>>   <none>   <none>   <none>           <none>
+      mem-fill   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod mem-1gi
+    exit: 0
+    stdout: |
+      Name:             mem-1gi
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           run=mem-1gi
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Requests:
+            memory:     1Gi
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl describe pod mem-8gi
+    exit: 0
+    stdout: |
+      Name:             mem-8gi
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           run=mem-8gi
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Requests:
+            memory:     8Gi
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT        MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/mem-1gi   0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/mem-8gi   0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT        SUBOBJECT   SOURCE                                              MESSAGE                                                                                                                                                                                                                                              FIRST SEEN   COUNT   NAME
+      <<age>>     Warning   FailedScheduling   pod/mem-1gi               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.   <<age>>      1       mem-1gi.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/mem-8gi               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.                                                   <<age>>      1       mem-8gi.<<hex>>
+    stderr: ""
+  - objects:
+      - ref: pod/mem-1gi
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            labels:
+              run: mem-1gi
+            name: mem-1gi
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  requests:
+                    memory: 1Gi
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: Burstable
+      - ref: pod/mem-8gi
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            labels:
+              run: mem-8gi
+            name: mem-8gi
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  requests:
+                    memory: 8Gi
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 Insufficient memory, 1 node(s) had untolerated taint(s), 1 node(s) were unschedulable. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: Burstable
+      - ref: node/node01
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Node
+          metadata:
+            annotations:
+              node.alpha.kubernetes.io/ttl: "0"
+              volumes.kubernetes.io/controller-managed-attach-detach: "true"
+            creationTimestamp: <<time>>
+            labels:
+              beta.kubernetes.io/arch: amd64
+              beta.kubernetes.io/os: linux
+              kubernetes.io/arch: amd64
+              kubernetes.io/hostname: node01
+              kubernetes.io/os: linux
+            name: node01
+            resourceVersion: <<rv>>
+            uid: <<uid:3>>
+          spec:
+            podCIDR: <<ip>>/24
+            podCIDRs:
+              - <<ip>>/24
+            taints:
+              - effect: NoSchedule
+                key: node.kubernetes.io/unschedulable
+                timeAdded: <<time>>
+            unschedulable: true
+          status:
+            addresses:
+              - address: 172.16.0.11
+                type: InternalIP
+              - address: node01
+                type: Hostname
+            allocatable:
+              cpu: "2"
+              ephemeral-storage: "18556039957"
+              hugepages-1Gi: "0"
+              hugepages-2Mi: "0"
+              memory: 3907884Ki
+              pods: "110"
+            capacity:
+              cpu: "2"
+              ephemeral-storage: 20134592Ki
+              hugepages-1Gi: "0"
+              hugepages-2Mi: "0"
+              memory: 4010284Ki
+              pods: "110"
+            conditions:
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet is posting ready status
+                reason: KubeletReady
+                status: "True"
+                type: Ready
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet has sufficient memory available
+                reason: KubeletHasSufficientMemory
+                status: "False"
+                type: MemoryPressure
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet has no disk pressure
+                reason: KubeletHasNoDiskPressure
+                status: "False"
+                type: DiskPressure
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: kubelet has sufficient PID available
+                reason: KubeletHasSufficientPID
+                status: "False"
+                type: PIDPressure
+              - lastHeartbeatTime: <<time>>
+                lastTransitionTime: <<time>>
+                message: RouteController created a route
+                reason: RouteCreated
+                status: "False"
+                type: NetworkUnavailable
+            daemonEndpoints:
+              kubeletEndpoint:
+                Port: 10250
+            nodeInfo:
+              architecture: amd64
+              bootID: <<uid:4>>
+              containerRuntimeVersion: containerd://1.7.28
+              kernelVersion: 6.8.0-88-generic
+              kubeProxyVersion: ""
+              kubeletVersion: v1.37.2
+              machineID: 5b0d6c4ee0a94fa8b1c3e2d7f9a10c02
+              operatingSystem: linux
+              osImage: Ubuntu 24.04.3 LTS
+              systemUUID: <<uid:5>>

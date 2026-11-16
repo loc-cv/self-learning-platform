@@ -1,0 +1,521 @@
+# Captured from fixtures/golden/cases/scheduling/preemption.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: scheduling/preemption
+description: Both workers too full for a 1-CPU Pod although it fits their allocatable, so preemption is tried and finds no lower-priority victim; the same with preemptionPolicy Never (which needs a PriorityClass); both are scheduled on node02 once the Pod using it is deleted.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl create -f never-without-class.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (Forbidden): error when creating "never-without-class.yaml": pods "never-without-class" is forbidden: the string value of PreemptionPolicy (Never) must not be provided in pod spec; priority admission controller computed PreemptLowerPriority from the given PriorityClass name
+  - run: kubectl create -f pods.yaml
+    exit: 0
+    stdout: |
+      priorityclass.scheduling.k8s.io/high-no-preempt created
+      pod/cpu-1 created
+      pod/cpu-1-never created
+    stderr: ""
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME          READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      cpu-1         0/1     Pending   0          <<age>>   <none>   <none>   <none>           <none>
+      cpu-1-never   0/1     Pending   0          <<age>>   <none>   <none>   <none>           <none>
+      fill-node01   1/1     Running   0          <<age>>   <<ip>>   node01   <none>           <none>
+      fill-node02   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod cpu-1
+    exit: 0
+    stdout: |
+      Name:             cpu-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Requests:
+            cpu:        1
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 1 Preemption is not helpful for scheduling, 2 No preemption victims found for incoming pod.
+    stderr: ""
+  - run: kubectl describe pod cpu-1-never
+    exit: 0
+    stdout: |
+      Name:                 cpu-1-never
+      Namespace:            default
+      Priority:             1000
+      Priority Class Name:  high-no-preempt
+      Service Account:      default
+      Node:                 <none>
+      Labels:               <none>
+      Annotations:          <none>
+      Status:               Pending
+      IP:                   
+      IPs:                  <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Requests:
+            cpu:        1
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   Burstable
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: not eligible due to preemptionPolicy=Never.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT            MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/cpu-1-never   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: not eligible due to preemptionPolicy=Never.
+      <<age>>     Warning   FailedScheduling   pod/cpu-1         0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 1 Preemption is not helpful for scheduling, 2 No preemption victims found for incoming pod.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT            SUBOBJECT   SOURCE                                              MESSAGE                                                                                                                                                                                                             FIRST SEEN   COUNT   NAME
+      <<age>>     Warning   FailedScheduling   pod/cpu-1                     default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 1 Preemption is not helpful for scheduling, 2 No preemption victims found for incoming pod.   <<age>>      1       cpu-1.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/cpu-1-never               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: not eligible due to preemptionPolicy=Never.                                                                            <<age>>      1       cpu-1-never.<<hex>>
+    stderr: ""
+  - objects:
+      - ref: pod/cpu-1
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: cpu-1
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  requests:
+                    cpu: "1"
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 1 Preemption is not helpful for scheduling, 2 No preemption victims found for incoming pod."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: Burstable
+      - ref: pod/cpu-1-never
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: cpu-1-never
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  requests:
+                    cpu: "1"
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: Never
+            priority: 1000
+            priorityClassName: high-no-preempt
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: not eligible due to preemptionPolicy=Never."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: Burstable
+  - run: kubectl delete pod fill-node02
+    exit: 0
+    stdout: |
+      pod "fill-node02" deleted from default namespace
+    stderr: ""
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME          READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      cpu-1         1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+      cpu-1-never   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+      fill-node01   1/1     Running   0          <<age>>   <<ip>>   node01   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=cpu-1
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT      MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/cpu-1   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: 0/3 nodes are available: 1 Preemption is not helpful for scheduling, 2 No preemption victims found for incoming pod.
+      <<age>>     Normal    Scheduled          pod/cpu-1   Successfully assigned default/cpu-1 to node02
+    stderr: ""
+  - run: kubectl get events --field-selector involvedObject.name=cpu-1-never
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT            MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/cpu-1-never   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient cpu. preemption: not eligible due to preemptionPolicy=Never.
+      <<age>>     Normal    Scheduled          pod/cpu-1-never   Successfully assigned default/cpu-1-never to node02
+    stderr: ""
+  - objects:
+      - ref: pod/cpu-1
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: cpu-1
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  requests:
+                    cpu: "1"
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeName: node02
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Initialized
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Ready
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: ContainersReady
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: PodScheduled
+            containerStatuses:
+              - image: nginx:1.27
+                imageID: ""
+                lastState: {}
+                name: app
+                ready: true
+                restartCount: 0
+                state:
+                  running:
+                    startedAt: <<time>>
+            hostIP: 172.16.0.12
+            hostIPs:
+              - ip: 172.16.0.12
+            phase: Running
+            podIP: <<ip>>
+            podIPs:
+              - ip: <<ip>>
+            qosClass: Burstable
+            startTime: <<time>>
+      - ref: pod/cpu-1-never
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: cpu-1-never
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  requests:
+                    cpu: "1"
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeName: node02
+            preemptionPolicy: Never
+            priority: 1000
+            priorityClassName: high-no-preempt
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Initialized
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Ready
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: ContainersReady
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: PodScheduled
+            containerStatuses:
+              - image: nginx:1.27
+                imageID: ""
+                lastState: {}
+                name: app
+                ready: true
+                restartCount: 0
+                state:
+                  running:
+                    startedAt: <<time>>
+            hostIP: 172.16.0.12
+            hostIPs:
+              - ip: 172.16.0.12
+            phase: Running
+            podIP: <<ip>>
+            podIPs:
+              - ip: <<ip>>
+            qosClass: Burstable
+            startTime: <<time>>

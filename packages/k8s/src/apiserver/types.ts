@@ -101,6 +101,12 @@ export interface Strategy {
   toStorage?(obj: JsonObject, fromVersion: string): JsonObject;
   fromStorage?(obj: ApiObject, toVersion: string): JsonObject;
 
+  /**
+   * A failure of the conversion to the internal type that decoding performs after defaulting
+   * (apiserver's versioning codec Decode: it wins over strict field errors), as the error text:
+   * DaemonSet's template generation annotation (pkg/apis/apps/v1/conversion.go).
+   */
+  conversionError?(obj: JsonObject): string | undefined;
   /** SetObjectDefaults_<Kind>: runs after decoding, on create and update and on every patch. */
   defaults?(obj: JsonObject, s: StrategyCtx): void;
   prepareForCreate?(obj: JsonObject, s: StrategyCtx): void;

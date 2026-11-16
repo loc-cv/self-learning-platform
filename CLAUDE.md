@@ -34,19 +34,22 @@ npm run transcript:capture -- <file|dir>  # write real bash/coreutils output int
 npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
 npm run dev                   # (phase 10) web app with hot reload
 npm start                     # (phase 10) build, then serve the app and the persistence API locally
-npm run play -- --topology ubuntu-1 [--seed N]    # sit in a simulated machine from this terminal (Ctrl-] leaves);
+npm run play -- --topology kubeadm-1cp-2w [--seed N]  # sit in a simulated machine from this terminal (Ctrl-] leaves);
                                                   # records to data/play/, $EDITOR answers vim/nano
 npm run play -- --replay <file>                   # replay a recording; checks it reaches the same world hash
-npm run sim -- --topology ubuntu-1 -c 'cmd1\ncmd2' # run commands without a human and print the screen (how you
+npm run sim -- --topology kubeadm-1cp-2w -c 'cmd1\ncmd2'  # run commands without a human and print the screen (how you
                                                   # verify behavior); also a script file or -, --transcript, --raw,
                                                   # --step 1s; directives @advance 30s, @keys \x03, @resize CxR,
                                                   # @editor <<EOF … EOF (see apps/cli/src/script.ts, --help)
 npm run lab -- <item-id> [--seed N]               # (phase 09) play a content item in this terminal
 npm run content:check         # (phase 09) validate every content item (schema, unsolved fails, solutions pass)
 npm run content:i18n          # (phase 11) report missing or outdated Vietnamese text (never a gate)
-npm run oracle -- up|down|status|fetch   # throwaway real control plane (v1.37.2 binaries + KWOK), no Docker
+npm run oracle -- up|status|fetch        # throwaway real control plane (v1.37.2 binaries + KWOK), no Docker;
+npm run oracle -- down|env [<dir>]       # several can run: each up prints its directory, which down and env take
 npm run golden:capture -- [--check] [<case|dir>]  # run golden cases against fresh oracles, write fixtures
 npm run golden:kubectl-manifest   # every kubectl command and flag of the pin, from the real binary
+npm run kubeadm:capture [-- --check]   # what the real kubeadm init writes and creates (dry run, unprivileged),
+                                      # into fixtures/reference/kubeadm/ and packages/k8s/src/topology/kubeadm/reference.ts
 npm run fidelity:report       # (phase 07a) provenance of every output unit
 ```
 
@@ -62,7 +65,9 @@ packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd
 packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kubelet, network, kubectl, kubeadm, …
                    (src/apiserver pipeline and store, src/registry strategies, src/apis defaulting and
                    validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data,
-                   src/controllers runtime, event recorder and one directory per controller,
+                   src/controllers runtime, event recorders and one directory per controller,
+                   src/scheduler kube-scheduler (cycle, plugins, queueing hints), src/topology cluster
+                   topologies (ClusterDef data, builder, kubeadm files and objects),
                    src/testing helpers for tests only: the fake kubelet, workload requests)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
 packages/content   content packs (YAML + Markdown), topology templates
@@ -75,7 +80,8 @@ packages/*/transcripts/  transcript tests (docs/TRANSCRIPTS.md), run by each pac
 fixtures/golden/   golden cases (cases/, the inputs) and captured, normalized real output per Kubernetes
                    version (v1.37.2/, committed); docs/FIDELITY.md §6
 fixtures/reference/ workstation captures (rank 3) with their capture scripts, e.g. linux/vfs-syscalls,
-                   bash/readline (real readline output key by key, bind -p)
+                   bash/readline (real readline output key by key, bind -p); also kubeadm/ (the real kubeadm
+                   init's files and objects, rank 1, from tools/src/kubeadm/capture.ts)
 ```
 
 Dependencies point one way: `kernel` ← `host` ← domain plugins. `learn` imports `kernel` only, never

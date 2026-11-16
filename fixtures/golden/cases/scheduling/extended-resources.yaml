@@ -1,0 +1,63 @@
+description: An extended resource no node offers, then offered by node01 (example.com/dongle 2 in its status), which schedules the waiting Pod; requests above node01's allocatable (preemption cannot help) and above what is left (no victim).
+files:
+  dongle-1.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: dongle-1
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          limits:
+            example.com/dongle: "1"
+  more.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: dongle-2
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          limits:
+            example.com/dongle: "2"
+    ---
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: dongle-3
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.27
+        resources:
+          limits:
+            example.com/dongle: "3"
+setup:
+  - do: kubectl create -f dongle-1.yaml
+  - until: kubectl get events --field-selector involvedObject.name=dongle-1,reason=FailedScheduling -o name
+    match: event
+steps:
+  - run: kubectl get pod dongle-1
+  - run: kubectl describe pod dongle-1
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  # What a device plugin's registration makes the kubelet report.
+  - run: kubectl patch node node01 --subresource=status --type=merge -p '{"status":{"capacity":{"example.com/dongle":"2"},"allocatable":{"example.com/dongle":"2"}}}'
+  - do: kubectl wait --for=condition=Ready pod/dongle-1 --timeout=60s
+  - run: kubectl get pod dongle-1 -o wide
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=dongle-1
+  - objects: [pod/dongle-1]
+  - run: kubectl describe node node01
+    kwok: true
+  - run: kubectl create -f more.yaml
+  - until: kubectl get events --field-selector reason=FailedScheduling -o name
+    match: '(?:\n.*){2}'
+  - run: kubectl describe pod dongle-2
+  - run: kubectl describe pod dongle-3
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+  - objects: [pod/dongle-2, pod/dongle-3]

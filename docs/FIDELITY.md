@@ -295,6 +295,8 @@ Entry format:
 | DIV-016 | API server: Pod updates | A forbidden Pod update is rejected with `spec: Forbidden: pod updates may not change fields other than …` followed by a unified diff of the old and new internal PodSpec (`json.MarshalIndent` with Go field names, go-difflib, 3 lines of context; `apimachinery/pkg/util/diff`) | The first line only | The diff needs the whole internal PodSpec layout and a port of difflib's SequenceMatcher (`apis/core/validation/podspecdiff.ts` holds the stub) | kubectl shows the rejection without the hint of which field changed; the debrief should name it | 05a |
 | DIV-017 | API server: Pod warnings | Creating a Pod or Pod template returns warnings for deprecated or dubious settings (`pkg/api/pod/warnings.go` GetWarningsForPod: deprecated annotations, node labels, `ndots`, …) | Only the DNS-label name warning; Service warnings were reproduced from probes of the real server | `pkg/api` was not in the upstream checkout during phase 05a (added since) | kubectl prints fewer `Warning:` lines on create and apply | 05a |
 | DIV-018 | API server: Event lifetime | Events expire after `--event-ttl` (1 h) | Events stay until deleted | No expiry in etcd yet | `kubectl get events` keeps showing old events in long sessions | 05a |
+| DIV-019 | Static Pods: config hash | The kubelet names a static Pod's UID and its `kubernetes.io/config.hash`/`config.mirror` annotations with an FNV-128a of the decoded Pod's Go struct dump plus host and file (`pkg/kubelet/config/common.go` applyDefaults) | An FNV-128a of the manifest's JSON with the same host and file | The struct dump needs the internal Pod layout after the kubelet's defaulting (phase 27 builds static Pods for real) | The hash differs from a real node's for the same manifest; it is opaque, and changes when the manifest changes, as the real one does | 06a |
+| DIV-020 | Scheduler: scoring | The default profile also scores PodTopologySpread (system default constraints spread a ReplicaSet's or Service's Pods) and InterPodAffinity | Not scored; every other default score plugin is | Topology spread and inter-Pod affinity are phase 20b | Replicas still alternate between workers (least-allocated scoring with the non-zero default requests), but a tie the real scheduler breaks by spread can go another way | 06a |
 
 The non-goals in `PLAN.md` §4.3 (no packets, no real cryptography, a bash subset,
 an editor overlay instead of a terminal vi, a curated image catalog) become entries when the phase
@@ -311,9 +313,10 @@ platform never runs it, and `npm run check` reads committed fixtures and nothing
 
 ```bash
 npm run oracle -- fetch     # download and verify the binaries into .upstream/bin/v1.37.2/
-npm run oracle -- up        # start a control plane; prints `export KUBECONFIG=…`
-npm run oracle -- status
-npm run oracle -- down      # stop it; exits 1 if any process or port is left
+npm run oracle -- up        # start a control plane; prints its directory and `export KUBECONFIG=…`
+npm run oracle -- status    # every running oracle: directory, server, kubeconfig, processes
+npm run oracle -- env [<dir>]               # `export KUBECONFIG=…` of that oracle
+npm run oracle -- down [<dir>|--all]        # stop it; exits 1 if any of its processes or ports is left
 npm run golden:capture -- [--check] [--jobs N] [case file or directory]
 npm run golden:kubectl-manifest -- [--check]
 ```
@@ -333,9 +336,17 @@ npm run golden:kubectl-manifest -- [--check]
   in a temporary directory. `up` returns once the Nodes are Ready, `default/default` and
   `kube-root-ca.crt` exist and both leader leases are held: about 12 seconds. `down` stops every
   group (SIGTERM, then SIGKILL after 10 s), checks with `kill -0`, `ss` and `pgrep` that no process
-  or listener is left, and only then deletes the directory and the state file
-  (`.upstream/oracle/state.json`). Verified on this workstation 2026-11-16: every component runs
-  without Docker or root.
+  or listener is left, and only then deletes the directory and the state file. Verified on this
+  workstation 2026-11-16: every component runs without Docker or root.
+- **Several at once.** Each oracle has its own directory (`/tmp/simlab-oracle-XXXXXX`) and its own
+  state file, `.upstream/oracle/<directory name>.json`, so oracles of different sessions and
+  golden capture's jobs run side by side. `down` and `env` take the oracle's directory (its path,
+  its name or its kubeconfig's path); without one they act on the only oracle `up` started and
+  refuse when there are several. `down` stops only the processes that oracle's state file lists
+  and checks only its ports and directory; `down --all` stops every oracle `up` started, those of
+  other sessions included. Golden capture's oracles are recorded with their owner
+  (`golden:capture` and its pid); `status` shows them, but `down` and `env` leave them alone unless
+  their directory is named.
 - **Capture** starts a fresh control plane for every server case (four at a time by default) and
   tears it down after, so no case sees another's objects or events. The 20 initial cases (15
   server, 5 client) take about two minutes.
@@ -388,7 +399,9 @@ steps:
 ```
 
 A `request` step records the status code, the texts of the `Warning` headers and the normalized
-response body: what the API server itself answers, independent of kubectl (D-041). The cases in
+response body: what the API server itself answers, independent of kubectl (D-041). A step with
+`keep` records the list too, and the replay keeps the same keys of the simulator's response (used
+where a running controller writes fields in the background, as `api/daemonset` does with status). The cases in
 `cases/api/` are replayed through the simulator's request pipeline by
 `tools/src/golden/api.test.ts`.
 
@@ -472,10 +485,14 @@ rollouts (`cases/controllers/`). So:
 
 ### 6.6 The cluster
 
-Three Nodes as `kubeadm-1cp-2w` defines them (`tools/src/oracle/topology.ts`, D-033), registered
-before any controller starts. The API server advertises 172.16.0.10, so the `kubernetes` Service's
-endpoint is the control plane's address. kube-system holds no workloads: no add-on and no
-static Pod runs, only what the control plane components create themselves.
+Three Nodes as `kubeadm-1cp-2w` defines them (the simulator's `packages/k8s/src/topology/cluster.ts`,
+which `tools/src/oracle/topology.ts` turns into KWOK Nodes; D-033, D-055), registered before any
+controller starts. The API server advertises 172.16.0.10, so the `kubernetes` Service's endpoint is
+the control plane's address. kube-system holds no workloads: no add-on and no static Pod runs, only
+what the control plane components create themselves. The simulated topology has them (CoreDNS,
+kube-proxy, the control plane's mirror Pods, D-057), so a differential test whose outcome depends on
+free capacity removes CoreDNS first (`tools/src/golden/scheduling.test.ts`); the Nodes themselves are
+compared in `tools/src/golden/topology.test.ts`.
 
 ### 6.7 Client-only oracle and the command manifest
 

@@ -17,23 +17,23 @@ const obj = (v: Json | undefined): JsonObject | undefined => (isObject(v) ? v : 
 const num = (v: Json | undefined): number => (typeof v === 'number' ? v : 0);
 
 /** An IntOrString as the internal type holds it: a nil pointer converts to the int 0. */
-type IntOrString = number | string;
-const intOrString = (v: Json | undefined): IntOrString => (typeof v === 'string' ? v : num(v));
+export type IntOrString = number | string;
+export const intOrString = (v: Json | undefined): IntOrString => (typeof v === 'string' ? v : num(v));
 
 /** ValidatePositiveIntOrPercent. */
-function validatePositiveIntOrPercent(v: IntOrString, path: Path): FieldError[] {
+export function validatePositiveIntOrPercent(v: IntOrString, path: Path): FieldError[] {
   if (typeof v === 'string') return isValidPercent(v).map((m) => invalid(path, v, m));
   return validateNonnegativeField(v, path);
 }
 
 /** getPercentValue: the number of a valid percent string. */
-function percentValue(v: IntOrString): number | undefined {
+export function percentValue(v: IntOrString): number | undefined {
   if (typeof v !== 'string' || isValidPercent(v).length > 0) return undefined;
   return Number(v.slice(0, -1));
 }
 
 /** getIntOrPercentValue: IntValue() of a non-percent string is strconv.Atoi's, 0 on error. */
-function intOrPercentValue(v: IntOrString): number {
+export function intOrPercentValue(v: IntOrString): number {
   const p = percentValue(v);
   if (p !== undefined) return p;
   if (typeof v === 'number') return v;

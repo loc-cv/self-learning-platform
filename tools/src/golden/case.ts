@@ -61,7 +61,10 @@ export interface RequestStep {
   raw?: boolean;
   /** Default application/json; a PATCH names its patch type (application/merge-patch+json). */
   contentType?: string;
-  /** Keep only these top-level keys of the response body (a discovery list too big to keep whole). */
+  /**
+   * Keep only these top-level keys of the response body (a list too big to keep whole, or fields a
+   * running controller writes at moments the case does not control); recorded in the fixture.
+   */
   keep?: string[];
 }
 

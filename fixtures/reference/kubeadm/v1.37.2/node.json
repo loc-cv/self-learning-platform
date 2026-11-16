@@ -1,0 +1,12 @@
+{
+  "labels": {
+    "node-role.kubernetes.io/control-plane": "",
+    "node.kubernetes.io/exclude-from-external-load-balancers": ""
+  },
+  "taints": [
+    {
+      "key": "node-role.kubernetes.io/control-plane",
+      "effect": "NoSchedule"
+    }
+  ]
+}

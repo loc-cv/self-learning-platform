@@ -1,0 +1,23 @@
+description: Both workers cordoned, so only the tainted control plane is left; uncordoning node01 schedules the Pod there, after one more failure while the node lifecycle controller has not yet removed node01's unschedulable taint.
+setup:
+  - do: kubectl cordon node01 node02
+  - until: kubectl get nodes node01 node02 -o jsonpath={.items[*].spec.taints}
+    match: 'node.kubernetes.io/unschedulable.*node.kubernetes.io/unschedulable'
+  - do: kubectl run waits --image=nginx:1.27
+  - until: kubectl get events --field-selector involvedObject.name=waits,reason=FailedScheduling -o name
+    match: event
+steps:
+  - run: kubectl get pod waits
+  - run: kubectl describe pod waits
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+  - objects: [pod/waits]
+  - run: kubectl uncordon node01
+  - do: kubectl wait --for=condition=Ready pod/waits --timeout=60s
+  - run: kubectl get pod waits -o wide
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=waits
+  - run: kubectl get events --field-selector involvedObject.name=waits -o wide
+  - run: kubectl describe pod waits
+    kwok: true
+  - objects: [pod/waits]

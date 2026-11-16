@@ -1,0 +1,20 @@
+description: Every node fails for a different reason (node01 cordoned, node02 short of memory, the control plane's taint); preemption either finds no victim (the request fits node02's allocatable) or cannot help (it exceeds every node's).
+setup:
+  - do: kubectl cordon node01
+  # The node lifecycle controller adds the unschedulable taint to a cordoned Node.
+  - until: kubectl get node node01 -o jsonpath={.spec.taints}
+    match: node.kubernetes.io/unschedulable
+  - do: kubectl run mem-fill --image=nginx:1.27 --overrides='{"spec":{"nodeSelector":{"kubernetes.io/hostname":"node02"},"containers":[{"name":"fill","image":"nginx:1.27","resources":{"requests":{"memory":"3Gi"}}}]}}'
+  - do: kubectl wait --for=condition=Ready pod/mem-fill --timeout=60s
+  - do: kubectl run mem-1gi --image=nginx:1.27 --overrides='{"spec":{"containers":[{"name":"app","image":"nginx:1.27","resources":{"requests":{"memory":"1Gi"}}}]}}'
+  - do: kubectl run mem-8gi --image=nginx:1.27 --overrides='{"spec":{"containers":[{"name":"app","image":"nginx:1.27","resources":{"requests":{"memory":"8Gi"}}}]}}'
+  - until: kubectl get events --field-selector reason=FailedScheduling -o name
+    match: '(?:\n.*){1}'
+steps:
+  - run: kubectl get pods -o wide
+    kwok: true
+  - run: kubectl describe pod mem-1gi
+  - run: kubectl describe pod mem-8gi
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+  - objects: [pod/mem-1gi, pod/mem-8gi, node/node01]

@@ -1,0 +1,537 @@
+# Captured from fixtures/golden/cases/scheduling/extended-resources.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: scheduling/extended-resources
+description: An extended resource no node offers, then offered by node01 (example.com/dongle 2 in its status), which schedules the waiting Pod; requests above node01's allocatable (preemption cannot help) and above what is left (no victim).
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pod dongle-1
+    exit: 0
+    stdout: |
+      NAME       READY   STATUS    RESTARTS   AGE
+      dongle-1   0/1     Pending   0          <<age>>
+    stderr: ""
+  - run: kubectl describe pod dongle-1
+    exit: 0
+    stdout: |
+      Name:             dongle-1
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Limits:
+            example.com/dongle:  1
+          Requests:
+            example.com/dongle:  1
+          Environment:           <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT         MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/dongle-1   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl patch node node01 --subresource=status --type=merge -p '{"status":{"capacity":{"example.com/dongle":"2"},"allocatable":{"example.com/dongle":"2"}}}'
+    exit: 0
+    stdout: |
+      node/node01 patched
+    stderr: ""
+  - run: kubectl get pod dongle-1 -o wide
+    exit: 0
+    stdout: |
+      NAME       READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      dongle-1   1/1     Running   0          <<age>>   <<ip>>   node01   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=dongle-1
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT         MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/dongle-1   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Normal    Scheduled          pod/dongle-1   Successfully assigned default/dongle-1 to node01
+    stderr: ""
+  - objects:
+      - ref: pod/dongle-1
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: dongle-1
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  limits:
+                    example.com/dongle: "1"
+                  requests:
+                    example.com/dongle: "1"
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            nodeName: node01
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Initialized
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: Ready
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: ContainersReady
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                status: "True"
+                type: PodScheduled
+            containerStatuses:
+              - image: nginx:1.27
+                imageID: ""
+                lastState: {}
+                name: app
+                ready: true
+                restartCount: 0
+                state:
+                  running:
+                    startedAt: <<time>>
+            hostIP: 172.16.0.11
+            hostIPs:
+              - ip: 172.16.0.11
+            phase: Running
+            podIP: <<ip>>
+            podIPs:
+              - ip: <<ip>>
+            qosClass: BestEffort
+            startTime: <<time>>
+  - run: kubectl describe node node01
+    exit: 0
+    stdout: |
+      Name:               node01
+      Roles:              <none>
+      Labels:             beta.kubernetes.io/arch=amd64
+                          beta.kubernetes.io/os=linux
+                          kubernetes.io/arch=amd64
+                          kubernetes.io/hostname=node01
+                          kubernetes.io/os=linux
+      Annotations:        node.alpha.kubernetes.io/ttl: 0
+                          volumes.kubernetes.io/controller-managed-attach-detach: true
+      CreationTimestamp:  <<time>>
+      Taints:             <none>
+      Unschedulable:      false
+      Lease:
+        HolderIdentity:  controlplane_<<uid:2>>
+        AcquireTime:     <unset>
+        RenewTime:       <<time>>
+      Conditions:
+        Type                 Status  LastHeartbeatTime   LastTransitionTime   Reason                       Message
+        ----                 ------  -----------------   ------------------   ------                       -------
+        Ready                True    <<time>>            <<time>>             KubeletReady                 kubelet is posting ready status
+        MemoryPressure       False   <<time>>            <<time>>             KubeletHasSufficientMemory   kubelet has sufficient memory available
+        DiskPressure         False   <<time>>            <<time>>             KubeletHasNoDiskPressure     kubelet has no disk pressure
+        PIDPressure          False   <<time>>            <<time>>             KubeletHasSufficientPID      kubelet has sufficient PID available
+        NetworkUnavailable   False   <<time>>            <<time>>             RouteCreated                 RouteController created a route
+      Addresses:
+        InternalIP:  172.16.0.11
+        Hostname:    node01
+      Capacity:
+        cpu:                 2
+        ephemeral-storage:   20134592Ki
+        example.com/dongle:  2
+        hugepages-1Gi:       0
+        hugepages-2Mi:       0
+        memory:              4010284Ki
+        pods:                110
+      Allocatable:
+        cpu:                 2
+        ephemeral-storage:   18556039957
+        example.com/dongle:  2
+        hugepages-1Gi:       0
+        hugepages-2Mi:       0
+        memory:              3907884Ki
+        pods:                110
+      System Info:
+        Machine ID:                 5b0d6c4ee0a94fa8b1c3e2d7f9a10c02
+        System UUID:                <<uid:3>>
+        Boot ID:                    <<uid:4>>
+        Kernel Version:             6.8.0-88-generic
+        OS Image:                   Ubuntu 24.04.3 LTS
+        Operating System:           linux
+        Architecture:               amd64
+        Container Runtime Version:  containerd://1.7.28
+        Kubelet Version:            v1.37.2
+      PodCIDR:                      <<ip>>/24
+      PodCIDRs:                     <<ip>>/24
+      Non-terminated Pods:          (1 in total)
+        Namespace                   Name        CPU Requests  CPU Limits  Memory Requests  Memory Limits  Age
+        ---------                   ----        ------------  ----------  ---------------  -------------  ---
+        default                     dongle-1    0 (0%)        0 (0%)      0 (0%)           0 (0%)         <<age>>
+      Allocated resources:
+        (Total limits may be over 100 percent, i.e., overcommitted.)
+        Resource            Requests  Limits
+        --------            --------  ------
+        cpu                 0 (0%)    0 (0%)
+        memory              0 (0%)    0 (0%)
+        ephemeral-storage   0 (0%)    0 (0%)
+        hugepages-1Gi       0 (0%)    0 (0%)
+        hugepages-2Mi       0 (0%)    0 (0%)
+        example.com/dongle  1         1
+      Events:
+        Type    Reason          Age      From             Message
+        ----    ------          ----     ----             -------
+        Normal  RegisteredNode  <<age>>  node-controller  Node node01 event: Registered Node node01 in Controller
+    stderr: ""
+    kwok: true
+  - run: kubectl create -f more.yaml
+    exit: 0
+    stdout: |
+      pod/dongle-2 created
+      pod/dongle-3 created
+    stderr: ""
+  - run: kubectl describe pod dongle-2
+    exit: 0
+    stdout: |
+      Name:             dongle-2
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Limits:
+            example.com/dongle:  2
+          Requests:
+            example.com/dongle:  2
+          Environment:           <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl describe pod dongle-3
+    exit: 0
+    stdout: |
+      Name:             dongle-3
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:      nginx:1.27
+          Port:       <none>
+          Host Port:  <none>
+          Limits:
+            example.com/dongle:  3
+          Requests:
+            example.com/dongle:  3
+          Environment:           <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT         MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/dongle-1   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/dongle-2   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/dongle-3   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT         SUBOBJECT   SOURCE                                              MESSAGE                                                                                                                                                                                                                            FIRST SEEN   COUNT   NAME
+      <<age>>     Warning   FailedScheduling   pod/dongle-1               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.                                                   <<age>>      1       dongle-1.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/dongle-2               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.   <<age>>      1       dongle-2.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/dongle-3               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.                                                   <<age>>      1       dongle-3.<<hex>>
+    stderr: ""
+  - objects:
+      - ref: pod/dongle-2
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: dongle-2
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:5>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  limits:
+                    example.com/dongle: "2"
+                  requests:
+                    example.com/dongle: "2"
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: BestEffort
+      - ref: pod/dongle-3
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: dongle-3
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:6>>
+          spec:
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources:
+                  limits:
+                    example.com/dongle: "3"
+                  requests:
+                    example.com/dongle: "3"
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 Insufficient example.com/dongle. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: BestEffort

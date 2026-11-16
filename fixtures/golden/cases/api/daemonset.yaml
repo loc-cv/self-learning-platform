@@ -1,0 +1,541 @@
+description: DaemonSets through the raw API. Defaulting (minimal, kube-proxy as kubeadm writes it, OnDelete, percentages), the template generation annotation, validation of the selector, the update strategy and the pod template, generation on spec, template and metadata changes, the immutable selector, and the status subresource. The real DaemonSet controller writes status in the background, so the case waits for it to observe each generation (its writes show in managedFields, which the differential test ignores, DIV-015), the responses of later steps keep only metadata and spec, and status is only written with PUT, whose response is the status just written. kube-proxy gets no Pods (its ServiceAccount does not exist); the others' Pods never become ready, so their status settles once a generation is observed.
+kwok: false
+steps:
+  # 0: the stored defaulted object of a minimal DaemonSet.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: minimal
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+      status:
+        numberReady: 4
+  - until: kubectl get daemonset -n default minimal -o jsonpath='{.status.observedGeneration}'
+    match: ^1$
+  # 1: field selectors name metadata only. (A GET of the object would race with the controller's
+  # first status write: managedFields entries are sorted by the second they were written in.)
+  - request: GET /apis/apps/v1/namespaces/default/daemonsets?fieldSelector=status.numberReady%3D0
+  # 2: kube-proxy as kubeadm's manifest has it (cmd/kubeadm/app/phases/addons/proxy/manifests.go),
+  # with the rolling update spelled out.
+  - request: POST /apis/apps/v1/namespaces/kube-system/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        labels:
+          k8s-app: kube-proxy
+        name: kube-proxy
+        namespace: kube-system
+      spec:
+        selector:
+          matchLabels:
+            k8s-app: kube-proxy
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+        template:
+          metadata:
+            labels:
+              k8s-app: kube-proxy
+          spec:
+            priorityClassName: system-node-critical
+            containers:
+            - name: kube-proxy
+              image: registry.k8s.io/kube-proxy:v1.37.2
+              imagePullPolicy: IfNotPresent
+              command:
+              - /usr/local/bin/kube-proxy
+              - --config=/var/lib/kube-proxy/config.conf
+              - --hostname-override=$(NODE_NAME)
+              securityContext:
+                privileged: true
+              volumeMounts:
+              - mountPath: /var/lib/kube-proxy
+                name: kube-proxy
+              - mountPath: /run/xtables.lock
+                name: xtables-lock
+                readOnly: false
+              - mountPath: /lib/modules
+                name: lib-modules
+                readOnly: true
+              env:
+                - name: NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
+            hostNetwork: true
+            serviceAccountName: kube-proxy
+            volumes:
+            - name: kube-proxy
+              configMap:
+                name: kube-proxy
+            - name: xtables-lock
+              hostPath:
+                path: /run/xtables.lock
+                type: FileOrCreate
+            - name: lib-modules
+              hostPath:
+                path: /lib/modules
+            tolerations:
+            - operator: Exists
+            nodeSelector:
+              kubernetes.io/os: linux
+  # 3: OnDelete keeps a rollingUpdate it is given, with both values filled in by conversion.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: ondelete
+      spec:
+        selector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values: [ondelete]
+        updateStrategy:
+          type: OnDelete
+          rollingUpdate: {}
+        revisionHistoryLimit: 0
+        minReadySeconds: 10
+        template:
+          metadata:
+            labels:
+              app: ondelete
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 4: surge instead of unavailability, as a percentage; a template generation given on create is kept.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: surge
+        annotations:
+          deprecated.daemonset.template.generation: "5"
+          team: infra
+      spec:
+        selector:
+          matchLabels:
+            app: surge
+        updateStrategy:
+          rollingUpdate:
+            maxSurge: 10%
+            maxUnavailable: 0
+        template:
+          metadata:
+            labels:
+              app: surge
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 5: a template generation below 1 becomes 1.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets?dryRun=All
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: negative
+        annotations:
+          deprecated.daemonset.template.generation: "-3"
+      spec:
+        selector:
+          matchLabels:
+            app: negative
+        template:
+          metadata:
+            labels:
+              app: negative
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 6: a template generation that is not a number.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: badgen
+        annotations:
+          deprecated.daemonset.template.generation: two
+      spec:
+        selector:
+          matchLabels:
+            app: badgen
+        template:
+          metadata:
+            labels:
+              app: badgen
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 7: no selector.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: noselector
+      spec:
+        template:
+          metadata:
+            labels:
+              app: noselector
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 8: selector and template labels disagree.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: mismatch
+      spec:
+        selector:
+          matchLabels:
+            app: one
+        template:
+          metadata:
+            labels:
+              app: two
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 9: an empty selector.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: empty
+      spec:
+        selector: {}
+        template:
+          metadata:
+            labels:
+              app: empty
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 10: an unknown update strategy.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: bogus
+      spec:
+        selector:
+          matchLabels:
+            app: bogus
+        updateStrategy:
+          type: Recreate
+        template:
+          metadata:
+            labels:
+              app: bogus
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 11: an unknown update strategy with a rolling update.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: bogus
+      spec:
+        selector:
+          matchLabels:
+            app: bogus
+        updateStrategy:
+          type: Rolling
+          rollingUpdate:
+            maxUnavailable: 2
+        template:
+          metadata:
+            labels:
+              app: bogus
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 12: nothing may be unavailable and nothing may surge.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: zero
+      spec:
+        selector:
+          matchLabels:
+            app: zero
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 0
+        template:
+          metadata:
+            labels:
+              app: zero
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 13: surge with the defaulted maxUnavailable of 1.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: both
+      spec:
+        selector:
+          matchLabels:
+            app: both
+        updateStrategy:
+          rollingUpdate:
+            maxSurge: 1
+        template:
+          metadata:
+            labels:
+              app: both
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 14: a percentage over 100% and one that is not a percentage.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: percent
+      spec:
+        selector:
+          matchLabels:
+            app: percent
+        updateStrategy:
+          rollingUpdate:
+            maxUnavailable: 150%
+            maxSurge: lots
+        template:
+          metadata:
+            labels:
+              app: percent
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 15: negative counts, -1 unavailable, and a pod template a DaemonSet may not have.
+  - request: POST /apis/apps/v1/namespaces/default/daemonsets
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: Bad_Name
+      spec:
+        minReadySeconds: -1
+        revisionHistoryLimit: -2
+        selector:
+          matchLabels:
+            app: bad
+        updateStrategy:
+          rollingUpdate:
+            maxUnavailable: -1
+        template:
+          metadata:
+            labels:
+              app: bad
+          spec:
+            restartPolicy: OnFailure
+            activeDeadlineSeconds: 30
+            containers:
+            - name: app
+              image: nginx:1.27
+  # 16: a template change: generation and template generation go up.
+  - request: PUT /apis/apps/v1/namespaces/default/daemonsets/minimal
+    keep: [kind, apiVersion, metadata, spec]
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: minimal
+      spec:
+        selector:
+          matchLabels:
+            app: minimal
+        template:
+          metadata:
+            labels:
+              app: minimal
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.28
+  - until: kubectl get daemonset -n default minimal -o jsonpath='{.status.observedGeneration}'
+    match: ^2$
+  # 17: a spec change outside the template: only generation goes up.
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, metadata, spec]
+    body: '{"spec":{"minReadySeconds":5,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"20%"}}}}'
+  - until: kubectl get daemonset -n default minimal -o jsonpath='{.status.observedGeneration}'
+    match: ^3$
+  # 18: metadata only: neither goes up; a template generation sent by the client is ignored.
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    keep: [kind, apiVersion, metadata, spec]
+    body: '{"metadata":{"labels":{"tier":"node"},"annotations":{"note":"metadata only","deprecated.daemonset.template.generation":"9"}}}'
+  # 19: a template label change and the template generation in a PUT that omits it.
+  - request: PUT /apis/apps/v1/namespaces/default/daemonsets/minimal
+    keep: [kind, apiVersion, metadata, spec]
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: minimal
+        labels:
+          tier: node
+      spec:
+        minReadySeconds: 5
+        selector:
+          matchLabels:
+            app: minimal
+        updateStrategy:
+          rollingUpdate:
+            maxUnavailable: 20%
+        template:
+          metadata:
+            labels:
+              app: minimal
+              extra: "yes"
+          spec:
+            containers:
+            - name: app
+              image: nginx:1.28
+  - until: kubectl get daemonset -n default minimal -o jsonpath='{.status.observedGeneration}'
+    match: ^4$
+  # 20: the selector is immutable.
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"spec":{"selector":{"matchLabels":{"app":"other"}},"template":{"metadata":{"labels":{"app":"other"}}}}}'
+  # 21: OnDelete drops the rolling update; then an update that breaks the update strategy. (A
+  # template generation that is not a number in a patch is refused like step 6, as Invalid on
+  # `patch` with the merged object, managedFields included, as the value: not comparable, DIV-015.)
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"spec":{"updateStrategy":{"type":"OnDelete","rollingUpdate":null}}}'
+    keep: [kind, apiVersion, metadata, spec]
+  - until: kubectl get daemonset -n default minimal -o jsonpath='{.status.observedGeneration}'
+    match: ^5$
+  - request: PATCH /apis/apps/v1/namespaces/default/daemonsets/minimal
+    contentType: application/merge-patch+json
+    body: '{"spec":{"updateStrategy":{"type":"RollingUpdate","rollingUpdate":{"maxUnavailable":0,"maxSurge":0}}}}'
+  - until: kubectl get daemonset -n kube-system kube-proxy -o jsonpath='{.status.observedGeneration}'
+    match: ^1$
+  # 23: the status subresource: spec in the body is ignored, status is replaced whole.
+  - request: PUT /apis/apps/v1/namespaces/kube-system/daemonsets/kube-proxy/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        labels:
+          k8s-app: kube-proxy
+      spec:
+        minReadySeconds: 99
+      status:
+        currentNumberScheduled: 3
+        numberMisscheduled: 0
+        desiredNumberScheduled: 3
+        numberReady: 3
+        observedGeneration: 1
+        updatedNumberScheduled: 3
+        numberAvailable: 3
+        collisionCount: 2
+  # 24: negative counts in status.
+  - request: PUT /apis/apps/v1/namespaces/kube-system/daemonsets/kube-proxy/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        labels:
+          k8s-app: kube-proxy
+      status:
+        currentNumberScheduled: -1
+        numberMisscheduled: -2
+        desiredNumberScheduled: 3
+        numberReady: -3
+        observedGeneration: -4
+        updatedNumberScheduled: -5
+        numberAvailable: -6
+        numberUnavailable: -7
+        collisionCount: 2
+  # 25: the collision count may not go down.
+  - request: PUT /apis/apps/v1/namespaces/kube-system/daemonsets/kube-proxy/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kube-proxy
+        namespace: kube-system
+        labels:
+          k8s-app: kube-proxy
+      status:
+        currentNumberScheduled: 3
+        numberMisscheduled: 0
+        desiredNumberScheduled: 3
+        numberReady: 3
+  - until: kubectl get daemonset -n default surge -o jsonpath='{.status.observedGeneration}'
+    match: ^1$
+  # 26: a status write does not touch the spec or the template generation.
+  - request: PUT /apis/apps/v1/namespaces/default/daemonsets/surge/status
+    body: |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: surge
+        annotations:
+          deprecated.daemonset.template.generation: "1"
+          team: platform
+      spec:
+        minReadySeconds: 3
+      status:
+        currentNumberScheduled: 0
+        numberMisscheduled: 0
+        desiredNumberScheduled: 0
+        numberReady: 0
+        conditions:
+        - type: Progressing
+          status: "True"
+          reason: Testing
+          lastTransitionTime: "2026-11-13T09:00:00Z"
+  - request: DELETE /apis/apps/v1/namespaces/default/daemonsets/ondelete

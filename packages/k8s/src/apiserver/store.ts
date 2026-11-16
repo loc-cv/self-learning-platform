@@ -7,10 +7,12 @@
 // order, byte-wise); staging/src/k8s.io/apiserver/pkg/storage/cacher (a watcher whose selector
 // stops matching an object sees DELETED, one that starts matching sees ADDED).
 
+import type { ApiServerConfig } from './config.ts';
 import { compareCodeUnits, keys, put, remove, type Ctx, type Table } from '@simlab/kernel';
 import type { Json, JsonObject } from '../apimachinery/json.ts';
 import type { ControllerState } from '../controllers/runtime.ts';
 import type { RecorderState } from '../controllers/record.ts';
+import type { EventBroadcasterState } from '../controllers/events.ts';
 
 export const K8S = 'k8s';
 
@@ -86,6 +88,14 @@ export interface K8sSlice {
   controllers: Table<ControllerState>;
   /** Event recorder state (correlator caches) per controller id (controllers/record.ts). */
   recorders: Table<RecorderState>;
+  /** events.k8s.io/v1 broadcaster state (isomorphic-event cache, series) per component (controllers/events.ts). */
+  eventBroadcasters: Table<EventBroadcasterState>;
+  /**
+   * API servers that are serving, by `<advertise address>:<secure port>`, with their configuration.
+   * The topology records the one it bootstraps (phase 06a); phase 27 derives this from the static
+   * Pod's process and its flags.
+   */
+  apiServers: Table<ApiServerConfig>;
 }
 
 export function emptyEtcd(): EtcdData {

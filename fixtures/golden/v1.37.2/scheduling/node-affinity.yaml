@@ -1,0 +1,371 @@
+# Captured from fixtures/golden/cases/scheduling/node-affinity.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: scheduling/node-affinity
+description: Required node affinity the cluster cannot satisfy (a label no node has; matchFields naming a node that does not exist), preferred node affinity steering a Deployment to node02, and the FailedScheduling Events as events.k8s.io/v1 stores them.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl get pods -o wide
+    exit: 0
+    stdout: |
+      NAME                                   READY   STATUS    RESTARTS   AGE       IP       NODE     NOMINATED NODE   READINESS GATES
+      affinity-node03                        0/1     Pending   0          <<age>>   <none>   <none>   <none>           <none>
+      affinity-ssd                           0/1     Pending   0          <<age>>   <none>   <none>   <none>           <none>
+      prefers-node02-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+      prefers-node02-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+      prefers-node02-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+      prefers-node02-<<hash:1>>-<<suffix>>   1/1     Running   0          <<age>>   <<ip>>   node02   <none>           <none>
+    stderr: ""
+    kwok: true
+  - run: kubectl describe pod affinity-ssd
+    exit: 0
+    stdout: |
+      Name:             affinity-ssd
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:        nginx:1.27
+          Port:         <none>
+          Host Port:    <none>
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl describe pod affinity-node03
+    exit: 0
+    stdout: |
+      Name:             affinity-node03
+      Namespace:        default
+      Priority:         0
+      Service Account:  default
+      Node:             <none>
+      Labels:           <none>
+      Annotations:      <none>
+      Status:           Pending
+      IP:               
+      IPs:              <none>
+      Containers:
+        app:
+          Image:        nginx:1.27
+          Port:         <none>
+          Host Port:    <none>
+          Environment:  <none>
+          Mounts:
+            /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-<<suffix>> (ro)
+      Conditions:
+        Type           Status
+        PodScheduled   False 
+      Volumes:
+        kube-api-access-<<suffix>>:
+          Type:                    Projected (a volume that contains injected data from multiple sources)
+          TokenExpirationSeconds:  3607
+          ConfigMapName:           kube-root-ca.crt
+          Optional:                false
+          DownwardAPI:             true
+      QoS Class:                   BestEffort
+      Node-Selectors:              <none>
+      Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                                   node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+      Events:
+        Type     Reason            Age      From               Message
+        ----     ------            ----     ----               -------
+        Warning  FailedScheduling  <<age>>  default-scheduler  0/3 nodes are available: 3 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT                MESSAGE
+      <<age>>     Warning   FailedScheduling   pod/affinity-node03   0/3 nodes are available: 3 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+      <<age>>     Warning   FailedScheduling   pod/affinity-ssd      0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+    stderr: ""
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+    exit: 0
+    stdout: |
+      LAST SEEN   TYPE      REASON             OBJECT                SUBOBJECT   SOURCE                                              MESSAGE                                                                                                                                                                                              FIRST SEEN   COUNT   NAME
+      <<age>>     Warning   FailedScheduling   pod/affinity-node03               default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 3 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.                                         <<age>>      1       affinity-node03.<<hex>>
+      <<age>>     Warning   FailedScheduling   pod/affinity-ssd                  default-scheduler, default-scheduler-controlplane   0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.   <<age>>      1       affinity-ssd.<<hex>>
+    stderr: ""
+  - objects:
+      - ref: pod/affinity-ssd
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: affinity-ssd
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:1>>
+          spec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: disktype
+                          operator: In
+                          values:
+                            - ssd
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: BestEffort
+      - ref: pod/affinity-node03
+        kwok: true
+        object:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            creationTimestamp: <<time>>
+            generation: 1
+            name: affinity-node03
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+          spec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchFields:
+                        - key: metadata.name
+                          operator: In
+                          values:
+                            - node03
+            containers:
+              - image: nginx:1.27
+                imagePullPolicy: IfNotPresent
+                name: app
+                resources: {}
+                terminationMessagePath: /dev/termination-log
+                terminationMessagePolicy: File
+                volumeMounts:
+                  - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                    name: kube-api-access-<<suffix>>
+                    readOnly: true
+            dnsPolicy: ClusterFirst
+            enableServiceLinks: true
+            preemptionPolicy: PreemptLowerPriority
+            priority: 0
+            restartPolicy: Always
+            schedulerName: default-scheduler
+            securityContext: {}
+            serviceAccount: default
+            serviceAccountName: default
+            terminationGracePeriodSeconds: 30
+            tolerations:
+              - effect: NoExecute
+                key: node.kubernetes.io/not-ready
+                operator: Exists
+                tolerationSeconds: 300
+              - effect: NoExecute
+                key: node.kubernetes.io/unreachable
+                operator: Exists
+                tolerationSeconds: 300
+            volumes:
+              - name: kube-api-access-<<suffix>>
+                projected:
+                  defaultMode: 420
+                  sources:
+                    - serviceAccountToken:
+                        expirationSeconds: 3607
+                        path: token
+                    - configMap:
+                        items:
+                          - key: ca.crt
+                            path: ca.crt
+                        name: kube-root-ca.crt
+                    - downwardAPI:
+                        items:
+                          - fieldRef:
+                              apiVersion: v1
+                              fieldPath: metadata.namespace
+                            path: namespace
+          status:
+            conditions:
+              - lastProbeTime: null
+                lastTransitionTime: <<time>>
+                message: "0/3 nodes are available: 3 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+                observedGeneration: 1
+                reason: Unschedulable
+                status: "False"
+                type: PodScheduled
+            phase: Pending
+            qosClass: BestEffort
+  - request: GET /apis/events.k8s.io/v1/namespaces/default/events?fieldSelector=reason%3DFailedScheduling
+    keep:
+      - kind
+      - apiVersion
+      - items
+    code: 200
+    response:
+      kind: EventList
+      apiVersion: events.k8s.io/v1
+      items:
+        - metadata:
+            name: affinity-node03.<<hex>>
+            namespace: default
+            uid: <<uid:3>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            managedFields:
+              - manager: kube-scheduler
+                operation: Update
+                apiVersion: events.k8s.io/v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:action: {}
+                  f:eventTime: {}
+                  f:note: {}
+                  f:reason: {}
+                  f:regarding: {}
+                  f:reportingController: {}
+                  f:reportingInstance: {}
+                  f:type: {}
+          eventTime: <<time>>
+          reportingController: default-scheduler
+          reportingInstance: default-scheduler-controlplane
+          action: Scheduling
+          reason: FailedScheduling
+          regarding:
+            kind: Pod
+            namespace: default
+            name: affinity-node03
+            uid: <<uid:2>>
+            apiVersion: v1
+            resourceVersion: <<rv>>
+          note: "0/3 nodes are available: 3 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+          type: Warning
+          deprecatedSource: {}
+          deprecatedFirstTimestamp: null
+          deprecatedLastTimestamp: null
+        - metadata:
+            name: affinity-ssd.<<hex>>
+            namespace: default
+            uid: <<uid:4>>
+            resourceVersion: <<rv>>
+            creationTimestamp: <<time>>
+            managedFields:
+              - manager: kube-scheduler
+                operation: Update
+                apiVersion: events.k8s.io/v1
+                time: <<time>>
+                fieldsType: FieldsV1
+                fieldsV1:
+                  f:action: {}
+                  f:eventTime: {}
+                  f:note: {}
+                  f:reason: {}
+                  f:regarding: {}
+                  f:reportingController: {}
+                  f:reportingInstance: {}
+                  f:type: {}
+          eventTime: <<time>>
+          reportingController: default-scheduler
+          reportingInstance: default-scheduler-controlplane
+          action: Scheduling
+          reason: FailedScheduling
+          regarding:
+            kind: Pod
+            namespace: default
+            name: affinity-ssd
+            uid: <<uid:1>>
+            apiVersion: v1
+            resourceVersion: <<rv>>
+          note: "0/3 nodes are available: 1 node(s) had untolerated taint(s), 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling."
+          type: Warning
+          deprecatedSource: {}
+          deprecatedFirstTimestamp: null
+          deprecatedLastTimestamp: null

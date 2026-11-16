@@ -16,6 +16,8 @@ export interface RequestRecord {
   request: string;
   contentType?: string;
   body?: string;
+  /** The top-level keys of the response the capture kept (`keep` in the case). */
+  keep?: string[];
   code: number;
   warnings?: string[];
   response: unknown;
@@ -165,11 +167,9 @@ export function runRequests(fixture: Fixture, seed = 1): StepResult[] {
       return;
     }
     let body: unknown = r.ok ? r.object : r.status;
-    // A step captured with `keep` recorded only some top-level keys (a list without metadata).
-    const exp = rec.response;
-    if (exp !== null && typeof exp === 'object' && body !== null && typeof body === 'object' && !('metadata' in exp) && 'items' in exp) {
-      body = Object.fromEntries(Object.entries(body).filter(([key]) => key in exp));
-    }
+    // A step captured with `keep` recorded only those top-level keys.
+    const keep = rec.keep;
+    if (keep && body !== null && typeof body === 'object') body = Object.fromEntries(Object.entries(body).filter(([key]) => keep.includes(key)));
     out.push({ index, request: rec.request, expected, actual: { code: r.code, warnings: r.warnings, response: strip(normalizeJson(body, got)) } });
   });
   return out;

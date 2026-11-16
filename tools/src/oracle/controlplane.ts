@@ -1,20 +1,21 @@
 // Start and stop the throwaway control plane: etcd, kube-apiserver, kube-controller-manager,
 // kube-scheduler and KWOK, as detached processes in a temporary directory, on free ports chosen
-// at start. `up` records what it started in .upstream/oracle/state.json; `down` stops every
-// process group, checks that no process and no port is left, and deletes the directory.
+// at start. `up` records what it started in .upstream/oracle/<directory name>.json, one file per
+// oracle, so oracles of different sessions can run side by side; `down` stops the process groups
+// of one oracle, checks that none of its processes and ports is left, and deletes its directory.
 //
 // Flags follow the static Pod manifests kubeadm writes (upstream:
 // cmd/kubeadm/app/phases/controlplane/manifests.go getAPIServerCommand,
 // getControllerManagerCommand, getSchedulerCommand), with local addresses and ports.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { hostname, tmpdir } from 'node:os';
 import path from 'node:path';
 import { KUBERNETES_TAG } from '@simlab/k8s';
 import { binaryPath, requireBinaries } from './binaries.ts';
-import { oracleStateFile } from './paths.ts';
+import { oracleStateDir } from './paths.ts';
 import { generatePki, writeKubeconfig } from './pki.ts';
 import { CLUSTER, NODES, nodeManifest } from './topology.ts';
 
@@ -28,6 +29,11 @@ export interface OracleState {
   kwok: boolean;
   /** The workstation's host name, which leader election identities contain. */
   hostname: string;
+  /**
+   * A tool that started this oracle for itself and stops it (golden capture), with its process
+   * id; absent for `npm run oracle -- up`. The CLI leaves such an oracle alone unless named.
+   */
+  owner?: { tool: string; pid: number };
 }
 
 // Ports come from 20000-29999: below Linux's ephemeral range (32768-60999 by default), where
@@ -70,6 +76,22 @@ function alive(pid: number): boolean {
   }
 }
 
+/** This process and its ancestors, from /proc/<pid>/stat (field 4 is the parent's pid). */
+function ancestors(): Set<number> {
+  const out = new Set<number>();
+  for (let pid = process.pid; pid > 1 && !out.has(pid); ) {
+    out.add(pid);
+    try {
+      const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+      // The command name (field 2) is in parentheses and may hold spaces: read after the last ')'.
+      pid = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[1]);
+    } catch {
+      break;
+    }
+  }
+  return out;
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function until(what: string, timeoutMs: number, probe: () => boolean, logFile?: string): Promise<void> {
@@ -87,30 +109,68 @@ export function kubectl(state: Pick<OracleState, 'kubeconfig'>, args: string[], 
   return { status: r.status ?? -1, stdout: r.stdout, stderr: r.stderr };
 }
 
-export function readState(file = oracleStateFile): OracleState | undefined {
+/** The file that records the oracle running from `dir`. */
+export function stateFileOf(dir: string): string {
+  return path.join(oracleStateDir, `${path.basename(dir)}.json`);
+}
+
+function readStateFile(file: string): OracleState | undefined {
   return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as OracleState) : undefined;
+}
+
+/** Every recorded oracle, by directory name. */
+export function listStates(): OracleState[] {
+  if (!existsSync(oracleStateDir)) return [];
+  return readdirSync(oracleStateDir)
+    .filter((n) => n.endsWith('.json'))
+    .sort()
+    .flatMap((n) => readStateFile(path.join(oracleStateDir, n)) ?? []);
+}
+
+/**
+ * The recorded oracle that `ref` names: its directory (path or name), its kubeconfig or its state
+ * file. Without `ref`, the only one started by `npm run oracle -- up` (oracles a tool owns are
+ * not candidates). Throws when none or several match.
+ */
+export function findState(ref?: string): OracleState {
+  const all = listStates().filter((s) => ref !== undefined || s.owner === undefined);
+  const usage = all.map((s) => `  ${s.dir}`).join('\n');
+  if (ref === undefined) {
+    if (all.length === 1) return all[0] as OracleState;
+    if (all.length === 0) {
+      const owned = listStates().length;
+      throw new Error(owned === 0 ? 'no oracle is running' : `no oracle started by npm run oracle -- up is running (${owned} owned by a tool: see status)`);
+    }
+    throw new Error(`${all.length} oracles are running; name one by its directory:\n${usage}`);
+  }
+  const abs = path.resolve(ref);
+  const hit = all.find((s) => s.dir === abs || path.basename(s.dir) === ref || s.kubeconfig === abs || stateFileOf(s.dir) === abs);
+  if (!hit) throw new Error(all.length === 0 ? `no oracle is running (looked for ${ref})` : `no running oracle matches ${ref}; running:\n${usage}`);
+  return hit;
 }
 
 export interface UpOptions {
   kwok?: boolean;
   log?: (s: string) => void;
-  /** Where to record the running control plane; one file per concurrently running oracle. */
-  stateFile?: string;
+  /** The tool that owns the oracle and will stop it itself (OracleState.owner). */
+  owner?: string;
 }
 
 export async function up(opts: UpOptions = {}): Promise<OracleState> {
   const log = opts.log ?? (() => {});
   const kwok = opts.kwok ?? true;
-  const stateFile = opts.stateFile ?? oracleStateFile;
   requireBinaries();
-  if (readState(stateFile)) throw new Error(`an oracle is already recorded in ${stateFile}; run npm run oracle -- down`);
 
   const dir = mkdtempSync(path.join(tmpdir(), 'simlab-oracle-'));
+  const stateFile = stateFileOf(dir);
   const names = ['etcd', 'etcd-peer', 'apiserver', 'controller-manager', 'scheduler', 'kwok'];
   const ports: Record<string, number> = {};
   for (const n of names) ports[n] = await freePort();
   const server = `https://127.0.0.1:${ports.apiserver}`;
-  const state: OracleState = { dir, kubeconfig: '', server, ports, processes: [], kwok, hostname: hostname() };
+  const state: OracleState = {
+    dir, kubeconfig: '', server, ports, processes: [], kwok, hostname: hostname(),
+    ...(opts.owner ? { owner: { tool: opts.owner, pid: process.pid } } : {}),
+  };
   mkdirSync(path.dirname(stateFile), { recursive: true });
   const save = () => writeFileSync(stateFile, JSON.stringify(state, null, 2) + '\n');
   save();
@@ -226,7 +286,7 @@ export async function up(opts: UpOptions = {}): Promise<OracleState> {
     for (const p of state.processes) if (!alive(p.pid)) throw new Error(`${p.name} exited:\n${readFileSync(logOf(p.name), 'utf8').split('\n').slice(-30).join('\n')}`);
     return state;
   } catch (e) {
-    await down({ log, keepDirOnError: true, stateFile });
+    await down(state, { log, keepDirOnError: true });
     throw e;
   }
 }
@@ -235,15 +295,16 @@ export interface DownOptions {
   log?: (s: string) => void;
   /** Keep the directory (logs) when `up` failed, and say where it is. */
   keepDirOnError?: boolean;
-  stateFile?: string;
 }
 
-/** Stops everything the state file lists. Returns problems found (left-over processes or ports). */
-export async function down(opts: DownOptions = {}): Promise<string[]> {
+/**
+ * Stops the processes of one oracle, as its state file lists them, and nothing else. Returns
+ * problems found (left-over processes or ports); the directory and the state file are removed
+ * only when there are none.
+ */
+export async function down(state: OracleState, opts: DownOptions = {}): Promise<string[]> {
   const log = opts.log ?? (() => {});
-  const stateFile = opts.stateFile ?? oracleStateFile;
-  const state = readState(stateFile);
-  if (!state) return [];
+  const stateFile = stateFileOf(state.dir);
   // Reverse start order: clients first, etcd last.
   for (const p of [...state.processes].reverse()) {
     if (!alive(p.pid)) continue;
@@ -274,9 +335,13 @@ export async function down(opts: DownOptions = {}): Promise<string[]> {
     busy = busy.filter(([, port]) => portInUse(port));
   }
   for (const [n, port] of busy) problems.push(`port ${port} (${n}) is still listening`);
-  // Anything else started from the directory (a crashed child re-parented to init).
-  const stray = spawnSync('pgrep', ['-f', state.dir], { encoding: 'utf8' }).stdout.trim();
-  if (stray !== '') problems.push(`processes still reference ${state.dir}: ${stray.split('\n').join(', ')}`);
+  // Anything else started from the directory (a crashed child re-parented to init). Not this
+  // process and its parents: `npm run oracle -- down <dir>` names the directory itself.
+  const self = ancestors();
+  const stray = spawnSync('pgrep', ['-f', state.dir], { encoding: 'utf8' })
+    .stdout.split('\n')
+    .filter((p) => p !== '' && !self.has(Number(p)));
+  if (stray.length > 0) problems.push(`processes still reference ${state.dir}: ${stray.join(', ')}`);
   if (problems.length === 0) {
     if (opts.keepDirOnError) log(`logs kept in ${state.dir}`);
     else rmSync(state.dir, { recursive: true, force: true });
@@ -285,12 +350,16 @@ export async function down(opts: DownOptions = {}): Promise<string[]> {
   return problems;
 }
 
-/** For `status`: which recorded processes are alive. */
+/** For `status`: every recorded oracle and which of its processes are alive. */
 export function status(): string {
-  const s = readState();
-  if (!s) return 'no oracle is running';
-  const lines = [`server ${s.server}`, `kubeconfig ${s.kubeconfig}`, `dir ${s.dir}`];
-  for (const p of s.processes) lines.push(`${p.name.padEnd(24)} pid ${p.pid} ${alive(p.pid) ? 'running' : 'not running'}`);
-  return lines.join('\n');
+  const all = listStates();
+  if (all.length === 0) return 'no oracle is running';
+  return all
+    .map((s) => {
+      const lines = [`dir ${s.dir}${s.owner ? ` (owned by ${s.owner.tool}, pid ${s.owner.pid}${alive(s.owner.pid) ? '' : ', not running'})` : ''}`, `server ${s.server}`, `kubeconfig ${s.kubeconfig}`];
+      for (const p of s.processes) lines.push(`${p.name.padEnd(24)} pid ${p.pid} ${alive(p.pid) ? 'running' : 'not running'}`);
+      return lines.join('\n');
+    })
+    .join('\n\n');
 }
 

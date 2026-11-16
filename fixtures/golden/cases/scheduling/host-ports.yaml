@@ -1,0 +1,50 @@
+description: Two Pods pinned to node01 with the same hostPort; the second waits for a free port and is scheduled once the first is deleted.
+files:
+  web-a.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: web-a
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node01
+      containers:
+      - name: web
+        image: nginx:1.27
+        ports:
+        - containerPort: 80
+          hostPort: 8080
+  web-b.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: web-b
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node01
+      containers:
+      - name: web
+        image: nginx:1.27
+        ports:
+        - containerPort: 80
+          hostPort: 8080
+setup:
+  # One after the other: created together, either could take the port.
+  - do: kubectl create -f web-a.yaml
+  - do: kubectl wait --for=condition=Ready pod/web-a --timeout=60s
+  - do: kubectl create -f web-b.yaml
+  - until: kubectl get events --field-selector involvedObject.name=web-b,reason=FailedScheduling -o name
+    match: event
+steps:
+  - run: kubectl get pods -o wide
+    kwok: true
+  - run: kubectl describe pod web-b
+  - run: kubectl get events --field-selector reason=FailedScheduling
+  - run: kubectl get events --field-selector reason=FailedScheduling -o wide
+  - objects: [pod/web-b]
+  - run: kubectl delete pod web-a
+  - do: kubectl wait --for=condition=Ready pod/web-b --timeout=60s
+  - run: kubectl get pods -o wide
+    kwok: true
+  - run: kubectl get events --field-selector involvedObject.name=web-b
+  - objects: [pod/web-b]

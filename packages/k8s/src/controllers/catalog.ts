@@ -6,6 +6,7 @@ import { endpointsController } from './endpoint/controller.ts';
 import { endpointSliceController } from './endpointslice/controller.ts';
 import { garbageCollectorController } from './garbagecollector/controller.ts';
 import { namespaceController } from './namespace/controller.ts';
+import { nodeLifecycleController } from './nodelifecycle/controller.ts';
 import { replicaSetController } from './replicaset/replica_set.ts';
 import { serviceAccountController } from './serviceaccount/controller.ts';
 
@@ -17,4 +18,5 @@ export const CONTROLLERS: readonly ControllerSpec[] = [
   garbageCollectorController,
   deploymentController,
   replicaSetController,
+  nodeLifecycleController,
 ];

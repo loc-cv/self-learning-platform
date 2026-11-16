@@ -45,9 +45,18 @@ const MIN_INT64 = -(1n << 63n);
  * upstream: go/src/internal/strconv/atoi.go Atoi, ParseInt; go/src/strconv/number.go NumError.Error
  */
 function atoi(s: string): { value: bigint } | { error: string } {
+  return parseBase10('Atoi', s);
+}
+
+/** strconv.ParseInt(s, 10, 64), with the same errors. */
+export function parseInt64(s: string): { value: bigint } | { error: string } {
+  return parseBase10('ParseInt', s);
+}
+
+function parseBase10(fn: 'Atoi' | 'ParseInt', s: string): { value: bigint } | { error: string } {
   // base 10 allows no underscores and no prefix: an optional sign and at least one digit
-  if (!/^[+-]?[0-9]+$/.test(s)) return { error: `strconv.Atoi: parsing ${goQuote(s)}: invalid syntax` };
+  if (!/^[+-]?[0-9]+$/.test(s)) return { error: `strconv.${fn}: parsing ${goQuote(s)}: invalid syntax` };
   const n = BigInt(s);
-  if (n > MAX_INT64 || n < MIN_INT64) return { error: `strconv.Atoi: parsing ${goQuote(s)}: value out of range` };
+  if (n > MAX_INT64 || n < MIN_INT64) return { error: `strconv.${fn}: parsing ${goQuote(s)}: value out of range` };
   return { value: n };
 }

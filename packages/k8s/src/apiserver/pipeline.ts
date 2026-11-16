@@ -207,6 +207,8 @@ function decodeBody(sv: Served, body: Json | undefined, options: RequestOptions 
   if (!t) throw new Error(`no schema for ${sv.apiVersion} ${kind}`);
   const r = decode(body, t.id);
   if (r.error !== undefined) return { status: badRequestError(`${kind} in version ${JSON.stringify(version)} cannot be handled as a ${kind}: ${r.error}`) };
+  const convErr = isObject(r.value) ? sv.strategy.conversionError?.(r.value) : undefined;
+  if (convErr !== undefined) return { status: badRequestError(`${kind} in version ${JSON.stringify(version)} cannot be handled as a ${kind}: ${convErr}`) };
   const mode = options?.fieldValidation ?? '';
   if (r.unknown.length > 0) {
     const items = r.unknown.map((p) => `unknown field ${JSON.stringify(p)}`);
@@ -493,6 +495,8 @@ function patch(sv: Served, req: ApiRequest): ApiResponse {
   const r = decode(mergedJson, t.id);
   const patchInvalid = (detail: string) => invalidError({ group: '', kind: '' }, '', [invalid(newPath('patch'), JSON.stringify(mergedJson), detail)]);
   if (r.error !== undefined) return fail(patchInvalid(r.error));
+  const convErr = isObject(r.value) ? sv.strategy.conversionError?.(r.value) : undefined;
+  if (convErr !== undefined) return fail(patchInvalid(convErr));
   if (r.unknown.length > 0) {
     const items = r.unknown.map((p) => `unknown field ${JSON.stringify(p)}`);
     const mode = req.options?.fieldValidation ?? '';
@@ -698,10 +702,18 @@ function bindPod(sv: Served, req: ApiRequest): ApiResponse {
   const target = isObject(b.target) ? b.target : {};
   // ValidatePodBinding's errors reach the client as an aggregate without a Status: not modeled.
   if ((str(target.kind) !== '' && str(target.kind) !== 'Node') || str(target.name) === '') return gap('an invalid Binding');
-  if (bm.uid !== undefined || bm.resourceVersion !== undefined) return gap('Binding preconditions');
   const key = objectKey(req.namespace, name);
   const existing = storeGet(sv.etcd, sv.strategy.storage, key);
   if (!existing) return fail(notFoundError({ group: '', resource: 'pods' }, name));
+  // The Binding's uid and resourceVersion are storage preconditions (setPodNodeAndMetadata);
+  // kube-scheduler sends the Pod's uid. A failed one is an InvalidObj storage error, which
+  // InterpretUpdateError turns into a Conflict on pods (apiserver/pkg/storage/interfaces.go
+  // Preconditions.Check, pkg/storage/errors InterpretUpdateError).
+  const em = meta(existing);
+  const precondition = (what: string, want: string, have: string) =>
+    fail(conflictError({ group: '', resource: 'pods' }, name, `StorageError: invalid object, Code: 4, Key: /registry/pods/${key}, ResourceVersion: 0, AdditionalErrorMsg: Precondition failed: ${what} in precondition: ${want}, ${what} in object meta: ${have}`));
+  if (str(bm.uid) !== '' && str(bm.uid) !== str(em.uid)) return precondition('UID', str(bm.uid), str(em.uid));
+  if (str(bm.resourceVersion) !== '' && str(bm.resourceVersion) !== str(em.resourceVersion)) return precondition('ResourceVersion', str(bm.resourceVersion), str(em.resourceVersion));
   const pod = cloneJson(existing);
   const m = meta(pod);
   const spec = isObject(pod.spec) ? pod.spec : {};

@@ -13,6 +13,7 @@ import { eventsEventStrategy } from './events/event.ts';
 import { podStrategy } from './core/pod.ts';
 import { deploymentStrategy } from './apps/deployment.ts';
 import { replicaSetStrategy } from './apps/replicaset.ts';
+import { daemonSetStrategy } from './apps/daemonset.ts';
 import { serviceStrategy } from './core/service.ts';
 import { endpointsStrategy } from './core/endpoints.ts';
 import { endpointSliceStrategy } from './discovery/endpointslice.ts';
@@ -31,6 +32,7 @@ export const STRATEGIES: readonly Strategy[] = [
   podStrategy,
   deploymentStrategy,
   replicaSetStrategy,
+  daemonSetStrategy,
   serviceStrategy,
   endpointsStrategy,
   endpointSliceStrategy,

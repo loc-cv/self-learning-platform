@@ -164,3 +164,76 @@ describe('fixtures/golden/v1.37.2/objects/defaulted.yaml', () => {
     });
   });
 });
+
+const daemonSet = (name: string, spec: JsonObject = {}, metadata: JsonObject = {}): JsonObject => ({
+  apiVersion: 'apps/v1',
+  kind: 'DaemonSet',
+  metadata: { name, ...metadata },
+  spec: { selector: { matchLabels: { a: 'b' } }, template: template(), ...spec },
+});
+const TG = 'deprecated.daemonset.template.generation';
+const annotations = (o: JsonObject): JsonObject => meta(o).annotations as JsonObject;
+
+describe('DaemonSet (beyond fixtures/golden/cases/api/daemonset.yaml)', () => {
+  test('a template generation that is not a number fails the patch decoding, as Invalid on patch (oracle)', () => {
+    const k = boot();
+    ok(req(k, 'daemonsets', { verb: 'create', body: daemonSet('ds') }));
+    const r = req(k, 'daemonsets', { verb: 'patch', name: 'ds', options: { patchType: 'merge' }, body: { metadata: { annotations: { [TG]: 'x' } } } });
+    expect(r.code).toBe(422);
+    expect(message(r)).toMatch(/^ "" is invalid: patch: Invalid value: "\{\\"apiVersion\\":\\"apps\/v1\\",.*\}": strconv\.ParseInt: parsing "x": invalid syntax$/);
+  });
+
+  test('the conversion error wins over strict field validation; out of range is its own error', () => {
+    // upstream: apimachinery/pkg/runtime/serializer/versioning/versioning.go Decode converts
+    // before it returns the strict decoding errors; strconv.ParseInt's range error.
+    const k = boot();
+    const body = { ...daemonSet('ds', {}, { annotations: { [TG]: '9223372036854775808' } }), extra: 1 };
+    const r = req(k, 'daemonsets', { verb: 'create', body, options: { fieldValidation: 'Strict' } });
+    expect(r.code).toBe(400);
+    expect(message(r)).toBe('DaemonSet in version "v1" cannot be handled as a DaemonSet: strconv.ParseInt: parsing "9223372036854775808": value out of range');
+  });
+
+  test('the template generation is written back as strconv.FormatInt prints it', () => {
+    const k = boot();
+    const ds = ok(req(k, 'daemonsets', { verb: 'create', body: daemonSet('ds', {}, { annotations: { [TG]: '+007' } }) }));
+    expect(annotations(ds)[TG]).toBe('7');
+  });
+
+  test('an update that changes nothing is not written, without the annotation in the body too', () => {
+    const k = boot();
+    const created = ok(req(k, 'daemonsets', { verb: 'create', body: daemonSet('ds') }));
+    const same = ok(req(k, 'daemonsets', { verb: 'update', name: 'ds', body: daemonSet('ds') }));
+    expect(meta(same).resourceVersion).toBe(meta(created).resourceVersion);
+    expect(meta(same).generation).toBe(1);
+    expect(annotations(same)[TG]).toBe('1');
+  });
+
+  test('the status subresource keeps spec and template generation and answers GET', () => {
+    const k = boot();
+    ok(req(k, 'daemonsets', { verb: 'create', body: daemonSet('ds') }));
+    const status = { currentNumberScheduled: 2, numberMisscheduled: 0, desiredNumberScheduled: 2, numberReady: 1, observedGeneration: 1 };
+    const body = { ...daemonSet('ds', { minReadySeconds: 9 }, { annotations: { [TG]: '4' } }), status };
+    const written = ok(req(k, 'daemonsets', { verb: 'update', name: 'ds', subresource: 'status', body }));
+    expect((written.spec as JsonObject).minReadySeconds).toBeUndefined();
+    expect(annotations(written)[TG]).toBe('1');
+    expect(written.status).toEqual(status);
+    const got = ok(req(k, 'daemonsets', { verb: 'get', name: 'ds', subresource: 'status' }));
+    expect(got.status).toEqual(status);
+    // A spec write keeps the status the controller wrote.
+    const updated = ok(req(k, 'daemonsets', { verb: 'patch', name: 'ds', options: { patchType: 'merge' }, body: { spec: { minReadySeconds: 3 }, status: { numberReady: 0 } } }));
+    expect(updated.status).toEqual(status);
+    expect(meta(updated).generation).toBe(2);
+  });
+
+  test('field selectors name metadata only (the message: oracle); no scale subresource', () => {
+    const k = boot();
+    ok(req(k, 'daemonsets', { verb: 'create', body: daemonSet('one') }));
+    ok(req(k, 'daemonsets', { verb: 'create', body: daemonSet('two') }));
+    const list = ok(req(k, 'daemonsets', { verb: 'list', options: { fieldSelector: 'metadata.name=two' } }));
+    expect((list.items as JsonObject[]).map((d) => meta(d).name)).toEqual(['two']);
+    const bad = req(k, 'daemonsets', { verb: 'list', options: { fieldSelector: 'status.numberReady=1' } });
+    // upstream: apimachinery/pkg/apis/meta/v1/conversion.go DefaultMetaV1FieldSelectorConversion
+    expect(message(bad)).toBe('"status.numberReady" is not a known field selector: only "metadata.name", "metadata.namespace"');
+    expect(req(k, 'daemonsets', { verb: 'get', name: 'one', subresource: 'scale' }).ok).toBe(false);
+  });
+});

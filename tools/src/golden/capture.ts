@@ -142,13 +142,12 @@ function sortSliceEndpoints(v: unknown): unknown {
 /** One captured step as written in the fixture. */
 type Record_ = Record<string, unknown>;
 
-async function runCase(file: string, log: (s: string) => void, slot: number): Promise<string> {
+async function runCase(file: string, log: (s: string) => void): Promise<string> {
   const rel = path.relative(casesDir, file);
   const name = rel.replace(/\.yaml$/, '');
   const caseText = readFileSync(file, 'utf8');
   const c = parseCase(caseText, rel);
   const dir = mkdtempSync(path.join(tmpdir(), 'simlab-golden-'));
-  const stateFile = path.join(repoRoot, '.upstream', 'oracle', `capture-${slot}.json`);
   let oracle: OracleState | undefined;
   try {
     for (const [f, content] of Object.entries(c.files)) {
@@ -156,7 +155,7 @@ async function runCase(file: string, log: (s: string) => void, slot: number): Pr
       writeFileSync(path.join(dir, f), content);
     }
     if (c.server) {
-      oracle = await up({ kwok: c.kwok, stateFile });
+      oracle = await up({ kwok: c.kwok, owner: 'golden:capture' });
       mkdirSync(path.join(dir, '.kube'), { recursive: true });
       copyFileSync(oracle.kubeconfig, path.join(dir, '.kube', 'config'));
     }
@@ -207,6 +206,8 @@ async function runCase(file: string, log: (s: string) => void, slot: number): Pr
         const rec: Record_ = { request: step.request };
         if (step.contentType) rec.contentType = step.contentType;
         if (step.body !== undefined) rec.body = step.body;
+        // Recorded so that a replay compares the same keys (api.differential.ts).
+        if (step.keep) rec.keep = step.keep;
         Object.assign(rec, { code: r.code });
         if (r.warnings.length > 0) rec.warnings = r.warnings.map((w) => normalizeValue(mapOracle(w, ctx), ctx));
         rec.response = typeof body === 'string' ? normalizeValue(mapOracle(body, ctx), ctx) : normalizeJson(body, ctx);
@@ -255,7 +256,7 @@ async function runCase(file: string, log: (s: string) => void, slot: number): Pr
     return text;
   } finally {
     // A control plane left running is reported by the caller (leftovers), never hidden.
-    if (oracle) leftovers.push(...(await down({ stateFile })).map((p) => `${rel}: ${p}`));
+    if (oracle) leftovers.push(...(await down(oracle)).map((p) => `${rel}: ${p}`));
     rmSync(dir, { recursive: true, force: true });
   }
 }
@@ -275,12 +276,12 @@ await fetchBinaries((s) => console.log(s));
 let failed = false;
 const queue = [...files];
 await Promise.all(
-  Array.from({ length: Math.max(1, jobs) }, async (_, slot) => {
+  Array.from({ length: Math.max(1, jobs) }, async () => {
     for (let f = queue.shift(); f !== undefined; f = queue.shift()) {
       const rel = path.relative(casesDir, f);
       const target = path.join(fixturesDir, rel);
       try {
-        const text = await runCase(f, (s) => console.log(s), slot);
+        const text = await runCase(f, (s) => console.log(s));
         const old = existsSync(target) ? readFileSync(target, 'utf8') : undefined;
         if (check) {
           if (old !== text) {

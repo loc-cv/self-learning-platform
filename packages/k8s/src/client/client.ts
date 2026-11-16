@@ -36,6 +36,9 @@ export interface ResourceClient {
 }
 
 export interface Client {
+  /** The server it talks to and the identity it sends: enough to build it again later. */
+  readonly server: ApiServerConfig;
+  readonly user?: UserInfo;
   resource(r: GroupVersionResource | string): ResourceClient;
   request(req: ApiRequest): ApiResponse;
   /** Pending events of a watch, oldest first, removed from the subscription. */
@@ -59,6 +62,8 @@ export function createClient(ctx: Ctx, server: ApiServerConfig, user?: UserInfo,
   const ns = (namespace: string | undefined) => (namespace === undefined ? {} : { namespace });
   const opts = (options: RequestOptions | undefined) => (options ? { options } : {});
   return {
+    server,
+    ...(user ? { user } : {}),
     request,
     resource(r) {
       const g = typeof r === 'string' ? gvr(r) : r;

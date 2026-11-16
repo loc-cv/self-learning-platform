@@ -20,7 +20,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 04 `prompts/04-oracle-and-golden-fixtures.md` (needs only 00; can run earlier)
 - [x] 05a `prompts/05a-k8s-api-store-and-pipeline.md`
 - [x] 05b `prompts/05b-k8s-controllers.md`
-- [ ] 06a `prompts/06a-topology-and-scheduler.md`
+- [x] 06a `prompts/06a-topology-and-scheduler.md`
 - [ ] 06b `prompts/06b-kubelet-runtime-behavior-models.md`
 - [ ] 07a `prompts/07a-kubectl-framework-and-get.md`
 - [ ] 07b `prompts/07b-kubectl-describe-apply-delete.md`
@@ -115,20 +115,42 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   The differential tests strip exactly these fields (D-046, `POD_ADMISSION` in
   `tools/src/golden/api.test.ts`, `NOT_THE_API_SERVERS` in `defaulted.test.ts`, one KNOWN entry
   for the Node). Phase 20b adds the plugins and removes the stripping.
-- **The API server's configuration is passed by callers** (`DEFAULT_APISERVER` in
-  `packages/k8s/src/apiserver/config.ts`: etcd data id, service range, NodePort range, advertise
-  address, secure port), and it is bootstrapped by calling `bootstrapApiServer`. Phase 27 reads
-  them from the static Pod manifest's flags and starts the server as a process.
+- **The API server is bootstrapped by the topology** (`bootstrapApiServer` in `topology/build.ts`,
+  with `apiServerConfig(def)`, which equals `DEFAULT_APISERVER` for both topologies, and recorded in
+  `k8sSlice.apiServers`). Phase 27 reads etcd id, service range, NodePort range, advertise address
+  and secure port from the static Pod manifest's flags and starts the server as a process.
 - **The API server's own reconcilers do not run**: deleting the `kubernetes` Service, its
   Endpoints or EndpointSlice does not bring them back (upstream re-creates them every 10 s), and
   the `kubernetes` ServiceCIDR has no servicecidrs-controller finalizer. Phase 27 (the API server
   as a process with its loops), or 05b if a controller needs them first.
-- **The controller manager is started by callers** (`startControllerManager` in
-  `packages/k8s/src/controllers/manager.ts`, every registered controller, no flags). Phase 27
-  starts and stops it with the static Pod's process and reads `--controllers`.
-- **No Node objects exist unless a test creates them.** The EndpointSlice controller skips a Pod
-  whose Node is not in the store, as upstream does, and retries (its tests create node01/node02 in
-  `controllers/endpointslice/testenv.ts`). Phase 06a builds the topology's Nodes.
+- **kube-controller-manager and kube-scheduler are started by the topology** (`startControllerManager`,
+  every registered controller, no flags; `startScheduler`, the default profile). Phase 27 starts and
+  stops them with their static Pods' processes and reads `--controllers` and the scheduler's flags.
+- **Nodes and their Leases are written once by the topology** (`topology/nodes.ts`): conditions,
+  heartbeat times and Lease renewals never move, `status.images` is empty, and no registration
+  events (`Starting`, `NodeHasSufficientMemory`, `NodeReady`, `RegisteredNode`, …) exist. Phase 06b's
+  kubelet takes over the status, heartbeat, Lease and events; node health monitoring (NotReady,
+  NoExecute taints, evictions) comes with it and phase 26a. The node lifecycle controller has only
+  its NoSchedule tainting pass (`controllers/nodelifecycle/`).
+- **The control plane's mirror Pods are seeded as running** (`topology/kubeadm.ts` seedStaticPods,
+  from the manifests on disk, with a stand-in config hash, DIV-019). Phase 27 creates them through
+  the kubelet from `/etc/kubernetes/manifests`.
+- **kube-proxy's DaemonSet Pods and the DaemonSet's status are seeded** (seedDaemonSetPods, as the
+  DaemonSet controller would create them). Phase 18a's DaemonSet controller creates and updates them.
+- **No certificates** (D-057): `/etc/kubernetes/pki` is not written, kubeconfigs and the
+  `cluster-info` ConfigMap have no `*-data` lines (`users[].user` is empty), and the bootstrap
+  token is never used. Phase 25b fixes the certificate format and fills them in; phase 28 checks them.
+- **No RBAC objects**: kubeadm's Roles, ClusterRoles and bindings are not stored, since the API
+  server serves no rbac.authorization.k8s.io kinds. Phase 20a creates them from
+  `KUBEADM_OBJECTS` (the reference has them) when it adds the kinds.
+- **No CNI agent**: Pod networking is assumed, Nodes have no NetworkUnavailable condition and
+  `/etc/cni/net.d` is absent. Phase 29a installs the modeled plugins (and 30 breaks them).
+- **CoreDNS Pods stay Pending**, bound by the scheduler, until the kubelet runs them (phase 06b).
+- **No student workstation** in `kubeadm-1cp-2w` (D-055): added by phase 19a or 25a, whichever
+  comes first.
+- **Scheduler**: no preemption (phase 20b; with all priorities 0 there is never a victim, and a
+  lower-priority Pod, which cannot exist yet, would record a gap); PodTopologySpread and
+  InterPodAffinity are neither filtered nor scored (phase 20b, DIV-020).
 - **No root-ca-certificate-publisher**: namespaces get no `kube-root-ca.crt` ConfigMap (the golden
   `controllers/namespace-deletion` shows it). Phase 20a (service account credentials), or 16a if
   projected volumes need it first.
@@ -147,12 +169,6 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 ## Carry-over
 
 Unfinished work from a phase, precise enough for the next session to continue.
-
-- **Tools, concurrent oracles.** `npm run oracle -- up|down` keeps one state file
-  (`.upstream/oracle/state.json`): a second `up` overwrites it and a `down` can stop another
-  session's control plane (seen in phase 05b with two agents). `golden:capture` starts its own
-  control planes and is not affected. Fix: one state file per oracle directory, `down` taking the
-  directory or stopping only its own. Owner: the next session that runs the oracle, or R3.
 
 - **Phase 05a, API warnings (DIV-017).** `pkg/api/pod/warnings.go` (GetWarningsForPod,
   GetWarningsForPodTemplate) was not in the checkout; it is now. Port it into the Pod, Deployment
@@ -175,6 +191,72 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 06a done.** Cluster topologies and kube-scheduler.
+  - Built: `packages/k8s/src/topology/` — `ClusterDef` data (`cluster.ts`: `kubeadm-1cp-2w`,
+    `kubeadm-1n`), one builder (`build.ts`), Nodes and Leases as a kubelet leaves them (`nodes.ts`,
+    from upstream's setters: condition order, declaredFeatures, runningInUserNamespace), kubeadm's
+    files and objects (`kubeadm.ts`, from `kubeadm/reference.ts`, which `npm run kubeadm:capture`
+    generates from the real kubeadm's `init --dry-run`; mirror Pods and kube-proxy Pods seeded as
+    running; kubeadm, kubelet, kubectl binaries as stubs with real sizes). `packages/k8s/src/scheduler/`
+    — snapshot, cycle (PreFilter/Filter/PostFilter message/Score/heap), filter and score plugins,
+    queueing hints, the queue on the controller runtime with the 5-minute flush, events through
+    `controllers/events.ts` (the events.k8s.io recorder, D-054), start/stop. A minimal node
+    lifecycle controller (NoSchedule tainting pass). The API server serves DaemonSets
+    (`registry/apps/daemonset.ts`, golden case `api/daemonset`, byte-for-byte) and checks
+    `pods/binding` preconditions. The runtime gained `ControllerSpec.user`, a `kube-scheduler`
+    component and the controller's data in watch handlers. The CLI loads the k8s plugin.
+  - Exit criteria, each a test. FailedScheduling messages equal the golden fixtures for an
+    untolerated taint, an unmatched node selector, unsatisfied required affinity (and a nonexistent
+    node in matchFields, which fails at PreFilter), insufficient cpu, memory, both, extended
+    resources, host ports, cordoned nodes and a different reason on each node, with the preemption
+    part ("not helpful", "No preemption victims", "preemptionPolicy=Never"):
+    `tools/src/golden/scheduling.test.ts` replays all 9 scheduling cases (7 new) event for event,
+    PodScheduled conditions included. Fixing the cause schedules with no further input: label,
+    untaint, uncordon (with the real extra failure while the unschedulable taint lingers), deleting
+    the port holder, freeing cpu, offering the extended resource (same file), adding a toleration
+    (`scheduler/scheduler.test.ts`). Scheduler stopped: no binding, no condition, no event for 10
+    minutes, then a start schedules. Deterministic per seed and 6 replicas split 3/3 over the
+    workers. Nodes equal the oracle's in shape except KWOK-only fields (`tools/src/golden/topology.test.ts`).
+    Topologies as data: `topology/topology.test.ts` (kubeadm-1n runs CoreDNS on its one node).
+    Exercised with `npm run sim -- --topology kubeadm-1cp-2w`: root@controlplane, kubeadm's files,
+    `kubectl` prints the `[sim]` notice (07a). No kubectl yet, so Pods and events were exercised
+    through the tests only.
+  - Decisions D-055 (topologies as data, entry, no workstation yet), D-056 (scheduler), D-057
+    (kubeadm reference, what is left out); D-054 (events broadcaster, by the recorder agent); D-037's
+    reasoning corrected (the tie comes from parallel filtering; no `selectHost` in v1.37).
+    Divergences DIV-019 (static Pod config hash), DIV-020 (no PodTopologySpread/InterPodAffinity
+    scoring). `docs/ARCHITECTURE.md` §4.3 (scheduler) and new §4.7 (topologies);
+    `docs/SCENARIO_FORMAT.md` §5.1 lists the topologies; `docs/FIDELITY.md` §6.1 (oracles), §6.6.
+  - Fixed on the way: the carry-over "concurrent oracles" (one state file per oracle; `down` and
+    `env` take a directory; `golden:capture` owns its oracles), with a bug where `down`'s leftover
+    check matched its own command line. The upstream checkout gained `staging/src/k8s.io/kube-scheduler`.
+    The CLI's `PLUGINS` comment claimed Kubernetes registered itself; it now loads `k8sPlugin`.
+  - Surprises. The taint reason is the literal "node(s) had untolerated taint(s)". A request above
+    a node's allocatable makes that node "not helpful" for preemption; below it, "No preemption
+    victims found". Uncordoning makes the scheduler fail once more, on the node lifecycle
+    controller's `node.kubernetes.io/unschedulable` taint (timeAdded set), before succeeding. The
+    second FailedScheduling after the 5-minute flush is a new Event, not a series: its `regarding`
+    has the resourceVersion after the condition write; the third joins it as a series. A cordoned
+    node reports "were unschedulable" even to a Pod whose selector excludes it (first filter wins).
+    kubeadm 1.37 writes no cri-socket annotation and an empty `kubeadm-flags.env`; etcd falls back
+    to 3.7.0-0; containerd 1.7 would get a RuntimeConfig preflight warning (for 29a). A joined
+    worker's kubelet.conf uses `default-cluster`/`default-auth` names (the kubelet writes it).
+    The Priority admission plugin rejects `preemptionPolicy: Never` without a class (20b).
+  - For later phases. 06b: the kubelet takes over Node status (keep `nodes.ts` values as the
+    registration), Leases, images (ImageLocality scoring reads `status.images`) and Pod status of
+    the seeded Pods; CoreDNS should start running; the scheduler's Scheduled event already exists.
+    07a: the kubeconfig's server is `https://172.16.0.10:6443`, found in `k8sSlice.apiServers`;
+    reading `scheduling/*` fixtures' `get events` tables needs the events.k8s.io view (no count
+    until a series; `-o wide` prints 1). 18a: replace `seedDaemonSetPods`, reuse its toleration and
+    affinity code. 20a: create kubeadm's RBAC objects from the reference. 20b: Priority admission
+    and PriorityClass (the `preemption` case's `cpu-1-never` then needs no stand-in), preemption,
+    topology spread and inter-Pod affinity (the default profile's order is in
+    `scheduler/plugins/filters.ts`). 25b/28: fill the `<<cert:…>>` tokens of the reference.
+    27: replace the seeded mirror Pods and the topology's direct starts.
+  - Workflow: six agents in parallel (scheduler research, Node shape research, events.k8s.io
+    recorder, DaemonSet kind, golden captures plus the oracle carry-over, kubeadm capture) while the
+    scheduler and topology were written.
 
 - 2026-11-16 — **Phase 05b done.** Controller runtime and the first controllers.
   - Built (`packages/k8s/src/controllers/`): the runtime (`runtime.ts`: watch-fed queues in world

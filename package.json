@@ -23,6 +23,7 @@
     "oracle": "node tools/src/oracle/cli.ts",
     "golden:capture": "node tools/src/golden/capture.ts",
     "golden:kubectl-manifest": "node tools/src/golden/kubectl_manifest.ts",
+    "kubeadm:capture": "node tools/src/kubeadm/capture.ts",
     "api:vendor": "node tools/src/openapi/vendor.ts",
     "play": "node apps/cli/src/play.ts",
     "sim": "node apps/cli/src/sim.ts"

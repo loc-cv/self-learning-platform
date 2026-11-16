@@ -51,9 +51,15 @@ export interface SessionRecorder {
   log(): SessionLog;
 }
 
-export function createRecorder(kernel: Kernel, header: SessionHeader): SessionRecorder {
-  const inputs: LoggedInput[] = [];
-  const checkpoints: Checkpoint[] = [];
+/**
+ * Logs the inputs delivered to `kernel`. With `from`, the recorder continues that log: the kernel
+ * must be the world its replay reached (session resume, §2.8), and new inputs and checkpoints are
+ * appended after the logged ones.
+ */
+export function createRecorder(kernel: Kernel, header: SessionHeader, from?: SessionLog): SessionRecorder {
+  if (from && kernel.now < from.end) throw new RangeError(`the kernel is at ${kernel.now}, before the end of the log it continues (${from.end})`);
+  const inputs: LoggedInput[] = from ? from.inputs.slice() : [];
+  const checkpoints: Checkpoint[] = from ? from.checkpoints.slice() : [];
   return {
     kernel,
     deliver(input) {

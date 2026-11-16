@@ -71,6 +71,7 @@ function* edit(p: ProcApi, flavor: EditorRequest['flavor'], viewOnly: boolean): 
     readOnly = true;
   }
   const req: EditorRequest = { flavor, path, name: given, content, readOnly };
+  if (!exists) req.isNew = true;
   const language = languageOf(path);
   if (language !== undefined) req.language = language;
   yield* p.openEditor(req);

@@ -35,8 +35,12 @@ npm run openapi:capture [-- --check]   # the OpenAPI v3 documents the real API s
                                       # kubectl explain → packages/k8s/src/openapi/data/<tag>.openapiv3.ts
 npm run transcript:capture -- <file|dir>  # write real bash/coreutils output into golden-verified transcripts
 npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
-npm run dev                   # (phase 10) web app with hot reload
-npm start                     # (phase 10) build, then serve the app and the persistence API locally
+npm run dev                   # web app with hot reload: http://127.0.0.1:4317/ (Vite inside the app server)
+npm start                     # build apps/web, then serve it and the API (gap log; phase 11 adds persistence)
+                              # on http://127.0.0.1:4317/; server options --port N, --data DIR
+npm run e2e                   # Playwright: build, serve, smoke test and exit-criteria tests in Chromium
+                              # (not part of the gate, D-110); `npm run e2e -- <file|-g name>` for one
+npm run bench:web             # in-browser latency of read commands and keystrokes (p50/p95)
 npm run play -- --topology kubeadm-1cp-2w [--seed N]  # sit in a simulated machine from this terminal (Ctrl-] leaves);
                                                   # records to data/play/, $EDITOR answers vim/nano
 npm run play -- --replay <file>                   # replay a recording; checks it reaches the same world hash
@@ -106,7 +110,12 @@ packages/learn     content model, scenario runner, checks, grader, skills, FSRS,
                    src/runner steps, check evaluation, grader and baselines, src/lab.ts a learner's
                    attempt, src/validate.ts content validation, src/testing.ts a counter plugin for tests)
 packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml
-apps/web  apps/server  apps/cli
+apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side, tested in
+                   Node), src/app (App, Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
+                   LabPanel, TopBar, ItemPicker, storage, the probe for tests), src/protocol.ts (page ↔
+                   worker messages), vite.config.ts (bundles the content packs, D-103), e2e/ (Playwright)
+apps/server        the local server: built app or Vite middleware, POST /api/gaps → data/gaps.jsonl
+apps/cli
 tools/             upstream fetch, OpenAPI processing (openapi/), oracle and golden capture, transcript capture,
                    coverage generation (coverage/), content validation and schema generation (content/),
                    update check;
@@ -117,7 +126,8 @@ packages/*/transcripts/  transcript tests (docs/TRANSCRIPTS.md), run by each pac
 fixtures/golden/   golden cases (cases/, the inputs) and captured, normalized real output per Kubernetes
                    version (v1.37.2/, committed); docs/FIDELITY.md §6
 fixtures/reference/ workstation captures (rank 3) with their capture scripts, e.g. linux/vfs-syscalls,
-                   bash/readline (real readline output key by key, bind -p); also kubeadm/ (the real kubeadm
+                   bash/readline (real readline output key by key, bind -p), vim/messages (vim's message
+                   line for the editor overlay); also kubeadm/ (the real kubeadm
                    init's files and objects, rank 1, from tools/src/kubeadm/capture.ts)
 ```
 

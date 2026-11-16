@@ -42,7 +42,8 @@ function lab(id: string, seed: number, speed: number, record: string): Promise<n
       edit: editInRealEditor,
       gap(g) {
         mkdirSync('data', { recursive: true });
-        appendFileSync('data/gaps.jsonl', `${JSON.stringify({ ...g, item: id, at: new Date().toISOString(), engine: { version: ENGINE_VERSION, kubernetes: KUBERNETES_TAG } })}\n`);
+        // docs/FIDELITY.md §4.4: the item belongs in the record's context.
+        appendFileSync('data/gaps.jsonl', `${JSON.stringify({ ...g, context: { ...g.context, item: id }, at: new Date().toISOString(), engine: { version: ENGINE_VERSION, kubernetes: KUBERNETES_TAG } })}\n`);
       },
       now: () => performance.now(),
     },

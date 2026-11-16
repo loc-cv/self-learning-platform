@@ -8,5 +8,8 @@
   },
   "scripts": {
     "test": "vitest run --root ../.. apps/server/"
+  },
+  "dependencies": {
+    "vite": "8.3.8"
   }
 }

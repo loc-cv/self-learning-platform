@@ -223,6 +223,37 @@ describe('input log and replay', () => {
     expect(result.kernel.hash()).toBe(final);
   });
 
+  test('a resumed session continues its log, and the whole log replays', () => {
+    // Record half a session, replay it (a page reload), continue recording on the replayed world.
+    const k = bootSim(5);
+    const first = createRecorder(k, header);
+    k.advance(300);
+    first.deliver({ kind: 'sim.add', name: 'alpha' });
+    k.advance(50);
+    first.checkpoint();
+    const saved = JSON.parse(JSON.stringify(first.log())) as SessionLog;
+    const resumed = replay(saved, bootFrom(registry));
+    expect(resumed.diverged).toBeUndefined();
+    const next = createRecorder(resumed.kernel, header, saved);
+    resumed.kernel.advance(10);
+    next.deliver({ kind: 'sim.add', name: 'beta' });
+    next.checkpoint();
+    const log = next.log();
+    expect(log.inputs.map((i) => [i.t, i.name])).toEqual([
+      [1_000_300, 'alpha'],
+      [1_000_360, 'beta'],
+    ]);
+    expect(log.checkpoints.map((c) => c.inputs)).toEqual([1, 2]);
+    // The same session without the reload.
+    first.kernel.advance(10);
+    first.deliver({ kind: 'sim.add', name: 'beta' });
+    first.checkpoint();
+    expect(first.log().checkpoints).toEqual(log.checkpoints);
+    expect(resumed.kernel.hash()).toBe(k.hash());
+    expect(replay(log, bootFrom(registry)).kernel.hash()).toBe(k.hash());
+    expect(() => createRecorder(bootSim(5), header, log)).toThrow(RangeError);
+  });
+
   test('a changed engine is detected at the first checkpoint that differs', () => {
     const { log } = record();
     const changed = createRegistry([simPlugin({ variant: 1 })]);

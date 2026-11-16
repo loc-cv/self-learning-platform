@@ -13,6 +13,7 @@
     { "path": "packages/content/tsconfig.test.json" },
     { "path": "apps/web" },
     { "path": "apps/web/tsconfig.test.json" },
+    { "path": "apps/web/tsconfig.tools.json" },
     { "path": "apps/server" },
     { "path": "apps/server/tsconfig.test.json" },
     { "path": "apps/cli" },

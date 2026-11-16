@@ -309,6 +309,12 @@ tested headlessly: the app calls `tick(realElapsed)` and `deliver(input, realEla
 driver carries fractions of a virtual millisecond between ticks. Only reading the wall clock is
 left to the app.
 
+**In the web app** (phase 10, D-104, D-106) the driver runs in the engine worker
+(`apps/web/src/engine/worker.ts`). The worker wakes when the next pending event is due at the
+current speed (`nextEventTime()`), and at least every 250 ms: a command that consumes 7 ms of
+virtual time answers after 7 ms of real time. Sleeping while nothing is due is invisible, because
+every input first lets virtual time catch up with the wall clock.
+
 ### 2.6 PRNG streams
 
 ```ts
@@ -456,6 +462,8 @@ type Input =
 - Speed changes, pauses and skips are not inputs. Their whole effect is in the stamps.
 - The log is appended to as the session runs and stored through the server under `data/`.
 - **Resume** replays the log on a fresh world. **Reset** starts a new log from the baseline.
+  `createRecorder(kernel, header, from)` continues a log on the world its replay reached, so a
+  resumed session keeps one log (phase 10; the web app's resume, D-105).
 - A replay is valid for the engine version that recorded it. After an engine change a replay can
   diverge; the checkpoints detect that. On divergence the app says so and offers to start the item
   again; it never continues on a world it cannot vouch for.
@@ -502,7 +510,7 @@ The engine does no I/O. Three write-only ports carry what must leave it; the app
 |---|---|---|
 | `trace` | `TraceRecord` | ring buffer for X-ray and debrief; assertions in tests |
 | `output` | terminal bytes per TTY; editor requests (§3.8) | xterm.js; the CLI's stdout; a transcript buffer in tests |
-| `gap` | `GapRecord` without wall time (`docs/FIDELITY.md` §4.4) | `data/gaps.jsonl` through the server; failure in content tests |
+| `gap` | `GapRecord` without wall time (`docs/FIDELITY.md` §4.4) | `data/gaps.jsonl` through the server (`POST /api/gaps`, D-109); failure in content tests |
 
 Write-only is what allows these to live outside world state: nothing the engine does can depend
 on them. Phase 02 added `output` to `Ports` and `Ctx.output(record)`; phase 03 made
@@ -1106,6 +1114,12 @@ with `editor.status`. `vim` (also run as `vi`, `view`, `vim.basic`, `vim.tiny`) 
 `rnano`) edit one named file; options, several files, no file, a directory, an unreadable file
 and no terminal print notices. Headless sessions answer with `Session.onEditor`; script mode with
 `@editor`; the terminal player with the user's editor.
+
+**As built in phase 10** (D-107): the request carries `isNew` when the file does not exist yet.
+The web app's overlay is CodeMirror 6 with vim keys (`apps/web/src/app/EditorOverlay.tsx`): it
+holds the file without its final newline and writes one back, as vim does; each `:w` is one
+`editor.save` and waits for its `editor.status`; `:q` with unsaved changes is refused with E37.
+Editor sessions open when a page reloads come back with the content of their last save.
 
 ### 3.9 Units, behavior models and the network
 

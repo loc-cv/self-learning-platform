@@ -21,6 +21,8 @@ export interface EditorRequest {
   content: string;
   /** The file cannot be written by this user, or the program was asked to view only. */
   readOnly: boolean;
+  /** The file does not exist yet: vim calls the buffer `[New]` until the first write. */
+  isNew?: true;
   /** Highlighting hint from the file name: `yaml`, `json`, `shell`, … */
   language?: string;
 }

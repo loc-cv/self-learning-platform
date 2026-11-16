@@ -39,9 +39,9 @@ describe('vim and nano', () => {
     });
     w.s.run('vi notes.txt');
     w.s.run('nano todo');
-    expect(w.seen.map((r) => [r.flavor, r.content, r.readOnly])).toEqual([
-      ['vim', '', false],
-      ['nano', '', false],
+    expect(w.seen.map((r) => [r.flavor, r.content, r.readOnly, r.isNew])).toEqual([
+      ['vim', '', false, true],
+      ['nano', '', false, true],
     ]);
     expect(w.s.run('cat notes.txt todo; ls -l notes.txt').output).toMatch(/^vim\nnano\n.*-rw-r--r-- /s);
   });

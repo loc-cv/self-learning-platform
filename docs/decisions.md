@@ -1004,3 +1004,89 @@ as a real plugin registers one of the names, so the stand-in is removed in the s
 phase 26b; until then a setup that needs a taint edits the Node, which is a real administrator's
 path and leaves no annotation a `taint` would not leave either. A learner who reaches for
 `kubectl taint` gets the `[sim]` notice; in the scheduling lab that is the forbidden fix anyway.
+
+**D-103 — Content reaches the browser through the bundler.** Answers D-100's open question.
+`apps/web/vite.config.ts` reads the packs with `loadPacks()` at build time (Node) and serves them
+as the virtual module `virtual:simlab/content`, to the page and to the worker (which Vite bundles
+separately, so the plugin is registered for both). The browser never imports `@simlab/content`'s
+file system loader, and no content is fetched at runtime. Validation stays with
+`npm run content:check`; the dev server reloads the page when a pack file changes.
+
+**D-104 — The web engine is one attempt at a time in a worker, behind a message protocol.**
+`apps/web/src/protocol.ts` is the whole interface: terminal bytes, `tty.open`/`resize`/`close`,
+editor save and close, lab actions (check, hint, debrief, solutions, reset), pause, speed and
+advance, and `flush`. `src/engine/session.ts` is the worker's logic without the worker (tested
+in Node with a fake clock); `worker.ts` adds the wall clock. Everything one message or tick
+produces is sent after it, consecutive bytes for one terminal in one message. The lab's actions
+are `learn.action` inputs, as in `npm run lab`; after a reload the hints shown, the solutions
+viewed, the debrief read and "solved" are derived from those inputs across every attempt, so the
+log stays the only source of truth. The last check's report is display state, stored beside the
+log. Terminal ids are the first free `ttyN` of the world (setup terminals keep theirs).
+
+**D-105 — Attempts live in browser storage until phase 11.** `simlab.attempt.v1.<item>` holds a
+`StoredAttempt` (the current `SessionLog`, earlier attempts ended by reset, the start time and
+seed); `simlab.active.v1` names the item to resume on load; `simlab.settings.v1` holds theme,
+editor keys, panel width and font size. The worker sends the whole attempt at start, after lab
+actions and resets, and each new input at once as a delta (`attempt.delta`, with `end` every 5 s
+while only time passes); the page holds the attempt (`app/attempts.ts`), writes it 300 ms after a
+change and synchronously when the page is hidden or unloaded. A first version let the worker send
+the attempt every 250 ms and lost the last keystrokes when the page reloaded right after them; a
+message from the worker cannot arrive once unload has begun. A reload replays the current log into a
+fresh fork of the baseline (`createRecorder(kernel, header, from)` continues the same log); its
+terminal output goes back to the terminals, open editor sessions reopen with their last saved
+content, and a log whose checkpoints do not match, or whose item changed (`contentHash`), is
+refused with an offer to start the same variant again (§2.8: never continue on a world the
+simulator cannot vouch for). Checkpoints are taken at every lab action and at most every 2 min of
+virtual time otherwise (a hash costs about 40 ms). Every storage access is guarded; a full or
+missing storage shows a warning.
+
+**D-106 — The worker wakes when the next event is due.** Ticking every 50 ms made every command
+that consumes virtual time (all kubectl calls) wait for the next tick: p95 31.8 ms. The worker now
+sleeps until `nextEventTime()` at the current speed, at most 250 ms: p95 8 ms, and fewer wakeups
+while idle. Sleeping longer is invisible: every input first lets virtual time catch up.
+
+**D-107 — The editor overlay holds lines the way vim does and speaks vim's words.** CodeMirror 6
+with `@replit/codemirror-vim` for the vim flavor (or plain keys by setting; nano is always plain,
+with Ctrl-O and Ctrl-X). The file's final newline is taken off on open and put back on write
+('fixendofline'), so `G` and `dd` see vim's lines. `:w`, `:wq`, `:x`, `:q`, `:q!`, `ZZ`, `ZQ` (and
+`:wa`, `:qa`, `:up`, `:exi`, `:clo`) map to `editor.save` and `editor.close`. The message line uses
+the strings captured from vim 9.1 (`fixtures/reference/vim/messages.py`): the file information on
+open and after a write (`"f" 2L, 10B`, `[New]`, `[readonly]`, `[noeol]`), E37, E45, E492, the mode
+names. The vim emulation's own "Not an editor command" text is replaced: a name vim has (any
+prefix of `getcompletion('', 'command')`) that the overlay does not do is a `[sim]` notice and a
+gap record (`:sp`, `:e`, `:w other-file`); anything else is vim's E492. `EditorRequest.isNew` tells
+the overlay that the file does not exist yet. Long lines wrap (vim's 'wrap'). The emulation's
+other messages (bad regex, marks) are its own words; DIV-014 says so.
+
+**D-108 — Workspace shortcuts are Ctrl+Shift chords.** A terminal sends the same byte for
+Ctrl+Shift+letter as for Ctrl+letter, so the chords cost the shell nothing, and the chosen ones
+are not reserved by browsers: Enter check, H hint, E new terminal, X close terminal, 1…9 switch,
+L panel, Space pause, O lab list, C copy, ? shortcuts. Ctrl+Shift+V is never handled: the browser's
+paste event reaches xterm.js. They are caught in the capture phase, before xterm.js or CodeMirror.
+Ctrl-] keeps its readline meaning in the browser (the lab commands are buttons). Escape that
+closes a popover or the lab list is stopped there; it would otherwise reach the shell as a meta
+prefix.
+
+**D-109 — One local server for development and use.** `apps/server` listens on 127.0.0.1 (port
+4317, `--port`): `/api/gaps` appends posted gap records to `data/gaps.jsonl` with the wall-clock
+`at` (`--data` points elsewhere; the browser tests use `.tsbuild/playwright/data`), then either
+the built app from `apps/web/dist` (`npm start`) or Vite in middleware mode with hot reload on the
+same server (`npm run dev`). The page posts gaps in batches and by `sendBeacon` when it is hidden;
+the item goes into the record's `context`, as `docs/FIDELITY.md` §4.4 specifies (`npm run lab`
+wrote it at the top level; fixed). Phase 11 adds the persistence API here.
+
+**D-110 — Browser tests run outside the gate.** `npm run e2e` (Playwright 1.64.1) builds the app,
+serves it and runs the smoke test and the exit-criteria tests: the three labs solved through
+`kubectl edit` and `vim`, reload and resume, the workspace (copy and paste, tabs, pause, plain
+keys), no request off the local server, and the latency measurement (`npm run bench:web`).
+Playwright is pinned to 1.64.1 because its Chromium headless shell (revision 1248) is the one
+already in `~/.cache/ms-playwright`; a newer Playwright would download a browser outside the
+repository. The gate stays fast and needs no browser; the e2e suite takes about 40 s. The
+latency is measured in the page: from sending Enter to the prompt being back on the cursor line
+after xterm.js parsed the output (`painted` adds the next animation frame).
+
+**D-111 — How the web app starts a lab.** A new attempt gets a random seed (0–999 999) and starts
+at the real current time, rounded to the second (`docs/SCENARIO_FORMAT.md` §5.2, as `npm run lab`).
+`?lab=<id>&seed=<n>` opens that variant directly (tests, sharing a variant with yourself later).
+The clock in the top bar is virtual time spent in the item over every attempt: it stops while
+paused and while the page is closed.

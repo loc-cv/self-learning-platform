@@ -26,7 +26,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 07b `prompts/07b-kubectl-describe-apply-delete.md`
 - [x] 08 `prompts/08-kubectl-2.md`
 - [x] 09 `prompts/09-scenarios-and-first-labs.md`
-- [ ] 10 `prompts/10-web-app.md`
+- [x] 10 `prompts/10-web-app.md`
 - [ ] **Checkpoint A** — play the three labs, write `FEEDBACK.md`, then run `prompts/R3-feedback-and-gap-triage.md`
 
 **M2 — Learning loop**
@@ -205,6 +205,11 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   them; `openTerminal` and the player skip ids in use). Invisible until `/dev/pts` exists; phase
   25a decides whether the kernel frees them.
 - **`pack.yaml` holds only id, title and skills** (D-100); phase 11 adds tracks and the rest.
+- **Lab attempts live in browser storage** (`simlab.attempt.v1.<item>`, D-105): a private window
+  or cleared site data loses them, and the localStorage quota (about 5 MB) bounds a session's log.
+  Phase 11 stores the logs through the server under `data/`; the page then keeps only a cache.
+- **The web app's gap records skip the server when it is not running** (a static host): the
+  popover says so, nothing retries. Phase 11's persistence queue can carry them.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
@@ -271,6 +276,55 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-16 — **Phase 10 done.** Web app: terminal, lab panel, editor overlay.
+  - Built. `apps/web` (Vite 8, React 19, xterm.js 6, CodeMirror 6 with `@replit/codemirror-vim`,
+    marked): `src/engine/session.ts` (one attempt per worker: lab, recorder, interactive driver,
+    batched output, resume by replay, lab actions as `learn.action` inputs) and `worker.ts` (the
+    wall clock; wakes when the next event is due, D-106); `src/protocol.ts`; `src/app/`: App
+    (state, shortcuts, tabs, resume on load, `?lab=&seed=`), Terminal (xterm.js, fit on resize,
+    OSC title on the tab, Enter relaunches an exited shell), EditorOverlay (vim keys or plain,
+    vim's messages from `vimref.ts`, `[sim]` and gaps for unsupported Ex commands), LabPanel
+    (ticket, per-check results, hint ladder, debrief, solutions, confirmations in `npm run lab`'s
+    words), TopBar (clock with pause, `[sim]` notices, settings, shortcuts), ItemPicker, storage,
+    gaps (batched posts and `sendBeacon`), probe (`window.__simlab` for tests). `vite.config.ts`
+    bundles the packs (D-103). `apps/server`: static files or Vite middleware with hot reload,
+    `POST /api/gaps`, `--port`, `--data`. Kernel: `createRecorder(kernel, header, from)`. Host:
+    `EditorRequest.isNew`. Fixture: `fixtures/reference/vim/messages.{py,json}` (vim 9.1's
+    message line and Ex command names). Commands: `npm run dev`, `npm start`, `npm run e2e`,
+    `npm run bench:web`. Playwright 1.64.1 (its headless shell is already installed, D-110).
+  - Exit criteria. (1) All three labs solved in the browser (`e2e/labs.spec.ts`): pending Pods
+    seed 1 through `kubectl edit` (`:%s/disktype: SSD/disktype: ssd/`, `:wq`), broken rollout
+    seed 3 through `set image` and `kubectl edit service`, the build lab seed 3 by editing the
+    generated manifest with vim in normal mode (`/replicas`, `$ciw4`, `:w`, `:q`) and applying it;
+    each check says Solved. (2) Reload mid-lab (`e2e/resume.spec.ts`): two terminals, hints and an
+    open vim session come back; the first terminal shows every line it showed; the world is the
+    same (the Deployment, the saved file); `session.test.ts` also compares world hashes and the
+    terminal bytes exactly. (3) Latency in Chromium (`npm run bench:web`, 80 samples over ten read
+    commands: kubectl get/describe/-o yaml/-o wide, ls, cat): p50 5.2 ms, p95 8.1 ms, p95 with the
+    paint frame 22.2 ms; keystroke echo p95 0.2 ms (2052 keys). (4) `npm run build -w apps/web`
+    inside `unshare -rn` (no network): built; the page makes no request off the local server and
+    runs a lab with the browser offline (`e2e/offline.spec.ts`); the bundle's URLs are only text
+    in help and schema descriptions. (5) Smoke test passes (`e2e/smoke.spec.ts`); 12 browser tests
+    in all, three clean runs in a row. Screenshots: in the session report (`.tsbuild/playwright/*.png` after `npm run e2e`).
+  - Decisions D-103…D-111. Docs: ARCHITECTURE §2.5 (the worker's driver), §2.8 (`from`), §2.10,
+    §3.8 (as built in 10); FIDELITY DIV-014, §2 (vim capture), §4.4 (the server sink); CLAUDE.md
+    commands and layout.
+  - Fixed on the way: `npm run lab` wrote the item at the top level of gap records; the spec puts
+    it in `context`. Test gap records no longer reach the real `data/gaps.jsonl` (`--data`); three
+    records this session's first runs had written there were removed.
+  - Surprises. A reload right after typing lost the last inputs: the worker handed the attempt to
+    the page every 250 ms, and nothing from the worker arrives once unload begins. Now every input
+    reaches the page at once and the page writes storage synchronously on hide (D-105). Commands that consume virtual time waited for the next 50 ms tick, which was most
+    of the measured latency; waking at the next due event fixed it. An Escape that closed a
+    popover reached the shell as a meta prefix and ate the next letter. The vim emulation prints
+    its own "Not an editor command" text; the overlay replaces it with vim's E492 or a `[sim]`
+    notice. `-o jsonpath` and `$(( ))` are not simulated yet (phases 15 and 22a); the tests avoid them.
+  - For later phases. 11: replace browser storage with the server (StoredAttempt is the shape to
+    persist; the `attempt` message is the hook), rating from `labState`, `Lab.events`. 12: home
+    screen; the picker is the current entry. 13: speed and skip are in the protocol (`speed`,
+    `advance`) and the clock already reports `speed`; only the controls are missing. Checkpoint A
+    next: `npm start`, open http://127.0.0.1:4317/, write impressions in `FEEDBACK.md`.
 
 - 2026-11-16 — **Phase 09 done.** Scenario runner, checks, grader, three labs, `npm run lab`.
   - Built. `packages/learn`: item types, variants (seeded parameters, `when`, typed placeholders),

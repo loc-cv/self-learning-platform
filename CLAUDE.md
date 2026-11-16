@@ -149,6 +149,7 @@ that first.
   output is known from a source.
 - Protect your context. Delegate bulky reading (upstream source files, long logs) to a subagent and
   keep its conclusion. Read upstream files by targeted search, not whole.
+- Use Sonnet subagents for search and mechanical work; escalate to Opus for debugging and design.
 - If the phase can't be finished at full quality in this session, stop at a coherent boundary with
   the gate green. Don't cut quality to fit. Record exactly what remains under Carry-over.
 - A shortcut that a later phase must replace (seeded objects, an assumed-healthy component) goes in
@@ -174,6 +175,12 @@ that first.
    the plan the work belongs to. `PLAN.md` is `master-plan`: `[master-plan] phase 07a: …`,
    `[master-plan] R3: …`. A new plan gets its own slug, recorded here. A phase prompt authorizes
    commits; never push.
+
+## Working with the owner
+
+- Be candid and thoughtful. Tell me what I need to hear while staying curious and caring.
+- Write plainly in active voice. Minimize hedging, padding, and grand claims. Favor specific and concise responses. Make every word earn its place.
+- Never use "delve", "foster", or "leverage"; avoid "it's worth noting", "importantly", "Question? Answer.", "This isn't about X. It's about Y.", and frequent em dashes.
 
 ## Code conventions
 

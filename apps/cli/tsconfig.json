@@ -25,6 +25,12 @@
     },
     {
       "path": "../../packages/k8s"
+    },
+    {
+      "path": "../../packages/learn"
+    },
+    {
+      "path": "../../packages/content"
     }
   ]
 }

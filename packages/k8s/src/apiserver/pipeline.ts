@@ -3,7 +3,8 @@
 //   create: decode (strict field checks) + defaults → wipe system fields → namespace check →
 //     mutating admission → generateName → fill uid/creationTimestamp → PrepareForCreate →
 //     Validate (+ path segment check) → warnings → Canonicalize → validating admission →
-//     storage allocation → persist (AlreadyExists) → watch events.
+//     storage: the resourceVersion refusal (not in a dry run), AlreadyExists, allocation →
+//     persist → watch events.
 //   update: decode + defaults → namespace check → name check → mutating admission → existence
 //     and resourceVersion checks → BeforeUpdate (generation from old, PrepareForUpdate, system
 //     fields from old, ObjectMeta update checks, ValidateUpdate) → validating admission →
@@ -336,10 +337,34 @@ function tableResponse(sv: Served, req: ApiRequest, group: string, kind: string,
 
 // ---- create ----
 
-/** Fields a client may not set on create (rest.WipeObjectMetaSystemFields), and what storage resets. */
+/**
+ * Fields a client may not set on create (rest.WipeObjectMetaSystemFields), and what storage resets.
+ * resourceVersion is not among them: storage refuses it (resourceVersionSetOnCreate) and only then
+ * clears it (storage/api_object_versioner.go PrepareObjectForStorage, storeCreate's revision).
+ */
 function wipeSystemFields(m: JsonObject): void {
-  for (const k of ['creationTimestamp', 'uid', 'deletionTimestamp', 'deletionGracePeriodSeconds', 'selfLink', 'resourceVersion', 'generation', 'managedFields']) delete m[k];
+  for (const k of ['creationTimestamp', 'uid', 'deletionTimestamp', 'deletionGracePeriodSeconds', 'selfLink', 'generation', 'managedFields']) delete m[k];
 }
+
+const MAX_UINT64 = 18446744073709551615n;
+
+/**
+ * etcd3/store.go Create: `versioner.ObjectResourceVersion(obj)` succeeds with a non-zero value →
+ * storage.ErrResourceVersionSetOnCreate. ObjectResourceVersion is strconv.ParseUint(rv, 10, 64), so
+ * "", "0", and what ParseUint rejects ("abc", "-1", beyond uint64) pass and are cleared.
+ * upstream: apiserver/pkg/storage/api_object_versioner.go ObjectResourceVersion
+ */
+function resourceVersionSetOnCreate(m: JsonObject): boolean {
+  const rv = str(m.resourceVersion);
+  return /^[0-9]+$/.test(rv) && BigInt(rv) !== 0n && BigInt(rv) <= MAX_UINT64;
+}
+
+/**
+ * storage.ErrResourceVersionSetOnCreate is a plain error: InterpretCreateError passes it through
+ * and the handler answers it as a 500 with no reason (fixtures/golden/v1.37.2/api/create-resource-version.yaml).
+ * upstream: apiserver/pkg/storage/errors.go ErrResourceVersionSetOnCreate
+ */
+const RESOURCE_VERSION_SET_ON_CREATE = 'resourceVersion should not be set on objects to be created';
 
 function newUid(ctx: Ctx): string {
   // A random (version 4) UUID from a named stream. upstream: registry/rest/meta.go FillObjectMetaSystemFields
@@ -399,6 +424,10 @@ function createOnce(sv: Served, obj: JsonObject, ns: string | undefined, generat
   const valErr = validateAll(admission(sv, 'CREATE', str(m.name), ns, obj), sv.etcd);
   if (valErr) return fail(valErr, sv.warnings);
   const key = objectKey(ns, str(m.name));
+  // etcd3/store.go Create checks the resourceVersion before it looks at the key (a taken name with
+  // a resourceVersion is a 500, not AlreadyExists). A dry run never gets there: registry/dryrun.go
+  // DryRunnableStorage.Create checks the key and copies the object, resourceVersion included.
+  if (!sv.s.dryRun && resourceVersionSetOnCreate(m)) return fail(unknownStatusError(RESOURCE_VERSION_SET_ON_CREATE), sv.warnings);
   const existing = storeGet(sv.etcd, sv.strategy.storage, key);
   if (existing) {
     const err = alreadyExistsError(sv.gr, str(m.name));

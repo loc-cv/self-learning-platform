@@ -25,7 +25,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 07a `prompts/07a-kubectl-framework-and-get.md`
 - [x] 07b `prompts/07b-kubectl-describe-apply-delete.md`
 - [x] 08 `prompts/08-kubectl-2.md`
-- [ ] 09 `prompts/09-scenarios-and-first-labs.md`
+- [x] 09 `prompts/09-scenarios-and-first-labs.md`
 - [ ] 10 `prompts/10-web-app.md`
 - [ ] **Checkpoint A** — play the three labs, write `FEEDBACK.md`, then run `prompts/R3-feedback-and-gap-triage.md`
 
@@ -194,6 +194,17 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 - **The API server's `/version` is a constant** (`SERVER_VERSION_INFO` in
   `apiserver/nonresource.ts`, the pinned kube-apiserver's build info, D-087). The phase that
   upgrades the control plane (29b) moves it into the server's configuration.
+- **The checks' JSONPath is a subset** (`packages/k8s/src/checks/jsonpath.ts`: fields with `\.`
+  escapes, `[n]`, `[*]`, `.*`, `['key']`; other syntax makes a check an error). Phase 15 ports
+  client-go's jsonpath for `-o jsonpath`; `where` and `paths` then use it.
+- **Setups apply taints with `kubectl edit node`** (D-102), because `kubectl taint` waits for
+  26b; `k8s.scheduling.pending-pods-01` does this. 26b may switch the setup to `kubectl taint`.
+- **The runner refuses declared images** (`world.images`, `docs/SCENARIO_FORMAT.md` §5.4): the
+  first item that needs an invented application image (16b or 17) adds declarative models.
+- **Closed terminals stay in the world** as tty records with `closed: true` (setup logins leave
+  them; `openTerminal` and the player skip ids in use). Invisible until `/dev/pts` exists; phase
+  25a decides whether the kernel frees them.
+- **`pack.yaml` holds only id, title and skills** (D-100); phase 11 adds tracks and the rest.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
@@ -261,6 +272,71 @@ Unfinished work from a phase, precise enough for the next session to continue.
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
 
+- 2026-11-16 — **Phase 09 done.** Scenario runner, checks, grader, three labs, `npm run lab`.
+  - Built. `packages/learn`: item types, variants (seeded parameters, `when`, typed placeholders),
+    the item schema generated from the registry (`item/schema.ts` over `schema.base.ts`) and a
+    dependency-free JSON Schema validator (`item/jsonschema.ts`, D-093); the runner
+    (`runner/`: port hub and step sessions, step lists with built-in `advance`/`until`, check
+    evaluation on forks with `within`, `after`, `not`, the grader with weights and scores,
+    baselines); `lab.ts` (hints with use recorded, check, reset, solutions, events);
+    `validate.ts` (static rules, per-variant argument validation, seeds that cover every `when`
+    value, `runSeed`); `show.ts`; `testing.ts` (a counter plugin). Kernel contracts: StepSession,
+    `CheckCtx.baseline`, `CheckResult.expected`, `StepSpec.show` (D-094). Host
+    (`src/scenario/`): steps `run`, `write`; checks `shell.exec`, `host.file`. k8s: checks
+    `k8s.object`, `k8s.podsReady`, `k8s.rollout`, `k8s.endpoints`, `k8s.nodeHasTaint`,
+    `k8s.unchanged`, `k8s.notRecreated` (`src/checks/`), step `apply` (`src/scenario/apply.ts`,
+    D-097). `packages/content`: loader and `k8s/pack.yaml`; labs
+    `k8s.workloads.deployment-service-01` (build task), `k8s.scheduling.pending-pods-01` (taint,
+    node selector or memory request; constraints on nodes, placement, request, recreation),
+    `k8s.troubleshooting.broken-rollout-01` (bad image of three kinds chained with a Service
+    selector that matches nothing). Tools: `npm run content:check` (now part of `npm run check`),
+    `npm run content:schema`. CLI: `npm run lab` (Ctrl-] lab prompt, D-099; `--list`,
+    `--replay`); the player takes any world (`PlayerOptions.world`) and logs `learn.action`.
+  - Exit criteria. (1) `content:check`: all three labs pass, 5, 5 and 6 seeds, every `when` value
+    covered, both solutions per variant where there are two. (2) A different valid path passes:
+    `tools/src/content/labs.test.ts` (lab 1 by create, scale, expose and a hand-written file with
+    a named target port; lab 3 by `kubectl edit` of the image and an applied Service), and the
+    lazy fixes fail (removing the taint, dropping the selector, relabelling the node, removing
+    the request, recreating the Deployment or the Service, rolling back the release). (3) Checks
+    do not mutate the session world: `packages/learn/src/runner.test.ts` (a check that scribbles
+    on its fork, `after` and `within`), `labs.test.ts` (world hash and clock before and after a
+    full check, and the same report twice), `steps.test.ts` (`shell.exec`). (4) Played in a real
+    terminal (a pty, the real `$EDITOR` editing the Deployment): `npm run lab --
+    k8s.scheduling.pending-pods-01 --seed 3`, `kubectl get pods` (Pending), check (38%), three
+    hints, `describe pod` showing FailedScheduling, `kubectl edit` adding the toleration, rollout,
+    Pods on node01, check (solved), debrief, quit; the recording replayed to the same world hash.
+    Labs 1 and 3 also started, graded and quit in the terminal. `labsession.test.ts` covers a full
+    attempt at lab 3 and solution/reset confirmation with replay of both attempts.
+  - Decisions D-093…D-102. `docs/SCENARIO_FORMAT.md` refined: weights (§7), expected/observed,
+    the catalog with the phase of each check and the new `k8s.unchanged`/`k8s.notRecreated`,
+    matchers that combine, counting and selection rules, the JSONPath subset, built-in steps,
+    `apply`'s implementation, the poll interval, gaps fail steps, schema generation (§9),
+    validation details (§11), `pack.yaml` (§1), declared images refused (§14).
+    `docs/ARCHITECTURE.md` §2.11 shows the new contracts. CLAUDE.md: commands and layout.
+  - Fixed on the way: the API server accepted creates that carry `metadata.resourceVersion`
+    (`wipeSystemFields` dropped it); the real server answers 500 "resourceVersion should not be
+    set on objects to be created", and kubectl clears the field itself before create (Helper
+    CreateWithOptions), so `kubectl create -f` of a dump still works. Golden cases
+    `api/create-resource-version` and `create/resource-version`, unit
+    `apiserver.create.resource-version-set`; `golden:diff` 2151 compared, 2142 pass, 9 known, none
+    failing. `openTerminal` chose an id by counter only and collided with a terminal a front end
+    had opened by its own id (found by the real terminal run: a check's `after` shell failed with
+    "tty tty3 already exists").
+  - Surprises. Only nginx 1.31.8 and 1.14.2 start without a model gap (the others lack the
+    captured "built by" line), so content uses those (D-098). `kubectl describe pods` for several
+    Pods prints no events, as upstream does (describe.go: events only for a single object); the
+    hints say "one of the Pods". `kubectl edit` reopens the editor only for a server-side invalid
+    value; a changed name ends with an error. `k8s.object` requires every selected object to
+    match, so "at least one Pod is in ImagePullBackOff" cannot be written yet; the broken-rollout
+    setup waits 20 minutes instead.
+  - For later phases. 10: the web app needs the items (D-100) and `createLab`/`openLab`; the
+    terminal prompt's commands map to buttons. 11: rating from `GradeReport.score`, hints shown,
+    `solutionViewed` and `Lab.events`; `pack.yaml` tracks and skills. 15: jsonpath for `where`.
+    16b/17: declared images, `net.reach` (remove its stand-in from `tools/src/docs/planned.ts`).
+    25a/26a/20a/28: the other planned checks and faults. 26b: `kubectl taint`.
+  - Workflow: contracts first, then one Opus agent on the k8s checks while the runner was built;
+    a second Opus agent on the resourceVersion bug once the labs found it. Outside the
+    repository and the scratchpad: nothing, as far as the agents reported (the oracle is down).
 - 2026-11-16 — **Phase 08 done.** kubectl II: imperative verbs, logs, rollout, explain, edit,
   completion.
   - Built (`packages/k8s/src/kubectl/`, one directory per group under `cmd/`): `generate/` (run,

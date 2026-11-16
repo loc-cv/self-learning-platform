@@ -9,5 +9,5 @@
   },
   "include": ["src", "eslint"],
   "exclude": ["**/*.test.ts", "eslint/fixtures"],
-  "references": [{ "path": "../packages/kernel" }, { "path": "../packages/host" }, { "path": "../packages/k8s" }]
+  "references": [{ "path": "../packages/kernel" }, { "path": "../packages/host" }, { "path": "../packages/k8s" }, { "path": "../packages/learn" }, { "path": "../packages/content" }]
 }

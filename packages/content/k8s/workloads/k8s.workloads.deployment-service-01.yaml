@@ -1,0 +1,202 @@
+id: k8s.workloads.deployment-service-01
+kind: lab
+title: Run a web server behind a Service, from a file the team can reapply
+skills:
+  - k8s.workloads.deployments
+  - k8s.networking.services
+  - k8s.workloads.declarative-manifests
+curriculum:
+  - cka.workloads.deployments-rollouts
+  - cka.networking.service-types
+  - ckad.design.workload-resources
+  - ckad.networking.services
+difficulty: 2
+targetMinutes: 8
+world:
+  topology: kubeadm-1cp-2w
+  params:
+    ns: { pick: [shop, billing, media] }
+    app: { pick: [web, api, catalog] }
+    replicas: { int: { min: 2, max: 4 } }
+    port: { pick: [8080, 8000, 3000] }
+  setup:
+    - apply: |
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: {{ns}}
+ticket: |
+  The `{{app}}` team needs its service running in the namespace `{{ns}}`, which already exists.
+
+  - A Deployment named `{{app}}` runs {{replicas}} replicas of the image `nginx:1.31.8`. Its Pods
+    carry the label `app={{app}}`, and the container declares port 80.
+  - A Service named `{{app}}`, of type ClusterIP, makes the Pods reachable inside the cluster on
+    port {{port}} and forwards that traffic to port 80 of the Pods.
+  - Keep the manifests in `/root/{{app}}.yaml` on `controlplane`. The team will rebuild the
+    application from that file alone: applying it must bring back both objects in `{{ns}}`.
+hints:
+  - >-
+    Two objects with different jobs: one keeps the Pods running, the other gives them one stable
+    address. `kubectl create` can write a first draft of each for you.
+  - >-
+    A Service finds its Pods by label, and sends what arrives on its `port` to the Pods'
+    `targetPort`. `--dry-run=client -o yaml` prints a manifest without creating anything, so you
+    can collect both drafts in one file, separated by a line `---`, and apply that file.
+  - >-
+    `kubectl -n {{ns}} create deployment {{app}} --image=nginx:1.31.8 --replicas={{replicas}}
+    --port=80 --dry-run=client -o yaml > /root/{{app}}.yaml`, then `echo --- >> /root/{{app}}.yaml`,
+    then `kubectl -n {{ns}} create service clusterip {{app}} --tcp={{port}}:80 --dry-run=client -o
+    yaml >> /root/{{app}}.yaml`, and finally `kubectl apply -f /root/{{app}}.yaml`.
+checks:
+  - id: deployment-spec
+    title: "Deployment `{{app}}` runs {{replicas}} replicas of `nginx:1.31.8` with port 80 declared"
+    assert: k8s.object
+    with:
+      kind: Deployment
+      namespace: "{{ns}}"
+      name: "{{app}}"
+      where:
+        - { path: "{.spec.replicas}", equals: "{{replicas}}" }
+        - { path: "{.spec.template.spec.containers[*].image}", in: [nginx:1.31.8, docker.io/library/nginx:1.31.8] }
+        - { path: "{.spec.template.spec.containers[*].ports[*].containerPort}", equals: 80 }
+  - id: pods-ready
+    title: "{{replicas}} Pods labelled `app={{app}}` are ready"
+    assert: k8s.podsReady
+    with: { namespace: "{{ns}}", selector: "app={{app}}", count: "{{replicas}}" }
+    within: 2m
+    weight: 2
+  - id: service-port
+    title: "Service `{{app}}` is a ClusterIP Service on port {{port}}"
+    assert: k8s.object
+    with:
+      kind: Service
+      namespace: "{{ns}}"
+      name: "{{app}}"
+      where:
+        - { path: "{.spec.type}", equals: ClusterIP }
+        - { path: "{.spec.ports[*].port}", equals: "{{port}}" }
+  - id: service-reaches-pods
+    title: "Service `{{app}}` sends traffic to port 80 of every replica"
+    assert: k8s.object
+    with:
+      kind: EndpointSlice
+      namespace: "{{ns}}"
+      selector: "kubernetes.io/service-name={{app}}"
+      where:
+        - { path: "{.ports[*].port}", equals: 80 }
+    within: 1m
+  - id: service-endpoints
+    title: "Service `{{app}}` has all {{replicas}} replicas behind it"
+    assert: k8s.endpoints
+    with: { namespace: "{{ns}}", service: "{{app}}", count: "{{replicas}}" }
+    within: 1m
+    weight: 2
+  - id: manifest-saved
+    title: "`/root/{{app}}.yaml` exists"
+    assert: host.file
+    with: { on: controlplane, path: "/root/{{app}}.yaml", type: file }
+  - id: manifest-defines-both
+    title: "`/root/{{app}}.yaml` defines the Deployment and the Service"
+    assert: shell.exec
+    with:
+      run: kubectl create --dry-run=client -o name -f /root/{{app}}.yaml
+      stdout:
+        matches: "^deployment\\.apps/{{app}}$"
+        contains: "service/{{app}}\n"
+  - id: manifest-rebuilds
+    title: "Deleting both objects and applying `/root/{{app}}.yaml` brings the application back"
+    after:
+      - run: kubectl -n {{ns}} delete deployment,service {{app}}
+      - run: kubectl apply -f /root/{{app}}.yaml
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+    assert: k8s.endpoints
+    with: { namespace: "{{ns}}", service: "{{app}}", count: "{{replicas}}" }
+    within: 1m
+    weight: 2
+solutions:
+  - name: Generate the manifests with kubectl, then apply the file
+    steps:
+      - run: kubectl -n {{ns}} create deployment {{app}} --image=nginx:1.31.8 --replicas={{replicas}} --port=80 --dry-run=client -o yaml > /root/{{app}}.yaml
+      - run: echo --- >> /root/{{app}}.yaml
+      - run: kubectl -n {{ns}} create service clusterip {{app}} --tcp={{port}}:80 --dry-run=client -o yaml >> /root/{{app}}.yaml
+      - run: kubectl apply -f /root/{{app}}.yaml
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+  - name: Write the manifests by hand
+    steps:
+      - write:
+          path: /root/{{app}}.yaml
+          content: |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{app}}
+              namespace: {{ns}}
+            spec:
+              replicas: {{replicas}}
+              selector:
+                matchLabels:
+                  app: {{app}}
+              template:
+                metadata:
+                  labels:
+                    app: {{app}}
+                spec:
+                  containers:
+                    - name: {{app}}
+                      image: nginx:1.31.8
+                      ports:
+                        - containerPort: 80
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: {{app}}
+              namespace: {{ns}}
+            spec:
+              type: ClusterIP
+              selector:
+                app: {{app}}
+              ports:
+                - port: {{port}}
+                  targetPort: 80
+      - run: kubectl apply -f /root/{{app}}.yaml
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+debrief: |
+  **What was asked.** Two objects and a file. The Deployment keeps {{replicas}} Pods of
+  `nginx:1.31.8` running; the Service gives them one address inside the cluster; the file is the
+  record from which the whole application can be rebuilt.
+
+  **Mental model.** Nothing in Kubernetes points at a Pod by name. The Deployment owns its Pods
+  through the label selector in `spec.selector`, which must match the labels of its Pod
+  template. The Service finds Pods the same way: the EndpointSlice controller lists the ready
+  Pods that match the Service's `selector` and writes their addresses, with the `targetPort`
+  resolved, into EndpointSlices. `port` is what clients connect to on the Service's cluster IP;
+  `targetPort` is where the traffic lands in the Pod. So `kubectl -n {{ns}} get endpointslices`
+  answers "is my Service connected to my Pods?", whatever the YAML says.
+
+  **The file.** The grader deleted both objects and applied `/root/{{app}}.yaml` on its own. A
+  manifest without `metadata.namespace` would then have created the objects in `default`,
+  because the namespace you passed with `-n` while working is not in the file. Generating with
+  `-n {{ns}} --dry-run=client -o yaml` writes the namespace into each manifest.
+
+  **Reference solutions.** `kubectl create deployment` and `kubectl create service clusterip`
+  with `--dry-run=client -o yaml` produce correct drafts quickly, which is what the exam rewards.
+  `create service clusterip {{app}}` selects `app={{app}}`, the label `create deployment {{app}}`
+  puts on the Pods. Writing the manifests by hand is equally valid. `kubectl expose deployment`
+  also creates a matching Service, but only against the live Deployment, so its manifest still
+  has to end up in the file.
+
+  **In reality.** `containerPort` is informational: a container listens on whatever port its
+  process opens, and the Service would reach port 80 even without the declaration. Declaring it
+  documents the Pod and lets a Service refer to the port by name. The generated drafts contain
+  `status: {}` and `resources: {}`; both are harmless, and many teams delete them before
+  committing the file.

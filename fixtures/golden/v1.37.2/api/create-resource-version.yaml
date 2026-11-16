@@ -1,0 +1,141 @@
+# Captured from fixtures/golden/cases/api/create-resource-version.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: api/create-resource-version
+description: The raw answer to a create whose object sets metadata.resourceVersion (storage refuses a positive number; a dry run, "0" and a non-numeric value pass), and to the same create when the name is taken.
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+steps:
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: stale
+        resourceVersion: "12345"
+    code: 500
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: resourceVersion should not be set on objects to be created
+      code: 500
+  - request: POST /api/v1/namespaces/default/configmaps?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: stale
+        resourceVersion: "12345"
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: stale
+        namespace: default
+        uid: <<uid:1>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+  - request: GET /api/v1/namespaces/default/configmaps/stale
+    code: 404
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "stale" not found
+      reason: NotFound
+      details:
+        name: stale
+        kind: configmaps
+      code: 404
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: zero
+        resourceVersion: "0"
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: zero
+        namespace: default
+        uid: <<uid:2>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: text
+        resourceVersion: abc
+    code: 201
+    response:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: text
+        namespace: default
+        uid: <<uid:3>>
+        resourceVersion: <<rv>>
+        creationTimestamp: <<time>>
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: zero
+        resourceVersion: "12345"
+    code: 500
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: resourceVersion should not be set on objects to be created
+      code: 500
+  - request: POST /api/v1/namespaces/default/configmaps?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: zero
+        resourceVersion: "12345"
+    code: 409
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "zero" already exists
+      reason: AlreadyExists
+      details:
+        name: zero
+        kind: configmaps
+      code: 409
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: text
+        resourceVersion: "-1"
+    code: 409
+    response:
+      kind: Status
+      apiVersion: v1
+      metadata: {}
+      status: Failure
+      message: configmaps "text" already exists
+      reason: AlreadyExists
+      details:
+        name: text
+        kind: configmaps
+      code: 409

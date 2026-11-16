@@ -59,7 +59,7 @@ function check(results: StepResult[], name: string): void {
   }
 }
 
-describe.each(['api/crud', 'api/lifecycle', 'api/validation', 'api/defaults', 'api/daemonset', 'api/warnings', 'api/strategic-patch', 'api/json-patch','change/scale-subresource'])('%s', (name) => {
+describe.each(['api/crud', 'api/lifecycle', 'api/validation', 'api/defaults', 'api/daemonset', 'api/warnings', 'api/strategic-patch', 'api/json-patch', 'api/create-resource-version', 'change/scale-subresource'])('%s', (name) => {
   test('responses equal the real API server', () => {
     check(runRequests(loadFixture(name)), name);
   });

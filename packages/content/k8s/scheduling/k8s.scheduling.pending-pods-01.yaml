@@ -1,0 +1,363 @@
+id: k8s.scheduling.pending-pods-01
+kind: lab
+title: A new Deployment whose Pods never start
+skills:
+  - k8s.troubleshooting.pending-pods
+  - k8s.scheduling.taints
+  - k8s.scheduling.node-selection
+  - k8s.scheduling.resource-requests
+curriculum:
+  - cka.workloads.pod-scheduling
+  - cka.troubleshooting.clusters-nodes
+  - ckad.config.resource-requirements
+  - ckad.observability.debugging
+difficulty: 2
+targetMinutes: 8
+world:
+  topology: kubeadm-1cp-2w
+  params:
+    ns: { pick: [shop, billing, media] }
+    app: { pick: [reports, worker, indexer] }
+    replicas: { int: { min: 2, max: 3 } }
+    ssdNode: { pick: [node01, node02] }
+    cause: { pick: [taint, selector, memory] }
+  setup:
+    - run: kubectl label node {{ssdNode}} disktype=ssd
+    # The platform team reserved the SSD node for this namespace's team.
+    - run: kubectl edit node {{ssdNode}}
+      when: { cause: taint }
+      editor:
+        - replace:
+            from: "spec:\n  podCIDR:"
+            to: "spec:\n  taints:\n  - effect: NoSchedule\n    key: dedicated\n    value: {{ns}}\n  podCIDR:"
+    - apply: |
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: {{ns}}
+    - apply: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: {{app}}
+          namespace: {{ns}}
+        spec:
+          replicas: {{replicas}}
+          selector:
+            matchLabels:
+              app: {{app}}
+          template:
+            metadata:
+              labels:
+                app: {{app}}
+            spec:
+              nodeSelector:
+                disktype: ssd
+              containers:
+                - name: {{app}}
+                  image: nginx:1.31.8
+                  resources:
+                    requests:
+                      memory: 256Mi
+      when: { cause: taint }
+    - apply: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: {{app}}
+          namespace: {{ns}}
+        spec:
+          replicas: {{replicas}}
+          selector:
+            matchLabels:
+              app: {{app}}
+          template:
+            metadata:
+              labels:
+                app: {{app}}
+            spec:
+              nodeSelector:
+                disktype: SSD
+              containers:
+                - name: {{app}}
+                  image: nginx:1.31.8
+                  resources:
+                    requests:
+                      memory: 256Mi
+      when: { cause: selector }
+    - apply: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: {{app}}
+          namespace: {{ns}}
+        spec:
+          replicas: {{replicas}}
+          selector:
+            matchLabels:
+              app: {{app}}
+          template:
+            metadata:
+              labels:
+                app: {{app}}
+            spec:
+              nodeSelector:
+                disktype: ssd
+              containers:
+                - name: {{app}}
+                  image: nginx:1.31.8
+                  resources:
+                    requests:
+                      memory: 8Gi
+      when: { cause: memory }
+    - until:
+        assert: k8s.object
+        with:
+          kind: Pod
+          namespace: "{{ns}}"
+          selector: "app={{app}}"
+          count: "{{replicas}}"
+          where:
+            - { path: "{.status.conditions[*].reason}", equals: Unschedulable }
+      timeout: 1m
+    - advance: 5m
+ticket: |
+  **`{{app}}` never started** (namespace `{{ns}}`)
+
+  The `{{app}}` Deployment was rolled out a few minutes ago, and none of its {{replicas}} Pods has
+  started: they are all Pending. Get every replica running.
+
+  What has to stay true:
+
+  - `{{app}}` needs local SSD storage, so its Pods must only ever run on nodes labelled
+    `disktype=ssd`.
+  - Each replica requests exactly 256Mi of memory; capacity planning depends on that number.
+  - The nodes stay as they are: do not change their labels or taints.
+  - Fix the existing Deployment; do not delete and recreate it.
+hints:
+  - >-
+    A Pod stays Pending when the scheduler finds no node for it, and the scheduler says why. Look
+    at the events of one of the Pods.
+  - text: >-
+      The scheduler's message counts the nodes it rejected and gives a reason for each group.
+      Compare the taints of the node labelled `disktype=ssd` with what the Pods tolerate.
+    when: { cause: taint }
+  - text: >-
+      The scheduler's message counts the nodes it rejected and gives a reason for each group.
+      Compare, character by character, the labels on the nodes with the node selector of the Pods.
+    when: { cause: selector }
+  - text: >-
+      The scheduler's message counts the nodes it rejected and gives a reason for each group.
+      Compare what one Pod requests with what a node can allocate (`kubectl describe node`).
+    when: { cause: memory }
+  - text: >-
+      `{{ssdNode}}` carries the taint `dedicated={{ns}}:NoSchedule`. Add a matching toleration to
+      the Pod template, for example with `kubectl -n {{ns}} edit deployment {{app}}`: under
+      `spec.template.spec`, `tolerations: [{key: dedicated, operator: Equal, value: {{ns}},
+      effect: NoSchedule}]`.
+    when: { cause: taint }
+  - text: >-
+      The node label is `disktype=ssd`, the Deployment selects `disktype: SSD`, and labels are
+      case-sensitive. `kubectl -n {{ns}} edit deployment {{app}}` and set the node selector to
+      `disktype: ssd`.
+    when: { cause: selector }
+  - text: >-
+      Each Pod requests 8Gi of memory and a node can allocate under 4Gi. `kubectl -n {{ns}} edit
+      deployment {{app}}` and set `resources.requests.memory` to `256Mi`.
+    when: { cause: memory }
+checks:
+  - id: pods-ready
+    title: "All {{replicas}} replicas of `{{app}}` are ready"
+    assert: k8s.podsReady
+    with: { namespace: "{{ns}}", selector: "app={{app}}", count: "{{replicas}}" }
+    within: 2m
+    weight: 3
+  - id: ssd-only
+    title: Pods of `{{app}}` land only on nodes labelled `disktype=ssd`, however many there are
+    after:
+      - run: kubectl -n {{ns}} scale deployment {{app}} --replicas=6
+    assert: k8s.object
+    with:
+      kind: Pod
+      namespace: "{{ns}}"
+      selector: "app={{app}}"
+      count: 6
+      where:
+        - { path: "{.spec.nodeName}", equals: "{{ssdNode}}" }
+    within: 1m
+    weight: 2
+  - id: memory-request
+    title: Each replica requests 256Mi of memory
+    assert: k8s.object
+    with:
+      kind: Deployment
+      namespace: "{{ns}}"
+      name: "{{app}}"
+      where:
+        - { path: "{.spec.template.spec.containers[*].resources.requests.memory}", in: [256Mi, "268435456"] }
+  - id: nodes-unchanged
+    title: The nodes' labels and taints are as they were
+    assert: k8s.unchanged
+    with:
+      kind: Node
+      paths: ["{.metadata.labels}", "{.spec.taints}"]
+  - id: deployment-kept
+    title: "Deployment `{{app}}` was fixed in place, not recreated"
+    assert: k8s.notRecreated
+    with: { kind: Deployment, namespace: "{{ns}}", name: "{{app}}" }
+solutions:
+  - name: Tolerate the taint (kubectl edit)
+    when: { cause: taint }
+    steps:
+      - run: kubectl -n {{ns}} edit deployment {{app}}
+        editor:
+          - replace:
+              from: "      nodeSelector:\n"
+              to: "      tolerations:\n      - key: dedicated\n        operator: Equal\n        value: {{ns}}\n        effect: NoSchedule\n      nodeSelector:\n"
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+  - name: Tolerate the taint (apply the corrected manifest)
+    when: { cause: taint }
+    steps:
+      - write:
+          path: /root/{{app}}.yaml
+          content: |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{app}}
+              namespace: {{ns}}
+            spec:
+              replicas: {{replicas}}
+              selector:
+                matchLabels:
+                  app: {{app}}
+              template:
+                metadata:
+                  labels:
+                    app: {{app}}
+                spec:
+                  nodeSelector:
+                    disktype: ssd
+                  tolerations:
+                    - key: dedicated
+                      operator: Equal
+                      value: {{ns}}
+                      effect: NoSchedule
+                  containers:
+                    - name: {{app}}
+                      image: nginx:1.31.8
+                      resources:
+                        requests:
+                          memory: 256Mi
+      - run: kubectl apply -f /root/{{app}}.yaml
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+  - name: Correct the node selector
+    when: { cause: selector }
+    steps:
+      - run: kubectl -n {{ns}} edit deployment {{app}}
+        editor:
+          - replace: { from: "disktype: SSD", to: "disktype: ssd" }
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+  - name: Require the label through node affinity instead
+    when: { cause: selector }
+    steps:
+      - write:
+          path: /root/{{app}}.yaml
+          content: |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{app}}
+              namespace: {{ns}}
+            spec:
+              replicas: {{replicas}}
+              selector:
+                matchLabels:
+                  app: {{app}}
+              template:
+                metadata:
+                  labels:
+                    app: {{app}}
+                spec:
+                  affinity:
+                    nodeAffinity:
+                      requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                          - matchExpressions:
+                              - key: disktype
+                                operator: In
+                                values: [ssd]
+                  containers:
+                    - name: {{app}}
+                      image: nginx:1.31.8
+                      resources:
+                        requests:
+                          memory: 256Mi
+      - run: kubectl apply -f /root/{{app}}.yaml
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+  - name: Request what a replica needs
+    when: { cause: memory }
+    steps:
+      - run: kubectl -n {{ns}} edit deployment {{app}}
+        editor:
+          - replace: { from: "memory: 8Gi", to: "memory: 256Mi" }
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+debrief:
+  - text: |
+      **Mental model.** The scheduler places a Pod in two passes. Filters remove every node the
+      Pod cannot run on, scores rank the rest. A Pod stays Pending when the filters leave
+      nothing, and the scheduler then records a `FailedScheduling` event whose message counts the
+      rejected nodes per reason: `0/3 nodes are available: …`. That message is the first thing to
+      read for any Pending Pod (`kubectl -n {{ns}} describe pod <pod>`, or `kubectl -n {{ns}} get
+      events`). Three filters reject nodes most often: taints the Pod does not tolerate, labels
+      its node selector or node affinity does not find, and resource requests that do not fit
+      in what the node can still allocate.
+  - when: { cause: taint }
+    text: |
+      **Root cause.** `{{ssdNode}}`, the only node labelled `disktype=ssd`, carries the taint
+      `dedicated={{ns}}:NoSchedule`. The node selector left only that node, and the taint
+      repelled every Pod that does not tolerate it. A taint is a node saying "keep away unless
+      you say otherwise"; a toleration is the Pod saying otherwise. A toleration permits, it never
+      attracts: the node selector is still what keeps `{{app}}` on SSD nodes, which the grader
+      checked by scaling the Deployment to six replicas.
+  - when: { cause: selector }
+    text: |
+      **Root cause.** The node is labelled `disktype=ssd`; the Deployment selected
+      `disktype: SSD`. Label keys and values are case-sensitive, so no node matched. Removing the
+      node selector would also have started the Pods, on any node; the grader scaled the
+      Deployment to six replicas to see whether they stay on SSD nodes. Node affinity with
+      `operator: In` is an equally valid way to state the requirement.
+  - when: { cause: memory }
+    text: |
+      **Root cause.** Each Pod requested 8Gi of memory, and no node has that much allocatable
+      (`kubectl describe node` shows `Allocatable` and what is already requested). The scheduler
+      sums requests, not real usage: a Pod that would use 100Mi still needs a node with 8Gi free
+      on paper. Removing the request would also have started the Pods and taken away what the
+      scheduler and capacity planning rely on.
+  - text: |
+      **Reference solution.** `kubectl -n {{ns}} edit deployment {{app}}` changes the Pod
+      template; the Deployment then rolls out a new ReplicaSet, whose Pods the scheduler places.
+      Editing a Pending Pod directly does not work: almost everything in a Pod's spec is
+      immutable, and the ReplicaSet would create new Pods from the old template anyway. Applying a
+      corrected manifest is the same change made declaratively.
+
+      **In reality.** The scheduler retries Pending Pods when something relevant changes (a node
+      added, a taint removed, another Pod deleted), not on a timer, so a fix takes effect within
+      seconds. The control plane node carries its own taint,
+      `node-role.kubernetes.io/control-plane:NoSchedule`, which is why it counted among the
+      rejected nodes too.

@@ -5,6 +5,7 @@ export const packageName = '@simlab/k8s';
 
 export { KUBERNETES_MINOR, KUBERNETES_TAG, KUBERNETES_VERSION } from './version.ts';
 export { k8sPlugin, K8S_SLICE_VERSION } from './plugin.ts';
+export { K8S_CHECKS } from './checks/index.ts';
 export { DEFAULT_APISERVER, type ApiServerConfig } from './apiserver/config.ts';
 export { handle, openWatch, watchEvents } from './apiserver/pipeline.ts';
 export { bootstrapApiServer, SYSTEM_NAMESPACES } from './apiserver/bootstrap.ts';
@@ -66,3 +67,4 @@ export {
   type StreamResult,
   type YamlResult,
 } from './apimachinery/yaml/index.ts';
+export { K8S_STEPS, applyStep } from './scenario/apply.ts';

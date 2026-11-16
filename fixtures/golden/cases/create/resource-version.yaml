@@ -1,0 +1,30 @@
+description: >-
+  Manifests that carry metadata.resourceVersion (an object saved with kubectl get -o yaml, then
+  deleted): kubectl create -f and the create path of kubectl apply -f clear it before the POST
+  and succeed; the patch of a later kubectl apply and kubectl replace send it and conflict. The API
+  server's own answer to such a POST is in api/create-resource-version.
+files:
+  cm.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: stale
+      resourceVersion: "12345"
+    data:
+      k: v
+setup:
+  - do: kubectl create deployment web --image=nginx:1.31.8
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - do: kubectl get deployment web -o yaml > d.yaml
+  - do: kubectl delete deployment web
+steps:
+  - run: kubectl apply -f d.yaml
+  - run: kubectl delete -f d.yaml
+  - run: kubectl create -f d.yaml
+  - do: kubectl rollout status deployment/web --timeout=60s
+  - run: kubectl get deployments
+  - run: kubectl create -f cm.yaml --dry-run=server -o yaml
+  - run: kubectl create -f cm.yaml
+  - run: kubectl apply -f cm.yaml
+  - objects: [configmap/stale]
+  - run: kubectl replace -f cm.yaml

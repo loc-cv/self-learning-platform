@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, test } from 'vitest';
 import { parse, parseAllDocuments } from 'yaml';
+import { CHECK, createRegistry, FAULT } from '@simlab/kernel';
+import { itemSchema } from '@simlab/learn';
+import { contentRegistry, CONTENT_PLUGINS } from '../content/registry.ts';
 import { codeSpans, extractBlocks, placeholders, sourceHash, strings, textUnit, whens } from './examples.ts';
+import { PLANNED_CHECKS, PLANNED_FAULTS, plannedPlugin } from './planned.ts';
 
 type Obj = Record<string, unknown>;
 const read = (rel: string): string => readFileSync(new URL(`../../../${rel}`, import.meta.url), 'utf8');
@@ -12,7 +16,8 @@ const items = blocks.filter((b) => b.kind === 'item').map((b) => parse(b.source)
 const sidecars = blocks.filter((b) => b.kind === 'sidecar').map((b) => parse(b.source) as Obj);
 
 const ajv = new Ajv2020({ allErrors: true, allowUnionTypes: true });
-const validateItem = ajv.compile(JSON.parse(read('docs/schema/item.schema.json')) as Obj);
+// The examples use checks of later phases: validate them with those stand-ins added (planned.ts).
+const validateItem = ajv.compile(itemSchema(createRegistry([...CONTENT_PLUGINS, plannedPlugin])) as Obj);
 const validateSidecar = ajv.compile(JSON.parse(read('docs/schema/sidecar.schema.json')) as Obj);
 
 interface Curriculum {
@@ -25,6 +30,11 @@ const competencyIds = new Set(
 
 const paramsOf = (item: Obj): Record<string, { pick?: unknown[] }> =>
   ((item['world'] as Obj)['params'] ?? {}) as Record<string, { pick?: unknown[] }>;
+
+test('no planned check or fault is registered for real yet (its phase removes it from planned.ts)', () => {
+  for (const c of PLANNED_CHECKS) expect(contentRegistry.get(CHECK, c.name), `${c.name} (phase ${c.phase})`).toBeUndefined();
+  for (const f of PLANNED_FAULTS) expect(contentRegistry.get(FAULT, f.name), `${f.name} (phase ${f.phase})`).toBeUndefined();
+});
 
 test('the spec contains the three worked examples and a sidecar', () => {
   expect(items.map((i) => i['kind'])).toEqual(['lab', 'lab', 'incident']);

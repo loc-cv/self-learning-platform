@@ -16,5 +16,12 @@
   "exclude": [
     "src/**/*.test.ts"
   ],
-  "references": []
+  "references": [
+    {
+      "path": "../kernel"
+    },
+    {
+      "path": "../learn"
+    }
+  ]
 }

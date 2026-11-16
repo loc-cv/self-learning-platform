@@ -1,7 +1,9 @@
 // Reads the worked examples out of docs/SCENARIO_FORMAT.md and checks them against the format.
 // The examples are fenced blocks whose info string is `yaml item` or `yaml sidecar`.
-// From phase 09 the real content validator in `learn` takes over; this keeps the spec honest
-// until then (phase 00 exit criterion: the examples use only constructs the spec defines).
+// Items in packages/content go through the real validator (`npm run content:check`). The
+// examples need features of later phases, so they cannot run yet; the test checks them against
+// the generated schema with the planned checks and faults added (planned.ts), and by the static
+// rules, so the spec uses only constructs it defines.
 
 import { createHash } from 'node:crypto';
 

@@ -10,8 +10,10 @@
     "test": "vitest run --root ../.. apps/cli/"
   },
   "dependencies": {
+    "@simlab/content": "0.0.0",
     "@simlab/host": "0.0.0",
     "@simlab/k8s": "0.0.0",
-    "@simlab/kernel": "0.0.0"
+    "@simlab/kernel": "0.0.0",
+    "@simlab/learn": "0.0.0"
   }
 }

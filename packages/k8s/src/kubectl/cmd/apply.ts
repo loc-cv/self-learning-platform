@@ -35,7 +35,7 @@ import { fail, overridesOf, request, resolveConfig, type Session } from '../clie
 import { continueOnError, visitFiles } from '../resource/files.ts';
 import { openServer, sessionOf } from '../resource/server.ts';
 import { createApplyAnnotation, encodeUnstructured, LAST_APPLIED, modifiedConfiguration, originalConfiguration, pruneNulls } from '../util/apply.ts';
-import { addSourceToErr, CHANGE_FORMATS, DRY_RUN_NO_OPT, dryRunStrategy, goStrings, parseBool, toPrinter, usageError, validationDirective, type DryRun, type FieldValidation, type Printer } from './helpers.ts';
+import { addSourceToErr, CHANGE_FORMATS, clearResourceVersionForCreate, DRY_RUN_NO_OPT, dryRunStrategy, goStrings, parseBool, toPrinter, usageError, validationDirective, type DryRun, type FieldValidation, type Printer } from './helpers.ts';
 import { parseYaml, YamlMarshalError } from './printing.ts';
 
 const FLAGS: FlagDef[] = [
@@ -219,6 +219,8 @@ function* applyOne(p: ProcApi, s: Session | undefined, i: Info, o: Options): Op<
     createApplyAnnotation(i.object);
     pruneNulls(i.object);
     if (o.dryRun !== 'client') {
+      // helper.Create(namespace, true, obj): after the annotation, so last-applied keeps it.
+      clearResourceVersionForCreate(i.object);
       const c = yield* request(s, { verb: 'create', ...base(i), body: i.object, options: { fieldManager: o.fieldManager, fieldValidation: o.directive, ...(o.dryRun === 'server' ? { dryRun: true } : {}) } });
       if (!c.ok) {
         if ('notSimulated' in c) return { notice: c.notSimulated };

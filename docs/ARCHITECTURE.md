@@ -567,13 +567,15 @@ ones that concern machines.
 type ArgsSchema = { [key: string]: Json };
 
 interface CheckSpec extends Contribution {
-  args: ArgsSchema;
+  args: ArgsSchema;                       // schema of the check's `with` map
   /** Runs against a fork. May advance the fork's time. Must not depend on anything else. */
   run(ctx: CheckCtx, args: Json): CheckResult;
 }
-interface CheckCtx { kernel: Kernel; registry: Registry; }
+interface CheckCtx { kernel: Kernel; registry: Registry; session: StepSession; baseline: World; }
 interface CheckResult {
   pass: boolean;
+  /** What the check wants, from its arguments: "3 ready Pods matching app=web in shop". */
+  expected: string;
   /** What was observed, for the debrief: "2 of 3 Pods ready". */
   observed: string;
   /** Set when the check could not be evaluated (a `[sim]` notice, a missing machine). */
@@ -587,11 +589,21 @@ interface FaultSpec extends Contribution {
 }
 
 interface StepSpec extends Contribution {
-  args: ArgsSchema;
+  args: ArgsSchema;                       // schema of the whole step map, without `when`
   /** Executes one setup or solution step. Throws with a message on failure. */
   run(ctx: StepCtx, args: Json): void;
+  /** How the step reads in a reference solution: `$ kubectl get pods`. */
+  show?(args: Json): string;
 }
-interface StepCtx { kernel: Kernel; registry: Registry; session: StepSession; }  // session: phase 09
+interface StepCtx { kernel: Kernel; registry: Registry; session: StepSession; }
+
+/** Per step list (or check), held by the runner outside the world (D-094). */
+interface StepSession {
+  readonly entry: { machine: string; user: string };
+  local<T>(key: string, create: () => T): T;   // state of one step kind: open shells
+  onEnd(fn: () => void): void;                 // log out when the list ends
+  listen(ports: Ports): () => void;            // the runner's port hub
+}
 
 interface TopologySpec extends Contribution {
   params: ArgsSchema;
@@ -1830,6 +1842,6 @@ Each item is decided by the phase named, and recorded here when decided.
 | Provenance registry implementation: **decided in 07a** (`provenance` contributions of `ProvenanceSpec`, `validateProvenance` in `packages/kernel/src/contracts.ts`, `npm run fidelity:report`) | 07a |
 | Processed OpenAPI format (§4.6); exact pipeline stage order verified against upstream (§4.2): **decided in 05a** | 05a |
 | Work queue backoff parameters, controller latencies with their sources: **decided in 05b** (§4.3) | 05b |
-| Behavior model contract (D-060, `docs/BEHAVIOR_MODELS.md`) and image catalog format (D-061): **decided in 06b**; declarative fields beyond `docs/SCENARIO_FORMAT.md` §5.4 come with the first content image (09) | 06b |
+| Behavior model contract (D-060, `docs/BEHAVIOR_MODELS.md`) and image catalog format (D-061): **decided in 06b**; declarative fields beyond `docs/SCENARIO_FORMAT.md` §5.4 come with the first item that declares an image (none in 09; the runner refuses `world.images` until then) | 06b |
 | Certificate stand-in format | 25b |
 | Container machines: how mounts project volumes | 16a, 17 |

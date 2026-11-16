@@ -30,11 +30,19 @@ export interface Terminal {
   pid: string;
 }
 
+/** The next numbered terminal id nobody holds: a front end may have opened one by its own id. */
+function freeTtyId(ctx: Ctx): string {
+  for (;;) {
+    const id = `tty${ctx.nextId('host.tty')}`;
+    if (!hostSlice(ctx).ttys[id]) return id;
+  }
+}
+
 export function openTerminal(ctx: Ctx, opts: TerminalOptions): Terminal {
   const machine = getMachine(ctx, opts.machine);
   const user = userByName(ctx, machine.id, opts.user);
   if (!user) throw new Error(`machine ${machine.id}: no user ${opts.user}`);
-  const id = opts.id ?? `tty${ctx.nextId('host.tty')}`;
+  const id = opts.id ?? freeTtyId(ctx);
   if (hostSlice(ctx).ttys[id]) throw new Error(`tty ${id} already exists`);
   const tty: Tty = {
     id,

@@ -2,7 +2,7 @@
 // their event recorders, the events.k8s.io broadcasters), the controller runtime's and the
 // broadcasters' handlers, and the controllers.
 
-import { PROVENANCE, put, TOPOLOGY, type Contribution, type Plugin, type SliceSpec } from '@simlab/kernel';
+import { CHECK, STEP, PROVENANCE, put, TOPOLOGY, type Contribution, type Plugin, type SliceSpec } from '@simlab/kernel';
 import { PROGRAM } from '@simlab/host';
 import { kubectlProgram } from './kubectl/kubectl.ts';
 import { K8S_PROVENANCE } from './provenance.ts';
@@ -16,6 +16,8 @@ import { kubeletSpec } from './kubelet/kubelet.ts';
 import { nodeHandlers } from './kubelet/node.ts';
 import { runtimeHandlers } from './runtime/runtime.ts';
 import { healthHandlers } from './controllers/nodelifecycle/health.ts';
+import { K8S_STEPS } from './scenario/apply.ts';
+import { K8S_CHECKS } from './checks/index.ts';
 
 /**
  * 1: etcd data and watches (phase 05a). 2: controllers and recorders (05b). 3: events.k8s.io
@@ -52,5 +54,5 @@ export const k8sPlugin: Plugin = {
   requires: ['host'],
   slice: k8sSliceSpec as SliceSpec<unknown>,
   handlers: [...controllerHandlers, ...eventsHandlers, ...runtimeHandlers, ...nodeHandlers, ...healthHandlers],
-  contributions: { [PROVENANCE]: [...K8S_PROVENANCE] as unknown as Contribution[], [PROGRAM]: [kubectlProgram as unknown as Contribution], [CONTROLLER]: [...CONTROLLERS, schedulerSpec, kubeletSpec] as unknown as Contribution[], [TOPOLOGY]: [...TOPOLOGIES] },
+  contributions: { [PROVENANCE]: [...K8S_PROVENANCE] as unknown as Contribution[], [PROGRAM]: [kubectlProgram as unknown as Contribution], [CONTROLLER]: [...CONTROLLERS, schedulerSpec, kubeletSpec] as unknown as Contribution[], [TOPOLOGY]: [...TOPOLOGIES], [CHECK]: [...K8S_CHECKS] as unknown as Contribution[], [STEP]: [...K8S_STEPS] as unknown as Contribution[] },
 };

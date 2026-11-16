@@ -1,0 +1,82 @@
+# Captured from fixtures/golden/cases/create/resource-version.yaml by npm run golden:capture. Do not edit.
+# Format and normalization tokens: docs/FIDELITY.md §6.
+case: create/resource-version
+description: "Manifests that carry metadata.resourceVersion (an object saved with kubectl get -o yaml, then deleted): kubectl create -f and the create path of kubectl apply -f clear it before the POST and succeed; the patch of a later kubectl apply and kubectl replace send it and conflict. The API server's own answer to such a POST is in api/create-resource-version."
+kubernetes: v1.37.2
+oracle:
+  mode: server
+  etcd: v3.7.0
+  kwok: v0.8.0
+kwokAuthored:
+  - Node .status.conditions (types, reasons, messages, times)
+  - Lease kube-node-lease/<node> .spec (holderIdentity is KWOK's, a real kubelet writes the node name)
+  - Pod .status, except .status.qosClass (API server) and the PodScheduled condition (scheduler)
+steps:
+  - run: kubectl apply -f d.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web created
+    stderr: ""
+  - run: kubectl delete -f d.yaml
+    exit: 0
+    stdout: |
+      deployment.apps "web" deleted from default namespace
+    stderr: ""
+  - run: kubectl create -f d.yaml
+    exit: 0
+    stdout: |
+      deployment.apps/web created
+    stderr: ""
+  - run: kubectl get deployments
+    exit: 0
+    stdout: |
+      NAME   READY   UP-TO-DATE   AVAILABLE   AGE
+      web    1/1     1            1           <<age>>
+    stderr: ""
+  - run: kubectl create -f cm.yaml --dry-run=server -o yaml
+    exit: 0
+    stdout: |
+      apiVersion: v1
+      data:
+        k: v
+      kind: ConfigMap
+      metadata:
+        creationTimestamp: "<<time>>"
+        name: stale
+        namespace: default
+        uid: <<uid:1>>
+    stderr: ""
+  - run: kubectl create -f cm.yaml
+    exit: 0
+    stdout: |
+      configmap/stale created
+    stderr: ""
+  - run: kubectl apply -f cm.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Warning: resource configmaps/stale is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+      Error from server (Conflict): error when applying patch:
+      {"metadata":{"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"v1\",\"data\":{\"k\":\"v\"},\"kind\":\"ConfigMap\",\"metadata\":{\"annotations\":{},\"name\":\"stale\",\"namespace\":\"default\",\"resourceVersion\":\"12345\"}}\n"},"resourceVersion":"<<rv>>"}}
+      to:
+      Resource: "/v1, Resource=configmaps", GroupVersionKind: "/v1, Kind=ConfigMap"
+      Name: "stale", Namespace: "default"
+      for: "cm.yaml": error when patching "cm.yaml": Operation cannot be fulfilled on configmaps "stale": the object has been modified; please apply your changes to the latest version and try again
+  - objects:
+      - ref: configmap/stale
+        object:
+          apiVersion: v1
+          data:
+            k: v
+          kind: ConfigMap
+          metadata:
+            creationTimestamp: <<time>>
+            name: stale
+            namespace: default
+            resourceVersion: <<rv>>
+            uid: <<uid:2>>
+  - run: kubectl replace -f cm.yaml
+    exit: 1
+    stdout: ""
+    stderr: |
+      Error from server (Conflict): error when replacing "cm.yaml": Operation cannot be fulfilled on configmaps "stale": the object has been modified; please apply your changes to the latest version and try again

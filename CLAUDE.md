@@ -20,7 +20,7 @@ exist yet; that phase adds them.
 
 ```bash
 npm ci                        # fresh clone or new machine: install the locked dependencies
-npm run check                 # the gate: typecheck, lint, unit tests (content validation joins in phase 09)
+npm run check                 # the gate: typecheck, lint, unit tests, content validation
 npm run typecheck             # tsc -b over all project references
 npm run lint                  # eslint, including simlab/package-boundaries and simlab/engine-determinism
 npm test                      # all unit tests
@@ -46,8 +46,12 @@ npm run sim -- --topology kubeadm-1cp-2w -c 'cmd1\ncmd2'  # run commands without
                                                   # @editor <<EOF … EOF (see apps/cli/src/script.ts, --help);
                                                   # --file FILE[,FILE] puts local files (manifests) into
                                                   # the session user's home first
-npm run lab -- <item-id> [--seed N]               # (phase 09) play a content item in this terminal
-npm run content:check         # (phase 09) validate every content item (schema, unsolved fails, solutions pass)
+npm run lab -- <item-id> [--seed N]               # play a content item in this terminal; Ctrl-] opens the
+                                                  # lab prompt (check, hint, ticket, debrief, solution, reset,
+                                                  # quit); records to data/lab/; also --list, --replay <file>
+npm run content:check [-- --seeds N] [-v] [<id>…]  # validate content items (schema, rules, setup without gaps,
+                                                  # untouched world fails, every solution passes; 5 seeds+)
+npm run content:schema [-- --check]   # write docs/schema/item.schema.json from the registry (a test fails when stale)
 npm run content:i18n          # (phase 11) report missing or outdated Vietnamese text (never a gate)
 npm run oracle -- up|status|fetch        # throwaway real control plane (v1.37.2 binaries + KWOK), no Docker;
 npm run oracle -- down|env [<dir>]       # several can run: each up prints its directory, which down and env take
@@ -75,7 +79,8 @@ tools run as `node tools/src/<tool>.ts`. The Kubernetes pin is `KUBERNETES_VERSI
 ```
 packages/kernel    virtual clock, event queue, world state, snapshot/replay, PRNG, plugin registry, trace
 packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd, processes;
-                   src/models behavior models (the contract, the container shell, utilities, image programs)
+                   src/models behavior models (the contract, the container shell, utilities, image programs);
+                   src/scenario the `run` and `write` steps, the `shell.exec` and `host.file` checks
 packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kubelet, network, kubectl, kubeadm, …
                    (src/apiserver pipeline and store, src/registry strategies, src/apis defaulting and
                    validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data,
@@ -91,15 +96,20 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
                    one directory per group under cmd/: generate/, change/, rollout/, logs/, explain/,
                    info/, config/, with cmd/typed.ts their typed printer; completion/ cobra's
                    __complete and the bash script's presentation),
+                   src/checks the k8s.* checks, src/scenario the `apply` step,
                    src/printers the API server's Table printers, src/apimachinery/yaml go-yaml and
                    sigs.k8s.io/yaml (kubectl's YAML/JSON output and manifest parsing),
                    src/apimachinery/strategicpatch strategic merge patch (server and three-way),
                    src/testing helpers for tests only: the fake kubelet, workload requests)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
-packages/content   content packs (YAML + Markdown), topology templates
+                   (src/item the item types, variants and the generated schema with its validator,
+                   src/runner steps, check evaluation, grader and baselines, src/lab.ts a learner's
+                   attempt, src/validate.ts content validation, src/testing.ts a counter plugin for tests)
+packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml
 apps/web  apps/server  apps/cli
 tools/             upstream fetch, OpenAPI processing (openapi/), oracle and golden capture, transcript capture,
-                   coverage generation (coverage/), update check;
+                   coverage generation (coverage/), content validation and schema generation (content/),
+                   update check;
                    tools/eslint holds the two lint rules, their fixtures and the dependency table
 docs/schema/       JSON Schema of content items and translation sidecars
 docs/curriculum/   the official CKA and CKAD curricula the content is built against

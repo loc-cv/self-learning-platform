@@ -8,5 +8,10 @@
   },
   "scripts": {
     "test": "vitest run --root ../.. packages/content/"
+  },
+  "dependencies": {
+    "@simlab/kernel": "0.0.0",
+    "@simlab/learn": "0.0.0",
+    "yaml": "2.9.1"
   }
 }

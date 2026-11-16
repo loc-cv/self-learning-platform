@@ -12,7 +12,7 @@
     "tools"
   ],
   "scripts": {
-    "check": "npm run typecheck && npm run lint && npm test",
+    "check": "npm run typecheck && npm run lint && npm test && npm run content:check",
     "typecheck": "tsc -b",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
@@ -32,7 +32,10 @@
     "api:vendor": "node tools/src/openapi/vendor.ts",
     "openapi:capture": "node tools/src/openapi/capture.ts",
     "play": "node apps/cli/src/play.ts",
-    "sim": "node apps/cli/src/sim.ts"
+    "sim": "node apps/cli/src/sim.ts",
+    "lab": "node apps/cli/src/lab.ts",
+    "content:check": "node tools/src/content/check.ts",
+    "content:schema": "node tools/src/content/schema.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

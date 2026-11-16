@@ -5,17 +5,50 @@
 import type { Json } from './json.ts';
 import type { Ctx, Kernel } from './kernel.ts';
 import type { Contribution, Registry } from './registry.ts';
+import type { Ports } from './trace.ts';
+import type { World } from './world.ts';
 
 /** A JSON Schema object (draft 2020-12 subset) describing `args`. */
 export type ArgsSchema = { [key: string]: Json };
 
+/** A machine and a user on it: where a terminal opens, where a `run` step types. */
+export interface Entry {
+  machine: string;
+  user: string;
+}
+
+/**
+ * What one list of steps (a setup, a solution, a check's `after`) or one check runs in, held by
+ * the runner outside the world (docs/SCENARIO_FORMAT.md §6). A step kind keeps what must last from
+ * step to step under its own key (the shells that `run` steps share), and says what to do when
+ * the list ends (log out of them).
+ */
+export interface StepSession {
+  /** The item's entry: the default machine and user of `run` steps and of `shell.exec`. */
+  readonly entry: Entry;
+  /** State one step kind keeps for the rest of the list, created on first use. Outside the world. */
+  local<T>(key: string, create: () => T): T;
+  /** Runs when the list or check ends, most recently registered first. */
+  onEnd(fn: () => void): void;
+  /** Adds listeners to the kernel's ports until the session ends; returns a function that removes them. */
+  listen(ports: Ports): () => void;
+}
+
 export interface CheckCtx {
   kernel: Kernel;
   registry: Registry;
+  session: StepSession;
+  /**
+   * The world as setup left it, read-only: what constraint checks compare against ("not
+   * recreated", "unchanged"). Never the session's world.
+   */
+  baseline: World;
 }
 
 export interface CheckResult {
   pass: boolean;
+  /** What the check wants, from its arguments: "3 ready Pods matching app=web in shop". */
+  expected: string;
   /** What was observed, for the debrief: "2 of 3 Pods ready". */
   observed: string;
   /** Set when the check could not be evaluated (a `[sim]` notice, a missing machine). */
@@ -23,27 +56,38 @@ export interface CheckResult {
 }
 
 export interface CheckSpec extends Contribution {
+  /** Schema of the check's `with` map. */
   args: ArgsSchema;
   /** Runs against a fork. May advance the fork's time. Must not depend on anything else. */
   run(ctx: CheckCtx, args: Json): CheckResult;
 }
 
 export interface FaultSpec extends Contribution {
+  /** Schema of the fault's `with` map. */
   args: ArgsSchema;
   /** Mutates the world into a state a real system could be in. */
   inject(ctx: Ctx, args: Json): void;
 }
 
-/** Phase 09 adds the terminal session a step can type into. */
 export interface StepCtx {
   kernel: Kernel;
   registry: Registry;
+  session: StepSession;
 }
 
 export interface StepSpec extends Contribution {
+  /**
+   * Schema of the whole step map without `when`: the kind key (the contribution's name) and its
+   * modifiers (`on`, `as`, `expect`, `editor`).
+   */
   args: ArgsSchema;
   /** Executes one setup or solution step. Throws with a message on failure. */
   run(ctx: StepCtx, args: Json): void;
+  /**
+   * How the step reads in a reference solution shown to the learner: what a person would type or
+   * do, e.g. `$ kubectl -n shop get pods`. Without it the step is shown as data.
+   */
+  show?(args: Json): string;
 }
 
 /** Registry kinds of the contracts below. */

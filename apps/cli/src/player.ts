@@ -3,7 +3,7 @@
 // logs every input with its virtual time, and the editor protocol answered by a real editor.
 // play.ts connects it to the user's terminal; tests drive it with a fake clock.
 
-import { createInteractiveDriver, createRecorder, replay, type GapEvent, type Kernel, type SessionLog } from '@simlab/kernel';
+import { createInteractiveDriver, createRecorder, replay, type Entry, type GapEvent, type Json, type Kernel, type Ports, type SessionHeader, type SessionLog } from '@simlab/kernel';
 import type { EditorRequest, HostSlice } from '@simlab/host';
 import { boot, header } from './world.ts';
 
@@ -19,6 +19,12 @@ export interface PlayerIo {
   now(): number;
 }
 
+/** How a player gets its world: a header for the log and a function that builds the world. */
+export interface PlayerWorld {
+  header: SessionHeader;
+  start(ports: Ports): { kernel: Kernel; entry: Entry };
+}
+
 export interface PlayerOptions {
   topology: string;
   seed: number;
@@ -26,6 +32,8 @@ export interface PlayerOptions {
   rows: number;
   /** Virtual time per real time; default 1. */
   speed?: number;
+  /** A world other than the bare topology: a content item's session (`npm run lab`). */
+  world?: PlayerWorld;
 }
 
 export interface Player {
@@ -40,19 +48,37 @@ export interface Player {
   readonly ended: boolean;
   /** Takes a final checkpoint and returns the session log. */
   finish(): SessionLog;
+  /** Logs a `learn.action` input (hint shown, check pressed), which changes nothing in the world. */
+  action(action: string, data?: Json): void;
 }
 
 export const TTY = 'tty1';
 
+/**
+ * The player's terminal id: `tty1`, or the first one free. A content item's setup logs in through
+ * terminals of its own (docs/SCENARIO_FORMAT.md §6.2), whose closed records stay in the world.
+ */
+export function freeTty(world: { slices: Record<string, unknown> }): string {
+  const ttys = (world.slices['host'] as HostSlice).ttys;
+  let n = 1;
+  while (ttys[`tty${n}`]) n++;
+  return `tty${n}`;
+}
+
 export function createPlayer(opts: PlayerOptions, io: PlayerIo): Player {
   const pending: { session: string; request: EditorRequest }[] = [];
-  const h = header(opts.topology, opts.seed);
-  const { kernel, info } = boot(h, {
+  const h = opts.world?.header ?? header(opts.topology, opts.seed);
+  const start = opts.world?.start ?? ((ports: Ports) => {
+    const b = boot(h, ports);
+    return { kernel: b.kernel, entry: b.info.entry };
+  });
+  let tty = TTY;
+  const { kernel, entry } = start({
     output(r) {
       if (r.kind === 'tty') {
-        if (r.tty === TTY) io.write(r.data);
+        if (r.tty === tty) io.write(r.data);
       } else if (r.kind === 'editor.open') {
-        if (r.tty === TTY) pending.push({ session: r.session, request: r.request as unknown as EditorRequest });
+        if (r.tty === tty) pending.push({ session: r.session, request: r.request as unknown as EditorRequest });
       } else if (!r.ok) io.note(r.message ?? 'the file could not be saved');
     },
     gap: (g) => io.gap(g),
@@ -78,15 +104,16 @@ export function createPlayer(opts: PlayerOptions, io: PlayerIo): Player {
     }
   };
 
-  driver.deliver({ kind: 'tty.open', tty: TTY, machine: info.entry.machine, user: info.entry.user, cols: opts.cols, rows: opts.rows }, 0);
+  tty = freeTty(kernel.world);
+  driver.deliver({ kind: 'tty.open', tty, machine: entry.machine, user: entry.user, cols: opts.cols, rows: opts.rows }, 0);
   answerEditors();
 
-  const shellPid = (): string | undefined => (kernel.world.slices['host'] as HostSlice).ttys[TTY]?.session;
+  const shellPid = (): string | undefined => (kernel.world.slices['host'] as HostSlice).ttys[tty]?.session;
   return {
     kernel,
-    tty: TTY,
+    tty,
     keys(data) {
-      driver.deliver({ kind: 'tty.bytes', tty: TTY, data }, elapsed());
+      driver.deliver({ kind: 'tty.bytes', tty, data }, elapsed());
       answerEditors();
     },
     tick() {
@@ -94,19 +121,22 @@ export function createPlayer(opts: PlayerOptions, io: PlayerIo): Player {
       answerEditors();
     },
     resize(cols, rows) {
-      driver.deliver({ kind: 'tty.resize', tty: TTY, cols, rows }, elapsed());
+      driver.deliver({ kind: 'tty.resize', tty, cols, rows }, elapsed());
       answerEditors();
     },
     get ended() {
       const host = kernel.world.slices['host'] as HostSlice;
       const pid = shellPid();
-      const p = pid === undefined ? undefined : host.machines[info.entry.machine]?.procs[pid];
+      const p = pid === undefined ? undefined : host.machines[entry.machine]?.procs[pid];
       return !p || p.state !== 'running';
     },
     finish() {
       driver.tick(elapsed());
       recorder.checkpoint();
       return recorder.log();
+    },
+    action(action, data) {
+      driver.deliver(data === undefined ? { kind: 'learn.action', action } : { kind: 'learn.action', action, data }, elapsed());
     },
   };
 }
@@ -120,15 +150,19 @@ export interface ReplayOutcome {
   divergedAt?: number;
 }
 
-/** Replays a recorded session into a fresh world, writing its terminal output. */
-export function replaySession(log: SessionLog, write: (data: string) => void): ReplayOutcome {
-  const result = replay(log, (h) =>
-    boot(h, {
-      output(r) {
-        if (r.kind === 'tty' && r.tty === TTY) write(r.data);
-      },
-    }).kernel,
-  );
+/**
+ * Replays a recorded session into a fresh world, writing its terminal output. `start` builds the
+ * world for headers that name a content item.
+ */
+export function replaySession(log: SessionLog, write: (data: string) => void, start?: (h: SessionHeader, ports: Ports) => Kernel): ReplayOutcome {
+  const opened = log.inputs.find((i) => i.kind === 'tty.open');
+  const tty = opened?.kind === 'tty.open' ? opened.tty : TTY;
+  const ports: Ports = {
+    output(r) {
+      if (r.kind === 'tty' && r.tty === tty) write(r.data);
+    },
+  };
+  const result = replay(log, (h) => (start ? start(h, ports) : boot(h, ports).kernel));
   const out: ReplayOutcome = { hash: result.kernel.hash(), recorded: log.checkpoints[log.checkpoints.length - 1]?.hash };
   if (result.diverged) out.divergedAt = result.diverged.checkpoint.t;
   return out;

@@ -925,3 +925,82 @@ or strategic) of `<resource>/scale`, validates the Scale (ValidateScale, Invalid
 resourceVersion onto the object and sends it through the main strategy's update, and answers
 with the autoscaling/v1 Scale; a missing object is NotFound on the parent resource. This ends
 D-045's read-only shortcut.
+
+## Phase 09 (2026-11-16)
+
+**D-093 — The engine validates content with its own JSON Schema validator.** `learn` runs in a
+Web Worker and in Node and imports only `kernel`, so it takes no schema library:
+`packages/learn/src/item/jsonschema.ts` validates the 2020-12 subset the item schema and the
+registered argument schemas use, and refuses any keyword outside it rather than ignore it.
+`tools/src/content/schema.test.ts` compiles the generated schema with Ajv in strict mode and checks
+that both agree on every item, every worked example and broken variants of each. Ajv stays a
+development dependency of `tools`. Rules out adding Ajv to `learn` (code generation at run time,
+a second copy of a library the root already has in another major version).
+
+**D-094 — Runner contracts.** Additions to `docs/ARCHITECTURE.md` §2.11, all in `kernel`:
+- `StepSession` (`entry`, `local`, `onEnd`, `listen`): the per-list context the runner holds
+  outside the world. A step kind keeps state under its own key (the host keeps one shell per
+  machine and user), registers what to do when the list ends (log out), and listens to the
+  kernel's ports through the runner's hub, because ports are fixed when a kernel is created.
+  `StepCtx` and `CheckCtx` carry it; `shell.exec` and the `apply` step use the same shells.
+- `CheckCtx.baseline`: the world as setup left it, read-only, for constraint checks.
+- `CheckResult.expected`: what the check wants, in words from its arguments, next to `observed`.
+- `StepSpec.show`: how a step reads in a reference solution (`$ kubectl …`, a heredoc for
+  `write`).
+- `advance` and `until` are implemented by the runner, not registered by a plugin: they need
+  only the kernel and the check registry, and `until` needs the baseline.
+
+**D-095 — Waiting checks poll.** `until` steps and `within` look at the world now, then once per
+poll interval: one second, or a sixtieth of the time they may wait when that is longer. Each look
+is a fresh fork, so a check that types commands or deletes things stays harmless. Polling at every
+event instant would cost hundreds of forks per minute of virtual time (kubelet heartbeats alone
+are every 10 s per node); the rule caps a wait at about sixty evaluations, which keeps
+`content:check` of three labs on five seeds under twenty seconds.
+
+**D-096 — Weights and partial credit.** A check may carry `weight` (a number above 0, default 1).
+The grade has a score, the passed weight over the total; the item passes only when every check
+passes. The score is for the rating in phase 11 and for the learner ("75% of the checks' weight
+passes"); it never turns a failed constraint into a pass. Not in phase 00's format; added because
+the phase prompt asks for partial credit.
+
+**D-097 — The `apply` step runs the simulated kubectl.** It types `kubectl apply -f - <<'…'` with
+the documents into a root shell on the machine that holds the API server's advertise address,
+with `KUBECONFIG=/etc/kubernetes/admin.conf`. The world then holds exactly what a person running
+that command leaves (last-applied annotation, managed fields, events) and a wrong manifest fails
+with kubectl's own error. Rules out calling the API directly, which would skip kubectl's
+three-way merge and its annotation.
+
+**D-098 — Any gap fails a step.** A step fails when the engine reports a gap while it runs: a
+command's `[sim]` notice, and also a behavior model's gap during the time the step lets pass (an
+image whose start is not fully captured, such as `nginx:1.27`). Content therefore uses only what
+the simulator knows; the labs use `nginx:1.31.8` and `nginx:1.14.2`, whose models report no gap.
+In a check, a gap in the `after` steps or in `shell.exec`'s command makes the check an error; gaps
+while a `within` waits are the session's business and are not held against the check.
+
+**D-099 — `npm run lab`: the lab prompt is behind Ctrl-].** The terminal player's escape key
+(play's "leave") opens a `lab>` prompt in lab mode: `check`, `hint`, `ticket`, `debrief`,
+`solution`, `reset`, `help`, `quit`; an empty line returns to the shell. The commands that give
+the answer away or throw work away (`debrief` before the lab is solved, `solution`, `reset`) ask
+to be typed twice. Each attempt is a session log under `data/lab/`; `reset` ends one and starts the
+next from the baseline (§2.8 "Reset starts a new log"); hint, check, solution and reset are
+logged as `learn.action` inputs. An interactive attempt starts at the real current time, rounded to
+the second, as the format says; the header records it and the item's content hash, so `--replay`
+rebuilds the same world and refuses an item that changed.
+
+**D-100 — Packs are read by `@simlab/content`, from its entry point.** `pack.yaml` holds the
+pack's `id`, `title` and the skills it defines (`id`, `title`); phase 11 extends it. YAML 1.2 is
+parsed with `yaml` 2.9.1 (already in the lockfile, now a runtime dependency of `content`), with
+duplicate keys as errors. The loader reads the file system with Node APIs and is exported from
+the package entry point, because the boundary rule allows no subpath imports; `content` is not an
+engine package. Phase 10 decides how items reach the browser (the server, or the bundler).
+
+**D-101 — The worked examples are validated with stand-ins for planned checks.** The examples in
+`docs/SCENARIO_FORMAT.md` §13 use `host.unit`, `net.reach`, `k8s.nodeReady` and faults that later
+phases build, so the generated schema refuses them. `tools/src/docs/planned.ts` registers
+stand-ins with the phase 00 argument schemas and the phase that builds each; a test fails as soon
+as a real plugin registers one of the names, so the stand-in is removed in the same phase.
+
+**D-102 — Taints in setups are applied with `kubectl edit node`.** `kubectl taint` is simulated in
+phase 26b; until then a setup that needs a taint edits the Node, which is a real administrator's
+path and leaves no annotation a `taint` would not leave either. A learner who reaches for
+`kubectl taint` gets the `[sim]` notice; in the scheduling lab that is the forbidden fix anyway.

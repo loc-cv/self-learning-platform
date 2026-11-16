@@ -1,0 +1,56 @@
+description: >-
+  The raw answer to a create whose object sets metadata.resourceVersion (storage refuses a
+  positive number; a dry run, "0" and a non-numeric value pass), and to the same create when the
+  name is taken.
+kwok: false
+steps:
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: stale
+        resourceVersion: "12345"
+  - request: POST /api/v1/namespaces/default/configmaps?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: stale
+        resourceVersion: "12345"
+  - request: GET /api/v1/namespaces/default/configmaps/stale
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: zero
+        resourceVersion: "0"
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: text
+        resourceVersion: abc
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: zero
+        resourceVersion: "12345"
+  - request: POST /api/v1/namespaces/default/configmaps?dryRun=All
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: zero
+        resourceVersion: "12345"
+  - request: POST /api/v1/namespaces/default/configmaps
+    body: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: text
+        resourceVersion: "-1"

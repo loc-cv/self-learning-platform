@@ -9,6 +9,7 @@
 //             staging/src/k8s.io/cli-runtime/pkg/printers/name.go NamePrinter (printObj),
 //             yaml.go YAMLPrinter (`---` before every object after the first), json.go JSONPrinter
 //   upstream: .upstream/go src/strconv/atob.go ParseBool
+//   upstream: staging/src/k8s.io/cli-runtime/pkg/resource/helper.go CreateWithOptions (modify)
 
 import type { Op, ProcApi } from '@simlab/host';
 import { isObject, type Json, type JsonObject } from '../../apimachinery/json.ts';
@@ -60,6 +61,19 @@ export function validationDirective(value: string): FieldValidation | KubectlErr
     return messageError(`invalid - validate option "${value}"; must be one of: strict (or true), warn, ignore (or false)`);
   }
   return b ? 'Strict' : 'Ignore';
+}
+
+/**
+ * resource.Helper.Create with modify=true (create -f, apply's create path, replace --force): the
+ * object goes to the server without its resourceVersion, which storage would refuse on a create
+ * (fixtures/golden/v1.37.2/create/resource-version.yaml). Unstructured.GetResourceVersion reads a
+ * string only, so a resourceVersion of another type is sent as it is.
+ * upstream: staging/src/k8s.io/cli-runtime/pkg/resource/helper.go CreateWithOptions;
+ *           apimachinery/pkg/apis/meta/v1/unstructured/unstructured.go SetResourceVersion
+ */
+export function clearResourceVersionForCreate(obj: JsonObject): void {
+  const m = obj.metadata;
+  if (isObject(m) && typeof m.resourceVersion === 'string' && m.resourceVersion !== '') delete m.resourceVersion;
 }
 
 /** AddSourceToErr: `error when <verb> "<source>": ` before the message. */

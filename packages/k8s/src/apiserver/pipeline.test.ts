@@ -231,3 +231,26 @@ describe('dry run', () => {
     expect(rev.etcd[DEFAULT_APISERVER.etcd]?.revision).toBe(before);
   });
 });
+
+describe('resourceVersion on create', () => {
+  // The fixture normalizes resource versions (api/create-resource-version); these are the values.
+  test('storage refuses a positive one with a reasonless 500; "0" and what ParseUint rejects are replaced', () => {
+    const k = boot();
+    const set = req(k, { verb: 'create', body: cm('a', { metadata: { resourceVersion: '12345' } }) });
+    expect(!set.ok && 'status' in set ? set.status : set).toEqual({ kind: 'Status', apiVersion: 'v1', metadata: {}, status: 'Failure', message: 'resourceVersion should not be set on objects to be created', code: 500 });
+    const passing: [string, string][] = [['zero', '0'], ['text', 'abc'], ['negative', '-1'], ['huge', '18446744073709551616']];
+    for (const [name, rv] of passing) {
+      const created = obj(req(k, { verb: 'create', body: cm(name, { metadata: { resourceVersion: rv } }) }));
+      expect(meta(created).resourceVersion).toMatch(/^[1-9][0-9]*$/);
+      expect(meta(created).resourceVersion).not.toBe(rv);
+    }
+  });
+
+  test('a dry run answers with the resourceVersion it was sent (DryRunnableStorage copies the object)', () => {
+    // upstream: apiserver/pkg/registry/generic/registry/dryrun.go DryRunnableStorage.Create; seen on
+    // the oracle: `kubectl create --raw '/api/v1/namespaces/default/configmaps?dryRun=All'` → "12345".
+    const k = boot();
+    const dry = obj(req(k, { verb: 'create', body: cm('a', { metadata: { resourceVersion: '12345' } }), options: { dryRun: true } }));
+    expect(meta(dry).resourceVersion).toBe('12345');
+  });
+});

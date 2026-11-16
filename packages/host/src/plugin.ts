@@ -1,6 +1,6 @@
 // The host plugin: the `host` slice and the file providers machines need from the start.
 
-import { put, TOPOLOGY, type Plugin, type SliceSpec } from '@simlab/kernel';
+import { CHECK, put, STEP, TOPOLOGY, type Contribution, type Plugin, type SliceSpec } from '@simlab/kernel';
 import type { HostSlice } from './machine.ts';
 import { PROGRAM } from './proc/program.ts';
 import { attachProcesses, RUN, runHandler } from './proc/runtime.ts';
@@ -15,6 +15,8 @@ import { bashCompleter } from './shell/complete.ts';
 import { COMPLETION } from './tty/complete.ts';
 import { ubuntu1Topology } from './topology.ts';
 import { FILE_PROVIDER, type FileProviderSpec } from './vfs/provider.ts';
+import { HOST_CHECKS } from './scenario/checks.ts';
+import { HOST_STEPS } from './scenario/steps.ts';
 
 /** 2: terminals gained modes and the line editor; editor sessions (phase 03). */
 export const HOST_SLICE_VERSION = 2;
@@ -97,5 +99,5 @@ export const hostPlugin: Plugin = {
       },
     },
   ],
-  contributions: { [FILE_PROVIDER]: [nullDevice], [PROGRAM]: PROGRAMS, [BEHAVIOR_MODEL]: [...GENERIC_MODELS, ...IMAGE_MODELS], [COMPLETION]: [bashCompleter], [TOPOLOGY]: [ubuntu1Topology] },
+  contributions: { [FILE_PROVIDER]: [nullDevice], [PROGRAM]: PROGRAMS, [BEHAVIOR_MODEL]: [...GENERIC_MODELS, ...IMAGE_MODELS], [COMPLETION]: [bashCompleter], [TOPOLOGY]: [ubuntu1Topology], [STEP]: [...HOST_STEPS] as unknown as Contribution[], [CHECK]: [...HOST_CHECKS] as unknown as Contribution[] },
 };

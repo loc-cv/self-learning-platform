@@ -13,7 +13,7 @@ use only what this document defines.
 
 ```
 packages/content/<pack>/
-  pack.yaml                      pack id, title, skills it defines (phase 11)
+  pack.yaml                      pack id, title, the skills it defines (`id`, `title`); phase 11 adds the rest
   <area>/<id>.yaml               one item per file; the file name is the item id
   <area>/<id>.vi.yaml            optional Vietnamese sidecar (§12)
 ```
@@ -209,8 +209,21 @@ key, optional modifiers, and optional `when`.
 | `apply: <manifests>` | k8s | Submit the YAML documents to the API server as cluster admin, with `kubectl apply` semantics |
 | `write: { path, content, mode?, owner?, group? }` | host | Create or replace a file |
 | `fault: <name>` with `with: { … }` | host, domains | Call a fault injector (§8) |
-| `advance: <duration>` | kernel | Let virtual time pass |
-| `until: { assert, with, not? }` with `timeout: <duration>` | kernel | Let time pass until the check holds; the step fails if it does not within the timeout |
+| `advance: <duration>` | the runner | Let virtual time pass |
+| `until: { assert, with, not? }` with `timeout: <duration>` | the runner | Let time pass until the check holds; the step fails if it does not within the timeout |
+
+- `advance` and `until` need only the kernel and the check registry, so the runner in `learn`
+  implements them and no plugin registers them (D-094).
+- `apply` is `kubectl apply -f -` with the documents on standard input, typed into a root shell
+  on the machine the API server runs on, with kubeadm's `/etc/kubernetes/admin.conf`. The world
+  then holds exactly what a person running that command leaves (the last-applied annotation,
+  events), and a wrong manifest fails the step with kubectl's own error.
+- `until` and `within` (§7) look at the world now and then once per poll interval: one second,
+  or a sixtieth of the timeout when that is longer, so a wait costs at most about sixty
+  evaluations (D-095).
+- Every step fails when the engine reports a gap while it runs: a `[sim]` notice of a command,
+  and also a behavior a model does not cover (an image whose start is not fully captured).
+  Content must stay inside what the simulator knows.
 
 Durations are an integer and a unit: `500ms`, `90s`, `5m`, `2h`, `1d`.
 
@@ -227,7 +240,9 @@ Durations are an integer and a unit: `500ms`, `90s`, `5m`, `2h`, `1d`.
   as they do for the learner.
 - Within one list of steps, all `run` steps with the same `on` and `as` share one shell session,
   so `cd`, variables and files persist from step to step. A different `on` is a separate login,
-  not a nested `ssh`.
+  not a nested `ssh`. The logins end (`exit`, then the terminal closes) when the list ends.
+- These shells are plain sessions without line editing, separate from the learner's terminal,
+  which opens after setup. Nothing a setup types reaches the learner's shell history.
 - The step waits until the command returns. A command that would block forever (`kubectl get -w`)
   is an error in a step.
 - A step that triggers a `[sim]` notice fails.
@@ -271,12 +286,14 @@ checks:
     not: false                         # optional: invert
     within: 30s                        # optional: may become true within this virtual time
     after: [ … ]                       # optional: steps run on the fork first
+    weight: 2                          # optional: share of the score, default 1
     when: { … }                        # optional
 ```
 
 Evaluation of one check, on its own fork of the session world:
 
-1. Run the `after` steps, if any. A failing step fails the check with that step's error.
+1. Run the `after` steps, if any. A failing step fails the check with that step's error; a step
+   the simulator cannot run (a gap) makes the check an error.
 2. Evaluate `assert` with `with`. With `within`, re-evaluate as virtual time advances on the fork
    and pass as soon as it holds; fail at the deadline. Without it, evaluate once, now.
 3. Apply `not`.
@@ -288,6 +305,11 @@ Evaluation of one check, on its own fork of the session world:
   `[sim]` notice) is an error, reported as such. It is neither a pass nor a fail.
 - The grader passes the item when every check passes. `title` is what the learner sees per
   check, so it states the requirement, not the mechanism.
+- Each result says what the check wanted (`expected`, written by the check from its arguments)
+  and what it found (`observed`), so a failed check explains itself in the debrief. These texts
+  are the simulator's own voice, not imitations of a tool's output.
+- **Weights and partial credit.** The score is the weight of the passed checks over the total
+  weight. It feeds the rating (phase 11); passing the item still needs every check (D-096).
 
 Checks often encode the ticket's constraints ("do not remove the taint"). Write those as checks
 too, with `not` where needed, so that a shortcut that breaks a constraint fails.
@@ -299,24 +321,40 @@ and a function (`docs/ARCHITECTURE.md` §2.11). The catalog below is the one spe
 each check is implemented by the phase that builds what it inspects, and more are added the same
 way. Argument schemas are in `docs/schema/item.schema.json`.
 
-| Check | Arguments | Passes when |
-|---|---|---|
-| `shell.exec` | `run`, `on?`, `as?`, `exit?` (0), `stdout?`, `stderr?` | The command, run in a new shell on the fork, exits with `exit` and its output satisfies the matchers |
-| `host.file` | `on`, `path`, `exists?` (true), `type?`, `contains?`, `matches?`, `mode?`, `owner?`, `group?` | The file exists (or not) with the given properties |
-| `host.unit` | `on`, `unit`, `active?`, `enabled?` | The systemd unit is in the given states |
-| `net.reach` | `from`, `to`, `expect?` (`answered`), `status?`, `bodyContains?` | A connection from the source to the URL has the expected client-visible outcome |
-| `k8s.object` | `kind`, `apiVersion?`, `namespace?`, `name?` or `selector?`, `exists?`, `count?`/`min?`/`max?`, `where?` | The selected objects exist in the expected number and every `where` clause holds for each |
-| `k8s.podsReady` | `namespace`, `selector`, `count?`/`min?`/`max?` | That many Pods matching the selector have the Ready condition and are not terminating |
-| `k8s.rollout` | `namespace`, `name`, `kind?` (`Deployment`) | The rollout is complete in the sense of `kubectl rollout status` |
-| `k8s.nodeReady` | `node`, `ready?` (true) | The node's Ready condition is `True` (or is not) |
-| `k8s.nodeHasTaint` | `nodes`, `key`, `value?`, `effect?` | Every listed node carries the taint |
-| `k8s.endpoints` | `namespace`, `service`, `count?`/`min?`/`max?` | The Service has that many ready endpoints |
-| `k8s.can` | `as`, `verb`, `resource`, `namespace?`, `name?`, `allowed?` (true) | The authorizer allows (or denies) the request for that identity |
+| Check | Arguments | Passes when | Since |
+|---|---|---|---|
+| `shell.exec` | `run`, `on?`, `as?`, `exit?` (0), `stdout?`, `stderr?` | The command, run in a new shell on the fork, exits with `exit` and its output satisfies the matchers | 09 |
+| `host.file` | `on`, `path`, `exists?` (true), `type?`, `contains?`, `matches?`, `mode?`, `owner?`, `group?` | The file exists (or not) with the given properties | 09 |
+| `host.unit` | `on`, `unit`, `active?`, `enabled?` | The systemd unit is in the given states | 25a |
+| `net.reach` | `from`, `to`, `expect?` (`answered`), `status?`, `bodyContains?` | A connection from the source to the URL has the expected client-visible outcome | 17 |
+| `k8s.object` | `kind`, `apiVersion?`, `namespace?`, `name?` or `selector?`, `exists?`, `count?`/`min?`/`max?`, `where?` | The selected objects exist in the expected number and every `where` clause holds for each | 09 |
+| `k8s.podsReady` | `namespace`, `selector`, `count?`/`min?`/`max?` | That many Pods matching the selector have the Ready condition and are not terminating | 09 |
+| `k8s.rollout` | `namespace`, `name`, `kind?` (`Deployment`) | The rollout is complete in the sense of `kubectl rollout status` | 09 (Deployment) |
+| `k8s.nodeReady` | `node`, `ready?` (true) | The node's Ready condition is `True` (or is not) | 26a |
+| `k8s.nodeHasTaint` | `nodes`, `key`, `value?`, `effect?` | Every listed node carries the taint | 09 |
+| `k8s.endpoints` | `namespace`, `service`, `count?`/`min?`/`max?` | The Service has that many ready endpoints | 09 |
+| `k8s.unchanged` | `kind`, `apiVersion?`, `namespace?`, `name?` or `selector?`, `paths` | The objects selected in the baseline are the ones selected now (same names, same uids), and every path yields the same values as in the baseline | 09 |
+| `k8s.notRecreated` | `kind`, `apiVersion?`, `namespace?`, `name` | The object exists with the uid it had in the baseline | 09 |
+| `k8s.can` | `as`, `verb`, `resource`, `namespace?`, `name?`, `allowed?` (true) | The authorizer allows (or denies) the request for that identity | 20a |
 
 Details:
 
 - **Matchers** (`stdout`, `stderr`): `equals` (after removing one trailing newline), `contains`,
-  `notContains`, `matches` (a regular expression, multi-line).
+  `notContains`, `matches` (a JavaScript regular expression; `^` and `$` match at line ends).
+  A matcher may hold several keys; all must hold. `shell.exec` runs the command as
+  `{ <command>\n} 2><file>` in a plain shell on the fork, so standard output and standard error
+  are judged separately.
+- **Counting** (`count`, `min`, `max`): with none of them, at least one object (for `k8s.object`
+  with `exists: false`, none). `count` excludes `min` and `max`.
+- **Selection** (`k8s.object`, `k8s.unchanged`): by `name`, by label `selector`, or every object
+  of the kind; a namespaced kind without `namespace` reads `default`, as kubectl does, and a
+  `namespace` on a cluster-scoped kind is an error. Terminating objects count. Without
+  `apiVersion` the kind maps to the first group version serving it, the core group first.
+- **Constraint checks** (`k8s.unchanged`, `k8s.notRecreated`) compare the session world with the
+  baseline, the world as setup left it. They are how "do not change the nodes" and "do not
+  recreate the Service" become checks.
+- Checks read through the API server as `kubernetes-admin` in `system:masters`, so a learner's
+  RBAC changes cannot hide an object from them.
 - **`net.reach` sources**: `{ machine: <name> }`, or `{ pod: { namespace, selector } }` or
   `{ pod: { namespace, name } }`; with a selector, the first ready Pod in name order. `to` is a
   URL (`http://api.shop.svc.cluster.local:8080/healthz`) or `host:port`. Outcomes are those of the
@@ -324,7 +362,11 @@ Details:
   contributed by the Kubernetes plugin; the check itself belongs to the host.
 - **`k8s.object` `where`**: `path` is a JSONPath in `kubectl -o jsonpath` syntax
   (`{.spec.replicas}`). Operators: `equals`, `notEquals`, `in`, `contains`, `matches`, `exists`,
-  `gte`, `lte`. A path that yields several values holds when every value satisfies the operator.
+  `gte`, `lte`; one per clause. A path that yields several values holds when every value
+  satisfies the operator; a path that yields none fails every operator but `exists: false` and
+  `notEquals`. Scalars compare by the text jsonpath would print, so `equals: 3` matches `3` and
+  `"3"`. Until phase 15 ports client-go's jsonpath, paths are limited to fields (with `\.`
+  escapes), `[n]`, `[*]`, `.*` and `['key']`; other syntax makes the check an error.
 - **`shell.exec` is the escape hatch.** Prefer a typed check: it gives a better message in the
   debrief and does not depend on output formatting. Use `shell.exec` for behavior only a command
   shows (`kubectl exec … -- printenv NAME`).
@@ -357,9 +399,19 @@ Catalog specified in phase 00, implemented with the subsystems they touch:
 ## 9. Registration and the schema
 
 Plugins contribute steps, checks, faults and topologies to the registry; `learn` resolves the
-names an item uses. From phase 09 the `$defs` for steps, checks and faults in
-`item.schema.json` are generated from the registry, so the schema cannot drift from the code.
-Until then the file is maintained by hand with this document.
+names an item uses. `item.schema.json` is generated: `npm run content:schema` writes the item
+layout (`packages/learn/src/item/schema.base.ts`) with `$defs.step`, `$defs.assertion` and the
+topology names taken from the registry, so the schema cannot drift from the code; a test fails
+when the file is stale.
+
+- The raw item, before substitution, is validated against it, so a typed argument (an integer,
+  a boolean, an enum, a patterned string) also accepts a placeholder there. After substitution,
+  every argument map of every variant is validated again against the registered schema itself.
+- The engine validates with its own JSON Schema validator for the subset these schemas use
+  (`packages/learn/src/item/jsonschema.ts`, D-093); a test checks that it agrees with Ajv.
+- The worked examples in §13 use checks of later phases; their test adds stand-ins with the
+  phase 00 argument schemas (`tools/src/docs/planned.ts`), which each phase replaces with the
+  real check.
 
 An item that uses a name the registry does not have is invalid. There is no fallback and no
 "unknown check passes".
@@ -393,7 +445,8 @@ output in a debrief follows the grounding rule like any other output.
 
 ## 11. Validation
 
-`npm run content:check` (phase 09) enforces, for every item and several seeds:
+`npm run content:check` enforces, for every item and several seeds (1 to 5, then more until
+every `pick` value a `when` depends on has appeared; `--seeds N` changes the 5):
 
 1. The file parses and satisfies `item.schema.json`; the id equals the file name; ids are unique.
 2. Skills exist in a pack; curriculum ids exist in `docs/curriculum/competencies.yaml`.
@@ -402,8 +455,10 @@ output in a debrief follows the grounding rule like any other output.
 4. Setup completes with no failed step and no `[sim]` notice.
 5. On the untouched baseline, the item **fails**: at least one check fails, and no check errors.
 6. Each solution, on a fresh baseline, completes and then **every** check passes.
-7. For every variant: at least one solution applies, and the hint ladder is complete.
-8. Check ids are unique; every check has a title.
+7. For every variant: at least one solution applies, at least one check applies, the hint
+   ladder is complete, and every argument map satisfies its registered schema.
+8. Check ids are unique; every check has a title; every parameter is used; solutions inject no
+   faults; topology parameters satisfy the topology's schema.
 
 Rules 5 and 6 are CLAUDE.md hard rule 6. A check that passes on the untouched world and exists
 only to guard a constraint is fine, as long as some other check fails.
@@ -1244,8 +1299,8 @@ debrief: |
 
 | Topic | Phase |
 |---|---|
-| `lesson`, `card` and `exam` items; prediction prompts; `pack.yaml`; skill definitions | 11 |
+| `lesson`, `card` and `exam` items; prediction prompts; the rest of `pack.yaml` (tracks, skill descriptions) | 11 |
 | Authoring style guide and content tooling | 14 |
 | Topology parameters (none exist yet; the templates are in §5.1) | the first phase whose content needs a variant |
-| Behavior model fields beyond §5.4 (the catalog format is decided: `docs/BEHAVIOR_MODELS.md` §5) | 09, with the first item that declares an image |
+| Declared images (§5.4): the runner refuses `world.images` until then. Behavior model fields beyond §5.4 (the catalog format is decided: `docs/BEHAVIOR_MODELS.md` §5) | the first item that declares an image (16b or 17) |
 | Exam task weights and per-domain scoring | 31 |

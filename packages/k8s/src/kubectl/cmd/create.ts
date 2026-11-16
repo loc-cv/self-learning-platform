@@ -7,7 +7,8 @@
 //             (RequireFilenameOrKustomize, the --raw checks), RunCreate (the builder with
 //             ContinueOnError, CreateOrUpdateAnnotation, the create request with fieldManager,
 //             fieldValidation and dryRun, info.Refresh, "no objects passed to create")
-//   upstream: staging/src/k8s.io/cli-runtime/pkg/resource/helper.go Create
+//   upstream: staging/src/k8s.io/cli-runtime/pkg/resource/helper.go Create (modify: the
+//             resourceVersion cleared; create/resource-version.yaml)
 //   fixtures/golden/v1.37.2/create/from-files.yaml, create/no-server.yaml, errors/validation.yaml,
 //   configmaps/list-output.yaml, client/help.yaml (`kubectl create` alone)
 
@@ -20,7 +21,7 @@ import { fail, overridesOf, request, resolveConfig } from '../client/session.ts'
 import { continueOnError, visitFiles } from '../resource/files.ts';
 import { openServer, sessionOf } from '../resource/server.ts';
 import { createOrUpdateAnnotation } from '../util/apply.ts';
-import { addSourceToErr, CHANGE_FORMATS, DRY_RUN_NO_OPT, dryRunStrategy, goStrings, toPrinter, usageError, validationDirective } from './helpers.ts';
+import { addSourceToErr, CHANGE_FORMATS, clearResourceVersionForCreate, DRY_RUN_NO_OPT, dryRunStrategy, goStrings, toPrinter, usageError, validationDirective } from './helpers.ts';
 import { parseYaml, YamlMarshalError } from './printing.ts';
 
 const FLAGS: FlagDef[] = [
@@ -92,6 +93,7 @@ function* run(inv: Invocation): Op<number> {
       const session = sessionOf(server);
       if (!session) return yield* p.unsupported({ kind: 'behavior', what: 'a create request with no server listening' });
       const m = item.mapping;
+      clearResourceVersionForCreate(obj);
       const r = yield* request(session, {
         verb: 'create',
         group: m.group,

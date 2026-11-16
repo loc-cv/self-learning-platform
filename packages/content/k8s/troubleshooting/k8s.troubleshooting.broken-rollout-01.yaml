@@ -1,0 +1,244 @@
+id: k8s.troubleshooting.broken-rollout-01
+kind: lab
+title: Last night's release broke the site
+skills:
+  - k8s.troubleshooting.stuck-rollout
+  - k8s.troubleshooting.service-endpoints
+  - k8s.networking.services
+  - k8s.workloads.deployments
+curriculum:
+  - cka.workloads.deployments-rollouts
+  - cka.troubleshooting.services-networking
+  - ckad.deployment.rolling-updates
+  - ckad.networking.services
+  - ckad.observability.debugging
+difficulty: 3
+targetMinutes: 10
+world:
+  topology: kubeadm-1cp-2w
+  params:
+    ns: { pick: [shop, billing, media] }
+    app: { pick: [storefront, checkout, catalog] }
+    replicas: { int: { min: 3, max: 4 } }
+    badImage: { pick: [tag, name, registry] }
+  setup:
+    - apply: |
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: {{ns}}
+        ---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: {{app}}
+          namespace: {{ns}}
+        spec:
+          replicas: {{replicas}}
+          selector:
+            matchLabels:
+              app: {{app}}
+          template:
+            metadata:
+              labels:
+                app: {{app}}
+            spec:
+              containers:
+                - name: {{app}}
+                  image: nginx:1.14.2
+                  ports:
+                    - containerPort: 80
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: {{app}}
+          namespace: {{ns}}
+        spec:
+          selector:
+            app: {{app}}
+          ports:
+            - port: 80
+              targetPort: 80
+    - until:
+        assert: k8s.rollout
+        with: { namespace: "{{ns}}", name: "{{app}}" }
+      timeout: 3m
+    - advance: 10m
+    # The release: a new image, with a typo of one of three kinds.
+    - run: kubectl -n {{ns}} set image deployment/{{app}} {{app}}=nginx:1.31.80
+      when: { badImage: tag }
+    - run: kubectl -n {{ns}} set image deployment/{{app}} {{app}}=ngnix:1.31.8
+      when: { badImage: name }
+    - run: kubectl -n {{ns}} set image deployment/{{app}} {{app}}=mirror.corp.example/library/nginx:1.31.8
+      when: { badImage: registry }
+    - run: kubectl -n {{ns}} annotate deployment/{{app}} kubernetes.io/change-cause="upgrade nginx to 1.31.8"
+    # The same evening, someone moved the Service to the recommended labels.
+    - apply: |
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: {{app}}
+          namespace: {{ns}}
+        spec:
+          selector:
+            app.kubernetes.io/name: {{app}}
+          ports:
+            - port: 80
+              targetPort: 80
+    # Last night: long enough for the rollout to pass its progress deadline.
+    - advance: 20m
+ticket: |
+  **`{{app}}` is down** (namespace `{{ns}}`)
+
+  Since last night's release, every request to the `{{app}}` Service fails, and the release
+  pipeline reports that the rollout of the `{{app}}` Deployment never finished.
+
+  The release upgrades the site to `nginx:1.31.8`. It has to go out: rolling back to the old
+  version is not an option.
+
+  Get the `{{app}}` Service sending traffic to all {{replicas}} replicas, every one of them
+  running `nginx:1.31.8`. A partner's firewall allows the Service by its cluster IP, so neither the
+  Service nor the Deployment may be deleted and recreated.
+hints:
+  - >-
+    Two symptoms, and they may not have the same cause. For the rollout, look at the newest Pods
+    of `{{app}}`; for the Service, look at what it is connected to (`kubectl -n {{ns}} get
+    endpointslices`).
+  - text: >-
+      The new Pods cannot pull their image: read the event or the container's waiting message, and
+      compare the image name with the one the release meant. For the Service, compare its selector
+      with the labels the Pods carry (`kubectl -n {{ns}} get pods --show-labels`).
+    when: { badImage: [tag, name] }
+  - text: >-
+      The new Pods cannot pull their image: read the event or the container's waiting message.
+      Where does the image come from, and does that host exist? For the Service, compare its
+      selector with the labels the Pods carry (`kubectl -n {{ns}} get pods --show-labels`).
+    when: { badImage: registry }
+  - >-
+    `kubectl -n {{ns}} set image deployment/{{app}} {{app}}=nginx:1.31.8` fixes the release. The
+    Service selects `app.kubernetes.io/name={{app}}` but the Pods are labelled `app={{app}}`:
+    either set the Service's selector back to `app: {{app}}` (`kubectl -n {{ns}} edit service
+    {{app}}`), or add the label `app.kubernetes.io/name: {{app}}` to the Deployment's Pod
+    template.
+checks:
+  - id: rollout-complete
+    title: "The rollout of `{{app}}` has finished"
+    assert: k8s.rollout
+    with: { namespace: "{{ns}}", name: "{{app}}" }
+    within: 3m
+    weight: 2
+  - id: runs-release
+    title: "Every Pod of `{{app}}` runs `nginx:1.31.8`"
+    assert: k8s.object
+    with:
+      kind: Pod
+      namespace: "{{ns}}"
+      selector: "app={{app}}"
+      count: "{{replicas}}"
+      where:
+        - { path: "{.status.containerStatuses[*].image}", equals: docker.io/library/nginx:1.31.8 }
+    within: 3m
+  - id: service-endpoints
+    title: "Service `{{app}}` sends traffic to all {{replicas}} replicas"
+    assert: k8s.endpoints
+    with: { namespace: "{{ns}}", service: "{{app}}", count: "{{replicas}}" }
+    within: 3m
+    weight: 2
+  - id: service-kept
+    title: "Service `{{app}}` was not deleted and recreated"
+    assert: k8s.notRecreated
+    with: { kind: Service, namespace: "{{ns}}", name: "{{app}}" }
+  - id: deployment-kept
+    title: "Deployment `{{app}}` was not deleted and recreated"
+    assert: k8s.notRecreated
+    with: { kind: Deployment, namespace: "{{ns}}", name: "{{app}}" }
+solutions:
+  - name: Fix the image, point the Service back at the Pods
+    steps:
+      - run: kubectl -n {{ns}} set image deployment/{{app}} {{app}}=nginx:1.31.8
+      - run: kubectl -n {{ns}} edit service {{app}}
+        editor:
+          - replace: { from: "app.kubernetes.io/name: {{app}}", to: "app: {{app}}" }
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+  - name: Give the Pods the label the Service now expects, in one manifest
+    steps:
+      - write:
+          path: /root/{{app}}.yaml
+          content: |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: {{app}}
+              namespace: {{ns}}
+            spec:
+              replicas: {{replicas}}
+              selector:
+                matchLabels:
+                  app: {{app}}
+              template:
+                metadata:
+                  labels:
+                    app: {{app}}
+                    app.kubernetes.io/name: {{app}}
+                spec:
+                  containers:
+                    - name: {{app}}
+                      image: nginx:1.31.8
+                      ports:
+                        - containerPort: 80
+      - run: kubectl apply -f /root/{{app}}.yaml
+      - until:
+          assert: k8s.rollout
+          with: { namespace: "{{ns}}", name: "{{app}}" }
+        timeout: 3m
+debrief:
+  - text: |
+      **Two faults, one release.** The outage and the stuck rollout looked like one problem, and
+      they were two.
+  - when: { badImage: tag }
+    text: |
+      **The rollout.** The release set the image to `nginx:1.31.80`. The repository exists, the
+      tag does not, so the registry answered "not found" and the kubelet reported `ErrImagePull`,
+      then `ImagePullBackOff` while it waited to try again.
+  - when: { badImage: name }
+    text: |
+      **The rollout.** The release set the image to `ngnix:1.31.8`. There is no such repository
+      on Docker Hub, and Docker Hub answers a missing repository the way it answers a private one:
+      "pull access denied, repository does not exist or may require authorization". The kubelet
+      reported `ErrImagePull`, then `ImagePullBackOff` while it waited to try again.
+  - when: { badImage: registry }
+    text: |
+      **The rollout.** The release pulled from `mirror.corp.example`, a registry host that does
+      not resolve, so the pull failed before any registry was asked ("no such host"). The kubelet
+      reported `ErrImagePull`, then `ImagePullBackOff` while it waited to try again.
+  - text: |
+      A rolling update creates new Pods before it removes old ones (`maxSurge` 25% rounded up,
+      `maxUnavailable` 25% rounded down, so here at most one old Pod goes first). New Pods that
+      never become ready stop the rollout where it is, and the old ReplicaSet keeps serving. So a
+      bad image alone causes a stuck rollout, not an outage.
+
+      **The outage.** The Service selected `app.kubernetes.io/name={{app}}`, a label no Pod
+      carried. A selector that matches nothing is valid, so nothing complained: the Service just
+      had no endpoints. `kubectl -n {{ns}} get endpointslices` shows it at once, and
+      `kubectl -n {{ns}} get pods --show-labels` shows why.
+
+      **Mental model.** For a Service that does not answer, ask "what does it select, and does
+      anything ready carry that label right now?" For a rollout that does not finish, look at
+      the newest Pods: whatever keeps them from becoming ready is what holds the rollout.
+
+      **Either fix of the selector is valid.** Pointing the Service back at `app={{app}}` undoes
+      the half-done migration; adding `app.kubernetes.io/name` to the Pod template completes it.
+      The Deployment's own `spec.selector` is immutable, but its template may carry more labels
+      than the selector names. Recreating the Service would also have worked, with a new cluster
+      IP, which is what the ticket ruled out.
+
+      **In reality.** `kubectl rollout undo` would have restored the old image and been the right
+      first move during an outage of the Deployment itself. Here it would not have brought the
+      site back, because the outage was in the Service, and it would have rolled back the release
+      the ticket required. If nothing is done, the rollout is marked failed after
+      `progressDeadlineSeconds` (600 s by default): the Deployment's `Progressing` condition turns
+      `False` with reason `ProgressDeadlineExceeded`, which is what release pipelines watch.

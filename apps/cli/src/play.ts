@@ -6,16 +6,14 @@
 // recorded (default data/play/<time>-<topology>-seed<N>.json); --replay plays a recording back
 // into a fresh world and checks that it reaches the same world hash. Ctrl-] leaves the player.
 
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { ENGINE_VERSION, type SessionLog } from '@simlab/kernel';
 import { KUBERNETES_TAG } from '@simlab/k8s';
-import type { EditorRequest } from '@simlab/host';
 import { parseArgs, parseSeed } from './args.ts';
 import { createPlayer, replaySession } from './player.ts';
+import { editInRealEditor, say } from './terminal.ts';
 import { topologyNames, UsageError } from './world.ts';
 
 const USAGE = `usage: npm run play -- --topology NAME [--seed N] [--speed X] [--record FILE]
@@ -25,31 +23,6 @@ Topologies: ${topologyNames().join(', ')}
 
 /** Ctrl-]: the player's own escape key, as in telnet and docker attach. Never sent to the machine. */
 const ESCAPE = '\x1d';
-
-const say = (msg: string): void => {
-  process.stderr.write(`\x1b[2m[simlab] ${msg}\x1b[0m\r\n`);
-};
-
-/** Opens the user's editor on a temporary copy of the file and returns what it holds afterwards. */
-function editInRealEditor(req: EditorRequest): string {
-  const dir = mkdtempSync(join(tmpdir(), 'simlab-edit-'));
-  const file = join(dir, basename(req.path) || 'file');
-  try {
-    writeFileSync(file, req.content);
-    const before = statSync(file).mtimeMs;
-    const editor = process.env['VISUAL'] || process.env['EDITOR'] || 'vi';
-    if (req.readOnly) say(`${req.name} is read-only for this user in the simulated machine; a save will fail there`);
-    process.stdin.setRawMode(false);
-    // Through sh, so that EDITOR may carry arguments ("code --wait").
-    const r = spawnSync('/bin/sh', ['-c', `${editor} "$1"`, 'sh', file], { stdio: 'inherit' });
-    process.stdin.setRawMode(true);
-    if (r.error) say(`could not run ${editor}: ${r.error.message}`);
-    const after = readFileSync(file, 'utf8');
-    return statSync(file).mtimeMs === before && after === req.content ? req.content : after;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
 
 function play(topology: string, seed: number, speed: number, record: string): Promise<number> {
   const decoder = new StringDecoder('utf8');

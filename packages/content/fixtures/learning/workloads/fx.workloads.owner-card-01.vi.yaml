@@ -1,0 +1,27 @@
+id: fx.workloads.owner-card-01
+lang: vi
+units:
+  title:
+    source: sha256:0fc9ec514897c7b8
+    text: Ai tạo ra các Pod của một Deployment
+  prompt:
+    source: sha256:07f8aae40d33b45f
+    text: "Một Deployment có `replicas: 3` nhưng chỉ có hai Pod tồn tại. Controller nào tạo Pod thứ ba?"
+  figure.caption:
+    source: sha256:6ea123bbeae69f33
+    text: Chuỗi sở hữu.
+  figure.alt:
+    source: sha256:d4c995d39f3e1887
+    text: Một Deployment sở hữu một ReplicaSet, ReplicaSet sở hữu các Pod.
+  choices.0:
+    source: sha256:80395ed209c2f1e1
+    text: Deployment controller
+  choices.1:
+    source: sha256:5afe96379b7adb93
+    text: ReplicaSet controller
+  choices.2:
+    source: sha256:3eda67ae0b4bf449
+    text: kubelet
+  answer:
+    source: sha256:d54d36662da71a94
+    text: ReplicaSet controller. Deployment controller chỉ điều chỉnh kích thước của các ReplicaSet.

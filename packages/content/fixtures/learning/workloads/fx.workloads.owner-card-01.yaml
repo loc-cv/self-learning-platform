@@ -1,0 +1,27 @@
+id: fx.workloads.owner-card-01
+kind: card
+title: Who creates a Deployment's Pods
+skills:
+  - fx.workloads.deployments
+curriculum:
+  - cka.workloads.deployments-rollouts
+difficulty: 1
+targetMinutes: 0.5
+prompt: "A Deployment has `replicas: 3` and only two Pods exist. Which controller creates the third?"
+figure:
+  kind: diagram
+  caption: The chain of ownership.
+  alt: A Deployment owns a ReplicaSet, which owns the Pods.
+  entities:
+    - { id: deployment, shape: workload, kind: Deployment, label: web }
+    - { id: replicaset, shape: workload, kind: ReplicaSet, label: web-5d9c }
+    - { id: pods, shape: process, kind: Pods, label: 2 of 3 }
+  relations:
+    - { type: owns, from: deployment, to: replicaset }
+    - { type: owns, from: replicaset, to: pods }
+choices:
+  - The Deployment controller
+  - The ReplicaSet controller
+  - The kubelet
+correct: 1
+answer: The ReplicaSet controller. The Deployment controller only sizes ReplicaSets.

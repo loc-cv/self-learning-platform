@@ -1,0 +1,69 @@
+id: fx.workloads.scale-drill-01
+kind: drill
+title: Give a Deployment more replicas
+skills:
+  - fx.workloads.scaling
+curriculum:
+  - cka.workloads.deployments-rollouts
+difficulty: 1
+targetMinutes: 2
+world:
+  topology: kubeadm-1cp-2w
+  params:
+    ns: { pick: [shop, billing] }
+    replicas: { int: { min: 3, max: 5 } }
+  setup:
+    - apply: |
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: {{ns}}
+        ---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: web
+          namespace: {{ns}}
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: web
+          template:
+            metadata:
+              labels:
+                app: web
+            spec:
+              containers:
+                - name: web
+                  image: nginx:1.31.8
+                  ports:
+                    - containerPort: 80
+    - until:
+        assert: k8s.rollout
+        with: { namespace: "{{ns}}", name: web }
+      timeout: 3m
+ticket: "The `web` Deployment in namespace `{{ns}}` must run {{replicas}} replicas."
+hints:
+  - "`kubectl scale` sets the replica count of a Deployment."
+checks:
+  - id: scaled
+    title: "`web` has {{replicas}} ready replicas"
+    assert: k8s.podsReady
+    with: { namespace: "{{ns}}", selector: app=web, count: "{{replicas}}" }
+    within: 2m
+solutions:
+  - - run: kubectl -n {{ns}} scale deployment web --replicas={{replicas}}
+    - until:
+        assert: k8s.rollout
+        with: { namespace: "{{ns}}", name: web }
+      timeout: 3m
+debrief:
+  - figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod] }
+      caption: One ReplicaSet, from one Pod to {{replicas}}.
+      alt: Before, one Pod; after, {{replicas}} Pods owned by the same ReplicaSet.
+  - text: Scaling changes `spec.replicas`; no new ReplicaSet is made, because the Pod template is the same.

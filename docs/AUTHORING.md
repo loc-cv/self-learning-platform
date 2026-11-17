@@ -2,7 +2,8 @@
 
 How to write content items. The format is `docs/SCENARIO_FORMAT.md`; this guide is about judgement.
 Phase 14 completes it (tickets, hints, debriefs, variation, the curriculum map). Phase 10c wrote the
-part on figures.
+part on figures. Lessons, cards and exams are specified in `docs/LEARNING_MODEL.md` §2; the fixture
+pack `packages/content/fixtures/learning/` has a valid example of each to copy from.
 
 ## Figures
 

@@ -1,6 +1,7 @@
 // Content model, scenario runner, checks, grader, skills, FSRS, progress log. Domain-agnostic.
-// Specified in docs/SCENARIO_FORMAT.md. Phase 09 built the runner, the grader and content
-// validation; skills, scheduling and the progress log come in phase 11.
+// Lab-like items, the runner and the grader are specified in docs/SCENARIO_FORMAT.md; lessons,
+// cards, exams, packs, sidecars, the progress log, scheduling and the daily queue in
+// docs/LEARNING_MODEL.md.
 
 export const packageName = '@simlab/learn';
 
@@ -22,3 +23,17 @@ export * from './figure/types.ts';
 export * from './figure/focus.ts';
 export * from './figure/render.ts';
 export * from './figure/blocks.ts';
+export * from './pack.ts';
+export * from './i18n/units.ts';
+export * from './i18n/sidecar.ts';
+export { sha256Hex } from './i18n/sha256.ts';
+export * from './progress/events.ts';
+export * from './progress/day.ts';
+export * from './progress/fsrs.ts';
+export * from './progress/rating.ts';
+export * from './progress/reducer.ts';
+export * from './progress/seeds.ts';
+export * from './progress/stats.ts';
+export * from './progress/queue.ts';
+export * from './progress/record.ts';
+export * from './progress/simulate.ts';

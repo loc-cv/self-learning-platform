@@ -1339,3 +1339,92 @@ its scroll position without bookkeeping, a scene keeps the frame it was on, and 
 that is not shown still has a width to measure (10c: a drawing measured without a width kept a
 one-column height). The figure dialog moved to a portal in `body`, so no pane can become the
 containing block of its fixed backdrop.
+
+## Phase 11 — learning core
+
+**D-140 — `Item` stays the lab-like item; each other kind has its own layout.** Lessons, cards
+and exams are `LessonItem`, `CardItem` and `ExamItem`, and `AnyItem` is any of them. One wide type
+with optional everything would have made every consumer of a lab (the runner, the workspace, the
+terminal player) check for fields a lab always has. `item.schema.json` selects the layout by
+`kind` with `if`/`then`, so an error names the field and not "matches no alternative"; the shared
+parts (`header`, `world`, `figure`, `check`, `steps`) are `$defs` every layout refers to.
+Lessons and cards reach the scenario runner through `scenarioShape`: the same world with one
+"solution" made of every task's solution, so baselines, figures' `start` and `solved` worlds and
+the step runner needed no second implementation.
+
+**D-141 — Lessons are done once; exams are never scheduled.** `PLAN.md` §5 says every item is
+scheduled with FSRS and also that retrieval beats re-reading. A lesson reviewed on a schedule is
+re-reading; its skills come back through drills, labs and cards. So a lesson counts as done when
+it was passed, is never rated, and the queue never offers it again. An exam is a definition
+(D-148) and is taken on purpose, not scheduled.
+
+**D-142 — FSRS-7 through ts-fsrs 6, numeric time, no learning steps, a one-day floor.** The
+library is pinned (`ts-fsrs` 6.0.0); its default model is FSRS-7 and its classic `FSRS` class is
+deprecated, so the scheduler is built with `defineScheduler` from the FSRS-7 model, the numeric
+chrono (time as elapsed days: no `Date`, and a card's memory is plain data) and the retention,
+statistics, scheduled-days and maximum-interval middlewares. Left out on purpose: learning steps
+(minutes-long relearning suits flashcards, not a ten-minute lab) and fuzz (one learner; nothing
+to spread). The model's interval is used as is with a floor of one day, and "due" is compared by
+the learner's day, not by the minute. The default weights were fitted to flashcards; fitting them
+to the owner's log needs the optimizer package and enough reviews, and is a candidate.
+
+**D-143 — The rating is an event.** The automatic rating is computed when an attempt ends and
+appended as `rating` with `source: auto` and its reasons. The reducer applies ratings; it never
+computes one. A change to the rating rules therefore cannot rewrite history, and a replay needs
+no content. A manual rating for the same attempt replaces the automatic one (recomputed from the
+schedule before that attempt); one for an older attempt is ignored.
+
+**D-144 — Settings that change derived state are events.** Target retention, the time box, the
+active track and the day boundary are `settings.changed` events in the progress log, not fields
+of `data/settings.json`: the retention in force at each review decides its interval, and the day
+boundary decides streaks, so a replay must see each change when it happened. `settings.json`
+keeps what only the interface reads.
+
+**D-145 — The state knows items; skills and domains are views.** The reducer keeps per-item
+facts and never sees the catalog. Mastery per skill, recent mistakes per skill and per-domain
+statistics are functions of the state and the catalog as it is now, so moving an item to another
+skill moves its history with it, and the log never stores a copy of content metadata.
+
+**D-146 — Queue rules where the plan left room.** (1) Interleaving compares primary skills, and
+when every entry left has the same one they follow each other, marked: the plan's "never two items
+for the same skill back to back" cannot hold on the first day of a track, where a lesson and its
+drill share a skill on purpose. (2) The time box counts time actually spent today, so the queue
+shrinks as the session goes. (3) Reviews are taken by urgency and one that does not fit is
+skipped for a shorter one; new items stop at the first that does not fit, so a track is never
+skipped ahead. (4) The first item of a day is always offered, however long. (5) A prerequisite is
+met when one item listing the skill was passed; an item's own skills do not gate it.
+
+**D-147 — Sidecar states are current, outdated and missing.** `docs/SCENARIO_FORMAT.md` §13
+already named them so; the phase prompt's "translated" is `current`. SHA-256 is implemented in
+`packages/learn` (about sixty lines, tested against `node:crypto`), because the engine has no
+synchronous hash on both of its platforms. The sidecar and pack schemas are generated from the
+constants the code validates with, as the item schema is.
+
+**D-148 — An exam's task is a lab-like item by id.** Exam tasks are not a second scenario
+format: a task names a lab, drill or incident and gives it a weight. "Exam tasks have no figures"
+(`PLAN.md` §8) is a rule of presentation: in an exam a task shows its ticket's prose only, and
+figures, hints and the debrief wait for the report. Weights are positive numbers and need not sum
+to 100; scoring is phase 31's.
+
+**D-149 — The server stores lines and repairs a torn tail.** No database and no write-ahead file.
+An append is one `write` on an append descriptor followed by a sync; a reader ignores a fragment
+after the last newline and the next append truncates it. So the guarantee is per line: a log is
+always whole lines, in order, and an acknowledged request is on disk. On this workstation SIGKILL
+never cut a `write` in forty tries, so the repair is proven by tests that cut lines by hand, and
+the kill test proves that a killed writer leaves a readable, gapless log. The server validates
+progress events with the learning layer's `eventProblem` and interprets nothing.
+
+**D-150 — A card "by command" grades state.** The prompt's "auto-check by command" could mean
+matching the typed command. Hard rule 6 forbids that: such a card has a world, checks and a
+solution, and passes when the checks pass, however the learner got there.
+
+**D-151 — The competency pattern in the item schema is generic.** It was `^(cka|ckad)\.…`, a
+Kubernetes fact inside `packages/learn` (hard rule 8). It is now any three dotted segments; which
+ids exist is decided by `docs/curriculum/competencies.yaml`, as before.
+
+**D-152 — Fixtures for the learning model.** The simulated learner and its demonstration catalog
+are exported from `packages/learn` (they are also how the interface gets a history to draw). The
+YAML fixture pack lives in `packages/content/fixtures/learning/`, which `loadPacks()` does not
+read, and runs on the real Kubernetes registry from a tools test, so lessons, cards and exams have
+a consumer before the first content run writes real ones.
+

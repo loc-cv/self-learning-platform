@@ -16,6 +16,12 @@
   "references": [
     {
       "path": "./tsconfig.json"
+    },
+    {
+      "path": "../../packages/kernel"
+    },
+    {
+      "path": "../../packages/learn"
     }
   ]
 }

@@ -7,7 +7,8 @@ import type { JsonObject, Params } from '../item/types.ts';
 import { matches, resolveSteps, substitute, substituteString } from '../item/variant.ts';
 import type { Block, Figure, Frame, SceneFigure, VariantBlock } from './types.ts';
 
-function resolveFigure(fig: Figure, params: Params, where: string): Figure {
+/** A figure for one variant: placeholders substituted, a scene's steps resolved. */
+export function resolveFigure(fig: Figure, params: Params, where: string): Figure {
   if (fig.kind !== 'scene') return substitute(fig as unknown as Json, params, where) as unknown as Figure;
   const { world, frames, ...rest } = fig;
   const out = substitute(rest as unknown as Json, params, where) as unknown as SceneFigure;

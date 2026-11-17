@@ -1,7 +1,8 @@
-# The Kubernetes pack (docs/SCENARIO_FORMAT.md §1). Phase 11 extends this file (tracks, skill
-# descriptions and prerequisites); until then it lists the skills items may name.
+# The Kubernetes pack (docs/LEARNING_MODEL.md §3): the skills items may name, with their
+# prerequisites, and the tracks. R1 runs grow both with the content of each area.
 id: k8s
 title: Kubernetes (CKA and CKAD, v1.37)
+description: Practice for the CKA and CKAD exams on a simulated kubeadm cluster.
 skills:
   - id: k8s.workloads.deployments
     title: Create and configure Deployments
@@ -21,3 +22,11 @@ skills:
     title: Find and fix a rollout that does not finish
   - id: k8s.troubleshooting.service-endpoints
     title: Find out why a Service has no endpoints
+tracks:
+  - id: k8s.track.first-labs
+    title: First labs
+    description: The three labs of the first slice, from building an application to repairing one.
+    items:
+      - k8s.workloads.deployment-service-01
+      - k8s.scheduling.pending-pods-01
+      - k8s.troubleshooting.broken-rollout-01

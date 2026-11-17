@@ -41,7 +41,7 @@ export const ITEM_SCHEMA_BASE: { [key: string]: Json } = {
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "pattern": "^(cka|ckad)\\.[a-z]+\\.[a-z0-9-]+$"
+        "pattern": "^[a-z0-9]+\\.[a-z0-9-]+\\.[a-z0-9-]+$"
       }
     },
     "difficulty": {

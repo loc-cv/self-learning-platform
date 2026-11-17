@@ -1,10 +1,13 @@
 // npm start            → node apps/server/src/main.ts        (after building apps/web)
 // npm run dev          → node apps/server/src/main.ts --dev  (Vite middleware, hot reload)
+// Both serve the same API (api.ts) from this one process: in development Vite runs as middleware
+// behind it, so the page's /api/ requests need no proxy.
 // Options: --port N (default 4317), --data DIR (default data/ in the repository; the browser tests
 // use their own, so their deliberate [sim] probes stay out of the real gap log). 127.0.0.1 only.
 
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
+import { eventProblem } from '@simlab/learn';
 import { apiMiddleware, DATA, listen, staticMiddleware, WEB_ROOT, type Middleware } from './serve.ts';
 
 const USAGE = 'usage: node apps/server/src/main.ts [--dev] [--port N] [--data DIR]\n';
@@ -36,7 +39,8 @@ async function main(argv: string[]): Promise<number> {
       return 2;
     }
   }
-  const handlers: Middleware[] = [apiMiddleware(data)];
+  // The learning layer says what a progress event is; the server only refuses to store what it would not read back.
+  const handlers: Middleware[] = [apiMiddleware(data, { eventProblem })];
   if (!dev) handlers.push(staticMiddleware());
   const server = await listen({ port, handlers });
   if (dev) {

@@ -39,7 +39,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 - [x] 10d `prompts/10d-interface-refresh.md`
 
 **M2 — Learning loop**
-- [ ] 11 `prompts/11-learning-core.md`
+- [x] 11 `prompts/11-learning-core.md`
 - [ ] 12 `prompts/12-learning-ui.md`
 - [ ] 13 `prompts/13-trace-replay-and-time-controls.md`
 - [ ] 14 `prompts/14-curriculum-map-and-authoring.md`
@@ -214,12 +214,19 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 - **Closed terminals stay in the world** as tty records with `closed: true` (setup logins leave
   them; `openTerminal` and the player skip ids in use). Invisible until `/dev/pts` exists; phase
   25a decides whether the kernel frees them.
-- **`pack.yaml` holds only id, title and skills** (D-100); phase 11 adds tracks and the rest.
 - **Lab attempts live in browser storage** (`simlab.attempt.v1.<item>`, D-105): a private window
   or cleared site data loses them, and the localStorage quota (about 5 MB) bounds a session's log.
-  Phase 11 stores the logs through the server under `data/`; the page then keeps only a cache.
+  The server stores attempt logs and the progress log since phase 11 (`docs/LEARNING_MODEL.md`
+  §10); the web app does not use that API yet. Phase 12 posts attempts and progress events there
+  and keeps the page's copy as a cache.
 - **The web app's gap records skip the server when it is not running** (a static host): the
-  popover says so, nothing retries. Phase 11's persistence queue can carry them.
+  popover says so, nothing retries. Phase 12's client for the API can retry them with the rest.
+- **The web bundle carries no sidecars and the workspace lists lab-like items only**
+  (`apps/web/src/content.ts`, `vite.config.ts`). Phase 12 bundles `<id>.vi.yaml` and gives
+  lessons and cards their screens.
+- **No event records command errors** (`PLAN.md` §5, "repeated command errors … raise the
+  priority of related items"): mistakes are failed attempts, failed checks, hints and solutions
+  viewed. Phase 12 or 13 adds the event with the command history.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
@@ -314,6 +321,50 @@ Unfinished work from a phase, precise enough for the next session to continue.
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
 
+- 2026-11-17 — **Phase 11 done.** The learning core: item kinds, packs, sidecars, the progress
+  log, FSRS, the daily queue, persistence. No screen changed. `docs/LEARNING_MODEL.md` is the spec.
+  - **Two decisions touch sentences of `PLAN.md` §5 and want the owner's word.** (1) Lessons are
+    done once and not scheduled (D-141); the plan says "every item is scheduled with FSRS". To
+    flip: `isScheduled` in `packages/learn/src/pack.ts` and `finishAttempt` rate lessons too.
+    (2) Two items with the same primary skill may follow each other when nothing else is left to
+    choose, marked `repeatsSkill` (D-146); the plan says "never". The strict rule gives a first
+    day of one item. To flip: drop marked entries in `buildQueue`.
+  - Item kinds. `Item` is still the lab-like item; `LessonItem`, `CardItem`, `ExamItem` and
+    `AnyItem` are new (D-140). `item.schema.json` selects a layout by `kind`. Lessons (prose,
+    figure, `predict`, `task` steps) and cards (self-graded, by choice, by command) validate with
+    the same rules as labs through `scenarioShape`; a lesson's tasks run in order in one world.
+    An exam is a list of lab-like items with weights (D-148). `content:check` now also checks the
+    packs (ids, prerequisite cycles, tracks whose items could never be offered).
+  - Packs. `pack.yaml` has skill descriptions, `requires` and `tracks`. The Kubernetes pack got
+    one track, `k8s.track.first-labs`, and no prerequisites yet: R1 runs own the skill graph.
+  - Sidecars. `textUnits`, `resolveSidecar` (current, outdated, missing, orphaned, violations),
+    `localize`. `npm run content:i18n -v` prints the hash each untranslated unit needs, which is
+    what R2 copies into a sidecar. No real item has a sidecar yet.
+  - Progress. Twelve event types, version 1; `applyEvent` and `replay` derive everything; the
+    automatic rating is itself an event (D-143), a manual one replaces it. Scheduling settings
+    are events too (D-144), `data/settings.json` is for the interface.
+  - FSRS. `ts-fsrs` 6.0.0 (new dependency, pinned). Its API changed in version 6: the old `FSRS`
+    class is deprecated and the default model is FSRS-7. The wrapper uses `defineScheduler` with
+    numeric time, no learning steps and no fuzz, and a floor of one day (D-142). Surprise: with
+    the default weights a clean first pass comes back after about 5 days, then 26, then 92; after
+    a failure an item sits on the one-day floor until what FSRS asks for exceeds a day, so several
+    Good reviews in a row can keep a 1-day interval. The 90-day test asserts exactly that.
+  - Queue. `buildQueue(state, catalog, now)`; rules in `docs/LEARNING_MODEL.md` §8 and D-146.
+    The time box counts time spent, so the queue is rebuilt after each item.
+  - Server. `apps/server/src/store.ts` and `api.ts` (built by a parallel fork of this session,
+    reviewed here): progress, attempts, settings, gaps. SIGKILL never tore a line on this machine
+    in forty tries; the repair of a torn tail is proven by tests that cut lines by hand (D-149).
+    `npm run dev` runs the same server, so no proxy was needed.
+  - Fixtures. `simulateLearner` and `demoCatalog` are exported from `packages/learn` (phase 12
+    can draw a believable history with them). `packages/content/fixtures/learning/` holds one
+    valid item of each new kind on the real simulator and is not loaded by the apps (D-152).
+  - Fixed on the way: the competency pattern in the item schema named `cka|ckad` inside
+    `packages/learn` (hard rule 8; D-151); `formatSchemaErrors` called every value "(item)".
+  - Known gaps: the web app does not call the new API or show any of this (phase 12); no real
+    lesson, card or exam exists (R1); `npm audit` reports 9 moderate advisories, all in the lint
+    tooling's `minimatch` chain (eslint, typescript-eslint), none in what ships.
+  - For phase 12: `docs/LEARNING_MODEL.md` §12 lists the calls in order. A `LabEvent` maps one to
+    one to an `attempt.*` event; `finishAttempt` needs the variant's hint count.
 - 2026-11-17 — **Phase 10d done.** The look chosen again, the lab panel in tabs, a floating X-ray.
   - The look. Three directions shown as screenshots of the real workspace (scheduling lab, check
     failed, one hint, X-ray docked and floating, both themes), each already with the tabs and the

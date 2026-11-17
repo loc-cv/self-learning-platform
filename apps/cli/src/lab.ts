@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { ENGINE_VERSION, type SessionLog } from '@simlab/kernel';
 import { KUBERNETES_TAG } from '@simlab/k8s';
-import { loadPacks } from '@simlab/content';
+import { isLabLike, loadPacks } from '@simlab/content';
 import { startSession } from '@simlab/learn';
 import { parseArgs, parseSeed } from './args.ts';
 import { editInRealEditor, say } from './terminal.ts';
@@ -147,7 +147,7 @@ function main(argv: string[]): Promise<number> | number {
     return 0;
   }
   if (a.flags.has('list')) {
-    for (const p of loadPacks()) for (const i of p.items) process.stdout.write(`${i.fileId}\t${String((i.raw as { title?: string }).title ?? '')}\n`);
+    for (const p of loadPacks()) for (const i of p.items.filter(isLabLike)) process.stdout.write(`${i.fileId}\t${String((i.raw as { title?: string }).title ?? '')}\n`);
     return 0;
   }
   const replayFile = a.values.get('replay');

@@ -1,0 +1,55 @@
+id: fx.workloads.scale-card-01
+kind: card
+title: Scale without an editor
+skills:
+  - fx.workloads.scaling
+curriculum:
+  - cka.workloads.deployments-rollouts
+difficulty: 1
+targetMinutes: 1
+world:
+  topology: kubeadm-1cp-2w
+  params:
+    ns: { pick: [shop, billing] }
+    replicas: { int: { min: 2, max: 3 } }
+  setup:
+    - apply: |
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: {{ns}}
+        ---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: web
+          namespace: {{ns}}
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: web
+          template:
+            metadata:
+              labels:
+                app: web
+            spec:
+              containers:
+                - name: web
+                  image: nginx:1.31.8
+                  ports:
+                    - containerPort: 80
+    - until:
+        assert: k8s.rollout
+        with: { namespace: "{{ns}}", name: web }
+      timeout: 3m
+prompt: "In one command, make `web` in `{{ns}}` run {{replicas}} replicas."
+answer: "`kubectl -n {{ns}} scale deployment web --replicas={{replicas}}`"
+checks:
+  - id: scaled
+    title: "`web` has {{replicas}} ready replicas"
+    assert: k8s.podsReady
+    with: { namespace: "{{ns}}", selector: app=web, count: "{{replicas}}" }
+    within: 2m
+solution:
+  - run: kubectl -n {{ns}} scale deployment web --replicas={{replicas}}

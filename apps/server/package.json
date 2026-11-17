@@ -10,6 +10,7 @@
     "test": "vitest run --root ../.. apps/server/"
   },
   "dependencies": {
+    "@simlab/learn": "0.0.0",
     "vite": "8.3.8"
   }
 }

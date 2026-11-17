@@ -9,7 +9,8 @@ practice with spaced repetition.
 - `STATUS.md` — which phase is done, carry-over work, handoff notes. Read it at the start of every session.
 - `docs/DESIGN.md` — the design language: tokens, motion rules, state colors, the views' shapes.
 - `prompts/` — one prompt per phase, plus repeatable prompts (`R1`–`R5`).
-- `docs/` — detailed specs, written and kept current by the phases that build each subsystem.
+- `docs/` — detailed specs, written and kept current by the phases that build each subsystem
+  (`docs/LEARNING_MODEL.md`: item kinds, packs, the progress log, scheduling, the daily queue).
   `docs/feedback-log.md` records what each R3 run did with the owner's feedback.
 - `memory/` — standing preferences and feedback from the owner; `memory/MEMORY.md` is the index.
   Save new feedback here, in the repository, so it moves with the project; machine-local memory
@@ -38,8 +39,9 @@ npm run openapi:capture [-- --check]   # the OpenAPI v3 documents the real API s
 npm run transcript:capture -- <file|dir>  # write real bash/coreutils output into golden-verified transcripts
 npm run transcript:capture -- --check     # compare every golden-verified transcript with the real tools
 npm run dev                   # web app with hot reload: http://127.0.0.1:4317/ (Vite inside the app server)
-npm start                     # build apps/web, then serve it and the API (gap log; phase 11 adds persistence)
-                              # on http://127.0.0.1:4317/; server options --port N, --data DIR
+npm start                     # build apps/web, then serve it and the API (progress log, attempt logs,
+                              # settings, gap log: plain files under data/) on http://127.0.0.1:4317/;
+                              # server options --port N, --data DIR
 npm run e2e                   # Playwright: build, serve, smoke test and exit-criteria tests in Chromium
                               # (not part of the gate, D-110); `npm run e2e -- <file|-g name>` for one;
                               # screens.spec.ts writes screenshots of every screen to .tsbuild/playwright/screens/
@@ -56,10 +58,12 @@ npm run sim -- --topology kubeadm-1cp-2w -c 'cmd1\ncmd2'  # run commands without
 npm run lab -- <item-id> [--seed N]               # play a content item in this terminal; Ctrl-] opens the
                                                   # lab prompt (check, hint, ticket, debrief, solution, reset,
                                                   # quit); records to data/lab/; also --list, --replay <file>
-npm run content:check [-- --seeds N] [-v] [<id>…]  # validate content items (schema, rules, setup without gaps,
-                                                  # untouched world fails, every solution passes; 5 seeds+)
-npm run content:schema [-- --check]   # write docs/schema/item.schema.json from the registry (a test fails when stale)
-npm run content:i18n          # (phase 11) report missing or outdated Vietnamese text (never a gate)
+npm run content:check [-- --seeds N] [-v] [<id>…]  # validate packs and content items (schema, rules, setup without
+                                                  # gaps, untouched world fails, every solution passes; 5 seeds+)
+npm run content:schema [-- --check]   # write docs/schema/{item,sidecar,pack}.schema.json from the code that
+                                      # validates with them (a test fails when one is stale)
+npm run content:i18n [-- -v] [<id>…]  # report current, outdated and missing Vietnamese text units, with the
+                                      # hashes a translation records (-v); never a gate, exits 0
 npm run oracle -- up|status|fetch        # throwaway real control plane (v1.37.2 binaries + KWOK), no Docker;
 npm run oracle -- down|env [<dir>]       # several can run: each up prints its directory, which down and env take
 npm run golden:capture -- [--check] [<case|dir>]  # run golden cases against fresh oracles, write fixtures
@@ -113,11 +117,16 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
                    src/apimachinery/strategicpatch strategic merge patch (server and three-way),
                    src/testing helpers for tests only: the fake kubelet, workload requests)
 packages/learn     content model, scenario runner, checks, grader, skills, FSRS, progress log
-                   (src/item the item types, variants and the generated schema with its validator,
-                   src/runner steps, check evaluation, grader and baselines, src/lab.ts a learner's
-                   attempt, src/figure figures: blocks, focus and marks, rendering worlds and scenes,
-                   src/validate.ts content validation, src/testing.ts a counter plugin for tests)
-packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml
+                   (src/item the item types of every kind, variants and the generated schema with its
+                   validator, src/runner steps, check evaluation, grader and baselines, src/lab.ts a
+                   learner's attempt, src/figure figures: blocks, focus and marks, rendering worlds and
+                   scenes, src/validate.ts content validation, src/pack.ts the pack manifest and the
+                   catalog, src/i18n text units, source hashes and sidecar resolution,
+                   src/progress the event log, the reducer, the automatic rating, FSRS (ts-fsrs),
+                   review seeds, the daily queue, statistics and the simulated learner,
+                   src/testing.ts a counter plugin and fixtures for tests)
+packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml,
+                   <id>.vi.yaml sidecars; fixtures/learning a fixture pack the apps do not load
 apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side, tested in
                    Node), src/app (App, Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
                    LabPanel (the lab's tabs), Figure (figures in the ticket and debrief), TopBar, ItemPicker,
@@ -128,13 +137,15 @@ apps/web           Vite + React workspace: src/engine (worker.ts and session.ts,
                    src/view (the renderer: layout.ts, filter.ts, ViewCanvas.tsx; no domain names),
                    src/protocol.ts (page ↔ worker messages), vite.config.ts (bundles the content packs,
                    D-103), public/ (web app manifest and icons, D-113), e2e/ (Playwright)
-apps/server        the local server: built app or Vite middleware, POST /api/gaps → data/gaps.jsonl
+apps/server        the local server: built app or Vite middleware, and the API over plain files under data/
+                   (src/store.ts appends and atomic writes, src/api.ts progress, attempts, settings, gaps)
 apps/cli
 tools/             upstream fetch, OpenAPI processing (openapi/), oracle and golden capture, transcript capture,
-                   coverage generation (coverage/), content validation and schema generation (content/),
+                   coverage generation (coverage/), content validation, the translation report and schema
+                   generation (content/),
                    the gap log summary (gaps/), update check;
                    tools/eslint holds the two lint rules, their fixtures and the dependency table
-docs/schema/       JSON Schema of content items and translation sidecars
+docs/schema/       JSON Schema of content items, translation sidecars and pack manifests (generated)
 docs/curriculum/   the official CKA and CKAD curricula the content is built against
 packages/*/transcripts/  transcript tests (docs/TRANSCRIPTS.md), run by each package's transcripts.test.ts
 fixtures/golden/   golden cases (cases/, the inputs) and captured, normalized real output per Kubernetes

@@ -1,8 +1,8 @@
 // The gap log's sink (docs/FIDELITY.md §4.4): records the web app sends are completed with the
 // wall-clock time, which the engine cannot know, and appended to data/gaps.jsonl, one per line.
 
-import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { appendLines } from './store.ts';
 
 /** What the web app sends: a `GapEvent` with the item in its context and the engine's versions. */
 export interface GapPost {
@@ -32,8 +32,6 @@ export function gapProblem(r: unknown): string | undefined {
 
 /** Appends the records, each with `at` (ISO 8601) set to `now`. */
 export function appendGaps(dataDir: string, records: readonly GapPost[], now: Date = new Date()): void {
-  if (records.length === 0) return;
-  mkdirSync(dataDir, { recursive: true });
   const at = now.toISOString();
-  appendFileSync(join(dataDir, 'gaps.jsonl'), records.map((r) => `${JSON.stringify({ ...r, at })}\n`).join(''));
+  appendLines(join(dataDir, 'gaps.jsonl'), records.map((r) => JSON.stringify({ ...r, at })));
 }

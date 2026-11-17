@@ -1,248 +1,100 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://simlab.invalid/schema/item.schema.json",
-  "title": "Simlab lab-like content item (lab, drill, incident)",
-  "description": "Specified in docs/SCENARIO_FORMAT.md. The check, fault and step catalogs in $defs are the phase 00 catalog; from phase 09 they are generated from the plugin registry.",
+  "title": "Simlab content item (lab, drill, incident, lesson, card, exam)",
+  "description": "Specified in docs/SCENARIO_FORMAT.md (lab-like items) and docs/LEARNING_MODEL.md (lessons, cards, exams). Generated from the plugin registry: npm run content:schema.",
   "type": "object",
   "properties": {
     "id": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
+      "$ref": "#/$defs/header/properties/id"
     },
     "kind": {
       "enum": [
         "lab",
         "drill",
-        "incident"
+        "incident",
+        "lesson",
+        "card",
+        "exam"
       ]
-    },
-    "title": {
-      "type": "string",
-      "minLength": 1
-    },
-    "skills": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
-      }
-    },
-    "curriculum": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "pattern": "^(cka|ckad)\\.[a-z]+\\.[a-z0-9-]+$"
-      }
-    },
-    "difficulty": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 5
-    },
-    "targetMinutes": {
-      "type": "number",
-      "exclusiveMinimum": 0
-    },
-    "world": {
-      "type": "object",
-      "properties": {
-        "topology": {
-          "enum": [
-            "kubeadm-1cp-2w",
-            "kubeadm-1n",
-            "ubuntu-1"
-          ]
-        },
-        "topologyParams": {
-          "type": "object"
-        },
-        "startTime": {
-          "type": "string",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
-        },
-        "entry": {
-          "type": "object",
-          "properties": {
-            "machine": {
-              "type": "string",
-              "minLength": 1
-            },
-            "user": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "required": [
-            "machine",
-            "user"
-          ],
-          "additionalProperties": false
-        },
-        "params": {
-          "type": "object",
-          "propertyNames": {
-            "pattern": "^[a-z][a-zA-Z0-9]*$"
-          },
-          "additionalProperties": {
-            "oneOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "pick": {
-                    "type": "array",
-                    "minItems": 2,
-                    "uniqueItems": true,
-                    "items": {
-                      "type": [
-                        "string",
-                        "number",
-                        "boolean"
-                      ]
-                    }
-                  }
-                },
-                "required": [
-                  "pick"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "int": {
-                    "type": "object",
-                    "properties": {
-                      "min": {
-                        "type": "integer"
-                      },
-                      "max": {
-                        "type": "integer"
-                      }
-                    },
-                    "required": [
-                      "min",
-                      "max"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "int"
-                ],
-                "additionalProperties": false
-              }
-            ]
-          }
-        },
-        "images": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/image"
-          }
-        },
-        "setup": {
-          "$ref": "#/$defs/steps"
-        }
-      },
-      "required": [
-        "topology",
-        "setup"
-      ],
-      "additionalProperties": false
-    },
-    "ticket": {
-      "$ref": "#/$defs/prose"
-    },
-    "hints": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "oneOf": [
-          {
-            "type": "string",
-            "minLength": 1
-          },
-          {
-            "type": "object",
-            "properties": {
-              "text": {
-                "type": "string",
-                "minLength": 1
-              },
-              "when": {
-                "$ref": "#/$defs/when"
-              }
-            },
-            "required": [
-              "text"
-            ],
-            "additionalProperties": false
-          }
-        ]
-      }
-    },
-    "checks": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/check"
-      }
-    },
-    "solutions": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "oneOf": [
-          {
-            "$ref": "#/$defs/steps"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "minLength": 1
-              },
-              "steps": {
-                "$ref": "#/$defs/steps"
-              },
-              "when": {
-                "$ref": "#/$defs/when"
-              }
-            },
-            "required": [
-              "name",
-              "steps"
-            ],
-            "additionalProperties": false
-          }
-        ]
-      }
-    },
-    "debrief": {
-      "$ref": "#/$defs/prose"
     }
   },
   "required": [
     "id",
-    "kind",
-    "title",
-    "skills",
-    "curriculum",
-    "difficulty",
-    "targetMinutes",
-    "world",
-    "ticket",
-    "hints",
-    "checks",
-    "solutions",
-    "debrief"
+    "kind"
   ],
-  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "lab",
+              "drill",
+              "incident"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/scenarioItem"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "lesson"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/lessonItem"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "card"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/cardItem"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "exam"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/examItem"
+      }
+    }
+  ],
   "$defs": {
     "prose": {
       "description": "Markdown, or a list of blocks of prose and figures (docs/SCENARIO_FORMAT.md §10, §11)",
@@ -2118,6 +1970,580 @@
           }
         }
       ]
+    },
+    "world": {
+      "type": "object",
+      "properties": {
+        "topology": {
+          "enum": [
+            "kubeadm-1cp-2w",
+            "kubeadm-1n",
+            "ubuntu-1"
+          ]
+        },
+        "topologyParams": {
+          "type": "object"
+        },
+        "startTime": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "entry": {
+          "type": "object",
+          "properties": {
+            "machine": {
+              "type": "string",
+              "minLength": 1
+            },
+            "user": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "machine",
+            "user"
+          ],
+          "additionalProperties": false
+        },
+        "params": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z][a-zA-Z0-9]*$"
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "pick": {
+                    "type": "array",
+                    "minItems": 2,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "pick"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "int": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "integer"
+                      },
+                      "max": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "int"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "images": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/image"
+          }
+        },
+        "setup": {
+          "$ref": "#/$defs/steps"
+        }
+      },
+      "required": [
+        "topology",
+        "setup"
+      ],
+      "additionalProperties": false
+    },
+    "header": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "skills": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
+          }
+        },
+        "curriculum": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+\\.[a-z0-9-]+\\.[a-z0-9-]+$"
+          }
+        },
+        "difficulty": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "targetMinutes": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "scenarioItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/header/properties/id"
+        },
+        "kind": {
+          "enum": [
+            "lab",
+            "drill",
+            "incident"
+          ]
+        },
+        "title": {
+          "$ref": "#/$defs/header/properties/title"
+        },
+        "skills": {
+          "$ref": "#/$defs/header/properties/skills"
+        },
+        "curriculum": {
+          "$ref": "#/$defs/header/properties/curriculum"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/header/properties/difficulty"
+        },
+        "targetMinutes": {
+          "$ref": "#/$defs/header/properties/targetMinutes"
+        },
+        "world": {
+          "$ref": "#/$defs/world"
+        },
+        "ticket": {
+          "$ref": "#/$defs/prose"
+        },
+        "hints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "when": {
+                    "$ref": "#/$defs/when"
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "solutions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/steps"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "steps": {
+                    "$ref": "#/$defs/steps"
+                  },
+                  "when": {
+                    "$ref": "#/$defs/when"
+                  }
+                },
+                "required": [
+                  "name",
+                  "steps"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "debrief": {
+          "$ref": "#/$defs/prose"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "skills",
+        "curriculum",
+        "difficulty",
+        "targetMinutes",
+        "world",
+        "ticket",
+        "hints",
+        "checks",
+        "solutions",
+        "debrief"
+      ],
+      "additionalProperties": false
+    },
+    "prediction": {
+      "description": "A prediction prompt: answered before the learner sees what happens. With `choices`, `answer` is the index of the correct one.",
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "answer": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explain": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "prompt",
+        "explain"
+      ],
+      "additionalProperties": false
+    },
+    "lessonTask": {
+      "description": "A guided task in the lesson's live world: its checks fail before `solution` runs and pass after.",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "solution": {
+          "$ref": "#/$defs/steps"
+        }
+      },
+      "required": [
+        "text",
+        "checks",
+        "solution"
+      ],
+      "additionalProperties": false
+    },
+    "lessonStep": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "when": {
+              "$ref": "#/$defs/when"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "figure": {
+              "$ref": "#/$defs/figure"
+            },
+            "when": {
+              "$ref": "#/$defs/when"
+            }
+          },
+          "required": [
+            "figure"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "predict": {
+              "$ref": "#/$defs/prediction"
+            },
+            "when": {
+              "$ref": "#/$defs/when"
+            }
+          },
+          "required": [
+            "predict"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "task": {
+              "$ref": "#/$defs/lessonTask"
+            },
+            "when": {
+              "$ref": "#/$defs/when"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "lessonItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/header/properties/id"
+        },
+        "title": {
+          "$ref": "#/$defs/header/properties/title"
+        },
+        "skills": {
+          "$ref": "#/$defs/header/properties/skills"
+        },
+        "curriculum": {
+          "$ref": "#/$defs/header/properties/curriculum"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/header/properties/difficulty"
+        },
+        "targetMinutes": {
+          "$ref": "#/$defs/header/properties/targetMinutes"
+        },
+        "kind": {
+          "const": "lesson"
+        },
+        "world": {
+          "$ref": "#/$defs/world"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/lessonStep"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "skills",
+        "curriculum",
+        "difficulty",
+        "targetMinutes",
+        "world",
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    "cardItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/header/properties/id"
+        },
+        "title": {
+          "$ref": "#/$defs/header/properties/title"
+        },
+        "skills": {
+          "$ref": "#/$defs/header/properties/skills"
+        },
+        "curriculum": {
+          "$ref": "#/$defs/header/properties/curriculum"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/header/properties/difficulty"
+        },
+        "targetMinutes": {
+          "$ref": "#/$defs/header/properties/targetMinutes"
+        },
+        "kind": {
+          "const": "card"
+        },
+        "world": {
+          "$ref": "#/$defs/world"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "figure": {
+          "$ref": "#/$defs/figure"
+        },
+        "answer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "correct": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        },
+        "solution": {
+          "$ref": "#/$defs/steps"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "skills",
+        "curriculum",
+        "difficulty",
+        "targetMinutes",
+        "prompt",
+        "answer"
+      ],
+      "additionalProperties": false
+    },
+    "examItem": {
+      "description": "An exam is a definition only: tasks are lab-like items by id, shown without figures, hints or debrief (the mode is phase 31).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/header/properties/id"
+        },
+        "kind": {
+          "const": "exam"
+        },
+        "title": {
+          "$ref": "#/$defs/header/properties/title"
+        },
+        "minutes": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "passPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "tasks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "$ref": "#/$defs/header/properties/id"
+              },
+              "weight": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "item",
+              "weight"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "minutes",
+        "passPercent",
+        "tasks"
+      ],
+      "additionalProperties": false
     }
   }
 }

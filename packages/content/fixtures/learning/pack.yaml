@@ -1,0 +1,22 @@
+# A fixture pack (docs/LEARNING_MODEL.md §11): one item of each kind phase 11 added, on the real
+# Kubernetes simulator, for the tests of the loader, content:check and content:i18n. It is not
+# under a pack directory the apps load: `loadPacks()` reads packages/content/<pack>/ only.
+id: fx
+title: Fixture pack for the learning model
+description: A lesson, a drill, two cards and an exam about scaling a Deployment.
+skills:
+  - id: fx.workloads.deployments
+    title: What a Deployment keeps running
+    description: A Deployment owns ReplicaSets, which own Pods; the replica count is a wish, not a command.
+  - id: fx.workloads.scaling
+    title: Scale a Deployment
+    requires: [fx.workloads.deployments]
+tracks:
+  - id: fx.track.scaling
+    title: Scaling, from the idea to the drill
+    description: The lesson first, then a card and the drill it prepares.
+    items:
+      - fx.workloads.scaling-lesson-01
+      - fx.workloads.owner-card-01
+      - fx.workloads.scale-drill-01
+      - fx.workloads.scale-card-01

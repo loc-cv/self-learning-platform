@@ -1,12 +1,19 @@
-// A content item as written (docs/SCENARIO_FORMAT.md §2), after YAML parsing: plain JSON data.
-// The schema (schema.ts) is what guarantees these shapes; the types only name them.
+// A content item as written (docs/SCENARIO_FORMAT.md §2, docs/LEARNING_MODEL.md §2), after YAML
+// parsing: plain JSON data. The schema (schema.ts) is what guarantees these shapes; the types only
+// name them. `Item` is the lab-like item (lab, drill, incident); lessons, cards and exams have
+// their own types, and `AnyItem` is any of them.
 
 import type { Json } from '@simlab/kernel';
-import type { Block, VariantBlock } from '../figure/types.ts';
+import type { Block, Figure, VariantBlock } from '../figure/types.ts';
 
 export type JsonObject = { [key: string]: Json };
 
-export type ItemKind = 'lab' | 'drill' | 'incident';
+/** The lab-like kinds: a world, a ticket, checks, solutions, a debrief. */
+export type ScenarioKind = 'lab' | 'drill' | 'incident';
+
+export type ItemKind = ScenarioKind | 'lesson' | 'card' | 'exam';
+
+export const SCENARIO_KINDS: readonly ScenarioKind[] = ['lab', 'drill', 'incident'];
 
 /** `{ fault: stopped }`, `{ fault: [stopped, masked] }`: every key must match (§4). */
 export type When = Record<string, Json>;
@@ -48,7 +55,7 @@ export interface World {
 
 export interface Item {
   id: string;
-  kind: ItemKind;
+  kind: ScenarioKind;
   title: string;
   skills: string[];
   curriculum: string[];
@@ -101,4 +108,122 @@ export interface Variant {
   checks: Check[];
   solutions: Solution[];
   debrief: VariantBlock[];
+}
+
+// ---- Lessons, cards and exams (docs/LEARNING_MODEL.md §2) ----
+
+/** What every item that is practiced and scheduled declares. */
+export interface ItemHeader {
+  id: string;
+  title: string;
+  skills: string[];
+  curriculum: string[];
+  difficulty: number;
+  targetMinutes: number;
+}
+
+/** A prediction prompt: answered before the learner sees what happens (PLAN.md §5). */
+export interface Prediction {
+  prompt: string;
+  /** With choices the answer is checked; without, the learner compares with `explain`. */
+  choices?: string[];
+  /** Index of the correct choice. */
+  answer?: number;
+  /** Shown once answered: what happens and why. */
+  explain: string;
+}
+
+/** A guided task in the lesson's live world. */
+export interface LessonTask {
+  text: string;
+  hints?: string[];
+  checks: CheckDecl[];
+  /** Steps that do the task; content validation runs them. */
+  solution: Step[];
+}
+
+export type LessonStep =
+  | { text: string; when?: When }
+  | { figure: Figure; when?: When }
+  | { predict: Prediction; when?: When }
+  | { task: LessonTask; when?: When };
+
+export interface LessonItem extends ItemHeader {
+  kind: 'lesson';
+  world: World;
+  steps: LessonStep[];
+}
+
+export interface CardItem extends ItemHeader {
+  kind: 'card';
+  /** Needed by a figure of a world and by checks. */
+  world?: World;
+  prompt: string;
+  figure?: Figure;
+  /** The expected answer, shown on reveal. */
+  answer: string;
+  /** Auto-check by choice: the options and the index of the correct one. */
+  choices?: string[];
+  correct?: number;
+  /** Auto-check by command: the learner works in the card's world and these grade its state. */
+  checks?: CheckDecl[];
+  solution?: Step[];
+}
+
+export interface ExamTask {
+  /** A lab, drill or incident. */
+  item: string;
+  /** Share of the exam's score. */
+  weight: number;
+}
+
+/** An exam's definition; the mode that runs it is phase 31. */
+export interface ExamItem {
+  id: string;
+  kind: 'exam';
+  title: string;
+  minutes: number;
+  passPercent: number;
+  tasks: ExamTask[];
+}
+
+export type AnyItem = Item | LessonItem | CardItem | ExamItem;
+
+export const isScenario = (item: AnyItem): item is Item => item.kind === 'lab' || item.kind === 'drill' || item.kind === 'incident';
+
+export type LessonVariantStep =
+  | { text: string }
+  | { figure: Figure }
+  | { predict: Prediction }
+  | { task: { text: string; hints: string[]; checks: Check[]; solution: Step[] } };
+
+/** What a seed makes of the world of any item that has one. */
+export interface WorldVariant {
+  seed: number;
+  params: Params;
+  topology: string;
+  topologyParams: JsonObject;
+  startTime?: number;
+  entry?: { machine: string; user: string };
+  setup: Step[];
+}
+
+export interface LessonVariant extends WorldVariant {
+  item: LessonItem;
+  steps: LessonVariantStep[];
+}
+
+export interface CardVariant {
+  item: CardItem;
+  seed: number;
+  params: Params;
+  /** Present when the card has a world. */
+  world?: WorldVariant;
+  prompt: string;
+  figure?: Figure;
+  answer: string;
+  choices?: string[];
+  correct?: number;
+  checks: Check[];
+  solution: Step[];
 }

@@ -10,6 +10,7 @@
     "test": "vitest run --root ../.. packages/learn/"
   },
   "dependencies": {
-    "@simlab/kernel": "0.0.0"
+    "@simlab/kernel": "0.0.0",
+    "ts-fsrs": "6.0.0"
   }
 }

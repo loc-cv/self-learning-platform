@@ -1,0 +1,7 @@
+id: fx.exams.sample-01
+kind: exam
+title: Sample exam
+minutes: 10
+passPercent: 66
+tasks:
+  - { item: fx.workloads.scale-drill-01, weight: 100 }

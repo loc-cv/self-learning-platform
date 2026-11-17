@@ -2,13 +2,10 @@
 
 import { parseDocument } from 'yaml';
 import type { Json } from '@simlab/kernel';
+import { parsePackManifest, type PackManifest } from '@simlab/learn';
 
-/** `pack.yaml`: the pack and the skills it defines (phase 11 adds the rest). */
-export interface Pack {
-  id: string;
-  title: string;
-  skills: { id: string; title: string }[];
-}
+/** `pack.yaml` (docs/LEARNING_MODEL.md §3): the pack, its skills with prerequisites and its tracks. */
+export type Pack = PackManifest;
 
 export class ContentSyntaxError extends Error {}
 
@@ -20,9 +17,9 @@ export function parseYaml(text: string, file: string): Json {
   return doc.toJSON() as Json;
 }
 
+/** A pack manifest that satisfies its schema; anything else throws with every problem. */
 export function parsePack(text: string, file: string): Pack {
-  const raw = parseYaml(text, file) as unknown as Pack;
-  if (typeof raw?.id !== 'string' || typeof raw.title !== 'string' || !Array.isArray(raw.skills)) throw new ContentSyntaxError(`${file}: a pack needs id, title and skills`);
-  for (const s of raw.skills) if (typeof s?.id !== 'string' || typeof s.title !== 'string') throw new ContentSyntaxError(`${file}: every skill needs id and title`);
-  return raw;
+  const { pack, problems } = parsePackManifest(parseYaml(text, file));
+  if (!pack) throw new ContentSyntaxError(`${file}: ${problems.join('; ')}`);
+  return pack;
 }

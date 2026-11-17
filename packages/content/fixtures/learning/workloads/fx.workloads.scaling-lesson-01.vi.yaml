@@ -1,0 +1,24 @@
+# A sidecar in every state on purpose (the i18n tests read it): current units, one translated
+# from an earlier English (`steps.0`), one that lost a code span (`steps.3.hints.0`), one key no
+# unit has (`steps.9`), and the rest missing.
+id: fx.workloads.scaling-lesson-01
+lang: vi
+units:
+  title:
+    source: sha256:badb690d7dc17f56
+    text: Số replica là một mong muốn mà Deployment luôn đáp ứng
+  steps.0:
+    source: sha256:0000000000000000
+    text: Deployment không tự chạy Pod.
+  steps.2.prompt:
+    source: sha256:7191ba85f62b1daa
+    text: "Bạn đặt `replicas` thành {{replicas}}. Đối tượng nào tạo ra các Pod mới?"
+  steps.3.text:
+    source: sha256:5a98830e821bc689
+    text: "Scale `web` trong namespace `{{ns}}` lên {{replicas}} replica."
+  steps.3.hints.0:
+    source: sha256:c6f072de789b6d21
+    text: Lệnh scale của kubectl thay đổi số replica mà không cần mở trình soạn thảo.
+  steps.9:
+    source: sha256:1111111111111111
+    text: Không còn bước này.

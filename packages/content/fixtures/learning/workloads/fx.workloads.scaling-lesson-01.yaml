@@ -1,0 +1,93 @@
+id: fx.workloads.scaling-lesson-01
+kind: lesson
+title: A replica count is a wish the Deployment keeps granting
+skills:
+  - fx.workloads.deployments
+  - fx.workloads.scaling
+curriculum:
+  - cka.workloads.deployments-rollouts
+difficulty: 1
+targetMinutes: 6
+world:
+  topology: kubeadm-1cp-2w
+  params:
+    ns: { pick: [shop, billing] }
+    replicas: { int: { min: 3, max: 4 } }
+  setup:
+    - apply: |
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: {{ns}}
+        ---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: web
+          namespace: {{ns}}
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: web
+          template:
+            metadata:
+              labels:
+                app: web
+            spec:
+              containers:
+                - name: web
+                  image: nginx:1.31.8
+                  ports:
+                    - containerPort: 80
+    - until:
+        assert: k8s.rollout
+        with: { namespace: "{{ns}}", name: web }
+      timeout: 3m
+steps:
+  - text: |
+      A Deployment does not run Pods itself. It owns a ReplicaSet, and the ReplicaSet owns the
+      Pods. `spec.replicas` says how many Pods should exist; controllers make it so.
+  - figure:
+      kind: view
+      of: start
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod] }
+      show: [Images]
+      caption: "`web` in `{{ns}}`: one Deployment, one ReplicaSet, one Pod."
+      alt: The Deployment web owns one ReplicaSet, which owns one running Pod.
+  - predict:
+      prompt: "You set `replicas` to {{replicas}}. Which object creates the new Pods?"
+      choices:
+        - The Deployment creates them directly.
+        - The ReplicaSet the Deployment owns.
+        - The scheduler.
+      answer: 1
+      explain: |
+        The Deployment only changes the size of its ReplicaSet. The ReplicaSet controller sees
+        too few Pods and creates the missing ones; the scheduler then places them.
+  - task:
+      text: "Scale `web` in namespace `{{ns}}` to {{replicas}} replicas."
+      hints:
+        - "`kubectl scale` changes `spec.replicas` without opening an editor."
+      checks:
+        - id: scaled
+          title: "`web` has {{replicas}} ready replicas"
+          assert: k8s.podsReady
+          with: { namespace: "{{ns}}", selector: app=web, count: "{{replicas}}" }
+          within: 2m
+      solution:
+        - run: kubectl -n {{ns}} scale deployment web --replicas={{replicas}}
+        - until:
+            assert: k8s.rollout
+            with: { namespace: "{{ns}}", name: web }
+          timeout: 3m
+  - predict:
+      prompt: What happens when you delete one of the Pods now?
+      explain: "The ReplicaSet creates a replacement at once: the count is a wish it keeps granting."
+  - figure:
+      kind: compare
+      left: { of: start }
+      right: { of: solved }
+      focus: { scope: "{{ns}}", kinds: [Deployment, ReplicaSet, Pod] }
+      caption: The same ReplicaSet, now with {{replicas}} Pods.
+      alt: Before, one Pod under the ReplicaSet; after, {{replicas}} Pods under the same ReplicaSet.

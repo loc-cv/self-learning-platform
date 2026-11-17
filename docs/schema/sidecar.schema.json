@@ -17,7 +17,7 @@
       "type": "object",
       "minProperties": 1,
       "propertyNames": {
-        "pattern": "^(title|ticket|debrief|(ticket|debrief)\\.[0-9]+(\\.(caption|alt|notes\\.[0-9]+|frames\\.[0-9]+\\.(caption|notes\\.[0-9]+)|(left|right)\\.title|entities\\.[a-z][a-z0-9-]*\\.label))?|hints\\.[0-9]+|checks\\.[a-z0-9-]+\\.title|solutions\\.[0-9]+\\.name)$"
+        "pattern": "^(title|ticket|debrief|prompt|answer|(ticket|debrief)\\.[0-9]+(\\.(caption|alt|notes\\.[0-9]+|frames\\.[0-9]+\\.(caption|notes\\.[0-9]+)|(left|right)\\.title|entities\\.[a-z][a-z0-9-]*\\.label))?|hints\\.[0-9]+|checks\\.[a-z0-9-]+\\.title|solutions\\.[0-9]+\\.name|steps\\.[0-9]+(\\.((caption|alt|notes\\.[0-9]+|frames\\.[0-9]+\\.(caption|notes\\.[0-9]+)|(left|right)\\.title|entities\\.[a-z][a-z0-9-]*\\.label)|prompt|explain|text|choices\\.[0-9]+|hints\\.[0-9]+|checks\\.[a-z0-9-]+\\.title))?|figure\\.(caption|alt|notes\\.[0-9]+|frames\\.[0-9]+\\.(caption|notes\\.[0-9]+)|(left|right)\\.title|entities\\.[a-z][a-z0-9-]*\\.label)|choices\\.[0-9]+)$"
       },
       "additionalProperties": {
         "type": "object",

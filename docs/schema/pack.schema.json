@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simlab.invalid/schema/pack.schema.json",
+  "title": "Simlab content pack manifest (pack.yaml)",
+  "description": "Specified in docs/LEARNING_MODEL.md §3.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requires": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "tracks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(\\.[a-z0-9]+(-[a-z0-9]+)*)+$"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "items"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "skills"
+  ],
+  "additionalProperties": false
+}

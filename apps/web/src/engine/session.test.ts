@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { loadPacks } from '@simlab/content';
+import { isLabLike, loadPacks } from '@simlab/content';
 import type { Item } from '@simlab/learn';
 import type { FromWorker, StoredAttempt, ToWorker } from '../protocol.ts';
 import { createEngine, type Engine } from './session.ts';
 
-const ITEMS = loadPacks().flatMap((p) => p.items.map((i) => i.raw as unknown as Item));
+const ITEMS = loadPacks().flatMap((p) => p.items.filter(isLabLike).map((i) => i.raw as unknown as Item));
 const BUILD = 'k8s.workloads.deployment-service-01';
 const START = 1_800_000_000_000;
 

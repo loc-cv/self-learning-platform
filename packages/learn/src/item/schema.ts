@@ -7,6 +7,7 @@
 
 import { CHECK, FAULT, STEP, TOPOLOGY, type ArgsSchema, type CheckSpec, type FaultSpec, type Json, type Registry, type StepSpec, type TopologySpec } from '@simlab/kernel';
 import { ITEM_SCHEMA_BASE } from './schema.base.ts';
+import { KIND_DEFS } from './schema.kinds.ts';
 import { BUILTIN_STEP_NAMES } from '../runner/builtin.ts';
 
 type Schema = { [key: string]: Json };
@@ -79,6 +80,8 @@ export function builtinStepSchemas(): Schema[] {
   ];
 }
 
+const HEADER_FIELDS = ['id', 'title', 'skills', 'curriculum', 'difficulty', 'targetMinutes'];
+
 export function itemSchema(registry: Registry): Schema {
   const checks = registry.list<CheckSpec>(CHECK);
   const steps = registry.list<StepSpec>(STEP).filter((s) => !BUILTIN_STEP_NAMES.includes(s.name));
@@ -105,7 +108,30 @@ export function itemSchema(registry: Registry): Schema {
     required: ['assert', 'with'],
     allOf: namedArgs('assert', checks),
   };
-  const world = ((base['properties'] as Schema)['world'] as Schema)['properties'] as Schema;
-  world['topology'] = { enum: topologies.map((t) => t.name) };
-  return { ...base, $defs: { ...defs } };
+  const layout = base['properties'] as Schema;
+  const world = layout['world'] as Schema;
+  (world['properties'] as Schema)['topology'] = { enum: topologies.map((t) => t.name) };
+  // The lab-like layout becomes one of four: the parts every kind shares move into $defs, and the
+  // kind decides which layout applies, so an error names the field and not "matches no alternative".
+  defs['world'] = world;
+  defs['header'] = { type: 'object', properties: Object.fromEntries(HEADER_FIELDS.map((f) => [f, layout[f] as Json])) };
+  defs['scenarioItem'] = {
+    type: 'object',
+    properties: { ...layout, ...Object.fromEntries(HEADER_FIELDS.map((f) => [f, { $ref: `#/$defs/header/properties/${f}` }])), world: { $ref: '#/$defs/world' } },
+    required: base['required'] as Json,
+    additionalProperties: false,
+  };
+  const kinds = [...(((layout['kind'] as Schema)['enum'] as string[]) ?? []), 'lesson', 'card', 'exam'];
+  const when = (enumOf: string[], def: string): Schema => ({ if: { properties: { kind: { enum: enumOf } }, required: ['kind'] }, then: { $ref: `#/$defs/${def}` } });
+  return {
+    $schema: base['$schema'] as Json,
+    $id: base['$id'] as Json,
+    title: 'Simlab content item (lab, drill, incident, lesson, card, exam)',
+    description: 'Specified in docs/SCENARIO_FORMAT.md (lab-like items) and docs/LEARNING_MODEL.md (lessons, cards, exams). Generated from the plugin registry: npm run content:schema.',
+    type: 'object',
+    properties: { id: { $ref: '#/$defs/header/properties/id' }, kind: { enum: kinds } },
+    required: ['id', 'kind'],
+    allOf: [when(['lab', 'drill', 'incident'], 'scenarioItem'), when(['lesson'], 'lessonItem'), when(['card'], 'cardItem'), when(['exam'], 'examItem')],
+    $defs: { ...defs, ...KIND_DEFS },
+  };
 }

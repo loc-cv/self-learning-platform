@@ -180,6 +180,7 @@ function at(value: Json, path: string): Json | undefined {
   return node;
 }
 
-export function formatSchemaErrors(errors: readonly SchemaError[]): string[] {
-  return errors.map((e) => `${e.path === '' ? '(item)' : e.path} ${e.message}`);
+/** One line per error; `root` names the value itself where an error is not about a field of it. */
+export function formatSchemaErrors(errors: readonly SchemaError[], root = '(item)'): string[] {
+  return errors.map((e) => `${e.path === '' ? root : e.path} ${e.message}`);
 }

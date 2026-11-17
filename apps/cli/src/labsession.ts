@@ -6,7 +6,7 @@
 
 import { ENGINE_VERSION, hashNode, type Json, type Millis, type Ports, type SessionHeader, type SessionLog } from '@simlab/kernel';
 import { KUBERNETES_TAG } from '@simlab/k8s';
-import { competencyIds, findItem, loadPacks, skillIds } from '@simlab/content';
+import { competencyIds, findItem, isLabLike, kindOf, loadPacks, skillIds } from '@simlab/content';
 import { blocksText, buildBaseline, openLab, showSolution, staticProblems, variantOf, type Baseline, type Figure, type GradeReport, type Item, type Lab, type VariantBlock } from '@simlab/learn';
 import { createPlayer, type Player, type PlayerIo } from './player.ts';
 import { registry, UsageError } from './world.ts';
@@ -60,7 +60,9 @@ export function renderBlocks(blocks: readonly VariantBlock[]): string {
 export function loadItem(id: string): Item {
   const packs = loadPacks();
   const f = findItem(id, packs);
-  if (!f) throw new UsageError(`no content item ${id}; known: ${packs.flatMap((p) => p.items.map((i) => i.fileId)).join(', ')}`);
+  if (!f) throw new UsageError(`no content item ${id}; known: ${packs.flatMap((p) => p.items.filter(isLabLike).map((i) => i.fileId)).join(', ')}`);
+  // The terminal player plays what has a ticket and checks; lessons and cards get their player with the learning screens.
+  if (!isLabLike(f)) throw new UsageError(`${id} is a ${kindOf(f) ?? 'file without a kind'}; npm run lab plays labs, drills and incidents`);
   const problems = staticProblems(f.raw, { registry, skills: skillIds(packs), competencies: competencyIds(), fileId: f.fileId });
   if (problems.length > 0) throw new UsageError(`${id} is not a valid item (npm run content:check -- ${id}):\n  ${problems.join('\n  ')}`);
   return f.raw as unknown as Item;

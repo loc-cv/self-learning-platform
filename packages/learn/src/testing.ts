@@ -2,7 +2,7 @@
 // list, a topology, steps, checks and a fault over it. Test support only.
 
 import { CHECK, createRegistry, FAULT, STEP, TOPOLOGY, VIEW, type CheckSpec, type Contribution, type FaultSpec, type Json, type Plugin, type Registry, type SliceSpec, type StepSpec, type TopologySpec, type ViewProviderSpec } from '@simlab/kernel';
-import type { Item } from './item/types.ts';
+import type { CardItem, ExamItem, Item, LessonItem } from './item/types.ts';
 
 export interface CounterSlice {
   value: number;
@@ -189,4 +189,67 @@ export function counterItem(): Item {
       { text: 'You bumped twice.', when: { how: 'twice' } },
     ],
   } as unknown as Item;
+}
+
+/** A valid lesson over the counter plugin: prose, a figure, a prediction and two guided tasks. */
+export function counterLesson(): LessonItem {
+  return {
+    id: 'test.counter.lesson-01',
+    kind: 'lesson',
+    title: 'Counters only go up',
+    skills: ['test.counter'],
+    curriculum: ['cka.workloads.deployments-rollouts'],
+    difficulty: 1,
+    targetMinutes: 5,
+    world: { topology: 'counter-1', params: { first: { int: { min: 2, max: 4 } }, way: { pick: ['short', 'long'] } }, setup: [{ bump: 1 }] },
+    steps: [
+      { text: 'A counter holds a number. `bump` adds to it.' },
+      { figure: { kind: 'view', of: 'start', show: ['Value'], caption: 'The counter starts at 1.', alt: 'A box with a counter that shows 1.' } },
+      { predict: { prompt: 'What does the counter show after `bump {{first}}`?', choices: ['{{first}}', 'One more than {{first}}'], answer: 1, explain: 'It adds; it does not set.' } },
+      { task: { text: 'Bump the counter by {{first}}.', hints: ['Use `bump`.'], checks: [{ id: 'bumped', title: 'The counter is past {{first}}', assert: 'counter.atLeast', with: { value: '{{first}}' } }], solution: [{ bump: '{{first}}' }] } },
+      { text: 'The long way takes two bumps.', when: { way: 'long' } },
+      { predict: { prompt: 'Can a counter go down?', explain: 'No: nothing here subtracts.' } },
+      { task: { text: 'Take it to at least 10.', checks: [{ id: 'ten', title: 'The counter is at least 10', assert: 'counter.atLeast', with: { value: 10 } }], solution: [{ bump: 10 }] } },
+      { figure: { kind: 'compare', left: { of: 'start' }, right: { of: 'solved' }, show: ['Value'], caption: 'From 1 to past 10.', alt: 'The counter before the lesson and after its tasks.' } },
+    ],
+  } as unknown as LessonItem;
+}
+
+/** Three valid cards: self-graded with a diagram, checked by choice, checked by command. */
+export function counterCards(): { plain: CardItem; choice: CardItem; command: CardItem } {
+  const header = { kind: 'card', skills: ['test.counter'], curriculum: ['cka.workloads.deployments-rollouts'], difficulty: 1, targetMinutes: 0.5 };
+  return {
+    plain: {
+      ...header,
+      id: 'test.counter.card-plain-01',
+      title: 'What bump does',
+      prompt: 'What does `bump 3` do to a counter at 4?',
+      figure: { kind: 'diagram', caption: 'A box and its counter.', alt: 'A box that holds a counter.', entities: [{ id: 'box', shape: 'host', label: 'box' }, { id: 'c', shape: 'process', label: 'counter', container: 'box', status: '4' }] },
+      answer: 'It adds 3: the counter shows 7.',
+    } as unknown as CardItem,
+    choice: {
+      ...header,
+      id: 'test.counter.card-choice-01',
+      title: 'Add or set',
+      prompt: 'After `bump 3` on a counter at 4, the counter shows…',
+      choices: ['3', '7', '12'],
+      correct: 1,
+      answer: '7: `bump` adds.',
+    } as unknown as CardItem,
+    command: {
+      ...header,
+      id: 'test.counter.card-command-01',
+      title: 'Reach a value',
+      world: { topology: 'counter-1', params: { goal: { int: { min: 3, max: 6 } } }, setup: [{ bump: 1 }] },
+      prompt: 'Make the counter show at least {{goal}}.',
+      figure: { kind: 'view', of: 'solved', show: ['Value'], caption: 'The counter once bumped.', alt: 'A counter that shows the goal.' },
+      answer: '`bump {{goal}}`',
+      checks: [{ id: 'goal', title: 'The counter is at least {{goal}}', assert: 'counter.atLeast', with: { value: '{{goal}}' } }],
+      solution: [{ bump: '{{goal}}' }],
+    } as unknown as CardItem,
+  };
+}
+
+export function counterExam(): ExamItem {
+  return { id: 'test.counter.exam-01', kind: 'exam', title: 'Counter exam', minutes: 10, passPercent: 66, tasks: [{ item: 'test.counter.reach-01', weight: 100 }] };
 }

@@ -1,5 +1,5 @@
 // Reading the packs from disk (Node): every directory under packages/content/ with a pack.yaml,
-// and in it every `<area>/<id>.yaml` that is not a sidecar (`.vi.yaml`).
+// and in it every `<area>/<id>.yaml`, with its Vietnamese sidecar `<id>.vi.yaml` when there is one.
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
@@ -16,6 +16,8 @@ export interface ItemFile {
   /** The file name without `.yaml`, which must equal the item id. */
   fileId: string;
   raw: Json;
+  /** The sidecar next to the item (docs/SCENARIO_FORMAT.md §13), as parsed and not yet validated. */
+  sidecar?: { file: string; raw: Json };
 }
 
 export interface LoadedPack {
@@ -41,10 +43,38 @@ export function loadPacks(root: string = CONTENT_ROOT): LoadedPack[] {
     const packFile = join(dir, 'pack.yaml');
     if (!statSync(dir).isDirectory() || !existsSync(packFile)) continue;
     const pack = parsePack(readFileSync(packFile, 'utf8'), relative(root, packFile));
-    const items = yamlFiles(dir).map((p) => ({ file: relative(root, p), fileId: basename(p, '.yaml'), raw: parseYaml(readFileSync(p, 'utf8'), relative(root, p)) }));
+    const items = yamlFiles(dir).map((p): ItemFile => {
+      const item: ItemFile = { file: relative(root, p), fileId: basename(p, '.yaml'), raw: parseYaml(readFileSync(p, 'utf8'), relative(root, p)) };
+      const vi = `${p.slice(0, -'.yaml'.length)}.vi.yaml`;
+      if (existsSync(vi)) item.sidecar = { file: relative(root, vi), raw: parseYaml(readFileSync(vi, 'utf8'), relative(root, vi)) };
+      return item;
+    });
     packs.push({ dir, pack, items });
   }
   return packs;
+}
+
+/** The kind an item file declares, or undefined when it has none. */
+export function kindOf(f: ItemFile): string | undefined {
+  const kind = (f.raw as { kind?: unknown } | null)?.kind;
+  return typeof kind === 'string' ? kind : undefined;
+}
+
+/** A lab, a drill or an incident: what the lab player and the workspace can open today. */
+export const isLabLike = (f: ItemFile): boolean => ['lab', 'drill', 'incident'].includes(kindOf(f) ?? '');
+
+/** Sidecars with no item next to them: `<id>.vi.yaml` without `<id>.yaml`. */
+export function strandedSidecars(root: string = CONTENT_ROOT): string[] {
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir).sort()) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (name.endsWith('.vi.yaml') && !existsSync(`${p.slice(0, -'.vi.yaml'.length)}.yaml`)) out.push(relative(root, p));
+    }
+  };
+  for (const name of readdirSync(root).sort()) if (statSync(join(root, name)).isDirectory() && existsSync(join(root, name, 'pack.yaml'))) walk(join(root, name));
+  return out;
 }
 
 /** Every skill id the packs define. */

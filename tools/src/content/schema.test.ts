@@ -10,12 +10,12 @@ import { createRegistry, type Json } from '@simlab/kernel';
 import { loadPacks } from '@simlab/content';
 import { itemSchema, validateSchema } from '@simlab/learn';
 import { CONTENT_PLUGINS } from './registry.ts';
-import { schemaText, SCHEMA_PATH } from './schema.ts';
+import { schemaFiles } from './schema.ts';
 import { extractBlocks } from '../docs/examples.ts';
 import { plannedPlugin } from '../docs/planned.ts';
 
-test('docs/schema/item.schema.json is current (npm run content:schema)', () => {
-  expect(readFileSync(SCHEMA_PATH, 'utf8')).toBe(schemaText());
+test.each(schemaFiles())('docs/schema/$name is current (npm run content:schema)', (f) => {
+  expect(readFileSync(f.path, 'utf8')).toBe(f.text);
 });
 
 const schema = itemSchema(createRegistry([...CONTENT_PLUGINS, plannedPlugin]));

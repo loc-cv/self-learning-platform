@@ -37,6 +37,7 @@
     "lab": "node apps/cli/src/lab.ts",
     "content:check": "node tools/src/content/check.ts",
     "content:schema": "node tools/src/content/schema.ts",
+    "content:i18n": "node tools/src/content/i18n.ts",
     "dev": "node apps/server/src/main.ts --dev",
     "start": "npm run build -w apps/web && node apps/server/src/main.ts",
     "e2e": "npm run e2e -w apps/web",

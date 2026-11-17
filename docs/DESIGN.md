@@ -1,7 +1,8 @@
 # Design language
 
 The look of Simlab, for the interface and the views alike (`PLAN.md` §6.5, §10). Written in phase
-10b; §1 to §4 and §7 rewritten in phase 10d for the look chosen there. The tokens live in
+10b; §1 to §4 and §7 rewritten in phase 10d for the look chosen there; the trace on screen (the
+X-ray's "Why?" and timeline, the replay, causes in views, the time controls) added in phase 13. The tokens live in
 `apps/web/src/app/tokens.css`; this file says what they are for and the rules for using them.
 `apps/web/src/app/styles.css` holds rules only: a literal size, color, radius, shadow or duration
 there is a defect, and `tokens.test.ts` fails on one. Use a token, or add one here first.
@@ -126,6 +127,7 @@ below it, it fades out (a mask) instead of ending at a border.
 | `--motion-enter` | 280ms | an entity that appears (fade in) |
 | `--motion-exit` | 320ms | an entity that leaves (fade out in place) |
 | `--motion-spin` | 900ms | one turn of the spinner while a world is built |
+| `--motion-travel` | 900ms | a recorded cause travelling once along its pair (after `--motion-enter`) |
 
 Easing: `--ease-standard` (cubic-bezier(0.2, 0, 0, 1)) for everything that arrives or moves,
 `--ease-exit` for what leaves.
@@ -134,14 +136,19 @@ Rules:
 
 - **What may move.** In a view: an entity that appears, leaves, changes state or moves to another
   container; a container that must grow or shrink for that, and what lies below it in the same
-  band, in the same transition. In the interface: the hover and press feedback of a control, the
+  band, in the same transition; and a cause the trace recorded travelling from one entity to
+  another (a controller creating, a scheduler binding), once, along that pair (§6.3), and along
+  nothing else. In the interface: the hover and press feedback of a control, the
   check meter filling, the spinner while a world is built, a panel following the pointer that
   drags it.
 - **What never moves.** Anything decorative: no idle animation, no pulsing, no traffic drawn where
-  the model has none (`PLAN.md` §6.5 "Honesty"). Tabs switch at once. An entity keeps its place
+  the model has none (`PLAN.md` §6.5 "Honesty"); motion along a relation always means a recorded
+  cause. Tabs switch at once. An entity keeps its place
   while others come and go (the renderer remembers slots, §6). The terminal never animates.
 - **Reduced motion.** The system's `prefers-reduced-motion`, or the Motion setting set to
   Reduced, makes every change instant: durations go to zero and leaving entities are removed at once.
+  A cause does not travel; its static mark (below) says what moved. A scene or a replay does not
+  play by itself.
   The setting can only reduce motion, never turn it on against the system.
 
 ## 5. States
@@ -233,6 +240,14 @@ arrivals fade in with the Web Animations API. Containers are drawn first, then t
 the cards, so links pass behind cards and over containers. Relations are faint until something is
 selected; the selection's relations then stand out and everything unrelated recedes.
 
+**Causes** (a frame's `links`, the event selected on the timeline) are drawn with the relations,
+behind the cards, so a cause never hides what it reached: a dashed accent line with an arrow at the end that received the cause, along the relation between
+the two when there is one (the same curve), from a container's header down to what it holds when
+one contains the other, otherwise as a relation would be drawn. When the pair appears (a new
+frame), an accent stroke travels it once (`--motion-travel`, after `--motion-enter` so the drawing
+has settled); under reduced motion only the static line stays. Like the marks of a figure, a cause
+uses the accent, never a state color.
+
 Interaction: click or Enter selects and Escape clears; Tab and the arrow keys move between entities
 (the nearest one in that direction); `+` and `−` zoom, `0` fits everything, `F` focuses the
 selection; the wheel scrolls, Ctrl+wheel zooms, dragging the background pans. Every entity has an
@@ -278,6 +293,9 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
   one dot per frame (past frames `--text-faint`, the current one the accent). The frame's caption
   below, with its number in a badge, in a region a screen reader announces. Moving between frames
   is the renderer's ordinary motion; Replay advances on its own only when motion is not reduced.
+  A frame anchored to the trace quotes its cause under the caption on `--surface-2`: the offset
+  from the scene's first frame, the tone glyph, the actor, the **simulator** tag, the text and its
+  items (§7, "The trace in words"). A frame's links travel as causes (§6.3).
 - **Diagrams** use the shapes and states as world views do; an author picks the state that tells
   the story (a normal scheduling pass is drawn healthy).
 
@@ -285,8 +303,19 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
 
 - **The page** never scrolls: the workspace fills the window and only panes scroll (D-130).
 - **Top bar**: on the floor, with no surface of its own: brand, the lab panel's toggle, the lab
-  list, the lab's title, the clock, notices, the X-ray toggle (pressed: `--accent-soft`), full
-  screen, settings, shortcuts.
+  list, the lab's title, the clock with the time controls, notices, the X-ray toggle (pressed:
+  `--accent-soft`; absent at assist level off), full screen, settings, shortcuts.
+- **Time controls** (phase 13), after the clock: pause (pressed while paused, then "Paused" and the
+  clock in `--warn`), the speed as a small segmented control 1× 2× 5× 10× in tabular code figures
+  (the clock's time turns `--accent` while faster than 1×), and skip to the next event (the
+  next moment a terminal prints or the system records a key event, up to an hour ahead). A skip
+  says what it did for five seconds beside the button: how far it jumped as a chip in the code
+  font (`+47s`), or, muted, "Nothing is scheduled to happen within the hour". Chords:
+  `Ctrl+Shift+Space` pause, `Ctrl+Shift+S` the next speed (wrapping to 1×), `Ctrl+Shift+J` skip;
+  claimed every time like the others. While paused, the terminal carries a pill over its lower
+  edge (the ended note's shape, a `--warn` pause icon): time is paused, a command that needs time
+  waits for it, and Resume. Commands take virtual time, so a paused terminal would otherwise look
+  frozen.
 - **Panes.** The lab panel, the terminals and the docked X-ray lie side by side with `--gap`
   between them, resizable by the gaps. **The terminal keeps 80 columns** while the window has room
   for them: the docked X-ray gives way first, down to its minimum (320px), then the lab panel
@@ -316,6 +345,42 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
   keyboard from the terminal. In a narrow X-ray the filter shrinks first and the "counts as help"
   note goes; the title and the buttons stay. The filter is the interface's own select (`Select` in
   `ui.tsx`), not the system's.
+- **Assist levels** (phase 13, `docs/LEARNING_MODEL.md` §13): a setting, "X-ray help", Full, View or
+  Off, with one line on what the chosen level means, that the exam gives none, and that a change
+  applies from the next attempt; while an attempt runs at a lower level than the setting, a line in
+  `--warn` says so. At **off** there is no X-ray toggle, its chords do nothing, and nothing in the
+  workspace draws the world but the ticket's own figures. At **view** the X-ray has no Why? and no
+  timeline, and its foot says so in one line. The debrief and its replay exist at every level.
+- **"Why?"** (assist full): a button in the selection's card (pressed: `--accent-soft`). The answer
+  is drawn in the card under the facts, and the card may then take up to `--detail-why-max-h` of
+  the drawing: a micro-label "Why", the **simulator** tag, "recorded as help", the summary in
+  medium weight, then the chain oldest first. Changing the selection while it is open asks again;
+  an item about an entity selects it. "Nothing recorded about this" when the trace has no answer.
+  While a past moment is shown, Why? is disabled (it explains the world now).
+- **Timeline** (assist full): under the drawing, on the canvas's tone, from the attempt's start to
+  now. A head with the micro-label, the simulator tag, the span (`+3:12 · now`) and Key / All
+  (detail events as a third, quiet row of thin ticks). Rows: **You** (commands as small squares in
+  the text color, with a bar for the time a command ran; checks, hints and the answer as diamonds,
+  a check in its result's state color) and **System** (key events as dots in their tone's state
+  color: good healthy, bad failed, neutral muted). Marks closer than 7px cluster at the newest;
+  hover rings one and names it on a one-line readout below (offset, actor, text, "and 2 more").
+  The playhead is a slider: a dashed faint line at now, an accent line with a knob in the past;
+  what lies after it recedes (`--o-after`). Selecting a mark opens it on the card (time, actor,
+  text, items, the entities it is about as links, "Follows from" its causes as links), highlights
+  its entities, draws its link as a cause (§6.3), and reads the world at its moment. Dragging the
+  track or Shift+arrows reads any moment; arrows step from mark to mark; Home is the start; End or
+  Escape is now.
+- **A past moment** (assist full): the drawing is the world rebuilt by replay at that moment, with
+  a dashed accent outline around the bench and a banner across its top (`--overlay-bg`): the
+  history icon, the offset, "read-only: the terminal and the world go on", and **Back to now**.
+  The terminal, the clock and the session keep running; it is not time travel.
+- **The trace in words** (`Trace.tsx`): event text is the simulator's vocabulary, never a real
+  tool's output, so it is set in `--font-ui` and carries a **simulator** tag (a small uppercase
+  pill on `--surface-3`); only what the learner typed (a command) is in `--font-code` on
+  `--code-bg`. A line is: the offset from the attempt's start in tabular code figures (`+0:47`;
+  `−0:12` before it; the clock time in the tooltip), the tone as a glyph in its state color (✓
+  helped, ✗ hurt, · happened), the actor in muted semibold, the text, then the per-candidate items
+  as a grid of glyph, name (code font; a link when it names an entity) and reason.
 - **Editor overlay**: the terminal's surface (`--term-bg`) in the code font, a file bar above and
   a status bar below, no borders.
 - **Popovers, menus and dialogs**: `--overlay-bg` with `--overlay-blur` and `--elev-3`; a dialog is
@@ -344,9 +409,20 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
 - **Giving up**: the Solutions tab, and the Debrief tab before the lab is solved, say that
   opening them is giving up, on the warning tint; the kicker then carries "gave up".
 - **Debrief**: after a solve, first a text area for the root cause in the learner's words. Then,
-  in this order: the debrief's figures, the checks, "Your commands" beside "Reference solution"
-  (two columns from 620px of panel width, stacked below), the learner's explanation as a quote,
-  the prose, the rating, the button that moves on.
+  in this order: the debrief's figures, the replay of the attempt (below), the checks, "Your
+  commands" beside "Reference solution" (two columns from 620px of panel width, stacked below),
+  the learner's explanation as a quote, the prose, the rating, the button that moves on. With a
+  replay, "Your commands" is the replay's list of every command, also those that changed nothing,
+  each with its offset, tone and items (how it ended); without one, what the shells remember.
+- **Replay** (`Replay.tsx`, phase 13): a scene's stepper over the run's frames: the caption with
+  the frame count and the span, the still drawing with each frame's changes since the frame before
+  marked as in a comparison (`+` new, `•` changed) and its links travelling as causes, the scene
+  bar (a change frame's dot is square; no dots above 24 frames), then the frame: a pill with what
+  it is (At the start, Your change landed on `--accent-soft`, The world went on), its offset, and
+  at the start why each broken thing is broken (the "why" chains), at a change the commands as
+  typed in a code block, at a settled frame the events since the frame before (six, then "Show
+  all"). Frames left out of a long run are counted below. "Show the reference solution's run
+  beside it" adds the reference's replay, side by side from 760px of panel width, stacked below.
 - **Rating**: the grade's name in its state color (Again failed, Hard degraded, Good and Easy
   healthy) with the reason in words, the four grades as a segmented control (one click replaces
   the grade), and the next review as "in 5 days" with the date in `--font-code`.

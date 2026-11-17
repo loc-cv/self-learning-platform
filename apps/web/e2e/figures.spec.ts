@@ -18,9 +18,9 @@ async function shootDebrief(page: Page, name: string): Promise<void> {
 }
 
 const LABS = [
-  { id: 'k8s.scheduling.pending-pods-01', seed: 3, variant: 'taint', ticket: 1, debrief: ['compare', 'diagram'] },
-  { id: 'k8s.scheduling.pending-pods-01', seed: 1, variant: 'selector', ticket: 1, debrief: ['compare', 'diagram'] },
-  { id: 'k8s.scheduling.pending-pods-01', seed: 4, variant: 'memory', ticket: 1, debrief: ['compare', 'diagram'] },
+  { id: 'k8s.scheduling.pending-pods-01', seed: 3, variant: 'taint', ticket: 1, debrief: ['compare', 'diagram', 'scene'] },
+  { id: 'k8s.scheduling.pending-pods-01', seed: 1, variant: 'selector', ticket: 1, debrief: ['compare', 'diagram', 'scene'] },
+  { id: 'k8s.scheduling.pending-pods-01', seed: 4, variant: 'memory', ticket: 1, debrief: ['compare', 'diagram', 'scene'] },
   { id: 'k8s.troubleshooting.broken-rollout-01', seed: 1, variant: 'name', ticket: 0, debrief: ['compare', 'scene'] },
   { id: 'k8s.workloads.deployment-service-01', seed: 1, variant: 'all', ticket: 1, debrief: ['view', 'view'] },
 ] as const;

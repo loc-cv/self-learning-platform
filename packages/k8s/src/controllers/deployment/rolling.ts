@@ -9,7 +9,7 @@ import { namespaceOf, nameOf, num, plainError, statusOf, type ApiError } from '.
 import type { SyncCtx } from '../types.ts';
 import { syncRolloutStatus } from './progress.ts';
 import { cleanupDeployment, getAllReplicaSetsAndSyncRevision, scaleReplicaSet } from './sync.ts';
-import { deploymentComplete, getAvailableReplicaCountForReplicaSets, getReplicaCountForReplicaSets, maxUnavailable, newRSNewReplicas, replicasOf, type Deployment } from './util.ts';
+import { deploymentComplete, getAvailableReplicaCountForReplicaSets, getReplicaCountForReplicaSets, maxSurge, maxUnavailable, newRSNewReplicas, replicasOf, type Deployment } from './util.ts';
 
 /** rolloutRolling: one step of a rolling update. */
 export function rolloutRolling(c: SyncCtx, d: Deployment, rsList: ApiObject[]): ApiError | undefined {
@@ -38,10 +38,41 @@ export function rolloutRolling(c: SyncCtx, d: Deployment, rsList: ApiObject[]): 
   if (deploymentComplete(d, d.status)) {
     const err = cleanupDeployment(c, oldRSs, d);
     if (err) return err;
-  }
+  } else traceWaiting(c, d, allRSs, oldRSs, newRS);
 
   // Sync deployment status
   return syncRolloutStatus(c, allRSs, newRS, d);
+}
+
+/**
+ * `deployment.rollout.waiting`: this step could neither grow the new ReplicaSet nor shrink an old
+ * one, so the rollout waits for Pods to become available. The numbers are the ones the two
+ * reconcile steps compare (maxTotalPods against the Pods there are, minAvailable against the
+ * available ones). Trace only.
+ */
+function traceWaiting(c: SyncCtx, d: Deployment, allRSs: ApiObject[], oldRSs: ApiObject[], newRS: ApiObject): void {
+  const replicas = replicasOf(d.obj);
+  const data = {
+    namespace: namespaceOf(d.obj),
+    name: nameOf(d.obj),
+    replicas,
+    maxSurge: maxSurge(d.obj),
+    maxUnavailable: maxUnavailable(d.obj),
+    maxTotalPods: replicas + maxSurge(d.obj),
+    currentPodCount: getReplicaCountForReplicaSets(allRSs),
+    minAvailable: replicas - maxUnavailable(d.obj),
+    availablePodCount: getAvailableReplicaCountForReplicaSets(allRSs),
+    newReplicaSet: nameOf(newRS),
+    newReplicas: replicasOf(newRS),
+    newAvailable: num(statusOf(newRS).availableReplicas),
+    oldReplicas: getReplicaCountForReplicaSets(oldRSs),
+  };
+  c.trace(
+    'deployment.rollout.waiting',
+    `Deployment ${data.namespace}/${data.name} waits: ${data.availablePodCount} available (at least ${data.minAvailable}), ${data.currentPodCount} Pods (at most ${data.maxTotalPods}), new ReplicaSet ${data.newAvailable}/${data.newReplicas} available`,
+    data,
+    `${data.namespace}/${data.name}`,
+  );
 }
 
 function reconcileNewReplicaSet(c: SyncCtx, allRSs: ApiObject[], newRS: ApiObject, d: Deployment): { scaled: boolean; error?: ApiError } {
@@ -51,12 +82,12 @@ function reconcileNewReplicaSet(c: SyncCtx, allRSs: ApiObject[], newRS: ApiObjec
   }
   if (replicasOf(newRS) > replicasOf(d.obj)) {
     // Scale down.
-    const r = scaleReplicaSet(c, newRS, replicasOf(d.obj), d, false);
+    const r = scaleReplicaSet(c, newRS, replicasOf(d.obj), d, false, { step: 'the new ReplicaSet has more than the replicas' });
     return { scaled: r.scaled, ...(r.error ? { error: r.error } : {}) };
   }
   const count = newRSNewReplicas(d.obj, allRSs, newRS);
   if ('error' in count) return { scaled: false, error: plainError(count.error) };
-  const r = scaleReplicaSet(c, newRS, count.value, d, false);
+  const r = scaleReplicaSet(c, newRS, count.value, d, false, { step: 'rolling update: scale up the new ReplicaSet', maxTotalPods: replicasOf(d.obj) + maxSurge(d.obj), currentPodCount: getReplicaCountForReplicaSets(allRSs) });
   return { scaled: r.scaled, ...(r.error ? { error: r.error } : {}) };
 }
 
@@ -114,7 +145,7 @@ function cleanupUnhealthyReplicas(c: SyncCtx, oldRSs: ApiObject[], d: Deployment
     if (newReplicasCount > replicasOf(target)) {
       return { oldRSs: [], count: 0, error: plainError(`when cleaning up unhealthy replicas, got invalid request to scale down ${namespaceOf(target)}/${nameOf(target)} ${replicasOf(target)} -> ${newReplicasCount}`) };
     }
-    const r = scaleReplicaSet(c, target, newReplicasCount, d, false);
+    const r = scaleReplicaSet(c, target, newReplicasCount, d, false, { step: 'rolling update: remove unhealthy old replicas', maxCleanupCount, available });
     if (r.error) return { oldRSs: [], count: total, error: r.error };
     total += scaledDownCount;
     oldRSs[i] = r.rs;
@@ -152,7 +183,7 @@ function scaleDownOldReplicaSetsForRollingUpdate(c: SyncCtx, allRSs: ApiObject[]
     if (newReplicasCount > replicasOf(target)) {
       return { count: 0, error: plainError(`when scaling down old RS, got invalid request to scale down ${namespaceOf(target)}/${nameOf(target)} ${replicasOf(target)} -> ${newReplicasCount}`) };
     }
-    const r = scaleReplicaSet(c, target, newReplicasCount, d, false);
+    const r = scaleReplicaSet(c, target, newReplicasCount, d, false, { step: 'rolling update: scale down an old ReplicaSet', minAvailable, availablePodCount });
     if (r.error) return { count: total, error: r.error };
     total += scaleDownCount;
   }

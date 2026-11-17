@@ -3,6 +3,7 @@
 // settings too (attempts.ts, docs/LEARNING_MODEL.md §10), so a private window or cleared site
 // data loses nothing that reached the server. Every access is guarded.
 
+import { isAssist, type Assist } from '@simlab/learn';
 import type { StoredAttempt } from '../protocol.ts';
 import type { Rect } from './floating.ts';
 
@@ -24,11 +25,16 @@ export interface Settings {
   motion: 'system' | 'reduced';
   /** The language of prose: English, Vietnamese, or both side by side. Terminal output is never translated. */
   lang: Lang;
+  /**
+   * How much the X-ray may help (docs/LEARNING_MODEL.md §13): the X-ray with "Why?" and the
+   * timeline, the X-ray alone, or nothing. Sent when an attempt starts; the item may lower it.
+   */
+  assist: Assist;
 }
 
 export type Lang = 'en' | 'vi' | 'both';
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, xrayMode: 'docked', motion: 'system', lang: 'en' };
+export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, xrayMode: 'docked', motion: 'system', lang: 'en', assist: 'full' };
 
 const SETTINGS = 'simlab.settings.v1';
 const ACTIVE = 'simlab.active.v1';
@@ -47,6 +53,13 @@ function browserStorage(): KeyValue | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Stored settings over the defaults; a value this version does not know is the default's. */
+export function withDefaults(s: unknown): Settings {
+  const out: Settings = { ...DEFAULT_SETTINGS, ...(typeof s === 'object' && s !== null ? (s as Partial<Settings>) : {}) };
+  if (!isAssist(out.assist)) out.assist = DEFAULT_SETTINGS.assist;
+  return out;
 }
 
 export function createStore(kv: KeyValue | undefined = browserStorage()) {
@@ -77,8 +90,7 @@ export function createStore(kv: KeyValue | undefined = browserStorage()) {
   };
   return {
     settings(): Settings {
-      const s = read(SETTINGS);
-      return { ...DEFAULT_SETTINGS, ...(typeof s === 'object' && s !== null ? (s as Partial<Settings>) : {}) };
+      return withDefaults(read(SETTINGS));
     },
     saveSettings: (s: Settings): boolean => write(SETTINGS, s),
     /** Whether this browser has settings of its own (otherwise the server's are taken). */

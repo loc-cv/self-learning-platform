@@ -2,9 +2,9 @@
 // terminal bytes both ways, control of the lab and of time, and the editor protocol. Every message
 // is plain data (structured clone).
 
-import type { Checkpoint, GapEvent, LoggedInput, Millis, SessionLog, ViewModel } from '@simlab/kernel';
+import type { Checkpoint, GapEvent, LoggedInput, Millis, SessionLog, ViewEvent, ViewModel, Why } from '@simlab/kernel';
 import type { EditorRequest } from '@simlab/host';
-import type { GradeReport, RenderedFigure } from '@simlab/learn';
+import type { Assist, GradeReport, RenderedFigure, Replay } from '@simlab/learn';
 
 /** What the page keeps in browser storage to resume an attempt by replay (§2.8). */
 export interface StoredAttempt {
@@ -22,7 +22,11 @@ export interface StoredAttempt {
   report?: GradeReport;
 }
 
-export type LabAction = 'check' | 'hint' | 'debrief' | 'solutions' | 'reset';
+/** `reference`: the first reference solution's run as a replay, for the debrief (after the debrief was opened). */
+export type LabAction = 'check' | 'hint' | 'debrief' | 'solutions' | 'reset' | 'reference';
+
+/** The speeds the time control offers (PLAN.md §10). */
+export const SPEEDS = [1, 2, 5, 10] as const;
 
 /**
  * A text of the content: English, and Vietnamese where the item's sidecar has a current
@@ -62,7 +66,8 @@ export interface CardInfo {
 }
 
 export type ToWorker =
-  | { type: 'start'; item: string; seed: number; startTime: Millis; resume?: StoredAttempt }
+  /** `assist`: the learner's global assist level; the item's own may be lower (docs/LEARNING_MODEL.md §13). Default full. */
+  | { type: 'start'; item: string; seed: number; startTime: Millis; resume?: StoredAttempt; assist?: Assist }
   | { type: 'tty.open'; req: number; cols: number; rows: number }
   | { type: 'tty.bytes'; tty: string; data: string }
   | { type: 'tty.resize'; tty: string; cols: number; rows: number }
@@ -72,15 +77,29 @@ export type ToWorker =
   /** `step` names a lesson's guided task for `check` and `hint`. */
   | { type: 'lab'; req: number; action: LabAction; step?: number }
   | { type: 'note'; note: Note }
-  /** Basic pause (phase 13 adds the speed control and skip to the UI). */
   | { type: 'pause'; paused: boolean }
   | { type: 'speed'; speed: number }
-  /** Moves virtual time: by `ms`, or to the next pending event when `ms` is absent. */
+  /**
+   * Moves virtual time: by `ms`, or, when `ms` is absent, to the next moment something shows: a
+   * terminal prints, or the trace records an event of level `key` ("skip to next event"). The
+   * answer is `skipped`.
+   */
   | { type: 'advance'; ms?: number }
   /** Asks for the stored attempt now (the page is being hidden). */
   | { type: 'flush' }
-  /** The X-ray opened or closed: while it is open the worker sends view models (`view`). */
+  /**
+   * The X-ray opened or closed: while it is open the worker sends view models (`view`) and, at
+   * assist level full, the trace as events (`events`). Ignored at assist level off.
+   */
   | { type: 'view'; open: boolean }
+  /** Why an entity is in its state (assist level full; recorded with the attempt). Answered by `why`. */
+  | { type: 'why'; req: number; entity: string }
+  /**
+   * The view of a past moment of this attempt, rebuilt by replaying its input log on a world of
+   * its own up to virtual time `t` (assist level full). Answered by `past`. Not time travel: the
+   * session's world stays where it is.
+   */
+  | { type: 'past'; req: number; t: Millis }
   /** Something the editor overlay does not simulate; the worker completes it into a gap record. */
   | { type: 'gap'; session: string; gap: { kind: 'command' | 'behavior'; program: string; what: string; commandLine: string } };
 
@@ -102,6 +121,8 @@ export interface LabInfo {
   card?: CardInfo;
   /** False for a card with no world: there is no terminal and nothing to resume. */
   world: boolean;
+  /** The assist level this attempt runs at: the lower of the item's and the learner's. */
+  assist: Assist;
   /** For gap records: the page does not load the engine packages. */
   engine: { version: string; kubernetes: string };
 }
@@ -156,7 +177,9 @@ export type LabResult =
    * Prose and figures, rendered when asked for: `now` is the world at that moment. With them what
    * the debrief sets side by side: the commands the learner's shells remember, and the solutions.
    */
-  | { action: 'debrief'; blocks: PBlock[]; history: string[]; solutions: SolutionText[] }
+  | { action: 'debrief'; blocks: PBlock[]; history: string[]; solutions: SolutionText[]; replay?: Replay }
+  /** The reference solution's run, drawn as the attempt's replay is; absent when the item has none. */
+  | { action: 'reference'; name?: Text; replay?: Replay }
   | { action: 'solutions'; solutions: SolutionText[] }
   | { action: 'reset' };
 
@@ -191,9 +214,29 @@ export type FromWorker =
   | { type: 'attempt.delta'; from: number; inputs: LoggedInput[]; checkpoints: Checkpoint[]; end: Millis }
   /** The world's view model: when the X-ray opens, then at most every VIEW_EVERY ms while it changes. */
   | { type: 'view'; model: ViewModel }
+  /**
+   * The trace as events, for the timeline (assist level full, X-ray open). `reset` replaces what
+   * the page has; otherwise the events are added, and one whose id the page has is replaced (a
+   * command that has now ended). `marks` is always the whole list.
+   */
+  | { type: 'events'; reset: boolean; events: ViewEvent[]; marks: TimelineMark[]; start: Millis }
+  | { type: 'why'; req: number; why?: Why }
+  | { type: 'past'; req: number; t: Millis; model: ViewModel }
+  /** A skip ended: whether it found something to show, and how much virtual time it crossed. */
+  | { type: 'skipped'; found: boolean; by: Millis }
   | { type: 'error'; message: string };
 
+/** Something the learner did outside the terminal, on the timeline: a check, a hint, the solution. */
+export interface TimelineMark {
+  t: Millis;
+  action: 'check' | 'hint' | 'solution' | 'debrief';
+  /** For a check: whether it passed. */
+  passed?: boolean;
+}
+
 export interface Clock {
+  /** Virtual time of the session world now. */
+  now: Millis;
   /** Virtual time the learner has spent on the item, over every attempt. */
   elapsed: Millis;
   paused: boolean;

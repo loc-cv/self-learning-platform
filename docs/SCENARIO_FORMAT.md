@@ -36,6 +36,7 @@ packages/content/<pack>/
 | `curriculum` | yes | list of competency ids | Ids from `docs/curriculum/competencies.yaml` |
 | `difficulty` | yes | 1–5 | 1 one step with guidance … 5 several interacting causes |
 | `targetMinutes` | yes | number | Time a fluent engineer needs; the rating compares against it |
+| `assist` | no | `full` \| `view` \| `off` | How much of the live view an attempt may use (`docs/LEARNING_MODEL.md` §13). Default `full`; the learner's global setting can lower it, never raise it |
 | `world` | yes | map | Topology, parameters, images, setup (§4, §5) |
 | `ticket` | yes | Markdown or blocks | The task or symptom, as a real ticket would state it; blocks may hold figures (§11) |
 | `hints` | yes | list | Ladder from nudge to exact command (§10) |
@@ -566,6 +567,37 @@ label, kind?, container?, state?, status?, facts? }` with a shape and a state fr
 `highlight` and notes' `on` name entities by `id`. A diagram is prose in another form: its words
 follow the grounding rule like any other text.
 
+### 11.2.1 Frames at a recorded cause
+
+A scene frame can be drawn at the moment the trace records an event, and quote it:
+
+```yaml
+frames:
+  - caption: Three nodes, and a Pod that asks for an SSD.
+  - steps:
+      - run: kubectl apply -f pod.yaml
+    at: { actor: kube-scheduler, about: "Pod/{{app}}", text: "*" }   # every part given must match
+    caption: "The scheduler looks at every node: {{@cause}}"
+```
+
+- `at` has `actor` (the component, as the event names it), `about` (an entity reference, §11.1),
+  `text` (the event's text) and `within` (how long to wait in virtual time, default `5m`). At
+  least one of the first three; `*` matches any run of characters and case is ignored.
+- After the frame's `steps`, time advances event by event until the first event recorded since
+  the previous frame matches; the frame shows the world at that instant. Steps that wait
+  (`until`, `advance`) belong in a later frame: an event that was recorded while the frame's own
+  steps were still running can no longer be drawn, and validation says so.
+- `{{@cause}}` in the frame's caption is the event's text. The `@` keeps it apart from
+  parameter names; it is valid only in the caption of a frame with `at`. The event's
+  per-candidate lines (each node's verdict) are shown under the caption.
+- Event texts are simulator vocabulary (`docs/ARCHITECTURE.md` §2.9), so a caption that quotes
+  one reads as the simulator's explanation, never as a tool's output.
+- A frame with `at` need not change the drawing: the event is what it shows.
+
+Every scene frame also carries the causes that travelled between two drawn entities since the
+frame before (a controller created an instance, the scheduler bound it). The renderer moves a
+mark along those pairs, and along nothing else (`PLAN.md` §6.5).
+
 ### 11.3 Worlds
 
 `start` and `solved` are built once per attempt on forks of the baseline, and a scene runs on a fork
@@ -587,7 +619,9 @@ learner deleted everything); it then draws an empty panel.
 
 ### 11.5 Where figures appear
 
-The lab panel draws figures in the ticket and the debrief; each can open larger in a dialog.
+The lab panel draws figures in the ticket and the debrief; each can open larger in a dialog. The
+debrief also holds the replay of the attempt (`docs/LEARNING_MODEL.md` §14), which no author
+writes: it is drawn from the input log, focused like the debrief's first figure of a world.
 `npm run lab` in a terminal prints `[Figure]`, the caption and the alt text in their place.
 Captions, alt texts, notes, frame captions and panel titles are text units (§13).
 

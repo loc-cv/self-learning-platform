@@ -6,7 +6,9 @@
 // A view model is plain data in a defined order (rule 4): the same world gives the same model,
 // whether it is the live world, a fork or a world rebuilt by replay.
 
+import type { Json } from './json.ts';
 import type { Contribution, Registry } from './registry.ts';
+import type { TraceRecord } from './trace.ts';
 import { compareCodeUnits } from './table.ts';
 import type { World } from './world.ts';
 
@@ -118,9 +120,80 @@ export interface ViewModel extends ViewPart {
   t: number;
 }
 
+/** How an event reads against the colors of states: it helped, it hurt, or it only happened. */
+export const VIEW_TONES = ['good', 'bad', 'neutral'] as const;
+export type ViewTone = (typeof VIEW_TONES)[number];
+
+/** One line under an event: a verdict per candidate, a member of a set. */
+export interface ViewEventItem {
+  /** The entity the line is about, when it is one of the model's. */
+  entity?: string;
+  label: string;
+  value: string;
+  tone: ViewTone;
+}
+
+/**
+ * A trace record as the views show it (PLAN.md §6.1 "Trace bus", §6.5): what a component did and
+ * why, tied to the entities of the view model. A provider maps the records of its own components;
+ * records it does not map stay out of every view. The text is simulator vocabulary, never a real
+ * tool's output, and is shown as such (docs/ARCHITECTURE.md §2.9).
+ */
+export interface ViewEvent {
+  /** The trace record's id: ordered, unique within a run. */
+  id: number;
+  t: number;
+  /** For something that takes time (a command that runs for a while): when it ended, once it has. */
+  until?: number;
+  /** The component that acted, in the domain's words. */
+  actor: string;
+  /** What it did and why, as a sentence. */
+  text: string;
+  /** Entity ids, the one it happened to first. An id may name an entity that no longer exists. */
+  about: string[];
+  /** `key`: changed what the learner can see, or decided something. `detail`: bookkeeping around it. */
+  level: 'key' | 'detail';
+  tone: ViewTone;
+  /**
+   * The cause travelled from one entity to another (a controller created an instance, a placer
+   * bound it). The renderer may move something along this pair, and along nothing else.
+   */
+  link?: { from: string; to: string };
+  /** A command someone typed in a terminal: the learner's in a session, a script's in a setup. */
+  input?: true;
+  items?: ViewEventItem[];
+  /**
+   * What it follows from. A provider gives trace record ids; `buildEvents` resolves them to the
+   * ids of the nearest events, through records that no event shows.
+   */
+  causes: number[];
+  /**
+   * The provider's own notes on the event, for its `why`: opaque to everything else, kept by
+   * whoever passes events on.
+   */
+  detail?: Json;
+}
+
+/** Why an entity is in the state it is in: a sentence, and the events that led there, oldest first. */
+export interface Why {
+  entity: string;
+  summary: string;
+  steps: ViewEvent[];
+}
+
 export interface ViewProviderSpec extends Contribution {
   /** Pure: reads the world, changes nothing, depends on nothing else. */
   view(world: World): ViewPart;
+  /**
+   * The provider's reading of the trace: the records of its components as events, in record
+   * order. Pure, and a function of the records alone, so the trace of a replay reads the same.
+   */
+  events?(records: readonly TraceRecord[]): ViewEvent[];
+  /**
+   * Why one of the provider's entities is in its state, from the world and the events (all
+   * providers', as `buildEvents` returns them). Undefined for an entity that is not its own.
+   */
+  why?(world: World, events: readonly ViewEvent[], entity: string): Why | undefined;
 }
 
 const byKey =
@@ -160,6 +233,63 @@ export function buildView(registry: Registry, world: World): ViewModel {
     entities: entities.sort(byKey((e) => e.id)),
     relations: rels.sort(byKey(relationKey)),
   };
+}
+
+/**
+ * Every provider's events, in record order, with `causes` resolved: each cause is followed through
+ * the records' own `causes` until it reaches a record that is an event, so a chain reads from event
+ * to event even where the steps between are not shown.
+ */
+export function buildEvents(registry: Registry, records: readonly TraceRecord[]): ViewEvent[] {
+  const events: ViewEvent[] = [];
+  for (const p of registry.list<ViewProviderSpec>(VIEW)) if (p.events) events.push(...p.events(records));
+  events.sort((a, b) => a.id - b.id);
+  const shown = new Set(events.map((e) => e.id));
+  const byId = new Map(records.map((r) => [r.id, r]));
+  const resolve = (id: number, seen: Set<number>, out: Set<number>): void => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    if (shown.has(id)) {
+      out.add(id);
+      return;
+    }
+    for (const c of byId.get(id)?.causes ?? []) resolve(c, seen, out);
+  };
+  return events.map((e) => {
+    const out = new Set<number>();
+    const seen = new Set<number>([e.id]);
+    for (const c of e.causes) resolve(c, seen, out);
+    return { ...e, causes: [...out].sort((a, b) => a - b) };
+  });
+}
+
+/** Why `entity` is in its state: the answer of the provider that owns it. */
+export function buildWhy(registry: Registry, world: World, events: readonly ViewEvent[], entity: string): Why | undefined {
+  for (const p of registry.list<ViewProviderSpec>(VIEW)) {
+    const w = p.why?.(world, events, entity);
+    if (w) return w;
+  }
+  return undefined;
+}
+
+/** Problems with events: unknown levels and tones, causes that do not precede, items without words. */
+export function validateEvents(events: readonly ViewEvent[]): string[] {
+  const problems: string[] = [];
+  const ids = new Set<number>();
+  let last = -Infinity;
+  for (const e of events) {
+    const at = `event ${e.id}`;
+    if (ids.has(e.id)) problems.push(`${at}: two events with this id`);
+    if (e.id < last) problems.push(`${at}: out of record order`);
+    last = e.id;
+    ids.add(e.id);
+    if (e.level !== 'key' && e.level !== 'detail') problems.push(`${at}: unknown level ${String(e.level)}`);
+    if (!(VIEW_TONES as readonly string[]).includes(e.tone)) problems.push(`${at}: unknown tone ${String(e.tone)}`);
+    if (e.actor === '' || e.text === '') problems.push(`${at}: an event names who acted and what happened`);
+    for (const c of e.causes) if (c >= e.id) problems.push(`${at}: cause ${c} does not precede it`);
+    for (const i of e.items ?? []) if (!(VIEW_TONES as readonly string[]).includes(i.tone) || i.label === '') problems.push(`${at}: a malformed item`);
+  }
+  return problems;
 }
 
 /** Problems with a view model: duplicate ids, unknown kinds, shapes, states or containers, cycles. */

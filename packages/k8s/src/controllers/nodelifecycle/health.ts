@@ -135,15 +135,15 @@ export function syncHealth(c: SyncCtx, name: string): SyncResult {
   if (!changed) return { done: true };
   const r = c.client.resource('v1/nodes').updateStatus(undefined, { ...node, status: { ...statusOf(node), conditions: conds } } as JsonObject);
   if (!r.ok) return { error: `cannot update node ${name}: ${r.code}` };
-  c.trace('nodelifecycle.unknown', `node ${name}: no Lease renewal or status since ${timeOf(p.at)}; conditions set to Unknown`, undefined, `node/${name}`);
+  const unknown = c.trace('nodelifecycle.unknown', `node ${name}: no Lease renewal or status since ${timeOf(p.at)}; conditions set to Unknown`, { node: name, lastSeen: p.at, grace: grace(node), wasReady }, `node/${name}`);
   if (wasReady) {
     c.event(r.object as ApiObject, 'Normal', 'NodeNotReady', `Node ${name} status is now: NodeNotReady`);
-    markPodsNotReady(c, name);
+    markPodsNotReady(c, name, unknown);
   }
   return { done: true };
 }
 
-function markPodsNotReady(c: SyncCtx, node: string): void {
+function markPodsNotReady(c: SyncCtx, node: string, cause: number): void {
   for (const pod of c.list('v1/pods')) {
     if (str(specOf(pod).nodeName) !== node) continue;
     const st = statusOf(pod);
@@ -153,7 +153,10 @@ function markPodsNotReady(c: SyncCtx, node: string): void {
     ready.status = 'False';
     ready.lastTransitionTime = timeOf(c.now);
     const r = c.client.resource('v1/pods').updateStatus(str(metaOf(pod).namespace), { ...pod, status: { ...st, conditions: conds } } as JsonObject);
-    if (r.ok) c.event(r.object as ApiObject, 'Warning', 'NodeNotReady', 'Node is not ready');
+    if (r.ok) {
+      c.trace('nodelifecycle.pod-not-ready', `Pod ${str(metaOf(pod).namespace)}/${str(metaOf(pod).name)} on node ${node}: Ready set to False`, { node, namespace: str(metaOf(pod).namespace), name: str(metaOf(pod).name), uid: str(metaOf(pod).uid) }, `${str(metaOf(pod).namespace)}/${str(metaOf(pod).name)}`, [cause]);
+      c.event(r.object as ApiObject, 'Warning', 'NodeNotReady', 'Node is not ready');
+    }
   }
 }
 

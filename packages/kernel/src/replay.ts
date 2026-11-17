@@ -125,3 +125,52 @@ export function replay(log: SessionLog, boot: (header: SessionHeader) => Kernel)
   if (!diverged) kernel.runUntil(log.end);
   return diverged ? { kernel, diverged } : { kernel };
 }
+
+export interface ReplayCursor {
+  readonly kernel: Kernel;
+  /** How many of the log's inputs have been delivered. */
+  readonly delivered: number;
+  /** The next input to deliver, if any. */
+  readonly pending: LoggedInput | undefined;
+  /** Runs to the next input's time and delivers it. False when none is left. */
+  deliverNext(): boolean;
+  /**
+   * Runs the log forward to `t`: every input stamped at or before `t` is delivered at its time,
+   * then the clock runs to `t` (never past the log's `end`, never backward).
+   */
+  seek(t: Millis): void;
+}
+
+/**
+ * Steps through a log on `kernel`, which must be the world the log started from. For reading a
+ * past moment of a session (the timeline, the debrief's replay): the kernel it runs on is a
+ * second world, never the session's. No checkpoint is verified here; `replay` does that.
+ */
+export function createReplayCursor(log: SessionLog, kernel: Kernel, from = 0): ReplayCursor {
+  // `from`: the kernel already holds the first `from` inputs (a cursor continued on a longer log).
+  let delivered = from;
+  const deliverNext = (): boolean => {
+    const logged = log.inputs[delivered];
+    if (logged === undefined) return false;
+    const { t, ...input } = logged;
+    kernel.runUntil(Math.max(t, kernel.now));
+    kernel.input(input as Input);
+    delivered++;
+    return true;
+  };
+  return {
+    kernel,
+    get delivered() {
+      return delivered;
+    },
+    get pending() {
+      return log.inputs[delivered];
+    },
+    deliverNext,
+    seek(t) {
+      const to = Math.min(t, log.end);
+      for (let next = log.inputs[delivered]; next !== undefined && next.t <= to; next = log.inputs[delivered]) deliverNext();
+      if (to > kernel.now) kernel.runUntil(to);
+    },
+  };
+}

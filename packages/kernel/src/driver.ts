@@ -14,8 +14,14 @@ export interface InteractiveDriver {
   tick(realElapsed: Millis): void;
   /** Ticks for the real time since the last tick, then delivers the input at the resulting time. */
   deliver(input: Input, realElapsed?: Millis): void;
-  /** Jumps to the next pending non-idle event, if any, and runs it. */
-  skipToNextEvent(): void;
+  /**
+   * Jumps to the next pending non-idle event, if any, and runs it. With `until`, keeps jumping
+   * from event to event until `until()` holds after one (something the learner can see happened)
+   * or the next event lies more than `limit` ms after the time the skip started; a skip that finds
+   * nothing within the limit stops at the last event it ran. Returns whether `until` held (true
+   * without `until` when an event ran).
+   */
+  skipToNextEvent(until?: () => boolean, limit?: Millis): boolean;
   setSpeed(speed: number): void;
   pause(): void;
   resume(): void;
@@ -53,10 +59,15 @@ export function createInteractiveDriver(recorder: SessionRecorder, options: { sp
       tick(realElapsed);
       recorder.deliver(input);
     },
-    skipToNextEvent() {
-      const next = kernel.nextEventTime();
-      if (next !== undefined) kernel.runUntil(next);
+    skipToNextEvent(until, limit = SKIP_LIMIT) {
       carry = 0;
+      const deadline = kernel.now + limit;
+      for (;;) {
+        const next = kernel.nextEventTime();
+        if (next === undefined || (until !== undefined && next > deadline)) return false;
+        kernel.runUntil(next);
+        if (until === undefined || until()) return true;
+      }
     },
     setSpeed(s) {
       speed = checkSpeed(s);
@@ -69,6 +80,9 @@ export function createInteractiveDriver(recorder: SessionRecorder, options: { sp
     },
   };
 }
+
+/** How far a skip looks for something to show before it gives up: one hour of virtual time. */
+export const SKIP_LIMIT: Millis = 3_600_000;
 
 function checkSpeed(s: number): number {
   if (!(s > 0) || !Number.isFinite(s)) throw new RangeError(`speed must be a positive finite number, got ${s}`);

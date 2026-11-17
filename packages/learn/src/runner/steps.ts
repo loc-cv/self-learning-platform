@@ -17,6 +17,8 @@ export interface StepEnv {
   hub: PortHub;
   /** What `until` checks compare against; during setup, the world as it is. */
   baseline?: World;
+  /** Called after each step that ran, with its place in the list and its kind: for a replay that draws the world step by step. */
+  onStep?: (index: number, step: Step, kind: string) => void;
 }
 
 export class StepFailure extends Error {
@@ -62,6 +64,7 @@ export function runSteps(kernel: Kernel, steps: readonly Step[], env: StepEnv, l
       }
       const gap = gaps[0];
       if (gap) throw new StepFailure(list, i, kind, notice(gap), true);
+      env.onStep?.(i, step, kind);
     });
   } finally {
     stop();

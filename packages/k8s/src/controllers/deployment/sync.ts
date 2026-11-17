@@ -7,7 +7,7 @@
 // second status write in the same sync carries the old resourceVersion and fails with a conflict;
 // the key is requeued and the next sync starts from the stored object. The same happens here.
 
-import type { JsonObject } from '../../apimachinery/json.ts';
+import type { Json, JsonObject } from '../../apimachinery/json.ts';
 import { cloneJson } from '../../apimachinery/json.ts';
 import type { ApiObject } from '../../apiserver/store.ts';
 import { computeHash } from '../hash/podtemplate.ts';
@@ -252,6 +252,7 @@ function getNewReplicaSet(c: SyncCtx, d: Deployment, rsList: ApiObject[], oldRSs
     return { error: createErr };
   }
   const created = createdRS as ApiObject;
+  if (!alreadyExists) traceScale(c, d, created, 0, count.value, { step: 'new ReplicaSet', revision: newRevision });
   if (!alreadyExists && count.value > 0) {
     c.event(d.obj, 'Normal', 'ScalingReplicaSet', `Scaled up replica set ${nameOf(created)} from 0 to ${count.value}`);
   }
@@ -279,12 +280,12 @@ function scale(c: SyncCtx, d: Deployment, newRS: ApiObject | undefined, oldRSs: 
   const activeOrLatest = findActiveOrLatest(newRS, oldRSs);
   if (activeOrLatest) {
     if (replicasOf(activeOrLatest) === replicasOf(d.obj)) return undefined;
-    return scaleReplicaSet(c, activeOrLatest, replicasOf(d.obj), d, false).error;
+    return scaleReplicaSet(c, activeOrLatest, replicasOf(d.obj), d, false, { step: 'the only active ReplicaSet takes the replicas' }).error;
   }
   // If the new replica set is saturated, old replica sets should be fully scaled down.
   if (isSaturated(d.obj, newRS)) {
     for (const old of filterActiveReplicaSets(oldRSs)) {
-      const r = scaleReplicaSet(c, old, 0, d, false);
+      const r = scaleReplicaSet(c, old, 0, d, false, { step: 'the new ReplicaSet is saturated' });
       if (r.error) return r.error;
     }
     return undefined;
@@ -318,11 +319,43 @@ function scale(c: SyncCtx, d: Deployment, newRS: ApiObject | undefined, oldRSs: 
         const size = (nameToSize.get(nameOf(rs)) ?? 0) + (toAdd - added);
         nameToSize.set(nameOf(rs), size < 0 ? 0 : size);
       }
-      const r = scaleReplicaSet(c, rs, nameToSize.get(nameOf(rs)) ?? 0, d, true);
+      const r = scaleReplicaSet(c, rs, nameToSize.get(nameOf(rs)) ?? 0, d, true, { step: 'proportional scaling', allowedSize, allRSsReplicas, toAdd });
       if (r.error) return r.error;
     }
   }
   return undefined;
+}
+
+/**
+ * Why the controller scales a ReplicaSet, for the trace: the step of the sync that decided it and
+ * the numbers that step computed (rolling.go's maxTotalPods, minAvailable, …), under their
+ * upstream names.
+ */
+export interface ScaleWhy {
+  step: string;
+  [k: string]: Json;
+}
+
+/** `deployment.scale`: a ReplicaSet of the Deployment scaled, with the rollout's arithmetic. */
+export function traceScale(c: SyncCtx, d: Deployment, rs: ApiObject, from: number, to: number, why: ScaleWhy): void {
+  c.trace(
+    'deployment.scale',
+    `Deployment ${namespaceOf(d.obj)}/${nameOf(d.obj)} (${why.step}): ReplicaSet ${nameOf(rs)} from ${from} to ${to}`,
+    {
+      namespace: namespaceOf(d.obj),
+      name: nameOf(d.obj),
+      uid: uidOf(d.obj),
+      replicaSet: nameOf(rs),
+      replicaSetUid: uidOf(rs),
+      from,
+      to,
+      replicas: replicasOf(d.obj),
+      maxSurge: maxSurge(d.obj),
+      maxUnavailable: maxUnavailable(d.obj),
+      ...why,
+    },
+    `${namespaceOf(d.obj)}/${nameOf(d.obj)}`,
+  );
 }
 
 export interface ScaleResult {
@@ -335,7 +368,7 @@ export interface ScaleResult {
  * scaleReplicaSet: sets spec.replicas and the desired-replicas and max-replicas annotations, and
  * records ScalingReplicaSet when the size changed.
  */
-export function scaleReplicaSet(c: SyncCtx, rs: ApiObject, newScale: number, d: Deployment, forceUpdate: boolean): ScaleResult {
+export function scaleReplicaSet(c: SyncCtx, rs: ApiObject, newScale: number, d: Deployment, forceUpdate: boolean, why: ScaleWhy = { step: 'scale' }): ScaleResult {
   // No need to scale
   if (!forceUpdate && replicasOf(rs) === newScale) return { scaled: false, rs };
   const sizeNeedsUpdate = replicasOf(rs) !== newScale;
@@ -353,6 +386,7 @@ export function scaleReplicaSet(c: SyncCtx, rs: ApiObject, newScale: number, d: 
   const updated = res.ok ? (res.object as ApiObject) : rsCopy;
   if (sizeNeedsUpdate) {
     const op = oldScale < newScale ? 'up' : 'down';
+    traceScale(c, d, updated, oldScale, newScale, why);
     c.event(d.obj, 'Normal', 'ScalingReplicaSet', `Scaled ${op} replica set ${nameOf(updated)} from ${oldScale} to ${newScale}`);
     return { scaled: true, rs: updated };
   }

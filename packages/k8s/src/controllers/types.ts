@@ -60,8 +60,10 @@ export interface SyncCtx extends Reader {
   event(object: ApiObject, type: EventType, reason: string, message: string): void;
   /** Adds a key of this controller's queue after a delay (workqueue AddAfter). */
   enqueueAfter(key: string, delay: Millis): void;
-  /** A trace record caused by this sync. */
-  trace(kind: string, message: string, data?: Json, subject?: string): number;
+  /** The id of this sync's `controller.sync` trace record: a cause for records emitted on its behalf. */
+  readonly syncId: number;
+  /** A trace record caused by this sync (and by `causes`, records of the same sync it follows from). */
+  trace(kind: string, message: string, data?: Json, subject?: string, causes?: readonly number[]): number;
   /** Bookkeeping that changes behavior and must survive fork and restore (rarely needed). */
   data(): Record<string, Json>;
   setData(key: string, value: Json | undefined): void;

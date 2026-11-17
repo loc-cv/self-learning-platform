@@ -89,8 +89,12 @@ export interface Kernel {
    * solution steps, fault injection, tests. `label` becomes `during` for its trace and events.
    */
   act<T>(label: string, fn: (ctx: Ctx) => T): T;
-  /** A kernel over a fork of this world (§2.7). It gets its own trace buffer and the given ports. */
-  fork(options?: KernelOptions): Kernel;
+  /**
+   * A kernel over a fork of this world (§2.7). It gets its own trace buffer and the given ports;
+   * with `keepTrace` the buffer starts as a copy of this kernel's and record ids continue, so the
+   * fork can still explain what happened before it (a session forked from a baseline, §2.9).
+   */
+  fork(options?: ForkOptions): Kernel;
   hash(): string;
   /** The trace buffer's retained records, oldest first. */
   traceRecords(): TraceRecord[];
@@ -100,6 +104,11 @@ export interface KernelOptions {
   ports?: Ports;
   /** Trace records kept in memory. Default 10 000. */
   traceCapacity?: number;
+}
+
+export interface ForkOptions extends KernelOptions {
+  /** Start with this kernel's retained trace records, and continue their ids. */
+  keepTrace?: boolean;
 }
 
 export interface BootOptions extends KernelOptions {
@@ -118,11 +127,12 @@ export function bootKernel(registry: Registry, options: BootOptions): Kernel {
   return createKernel(bootWorld(registry, options.seed, options.startTime), registry, options);
 }
 
-export function createKernel(world: World, registry: Registry, options: KernelOptions = {}): Kernel {
+export function createKernel(world: World, registry: Registry, options: KernelOptions = {}, inherited: readonly TraceRecord[] = []): Kernel {
   const ports = options.ports ?? {};
   const traceCapacity = options.traceCapacity ?? 10_000;
   const buffer = createTraceBuffer(traceCapacity);
-  let traceSeq = 0;
+  for (const r of inherited) buffer.push(r);
+  let traceSeq = inherited[inherited.length - 1]?.id ?? 0;
   let during = 'outside';
   // Livelock guard, runtime only.
   let instant = Number.NaN;
@@ -310,7 +320,8 @@ export function createKernel(world: World, registry: Registry, options: KernelOp
       return withDuring(label, () => fn(ctx));
     },
     fork(forkOptions) {
-      return createKernel(forkWorld(world), registry, { traceCapacity, ...forkOptions });
+      const { keepTrace, ...rest } = forkOptions ?? {};
+      return createKernel(forkWorld(world), registry, { traceCapacity, ...rest }, keepTrace ? buffer.records() : []);
     },
     hash: () => hashNode(world),
     traceRecords: () => buffer.records(),

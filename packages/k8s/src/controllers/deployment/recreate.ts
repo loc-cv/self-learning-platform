@@ -46,7 +46,7 @@ export function rolloutRecreate(c: SyncCtx, d: Deployment, rsList: ApiObject[], 
   }
 
   // scale up new replica set.
-  const up = scaleReplicaSet(c, newRS as ApiObject, replicasOf(d.obj), d, false);
+  const up = scaleReplicaSet(c, newRS as ApiObject, replicasOf(d.obj), d, false, { step: 'recreate: scale up the new ReplicaSet' });
   if (up.error) return up.error;
 
   if (deploymentComplete(d, d.status)) {
@@ -64,7 +64,7 @@ function scaleDownOldReplicaSetsForRecreate(c: SyncCtx, oldRSs: ApiObject[], d: 
     const rs = oldRSs[i] as ApiObject;
     // Scaling not required.
     if (replicasOf(rs) === 0) continue;
-    const r = scaleReplicaSet(c, rs, 0, d, false);
+    const r = scaleReplicaSet(c, rs, 0, d, false, { step: 'recreate: scale down the old ReplicaSets' });
     if (r.error) return { scaled: false, error: r.error };
     if (r.scaled) {
       oldRSs[i] = r.rs;

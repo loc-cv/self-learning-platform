@@ -7,7 +7,7 @@
 //
 // It names no domain: it reads shapes, states and relation types from the view contract.
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RelationType, ViewEntity, ViewModel, ViewRelation, ViewState } from '@simlab/kernel';
 import { CARD, emptyMemory, FACT_CHAR, FACT_LINE, factLayout, factWidth, fit, layout, type Box, type Layout, type Memory } from './layout.ts';
 import { visibility, type ScopeFilter } from './filter.ts';
@@ -59,6 +59,15 @@ export interface ViewCanvasProps {
    */
   still?: boolean;
   marks?: CanvasMarks;
+  /**
+   * Causes that travelled from one entity to another, from the trace (a frame's `links`, a
+   * selected event's): each is drawn as a mark along the relation that joins the two, or straight
+   * across when none does, and travels once along it when it appears, unless motion is reduced
+   * (PLAN.md §6.5: motion along a relation is a recorded cause, never decoration).
+   */
+  links?: readonly { from: string; to: string }[];
+  /** Changes when the links appear anew (the next frame), so they travel again. */
+  linksKey?: string | number;
 }
 
 const CHANGE_GLYPH: Record<ChangeMark, string> = { added: '+', removed: '−', changed: '•' };
@@ -194,6 +203,46 @@ function Facts({ b, x, y, container }: { b: Box; x: number; y: number; container
   );
 }
 
+/** The path a cause travels from `a` to `b`: from a container's header down to what it holds, else as a relation is drawn. */
+function causePath(a: Box, b: Box): string {
+  const inside = (x: Box, y: Box): boolean => x.x >= y.x && x.y >= y.y && x.x + x.w <= y.x + y.w && x.y + x.h <= y.y + y.h;
+  if (inside(b, a) || inside(a, b)) {
+    const [outer, inner] = inside(b, a) ? [a, b] : [b, a];
+    const from = { x: outer.x + outer.w / 2, y: outer.y + 14 };
+    const to = { x: inner.x + inner.w / 2, y: inner.y };
+    const [p, q] = outer === a ? [from, to] : [{ x: inner.x + inner.w / 2, y: inner.y }, { x: outer.x + outer.w / 2, y: outer.y + 14 }];
+    return `M ${p.x} ${p.y} L ${q.x} ${q.y}`;
+  }
+  return linkPath(a, b);
+}
+
+/**
+ * Causes along their pairs: a static mark with an arrow at the end, and a stroke that travels it
+ * once. Drawn with the relations, behind the cards, so a cause never hides what it reached.
+ */
+function Causes({ links, byId, arrow }: { links: readonly { from: string; to: string }[]; byId: Map<string, Box>; arrow: string }) {
+  const drawn = links.filter((l) => byId.has(l.from) && byId.has(l.to) && l.from !== l.to);
+  if (drawn.length === 0) return null;
+  return (
+    <g className="vlayer-causes" aria-hidden="true">
+      <defs>
+        <marker id={arrow} viewBox="0 0 8 8" refX={7} refY={4} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
+          <path className="vcause-arrow" d="M 0 0 L 8 4 L 0 8 Z" />
+        </marker>
+      </defs>
+      {drawn.map((l) => {
+        const d = causePath(byId.get(l.from) as Box, byId.get(l.to) as Box);
+        return (
+          <g key={`${l.from}>${l.to}`} className="vcause">
+            <path className="vcause-path" d={d} markerEnd={`url(#${arrow})`} />
+            <path className="vcause-comet" d={d} pathLength={1} />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 /** Outlines, note numbers and change glyphs, over everything, placed like the boxes they mark. */
 function Marks({ boxes, marks }: { boxes: readonly Box[]; marks: CanvasMarks }) {
   const hl = new Set(marks.highlight ?? []);
@@ -229,8 +278,13 @@ function Marks({ boxes, marks }: { boxes: readonly Box[]; marks: CanvasMarks }) 
   );
 }
 
-export function ViewCanvas(props: ViewCanvasProps) {
+/**
+ * The drawing. Memoized: the pages around it render on every message of the worker (the clock,
+ * the attempt's log), and a drawing whose props did not change has nothing to redraw.
+ */
+export const ViewCanvas = memo(function ViewCanvas(props: ViewCanvasProps) {
   const { model, filter, reducedMotion, still = false, marks } = props;
+  const arrowId = `vcause-${useId().replace(/[^\w-]/g, '')}`;
   const selected = still ? undefined : props.selected;
   const onSelect = (id: string | undefined): void => props.onSelect?.(id);
   const wrap = useRef<HTMLDivElement>(null);
@@ -546,6 +600,7 @@ export function ViewCanvas(props: ViewCanvasProps) {
             return <path key={relKey(r)} className={`vlink vlink-${type}${hot ? ' is-hot' : ''}${related && !hot ? ' is-dim' : ''}${a.leaving || b.leaving ? ' is-leaving' : ''}`} style={{ d: `path("${linkPath(a, b)}")` } as React.CSSProperties} />;
           })}
         </g>
+        {props.links && props.links.length > 0 ? <Causes links={props.links} byId={byId} arrow={arrowId} key={`${props.linksKey ?? ''}|${props.links.map((l) => `${l.from}>${l.to}`).join(',')}`} /> : null}
         <g className="vlayer-leaves">
           {leaves.map((b) => {
             const k = kinds.get(b.entity.kind);
@@ -586,4 +641,4 @@ export function ViewCanvas(props: ViewCanvasProps) {
       </svg>
     </div>
   );
-}
+});

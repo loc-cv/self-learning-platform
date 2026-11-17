@@ -22,6 +22,7 @@ import type { Status } from '../../apimachinery/errors.ts';
 import { errorMessage, type KubectlError } from '../cli/errors.ts';
 import { clientConfig, loadKubeconfig, type ClientConfig, type Overrides, type ParseYaml, type ReadFile } from './kubeconfig.ts';
 import { connect, type ServerUrl } from './transport.ts';
+import { writeData } from '../../client/writes.ts';
 
 export interface Session {
   p: ProcApi;
@@ -114,11 +115,34 @@ export function* openSession(p: ProcApi, config: ClientConfig): Op<Session | num
   return yield* fail(p, { type: 'url', op: 'Get', url, err: dial });
 }
 
-/** Sends a request; prints the response's warnings once each. */
+/** Sends a request; prints the response's warnings once each. A write leaves a trace record. */
 export function* request(s: Session, req: ApiRequest): Op<ApiResponse> {
   const r = handle(s.p.ctx, s.server, req);
+  if (MUTATING.has(req.verb)) traceWrite(s, req, r);
   yield* printWarnings(s, r.warnings);
   return r;
+}
+
+const MUTATING = new Set(['create', 'update', 'patch', 'delete', 'deletecollection']);
+
+/**
+ * `apiserver.write`: a request of the learner's (or a setup's) kubectl that changes the world, with
+ * the kubeconfig user it was sent as and the server's answer. Reads are not recorded. It is a root
+ * of the trace: the command line that ran kubectl is recorded by the shell.
+ */
+function traceWrite(s: Session, req: ApiRequest, r: ApiResponse): void {
+  const body = req.body as { metadata?: { name?: string; generateName?: string } } | undefined;
+  const name = req.name ?? (r.ok ? (r.object as { metadata?: { name?: string } }).metadata?.name : undefined) ?? body?.metadata?.name ?? body?.metadata?.generateName;
+  const data = writeData(req, r, name);
+  const dryRun = req.options?.dryRun;
+  const what = `${req.verb} ${req.group ? `${req.group}/` : ''}${req.resource}${req.subresource ? `/${req.subresource}` : ''} ${req.namespace ? `${req.namespace}/` : ''}${name ?? ''}`;
+  s.p.trace({
+    source: `k8s.kubectl/${s.p.machine}`,
+    kind: 'apiserver.write',
+    subject: what,
+    message: r.ok ? `${s.config.user || 'kubectl'}: ${what}` : `${s.config.user || 'kubectl'}: ${what}: ${r.code} ${String(data.message ?? '')}`,
+    data: { ...data, user: s.config.user, machine: s.p.machine, pid: s.p.pid, ...(dryRun !== undefined ? { dryRun } : {}) },
+  });
 }
 
 export function* printWarnings(s: Session, warnings: readonly string[]): Op<void> {

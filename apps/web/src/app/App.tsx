@@ -5,8 +5,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { ViewModel } from '@simlab/kernel';
-import { cardReview, finishAttempt, PROGRESS_VERSION, seedFor, type AttemptMode, type ProgressEvent, type Rating, type RatingReason } from '@simlab/learn';
-import type { Clock, LabAction, LabInfo, LabState, Note, OpenEditor, ResumeProblem, SolutionText, StoredAttempt } from '../protocol.ts';
+import { assistAllows, cardReview, finishAttempt, PROGRESS_VERSION, seedFor, type AttemptMode, type ProgressEvent, type Rating, type RatingReason } from '@simlab/learn';
+import { SPEEDS, type Clock, type LabAction, type LabInfo, type LabState, type Note, type OpenEditor, type ResumeProblem, type SolutionText, type StoredAttempt } from '../protocol.ts';
 import { CATALOG, itemById, ITEMS_BY_ID, type Practiced } from '../content.ts';
 import { Browser } from './Browser.tsx';
 import { CardPage, CardPanel } from './CardView.tsx';
@@ -19,12 +19,13 @@ import { browserIo, createProgressStore } from './progress.ts';
 import { createEngineClient, type EngineClient } from './engine.ts';
 import { EditorOverlay, type SaveResult } from './EditorOverlay.tsx';
 import { createGapSink, type GapEntry, type SinkState } from './gaps.ts';
-import { LAB_TABS, LabPanel, TAB_OF_ACTION, type DebriefData, type LabTab } from './LabPanel.tsx';
+import { LAB_TABS, LabPanel, TAB_OF_ACTION, type DebriefData, type LabTab, type ReferenceRun } from './LabPanel.tsx';
 import { isBrowserChord, matchShortcut, neighbourTab } from './shortcuts.ts';
 import { isFullscreen, toggleFullscreen, watchFullscreen } from './fullscreen.ts';
-import { createStore, type KeyValue, type Settings } from './storage.ts';
+import { createStore, withDefaults, type KeyValue, type Settings } from './storage.ts';
+import { createLatest, mergeEvents, nextSpeed, type TraceState } from './timeline.ts';
 import { TerminalView, type Tab, type TerminalHandle } from './Terminal.tsx';
-import { TopBar, type Popover } from './TopBar.tsx';
+import { TopBar, type Popover, type SkipNote } from './TopBar.tsx';
 import { Button, Icon } from './ui.tsx';
 import { installProbe } from './probe.ts';
 import { attemptApi, createAttemptKeeper, longerAttempt } from './attempts.ts';
@@ -141,6 +142,16 @@ export function App() {
   /** The X-ray is open, and the last view model the worker sent. */
   const [xray, setXray] = useState(false);
   const [viewModel, setViewModel] = useState<ViewModel>();
+  /** The trace for the timeline (assist level full, X-ray open), as the worker sends it. */
+  const [trace, setTrace] = useState<TraceState>();
+  /** The past moment the X-ray reads (undefined: now), and its view once the worker rebuilt it. */
+  const [pastAt, setPastAt] = useState<number>();
+  const [past, setPast] = useState<{ t: number; model: ViewModel }>();
+  const pastRequests = useMemo(() => createLatest((t: number) => client.past(t), (r) => setPast(r)), [client]);
+  /** What the last skip to the next event did, for a few seconds. */
+  const [skipNote, setSkipNote] = useState<SkipNote>();
+  /** The reference solution's run beside the attempt's replay in the debrief. */
+  const [reference, setReference] = useState<ReferenceRun>();
   const systemReduced = usePrefersReducedMotion();
   const reducedMotion = settings.motion === 'reduced' || systemReduced;
   const handles = useRef(new Map<number, TerminalHandle>());
@@ -158,6 +169,14 @@ export function App() {
       ),
     [],
   );
+
+  /** The X-ray's view of the trace and of past moments, gone: it closed, or a new world began. */
+  const clearTrace = useCallback(() => {
+    pastRequests.cancel();
+    setTrace(undefined);
+    setPastAt(undefined);
+    setPast(undefined);
+  }, [pastRequests]);
 
   const keeper = useMemo(() => createAttemptKeeper((a) => store.saveAttempt(a), { askForFull: () => client.send({ type: 'flush' }), onSaved: (ok) => setStorageWarning(!ok), send: attempts.send }), [store, client, attempts]);
 
@@ -261,6 +280,9 @@ export function App() {
       // Every attempt starts with the X-ray closed: it is help, opened on purpose.
       setXray(false);
       setViewModel(undefined);
+      clearTrace();
+      setReference(undefined);
+      setSkipNote(undefined);
 
       // What there is to resume: the log's open attempt of this item, from this browser's copy or
       // the server's, whichever holds more; or the attempt that just finished, to read its debrief
@@ -295,9 +317,10 @@ export function App() {
       setAttempt(info);
       keeper.begin(item.kind === 'card' ? undefined : info.id);
       // An interactive session starts at the real current time (docs/SCENARIO_FORMAT.md §5.2).
-      client.send({ type: 'start', item: item.id, seed: info.seed, startTime: Math.floor(Date.now() / 1000) * 1000, ...(stored ? { resume: stored } : {}) });
+      // The learner's assist level; the worker lowers it to the item's and fixes it for the attempt.
+      client.send({ type: 'start', item: item.id, seed: info.seed, startTime: Math.floor(Date.now() / 1000) * 1000, assist: settingsRef.current.assist, ...(stored ? { resume: stored } : {}) });
     },
-    [client, store, keeper, progress, attempts, leaveItem, setAttempt, setLabState, setClock],
+    [client, store, keeper, progress, attempts, leaveItem, setAttempt, setLabState, setClock, clearTrace],
   );
   const startNow = useCallback((item: Practiced, opts: StartOptions) => void start(item, opts), [start]);
 
@@ -313,9 +336,10 @@ export function App() {
     setEditors({});
     setXray(false);
     setViewModel(undefined);
+    clearTrace();
     setNow(Date.now());
     setPhase({ kind: 'home' });
-  }, [leaveItem, client, setLabState, setClock]);
+  }, [leaveItem, client, setLabState, setClock, clearTrace]);
 
   /** The session's next entry, or home when today's queue is empty. */
   const openNext = useCallback(
@@ -424,6 +448,12 @@ export function App() {
           case 'view':
             setViewModel(m.model);
             return;
+          case 'events':
+            setTrace((prev) => ({ events: mergeEvents(prev?.events ?? [], m.events, m.reset || prev === undefined), marks: m.marks, start: m.start }));
+            return;
+          case 'skipped':
+            setSkipNote({ found: m.found, by: m.by, n: Date.now() });
+            return;
           case 'attempt':
             if (current.current.lab?.kind !== 'card') keeper.full(m.attempt);
             return;
@@ -478,7 +508,7 @@ export function App() {
       void fetch('/api/settings')
         .then((r) => (r.ok ? (r.json() as Promise<Partial<Settings>>) : undefined))
         .then((remote) => {
-          if (remote && typeof remote === 'object' && Object.keys(remote).length > 0 && !store.hasSettings()) setSettingsState((cur) => ({ ...cur, ...remote }));
+          if (remote && typeof remote === 'object' && Object.keys(remote).length > 0 && !store.hasSettings()) setSettingsState((cur) => withDefaults({ ...cur, ...remote }));
         })
         .catch(() => undefined);
     return () => {
@@ -543,7 +573,8 @@ export function App() {
         if (done) finish('passed', at.elapsed);
       }
       if (result.action === 'hint' && !result.hint) setNote(info?.steps ? 'No more hints for this task.' : `No more hints: all ${state.hints.length} are shown. Solutions shows the reference solutions.`);
-      if (result.action === 'debrief') setDebrief({ blocks: result.blocks, history: result.history, solutions: result.solutions });
+      if (result.action === 'debrief') setDebrief({ blocks: result.blocks, history: result.history, solutions: result.solutions, ...(result.replay ? { replay: result.replay } : {}) });
+      if (result.action === 'reference') setReference({ ...(result.name ? { name: result.name } : {}), ...(result.replay ? { replay: result.replay } : {}) });
       if (result.action === 'solutions') setSolutions(result.solutions);
       if (result.action === 'reset') {
         for (const t of current.current.tabs) if (t.tty) client.forget(t.tty);
@@ -551,13 +582,17 @@ export function App() {
         setTabs([fresh]);
         setActiveTab(fresh.key);
         setEditors({});
+        // The worker sends the new world's trace; a past moment of the old one is gone.
+        pastRequests.cancel();
+        setPastAt(undefined);
+        setPast(undefined);
         setNote('The world is back where it started.');
       }
       // Back to the terminal, unless the action was run from the lab panel with the keyboard.
       if (!document.activeElement?.closest('.lab-panel')) focusTerminal();
       return { result, state, clock: at };
     },
-    [client, focusTerminal, setSettings, progress, record, finish, setLabState, setClock],
+    [client, focusTerminal, setSettings, progress, record, finish, setLabState, setClock, pastRequests],
   );
 
   /** The guided task of the lesson page that is open, if it has one that is not done. */
@@ -706,18 +741,59 @@ export function App() {
     focusTerminal();
   }, [client, clock, focusTerminal]);
 
+  const setSpeed = useCallback(
+    (speed: number) => {
+      client.send({ type: 'speed', speed });
+      focusTerminal();
+    },
+    [client, focusTerminal],
+  );
+  const cycleSpeed = useCallback(() => {
+    const c = clockRef.current;
+    if (c) client.send({ type: 'speed', speed: nextSpeed(c.speed, SPEEDS) });
+  }, [client]);
+  /** To the next moment something shows; the worker answers `skipped`. */
+  const skip = useCallback(() => {
+    client.send({ type: 'advance' });
+    focusTerminal();
+  }, [client, focusTerminal]);
+  // A skip's note goes after a few seconds; the next skip replaces it.
+  useEffect(() => {
+    if (!skipNote) return;
+    const timer = setTimeout(() => setSkipNote(undefined), 5000);
+    return () => clearTimeout(timer);
+  }, [skipNote]);
+
+  /** The X-ray reads a past moment (undefined: now): one request in flight, the newest wins. */
+  const scrub = useCallback(
+    (t: number | undefined) => {
+      setPastAt(t);
+      if (t === undefined) {
+        pastRequests.cancel();
+        setPast(undefined);
+      } else pastRequests.push(t);
+    },
+    [pastRequests],
+  );
+  const askWhy = useCallback((entity: string) => client.why(entity), [client]);
+
   const xrayOpen = useRef(false);
   xrayOpen.current = xray;
   const toggleXray = useCallback(() => {
     if (current.current.lab === undefined || current.current.lab.world === false) return;
+    // At assist level off there is no X-ray (the worker would ignore it too).
+    if (!assistAllows(current.current.lab.assist, 'view')) return;
     const open = !xrayOpen.current;
     client.send({ type: 'view', open });
     const a = attemptRef.current;
     if (a && !a.outcome && progress.state().open[a.id]) record([{ v: PROGRESS_VERSION, type: 'attempt.xray', at: Date.now(), attempt: a.id, open }]);
     setXray(open);
-    if (!open) setViewModel(undefined);
+    if (!open) {
+      setViewModel(undefined);
+      clearTrace();
+    }
     focusTerminal();
-  }, [client, focusTerminal, progress, record]);
+  }, [client, focusTerminal, progress, record, clearTrace]);
 
   const togglePanel = useCallback(() => {
     setSettings({ ...settings, panelOpen: !settings.panelOpen });
@@ -799,6 +875,8 @@ export function App() {
         // The floating X-ray's move handle takes the keyboard; docked or closed there is none.
         else if (m.id === 'grabXray') document.querySelector<HTMLElement>('.xray-grip')?.focus();
         else if (m.id === 'pause' && ready) togglePause();
+        else if (m.id === 'speed' && ready) cycleSpeed();
+        else if (m.id === 'skip' && ready) skip();
         else if (m.id === 'labs') setPicker((v) => !v);
         else if (m.id === 'help') setPopover((v) => (v === 'help' ? undefined : 'help'));
         return;
@@ -819,7 +897,7 @@ export function App() {
     };
     window.addEventListener('keydown', down, true);
     return () => window.removeEventListener('keydown', down, true);
-  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, stepLabTab, toggleXray, togglePause, focusTerminal, goHome, sessionNext, setLessonPage]);
+  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, stepLabTab, toggleXray, togglePause, cycleSpeed, skip, focusTerminal, goHome, sessionNext, setLessonPage]);
 
   // In full screen or an installed app window the browser hands over Ctrl+W, Ctrl+T and Ctrl+N.
   // The terminal and vim's insert mode use them; where nothing does (vim's normal mode, no
@@ -912,7 +990,9 @@ export function App() {
 
   const lang = settings.lang;
   const worldless = phase.kind === 'ready' && lab?.world === false;
-  const xrayDocked = phase.kind === 'ready' && xray && settings.xrayMode === 'docked';
+  /** The attempt may show the world beyond the terminal and the ticket (assist level view or full). */
+  const xrayAllowed = phase.kind === 'ready' && lab !== undefined && !(lab.world === false) && assistAllows(lab.assist, 'view');
+  const xrayDocked = xrayAllowed && xray && settings.xrayMode === 'docked';
   const panelShown = phase.kind === 'ready' && settings.panelOpen && !worldless;
   const editorFor = (t: Tab): OpenEditor | undefined => Object.values(editors).find((e) => e.tty !== undefined && e.tty === t.tty);
 
@@ -975,8 +1055,12 @@ export function App() {
         settings={settings}
         panelOpen={settings.panelOpen}
         inWorkspace={phase.kind === 'ready' && !worldless}
-        {...(phase.kind === 'ready' && !worldless ? { xrayOpen: xray } : {})}
+        {...(xrayAllowed ? { xrayOpen: xray } : {})}
         toggleXray={toggleXray}
+        setSpeed={setSpeed}
+        skip={skip}
+        {...(skipNote ? { skipNote } : {})}
+        {...(lab && phase.kind === 'ready' && !worldless ? { attemptAssist: lab.assist } : {})}
         popover={popover}
         setPopover={setPopover}
         setSettings={setSettings}
@@ -1043,6 +1127,7 @@ export function App() {
                 lang={lang}
                 reducedMotion={reducedMotion}
                 {...(debrief ? { debrief } : {})}
+                {...(reference ? { reference } : {})}
                 {...(solutions ? { solutions } : {})}
                 {...(busy ? { busy } : {})}
                 {...(note ? { note } : {})}
@@ -1117,7 +1202,15 @@ export function App() {
                           else handles.current.delete(key);
                         }}
                       />
-                      {t.ended ? <div className="ended-note">The shell has exited. Press Enter for a new login shell, or close the tab.</div> : null}
+                      {t.ended ? <div className="ended-note">The shell has exited. Press Enter for a new login shell, or close the tab.</div> : clock?.paused && t.key === activeTab && !ed ? (
+                        <div className="paused-note" role="status">
+                          <Icon name="pause" size={14} />
+                          <span>Time is paused: the world stands still, and a command that needs time waits for it.</span>
+                          <Button variant="ghost" small shortcut="Ctrl+Shift+Space" title="Resume time" onClick={togglePause}>
+                            Resume
+                          </Button>
+                        </div>
+                      ) : null}
                       {ed && t.key === activeTab ? (
                         <EditorOverlay
                           key={ed.session}
@@ -1179,10 +1272,26 @@ export function App() {
           ) : null}
         </section>
         )}
-        {phase.kind === 'ready' && xray ? (
+        {xrayAllowed && xray && lab ? (
           <>
             {xrayDocked ? <div className="splitter splitter-xray" role="separator" aria-orientation="vertical" aria-label="Resize the X-ray" tabIndex={0} onPointerDown={startXrayDrag} onKeyDown={nudgeXray} /> : null}
-            <XRay {...(viewModel ? { model: viewModel } : {})} reducedMotion={reducedMotion} mode={settings.xrayMode} setMode={setXrayMode} {...(settings.xrayFloat ? { rect: settings.xrayFloat } : {})} setRect={setXrayFloat} close={toggleXray} done={focusTerminalNow} />
+            <XRay
+              {...(viewModel ? { model: viewModel } : {})}
+              reducedMotion={reducedMotion}
+              mode={settings.xrayMode}
+              setMode={setXrayMode}
+              {...(settings.xrayFloat ? { rect: settings.xrayFloat } : {})}
+              setRect={setXrayFloat}
+              close={toggleXray}
+              done={focusTerminalNow}
+              assist={lab.assist}
+              trace={trace}
+              now={clock?.now}
+              at={pastAt}
+              past={past}
+              scrub={scrub}
+              why={askWhy}
+            />
           </>
         ) : null}
         {picker ? (

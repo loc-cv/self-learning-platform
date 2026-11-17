@@ -447,6 +447,28 @@
                   "steps": {
                     "$ref": "#/$defs/steps"
                   },
+                  "at": {
+                    "description": "Draw the frame at the moment the trace records the first event since the previous frame that matches every part given (`*` matches any run of characters). After `steps`, time advances event by event until it does. The caption may quote the event's text as {{@cause}}.",
+                    "type": "object",
+                    "properties": {
+                      "actor": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "about": {
+                        "$ref": "#/$defs/entityRef"
+                      },
+                      "text": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "within": {
+                        "$ref": "#/$defs/duration"
+                      }
+                    },
+                    "minProperties": 1,
+                    "additionalProperties": false
+                  },
                   "caption": {
                     "type": "string",
                     "minLength": 1
@@ -2115,6 +2137,14 @@
         "targetMinutes": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "assist": {
+          "description": "How much of the live view of the world an attempt may use: `full` (the X-ray with its \"why\" inspector and timeline), `view` (the X-ray without explanations) or `off`. The learner's global setting can lower it, never raise it. Default full.",
+          "enum": [
+            "off",
+            "view",
+            "full"
+          ]
         }
       }
     },
@@ -2145,6 +2175,9 @@
         },
         "targetMinutes": {
           "$ref": "#/$defs/header/properties/targetMinutes"
+        },
+        "assist": {
+          "$ref": "#/$defs/header/properties/assist"
         },
         "world": {
           "$ref": "#/$defs/world"
@@ -2390,6 +2423,9 @@
         "targetMinutes": {
           "$ref": "#/$defs/header/properties/targetMinutes"
         },
+        "assist": {
+          "$ref": "#/$defs/header/properties/assist"
+        },
         "kind": {
           "const": "lesson"
         },
@@ -2437,6 +2473,9 @@
         },
         "targetMinutes": {
           "$ref": "#/$defs/header/properties/targetMinutes"
+        },
+        "assist": {
+          "$ref": "#/$defs/header/properties/assist"
         },
         "kind": {
           "const": "card"

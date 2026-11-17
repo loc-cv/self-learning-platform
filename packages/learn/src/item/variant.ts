@@ -45,7 +45,14 @@ export function substituteString(text: string, params: Params, where = ''): Json
   });
 }
 
+/**
+ * Not a parameter: a scene frame's caption quotes the trace event it is anchored to with it
+ * (docs/SCENARIO_FORMAT.md §11.6). It passes through substitution untouched.
+ */
+export const RESERVED_PLACEHOLDER = '@cause';
+
 function lookup(name: string, params: Params, where: string): Json {
+  if (name === RESERVED_PLACEHOLDER && !Object.hasOwn(params, name)) return `{{${name}}}`;
   if (!Object.hasOwn(params, name)) throw new PlaceholderError(`${where ? `${where}: ` : ''}{{${name}}} names no parameter`);
   return params[name] as Json;
 }

@@ -222,6 +222,24 @@ describe('inputs, trace and gaps', () => {
     expect(k.traceRecords().map((r) => r.message)).toEqual(['2', '3', '4']);
   });
 
+  test('a fork starts with an empty trace, or with its parent\'s when asked to keep it', () => {
+    const k = boot();
+    k.act('t', (ctx) => {
+      ctx.trace({ source: 's', kind: 'k', message: 'one' });
+      ctx.trace({ source: 's', kind: 'k', message: 'two' });
+    });
+    expect(k.fork().traceRecords()).toEqual([]);
+    const port: TraceRecord[] = [];
+    const f = k.fork({ keepTrace: true, ports: { trace: (r) => port.push(r) } });
+    expect(f.traceRecords()).toEqual(k.traceRecords());
+    const id = f.act('t', (ctx) => ctx.trace({ source: 's', kind: 'k', message: 'three', causes: [2] }));
+    // Ids continue, so a cause can name a record from before the fork; the port hears only new ones.
+    expect(id).toBe(3);
+    expect(f.traceRecords().map((r) => r.message)).toEqual(['one', 'two', 'three']);
+    expect(port.map((r) => r.message)).toEqual(['three']);
+    expect(k.traceRecords().map((r) => r.message)).toEqual(['one', 'two']);
+  });
+
   test('gap records are completed with seed, machine and virtual time', () => {
     const gaps: GapEvent[] = [];
     const k = boot([], { ports: { gap: (g) => gaps.push(g) }, seed: 9 });

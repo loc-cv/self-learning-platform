@@ -110,6 +110,12 @@ export interface SessionOptions {
 }
 
 /** Opens a terminal with a login shell on `machine` and waits for its first prompt. */
+/**
+ * What a plain session types first, as the transcript capture does. It is the harness's line, not
+ * a person's or a scenario author's, so the views leave it out (view/events.ts).
+ */
+export const SESSION_SETUP_LINE = 'PS1=; PS2=';
+
 export function openSession(kernel: Kernel, capture: OutputCapture, opts: SessionOptions): Session {
   const term = kernel.act('session.open', (ctx) =>
     openTerminal(ctx, {
@@ -156,7 +162,7 @@ export function openSession(kernel: Kernel, capture: OutputCapture, opts: Sessio
   if (!opts.terminal) {
     // The transcript capture's setup line (tools/src/transcript/pty_capture.py), less what the
     // terminal settings above already did.
-    kernel.input({ kind: 'tty.bytes', tty: term.tty, data: 'PS1=; PS2=\n' });
+    kernel.input({ kind: 'tty.bytes', tty: term.tty, data: `${SESSION_SETUP_LINE}\n` });
     settle(HOUR);
     capture.take(term.tty);
   }

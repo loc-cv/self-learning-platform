@@ -52,6 +52,7 @@ import { containerProcess } from './env.ts';
 import { draw, jitter, transferTime } from './latency.ts';
 import { generatePodStatus, instances, isHostNetwork, sandboxChange, shouldContainerBeRestarted, specContainers, statusEqual, terminatedStatus, type PodRuntimeView } from './status.ts';
 import type { KubeletData, PodOp, PodWorker, PullRequest, PullResult, SyncPodRun } from './types.ts';
+import { describeTransitions, podData, statusTransitions } from './trace.ts';
 
 export const PULL_KEY = '@puller';
 
@@ -88,7 +89,7 @@ const podDesc = (pod: ApiObject): string => `${str(meta(pod).name)}_${str(meta(p
 
 function recorder(c: SyncCtx): RecorderRef {
   const d = kdata(c);
-  return { recorder: `${d.node}/kubelet`, component: 'kubelet', host: d.node, client: c.client };
+  return { recorder: `${d.node}/kubelet`, component: 'kubelet', host: d.node, client: c.client, cause: c.syncId };
 }
 
 /** kubecontainer.GenerateContainerRef: the Pod with the container's field path. */
@@ -114,7 +115,12 @@ function view(c: SyncCtx, uid: string): PodRuntimeView {
 function writeStatus(c: SyncCtx, pod: ApiObject, status: JsonObject): ApiObject {
   if (statusEqual(obj(pod.status as Json), status)) return pod;
   const r = c.client.resource('v1/pods').updateStatus(str(meta(pod).namespace), { ...pod, status } as JsonObject);
-  return r.ok ? (r.object as ApiObject) : pod;
+  if (!r.ok) return pod;
+  const stored = r.object as ApiObject;
+  // `kubelet.status`: what the write made visible (phase, Ready, IP, container states).
+  const t = statusTransitions(obj(pod.status as Json), obj(stored.status as Json));
+  if (t) c.trace('kubelet.status', `${podDesc(pod)}: ${describeTransitions(t)}`, { ...podData(pod, kdata(c).node), ...t }, podDesc(pod));
+  return stored;
 }
 
 function status(c: SyncCtx, pod: ApiObject, podIsTerminal = false): JsonObject {
@@ -158,7 +164,7 @@ export function syncPodKey(c: SyncCtx, key: string): SyncResult {
   if (specContainers(pod).length === 0) return { done: true };
   if (Array.isArray(obj(pod.spec as Json).initContainers) && (obj(pod.spec as Json).initContainers as Json[]).length > 0) {
     c.ctx.gap({ kind: 'behavior', program: 'kubelet', what: 'init containers', commandLine: '', machine: kdata(c).node });
-    c.trace('kubelet.gap', `${podDesc(pod)} has init containers, which the simulated kubelet does not run yet; it stays Pending`, undefined, key);
+    c.trace('kubelet.gap', `${podDesc(pod)} has init containers, which the simulated kubelet does not run yet; it stays Pending`, { ...podData(pod, kdata(c).node), what: 'init containers' }, key);
     return { done: true };
   }
   if (meta(pod).deletionTimestamp) return terminate(c, w, pod);
@@ -191,7 +197,7 @@ function resume(c: SyncCtx, w: PodWorker, pod: ApiObject | undefined, op: PodOp)
       if (!pod) return removed(c, w);
       const spec = obj(pod.spec as Json);
       const hostname = isHostNetwork(pod) ? d.node : str(spec.hostname) || str(meta(pod).name);
-      runPodSandbox(c.ctx, d.node, { podUID: w.uid, namespace: w.namespace, name: w.name, hostNetwork: isHostNetwork(pod), nodeIP: d.nodeIP, podCIDR: d.podCIDR, hostname });
+      runPodSandbox(c.ctx, d.node, { podUID: w.uid, namespace: w.namespace, name: w.name, hostNetwork: isHostNetwork(pod), nodeIP: d.nodeIP, podCIDR: d.podCIDR, hostname }, c.syncId);
       return continueSync(c, w, pod, op.run);
     }
     case 'pull':
@@ -217,7 +223,7 @@ function resume(c: SyncCtx, w: PodWorker, pod: ApiObject | undefined, op: PodOp)
         imageDigest: op.imageDigest,
         hash: specHash(spec),
         logPath: containerLogPath(w.namespace, w.name, w.uid, op.container, attempt),
-      });
+      }, c.syncId);
       containerEvent(c, pod, op.container, 'Normal', 'Created', 'Container created');
       setWorker(c, { ...w, op: { kind: 'start', container: op.container, until: c.now + draw(c.ctx, 'containerStart'), run: op.run, containerId: created.id } }, w.uid);
       return { requeueAfter: (kdata(c).pods[w.uid]?.op as { until: Millis }).until - c.now };
@@ -231,7 +237,7 @@ function resume(c: SyncCtx, w: PodWorker, pod: ApiObject | undefined, op: PodOp)
       if (op.then === 'restart' && pod) return continueSync(c, w, pod, op.run ?? newRun());
       return stopSandboxes(c, w, op.then === 'remove' || !pod ? 'remove' : 'terminate');
     case 'stopSandbox': {
-      for (const sb of sandboxesOf(c.ctx, d.node, w.uid)) stopPodSandbox(c.ctx, d.node, sb.id);
+      for (const sb of sandboxesOf(c.ctx, d.node, w.uid)) stopPodSandbox(c.ctx, d.node, sb.id, c.syncId);
       if (op.then === 'remove' || !pod) return removed(c, w);
       return finishTermination(c, w, pod);
     }
@@ -251,7 +257,7 @@ function beginSync(c: SyncCtx, w: PodWorker, pod0: ApiObject): SyncResult {
   const pod = writeStatus(c, pod0, s);
   if (s.phase === 'Succeeded' || s.phase === 'Failed') {
     // A terminal phase: the pod worker terminates the Pod (nothing restarts any more).
-    c.trace('kubelet.pod.terminal', `${podDesc(pod)} reached phase ${String(s.phase)}`, undefined, podDesc(pod));
+    c.trace('kubelet.pod.terminal', `${podDesc(pod)} reached phase ${String(s.phase)}`, { ...podData(pod, kdata(c).node), phase: String(s.phase) }, podDesc(pod));
     return killAll(c, w, pod, 'terminate', MIN_STOP_GRACE_MS);
   }
   return continueSync(c, w, pod, newRun());
@@ -275,7 +281,7 @@ function continueSync(c: SyncCtx, w: PodWorker, pod: ApiObject, run: SyncPodRun)
       if (running.length > 0) return killAll(c, w, pod, 'restart', MIN_STOP_GRACE_MS, run);
     }
     const until = c.now + draw(c.ctx, isHostNetwork(pod) ? 'sandboxHostNetwork' : 'sandbox');
-    c.trace('kubelet.sandbox', `${podDesc(pod)}: creating the pod sandbox (${sb.message})`, undefined, podDesc(pod));
+    c.trace('kubelet.sandbox', `${podDesc(pod)}: creating the pod sandbox (${sb.message})`, { ...podData(pod, d.node), reason: sb.message, ...(sb.previous ? { previous: sb.previous.id } : {}), ready: until }, podDesc(pod));
     setWorker(c, { ...w, op: { kind: 'sandbox', until, run, ...(sb.previous ? { previous: sb.previous.id } : {}) } }, w.uid);
     return { requeueAfter: until - c.now };
   }
@@ -288,7 +294,8 @@ function continueSync(c: SyncCtx, w: PodWorker, pod: ApiObject, run: SyncPodRun)
         run.attempted.push(name);
         containerEvent(c, pod, name, 'Normal', 'Killing', `Container ${name} definition changed, will be restarted`);
         const grace = Math.max(MIN_STOP_GRACE_MS, gracePeriodMs(pod));
-        stopContainer(c.ctx, d.node, newest.id, grace, capturedById(newest.imageId)?.config.stopSignal);
+        const kill = c.trace('kubelet.kill', `${podDesc(pod)}: killing ${name}, its definition changed`, { ...podData(pod, d.node), containers: [name], grace, then: 'restart', why: 'definition changed' }, podDesc(pod));
+        stopContainer(c.ctx, d.node, newest.id, grace, capturedById(newest.imageId)?.config.stopSignal, kill);
         setWorker(c, { ...w, op: { kind: 'kill', containers: [newest.id], then: 'restart', run: { ...run, attempted: run.attempted.filter((x) => x !== name) } } }, w.uid);
         return { done: true };
       }
@@ -318,10 +325,11 @@ function startContainerFlow(c: SyncCtx, w: PodWorker, pod: ApiObject, spec: Json
       run.error = true;
       const at = ts + cur;
       run.backoffAt = run.backoffAt === undefined ? at : Math.min(run.backoffAt, at);
-      c.trace('kubelet.backoff', `${name} of ${podDesc(pod)} is in back-off ${goDuration(cur)} until ${timeOf(at)}`, undefined, podDesc(pod));
       return undefined;
     }
     set(c, 'crashBackoff', next(kdata(c).crashBackoff, key, ts, c.now, CRASHLOOP_BACKOFF));
+    // The exited container is restarted now: its back-off, if it had one, is over.
+    c.trace('kubelet.container.restart', `${podDesc(pod)}: restarting ${name}, which exited with ${String(newest.exitCode ?? 0)}`, { ...podData(pod, d.node), container: name, containerId: newest.id, exitCode: newest.exitCode ?? 0, restartCount: newest.attempt + 1 }, podDesc(pod));
   }
   // EnsureImageExists
   const parsed = parseImageName(image);
@@ -424,7 +432,7 @@ function startProcessFor(c: SyncCtx, w: PodWorker, pod: ApiObject, name: string,
   const proc = containerProcess(pod, spec, img, services, sb?.hostname ?? w.name);
   for (const u of proc.unsupported) {
     c.ctx.gap({ kind: 'behavior', program: 'kubelet', what: u, commandLine: '', machine: d.node });
-    c.trace('kubelet.gap', `${podDesc(pod)} container ${name}: ${u} is not simulated yet; the variable is left out`, undefined, podDesc(pod));
+    c.trace('kubelet.gap', `${podDesc(pod)} container ${name}: ${u} is not simulated yet; the variable is left out`, { ...podData(pod, d.node), container: name, what: u }, podDesc(pod));
   }
   const v = imageView(ctr.imageId);
   const arg0 = proc.argv[0] ?? '';
@@ -434,13 +442,13 @@ function startProcessFor(c: SyncCtx, w: PodWorker, pod: ApiObject, name: string,
     // fs.PathError texts; the chain of wrappers containerd and runc add (containerd-notes c.3).
     const inner = arg0.includes('/') ? `exec: ${goQuote(arg0)}: stat ${arg0}: no such file or directory` : `exec: ${goQuote(arg0)}: executable file not found in $PATH`;
     const msg = `failed to create containerd task: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: ${inner}: unknown`;
-    failStart(c.ctx, d.node, id, 128, 'StartError', msg);
+    failStart(c.ctx, d.node, id, 128, 'StartError', msg, c.syncId);
     containerEvent(c, pod, name, 'Warning', 'Failed', `Error: ${msg}`);
     run.results.push({ container: name, err: 'RunContainerError', message: msg });
     run.error = true;
     return;
   }
-  startProcess(c.ctx, d.node, id, exe, { argv: proc.argv, env: proc.env, which: (n) => v.which(proc.env, n), file: v.file });
+  startProcess(c.ctx, d.node, id, exe, { argv: proc.argv, env: proc.env, which: (n) => v.which(proc.env, n), file: v.file }, c.syncId);
   containerEvent(c, pod, name, 'Normal', 'Started', 'Container started');
   run.results.push({ container: name });
 }
@@ -469,8 +477,34 @@ function finishSync(c: SyncCtx, w: PodWorker, pod: ApiObject, run: SyncPodRun): 
     after = 0;
   }
   if (pending) after = 0;
-  c.trace('kubelet.sync.done', `SyncPod of ${podDesc(pod)} finished: ${run.results.map((r) => `${r.container} ${r.err ?? 'started'}`).join(', ') || 'nothing to do'}`, undefined, podDesc(pod));
+  traceBackoff(c, w, pod, run, after);
+  c.trace('kubelet.sync.done', `SyncPod of ${podDesc(pod)} finished: ${run.results.map((r) => `${r.container} ${r.err ?? 'started'}`).join(', ') || 'nothing to do'}`, { ...podData(pod, d.node), results: run.results.map((r) => ({ ...r })) as unknown as Json, ...(after !== undefined ? { requeueAfter: after } : {}) }, podDesc(pod));
   return after === undefined ? { done: true } : { requeueAfter: after };
+}
+
+/**
+ * `kubelet.backoff`, one per container this sync left in CrashLoopBackOff: the exit that caused it
+ * (the container id and its exit code), the back-off and when it ends, and when the pod worker
+ * syncs again (`retryAt`, the requeue completeWork chose), which is when the restart can happen.
+ */
+function traceBackoff(c: SyncCtx, w: PodWorker, pod: ApiObject, run: SyncPodRun, after: Millis | undefined): void {
+  const d = kdata(c);
+  for (const r of run.results) {
+    if (r.err !== 'CrashLoopBackOff') continue;
+    const spec = specContainers(pod).find((x) => x.name === r.container);
+    const [newest] = instances(view(c, w.uid), r.container);
+    if (!spec || !newest || newest.state !== 'exited') continue;
+    const cur = current(d.crashBackoff, backoffKey(pod, spec));
+    const since = newest.finishedAt ?? c.now;
+    const endsAt = since + cur;
+    const retryAt = c.now + (after ?? 0);
+    c.trace(
+      'kubelet.backoff',
+      `${r.container} of ${podDesc(pod)} is in back-off ${goDuration(cur)} until ${timeOf(endsAt)}; the pod worker syncs again at ${timeOf(retryAt)}`,
+      { ...podData(pod, d.node), container: r.container, containerId: newest.id, exitCode: newest.exitCode ?? 0, backoffMs: cur, since, endsAt, retryAt, restartCount: newest.attempt },
+      podDesc(pod),
+    );
+  }
 }
 
 // ---- termination ----
@@ -492,9 +526,10 @@ function terminate(c: SyncCtx, w: PodWorker, pod0: ApiObject): SyncResult {
 function killAll(c: SyncCtx, w: PodWorker, pod: ApiObject, then: 'restart' | 'terminate' | 'remove', grace: Millis, run?: SyncPodRun): SyncResult {
   const d = kdata(c);
   const running = view(c, w.uid).containers.filter((x) => x.state === 'running');
+  const kill = running.length === 0 ? undefined : c.trace('kubelet.kill', `${podDesc(pod)}: stopping ${running.map((x) => x.name).join(', ')} (${then})`, { ...podData(pod, d.node), containers: running.map((x) => x.name), grace, then, why: meta(pod).deletionTimestamp ? 'deleted' : then === 'restart' ? 'sandbox changed' : 'terminal phase' }, podDesc(pod));
   for (const ctr of running) {
     containerEvent(c, pod, ctr.name, 'Normal', 'Killing', `Stopping container ${ctr.name}`);
-    stopContainer(c.ctx, d.node, ctr.id, grace, capturedById(ctr.imageId)?.config.stopSignal);
+    stopContainer(c.ctx, d.node, ctr.id, grace, capturedById(ctr.imageId)?.config.stopSignal, kill);
   }
   const still = running.filter((x) => getContainer(c.ctx, d.node, x.id)?.state === 'running').map((x) => x.id);
   if (still.length === 0) {
@@ -523,7 +558,7 @@ function finishTermination(c: SyncCtx, w: PodWorker, pod0: ApiObject): SyncResul
   const final = terminatedStatus(status(c, pod0, true));
   const pod = writeStatus(c, pod0, final);
   setWorker(c, { ...w, done: true }, w.uid);
-  c.trace('kubelet.pod.terminated', `${podDesc(pod)} terminated with phase ${String(final.phase)}`, undefined, podDesc(pod));
+  c.trace('kubelet.pod.terminated', `${podDesc(pod)} terminated with phase ${String(final.phase)}`, { ...podData(pod, kdata(c).node), phase: String(final.phase) }, podDesc(pod));
   return deleteIfFinished(c, { ...w, done: true }, pod);
 }
 
@@ -531,6 +566,7 @@ function finishTermination(c: SyncCtx, w: PodWorker, pod0: ApiObject): SyncResul
 function deleteIfFinished(c: SyncCtx, w: PodWorker, pod: ApiObject): SyncResult {
   if (!meta(pod).deletionTimestamp) return { done: true };
   if (view(c, w.uid).containers.some((x) => x.state === 'running')) return terminate(c, { ...w, done: false }, pod);
+  c.trace('kubelet.pod.delete', `${podDesc(pod)}: everything stopped, deleting the Pod from the API`, podData(pod, kdata(c).node), podDesc(pod));
   c.client.resource('v1/pods').delete(w.namespace, w.name, { gracePeriodSeconds: 0, preconditions: { uid: w.uid } });
   return { done: true };
 }
@@ -541,7 +577,9 @@ function removed(c: SyncCtx, w: PodWorker): SyncResult {
   const v = view(c, w.uid);
   if (v.containers.some((x) => x.state === 'running')) {
     // HandlePodRemoves: killed with a one-second grace, floored at two for StopContainer.
-    for (const ctr of v.containers.filter((x) => x.state === 'running')) stopContainer(c.ctx, d.node, ctr.id, MIN_STOP_GRACE_MS, capturedById(ctr.imageId)?.config.stopSignal);
+    const running = v.containers.filter((x) => x.state === 'running');
+    const kill = c.trace('kubelet.kill', `${w.name}_${w.namespace}(${w.uid}): the Pod is gone from the API, stopping ${running.map((x) => x.name).join(', ')}`, { namespace: w.namespace, name: w.name, uid: w.uid, node: d.node, containers: running.map((x) => x.name), grace: MIN_STOP_GRACE_MS, then: 'remove', why: 'removed' }, `${w.namespace}/${w.name}`);
+    for (const ctr of running) stopContainer(c.ctx, d.node, ctr.id, MIN_STOP_GRACE_MS, capturedById(ctr.imageId)?.config.stopSignal, kill);
     const still = v.containers.filter((x) => getContainer(c.ctx, d.node, x.id)?.state === 'running').map((x) => x.id);
     if (still.length > 0) {
       setWorker(c, { ...w, op: { kind: 'kill', containers: still, then: 'remove' } }, w.uid);
@@ -568,11 +606,17 @@ function removed(c: SyncCtx, w: PodWorker): SyncResult {
   delete reasons[w.uid];
   set(c, 'reasons', reasons);
   setWorker(c, undefined, w.uid);
-  c.trace('kubelet.gc', `removed the containers, sandboxes and logs of deleted Pod ${w.namespace}/${w.name}`, undefined, `${w.namespace}/${w.name}`);
+  c.trace('kubelet.gc', `removed the containers, sandboxes and logs of deleted Pod ${w.namespace}/${w.name}`, { namespace: w.namespace, name: w.name, uid: w.uid, node: d.node }, `${w.namespace}/${w.name}`);
   return { done: true };
 }
 
 // ---- the serial image puller ----
+
+/** The pull a record is about: the Pod (from the request's key) and the image. */
+function pullData(node: string, req: PullRequest): JsonObject {
+  const [namespace, name, uid] = req.key.split('/') as [string, string, string];
+  return { namespace, name, uid, node, image: req.image, ref: req.ref, pull: req.id };
+}
 
 function requestPull(c: SyncCtx, req: PullRequest): void {
   const p = kdata(c).pulls;
@@ -607,7 +651,7 @@ function startNextPull(c: SyncCtx): void {
     ms = outcome.kind === 'no-such-host' ? draw(c.ctx, 'dnsFailure') : draw(c.ctx, 'registryResolve');
     result = { ok: false, pullMs: ms, error: outcome.error };
   }
-  c.trace('kubelet.pull.start', `pulling ${req.ref}${queue.length ? `, ${queue.length} more queued` : ''}`, undefined, req.key);
+  c.trace('kubelet.pull.start', `pulling ${req.ref}${queue.length ? `, ${queue.length} more queued` : ''}`, { ...pullData(kdata(c).node, req), queued: queue.length, until: c.now + ms }, req.key);
   set(c, 'pulls', { ...p, queue, current: { ...req, until: c.now + ms, result } });
   c.enqueueAfter(PULL_KEY, ms);
 }
@@ -622,7 +666,7 @@ export function syncPuller(c: SyncCtx): SyncResult {
     const outcome = pullOutcome(parseImageName(cur.image) as ImageName);
     if ('ok' in outcome) addImage(c.ctx, kdata(c).node, storedImage(outcome.ok, parseImageName(cur.image) as ImageName));
   }
-  c.trace('kubelet.pull.done', `${cur.ref}: ${cur.result.ok ? 'pulled' : cur.result.error ?? cur.result.notSimulated ?? 'failed'}`, undefined, cur.key);
+  c.trace('kubelet.pull.done', `${cur.ref}: ${cur.result.ok ? 'pulled' : cur.result.error ?? cur.result.notSimulated ?? 'failed'}`, { ...pullData(kdata(c).node, cur), ok: cur.result.ok, ...(cur.result.error !== undefined ? { error: cur.result.error } : {}), ...(cur.result.notSimulated !== undefined ? { notSimulated: cur.result.notSimulated } : {}), pullMs: cur.result.pullMs }, cur.key);
   const rest = { ...p, done: { ...p.done, [cur.id]: cur.result } };
   delete rest.current;
   set(c, 'pulls', rest);

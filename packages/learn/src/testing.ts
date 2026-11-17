@@ -1,7 +1,7 @@
 // A tiny plugin for testing the runner without a domain: one slice with a counter and a file
 // list, a topology, steps, checks and a fault over it. Test support only.
 
-import { CHECK, createRegistry, FAULT, STEP, TOPOLOGY, VIEW, type CheckSpec, type Contribution, type FaultSpec, type Json, type Plugin, type Registry, type SliceSpec, type StepSpec, type TopologySpec, type ViewProviderSpec } from '@simlab/kernel';
+import { CHECK, createRegistry, FAULT, STEP, TOPOLOGY, VIEW, type CheckSpec, type Contribution, type FaultSpec, type Json, type Plugin, type Registry, type SliceSpec, type StepSpec, type TopologySpec, type Ctx, type ViewEvent, type ViewProviderSpec } from '@simlab/kernel';
 import type { CardItem, ExamItem, Item, LessonItem } from './item/types.ts';
 
 export interface CounterSlice {
@@ -21,14 +21,22 @@ const topology: TopologySpec = {
   },
 };
 
+/** What `bump` does, as a command someone typed: the trace has the command and what it changed. */
+function add(c: Ctx, n: number): void {
+  const cmd = c.trace({ source: 'counter.shell', kind: 'counter.command', message: `bump ${n}` });
+  if (n !== 0) {
+    slice(c).value += n;
+    c.trace({ source: 'counter.box', kind: 'counter.changed', message: `the counter went up by ${n} to ${slice(c).value}`, causes: [cmd] });
+  }
+  slice(c).touched++;
+  c.trace({ source: 'counter.shell', kind: 'counter.command.done', message: 'done', causes: [cmd] });
+}
+
 const bump: StepSpec = {
   name: 'bump',
   args: { type: 'object', properties: { bump: { type: 'integer', minimum: 1 } }, required: ['bump'], additionalProperties: false },
   run(ctx, args) {
-    ctx.kernel.act('bump', (c) => {
-      slice(c).value += Number((args as { bump: number }).bump);
-      slice(c).touched++;
-    });
+    ctx.kernel.act('bump', (c) => add(c, Number((args as { bump: number }).bump)));
   },
   show: (args) => `$ bump ${String((args as { bump: number }).bump)}`,
 };
@@ -126,6 +134,23 @@ const view: ViewProviderSpec = {
       relations: [],
     };
   },
+  events(records) {
+    const out: ViewEvent[] = [];
+    for (const r of records) {
+      if (r.kind === 'counter.command') {
+        const done = records.find((d) => d.kind === 'counter.command.done' && d.causes?.[0] === r.id);
+        out.push({ id: r.id, t: r.t, ...(done ? { until: done.t } : {}), actor: 'tester@box', text: r.message, about: ['box'], level: 'key', tone: 'neutral', input: true, causes: [] });
+      } else if (r.kind === 'counter.changed') {
+        out.push({ id: r.id, t: r.t, actor: r.source === 'counter.timer' ? 'timer' : 'box', text: r.message, about: ['box/counter', 'box'], level: 'key', tone: 'good', link: { from: 'box', to: 'box/counter' }, causes: r.causes ?? [] });
+      }
+    }
+    return out;
+  },
+  why(world, events, entity) {
+    const c = world.slices['counter'] as CounterSlice | undefined;
+    if (!c || entity !== 'box/counter') return undefined;
+    return { entity, summary: `The counter shows ${c.value}.`, steps: events.filter((e) => e.about[0] === entity) };
+  },
 };
 
 export const counterPlugin: Plugin = {
@@ -141,6 +166,18 @@ export const counterPlugin: Plugin = {
       type: 'counter.set',
       handle(ctx, payload: Json) {
         slice(ctx).value = Number(payload);
+        ctx.trace({ source: 'counter.timer', kind: 'counter.changed', message: `the timer set the counter to ${Number(payload)}` });
+      },
+    },
+  ],
+  // What a learner's terminal would deliver: `add` bumps now, `later` sets a value after a delay.
+  inputs: [
+    {
+      kind: 'counter.type',
+      handle(ctx, input) {
+        const i = input as unknown as { add?: number; later?: { value: number; after: number } };
+        if (i.add !== undefined) add(ctx, i.add);
+        if (i.later) ctx.schedule(i.later.after, 'counter.set', i.later.value);
       },
     },
   ],

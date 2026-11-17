@@ -4,7 +4,7 @@
 // `RenderedFigure`: plain view models with the marks the renderer draws. Nothing here names a
 // domain: kinds, scopes and facts are matched by the words the view model itself uses.
 
-import type { RelationType, Shape, ViewModel, ViewState } from '@simlab/kernel';
+import type { RelationType, Shape, ViewEvent, ViewModel, ViewState } from '@simlab/kernel';
 import type { Step, When } from '../item/types.ts';
 
 /** Which world a view shows: after setup, after the first reference solution, or the learner's now. */
@@ -76,9 +76,29 @@ export interface SceneWorld {
   setup: Step[];
 }
 
+/**
+ * A moment the trace recorded (docs/SCENARIO_FORMAT.md §11.6): the first event since the previous
+ * frame that matches every part given. `*` matches any run of characters; case is ignored.
+ */
+export interface FrameAnchor {
+  /** The component that acted, as the event names it. */
+  actor?: string;
+  /** An entity the event is about. */
+  about?: EntityRef;
+  /** The event's text. */
+  text?: string;
+  /** How long to wait for it in virtual time (a duration, `90s`). Default 5m. */
+  within?: string;
+}
+
 export interface Frame {
   /** Run before the frame is taken; the first frame may have none. */
   steps?: Step[];
+  /**
+   * Draw the frame at the moment the trace records a matching event: after `steps`, time advances
+   * event by event until it does. The caption may quote the event's text as `{{@cause}}`.
+   */
+  at?: FrameAnchor;
   caption: string;
   highlight?: EntityRef[];
   notes?: Note[];
@@ -141,14 +161,29 @@ export interface Panel {
   model: ViewModel;
   highlight: string[];
   notes: RenderedNote[];
-  /** Entity id → how it differs from the other side (compare only). */
+  /** Entity id → how it differs from the other side (a comparison) or from the frame before (a replay). */
   changes: Record<string, Change>;
+  /**
+   * Causes that travelled between two entities of the model since the frame before (a controller
+   * created an instance, a placer assigned it), from the trace. The renderer moves something along
+   * these and along nothing else (PLAN.md §6.5).
+   */
+  links?: { from: string; to: string }[];
+}
+
+/** One frame of a scene: a view, and for a frame anchored to the trace the event it was drawn at. */
+export interface RenderedFrame {
+  caption: string;
+  panel: Panel;
+  /** Virtual time the frame was taken at. */
+  t?: number;
+  cause?: ViewEvent;
 }
 
 export type RenderedFigure =
   | { kind: 'view' | 'diagram'; caption: string; alt: string; panel: Panel }
   | { kind: 'compare'; caption: string; alt: string; left: Panel; right: Panel }
-  | { kind: 'scene'; caption: string; alt: string; frames: { caption: string; panel: Panel }[] };
+  | { kind: 'scene'; caption: string; alt: string; frames: RenderedFrame[] };
 
 /** A block as the learner sees it: prose, a rendered figure, or a figure that could not be built. */
 export type RenderedBlock = { text: string } | { figure: RenderedFigure } | { failed: { caption: string; alt: string; problems: string[] } };

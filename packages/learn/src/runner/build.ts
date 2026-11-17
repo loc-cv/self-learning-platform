@@ -38,12 +38,19 @@ export function buildBaseline(variant: Variant, registry: Registry, options: Bui
     throw new ItemError('declared images (world.images) are not supported yet');
   }
   const hub = createPortHub();
-  const kernel = bootKernel(registry, { seed: variant.seed, startTime: startTimeOf(variant, options), ports: hub.ports });
+  const kernel = bootKernel(registry, { seed: variant.seed, startTime: startTimeOf(variant, options), ports: hub.ports, traceCapacity: SESSION_TRACE });
   const info = kernel.act('topology', (ctx) => topology.build(ctx, variant.topologyParams));
   const entry = variant.entry ?? info.entry;
   runSteps(kernel, variant.setup, { registry, entry, hub }, 'setup');
   return { variant, kernel, entry, machines: info.machines };
 }
+
+/**
+ * Trace records a baseline and its sessions keep: enough for the setup and an hour of a busy
+ * world (an idle three-node cluster emits about 30 a minute), so the views can explain a state
+ * that was reached long ago.
+ */
+export const SESSION_TRACE = 50_000;
 
 export interface SessionWorld {
   kernel: Kernel;
@@ -54,5 +61,5 @@ export interface SessionWorld {
 /** A session world: a fork of the baseline whose output goes to `ports`. */
 export function startSession(baseline: Baseline, ports?: Ports): SessionWorld {
   const hub = createPortHub(ports);
-  return { kernel: baseline.kernel.fork({ ports: hub.ports }), hub };
+  return { kernel: baseline.kernel.fork({ ports: hub.ports, keepTrace: true, traceCapacity: SESSION_TRACE }), hub };
 }

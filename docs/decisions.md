@@ -1498,3 +1498,103 @@ at width zero into its real one when it first appeared.
 **D-163 — Two more chords.** `Ctrl+Shift+D` goes home and `Ctrl+Shift+K` is the session's next
 item (or skip). Both are claimed every time like the others (D-112). `Ctrl+Shift+O` now opens the
 content browser, which replaced the lab list.
+
+**D-164 — The trace reaches the views through the view providers.** Phase 13 needed "for an
+entity, the records that explain its state" without the renderer, `learn` or the apps naming a
+domain. Emitters could have attached entity ids and display words to each record; instead a
+provider maps its components' records to `ViewEvent`s (`events`) and answers `why` for its own
+entities (`docs/ARCHITECTURE.md` §2.13). Emit sites stay in their component's vocabulary with
+structured `data`, the knowledge of how a record is shown lives in one module per domain next to
+the view it belongs to, and the mapping is a pure function of the records, so the trace of a
+replay reads the same without storing anything.
+
+**D-165 — A session keeps the trace of its baseline.** A Pod that is Pending when the lab opens
+was rejected during the setup, in the baseline's kernel; a fork used to start with an empty trace
+buffer, so the session could not say why until the scheduler tried again. `fork({ keepTrace })`
+copies the parent's records and continues their ids; `startSession` uses it, checks' forks do not.
+The buffer of a baseline and its sessions holds 50 000 records. The trace is still not world state.
+
+**D-166 — "Skip to next event" stops at what shows.** `PLAN.md` §6.1 and §10 name the control;
+taken literally (the next pending non-idle event) it stops every few hundred milliseconds in a
+cluster and would need dozens of clicks to cross a back-off. The driver takes a condition and a
+limit; the web worker's condition is terminal output or a `key` event in the trace. With nothing
+of the kind within an hour of virtual time the skip stops at the last event it ran and says so.
+This fills a gap in the plan's wording and changes no decision.
+
+**D-167 — A past moment is read from a second world.** The timeline's playhead and the debrief's
+replay rebuild the past by replaying the input log on a fork of the baseline (`createReplayCursor`).
+The session world never moves backward and nothing can be typed into the past (`PLAN.md` §6.1:
+"Resuming a session, the replay view in the debrief and bug reports all use replay"; the phase
+prompt: "this is not time travel"). The worker keeps the second world and moves it forward for a
+later moment; an earlier one starts it again from the baseline.
+
+**D-168 — What a replay's frames are.** A frame per recorded event would be dozens for one
+rollout, and a frame per command would show `kubectl get` after `kubectl get`. A replay draws the
+start, the moment each command returned (its effect is in the world), and the last recorded event
+before the next command was entered, and only where the drawing differs from the frame before.
+Commands that changed nothing drawn stay in the replay's command list. The replay looks at the
+part of the world the debrief's first figure of a world looks at (its `focus` and `show`), so no
+item needs a new field. A reference solution is drawn after each of its steps, because steps may
+change the world without an input (`write`, a fault), so its run is not an input log.
+
+**D-169 — Assist levels are `off`, `view`, `full`; the lower of item and learner applies.** The
+phase names the three levels "per item and as a global setting". An item can require less help
+than the learner allows (an exam-like drill sets `off`), never grant more than the learner chose.
+The worker fixes the level at the attempt's start and ignores messages above it, so the rule does
+not depend on the page hiding a button. "Why?" and reading the past add no progress event: both
+need the X-ray open, which is already the event the rating reads (`docs/LEARNING_MODEL.md` §13).
+
+**D-170 — A scene frame names a recorded event with `at`; `{{@cause}}` quotes it.** A frame
+anchored to the trace is drawn at the instant its event was recorded, found by advancing event by
+event after the frame's steps. An event that was recorded while the frame's own steps were
+running is refused by validation instead of being drawn late: the picture would show a later
+world than the caption claims. `@cause` cannot collide with a parameter (the scheduling lab has
+one called `cause`): parameter names have no `@`.
+
+**D-171 — The worker makes up time in slices, within a budget.** A tick used to advance virtual
+time by all the real time that had passed, in one call. At 10× with thirty Pods starting, one
+tick could hold the worker for longer than the next tick's worth of work, and a key typed
+meanwhile waited behind it. The engine session now advances in slices of 50 virtual ms and
+yields after 16 ms of real time; what is left stays owed and is worked off first on the next
+tick. When the world cannot keep up at all, at most one second of real time stays owed and the
+rest is dropped: the simulation runs slower than the chosen speed instead of the page stalling,
+and a machine that slept for an hour does not replay the hour. Nothing recorded changes: the
+wall clock only decides which virtual time an input is stamped with (`docs/ARCHITECTURE.md` §2.5).
+
+**D-172 — Trace ids never enter world state.** A cause that crosses a kernel event (a container
+exits now, the kubelet backs off at its next sync) could be threaded by storing the record id in
+the world. A fork without `keepTrace` restarts the ids, so that would make world hashes depend on
+the trace. Within one sync, records name each other by id; across events the provider's mapper
+joins them from structured data (the container id, the object's uid). The queue keeps the reason
+a key was queued as words, so a watch notification leading to a sync is a root.
+
+**D-173 — Link directions.** Owner → the object it created, deleted or scaled; Pod → Node for a
+binding; Service → Pod when exactly one member changed. One direction per kind of cause, so the
+renderer's motion reads the same everywhere.
+
+**D-174 — One back-off record per sync, with the time the back-off ends and the time the kubelet
+retries.** They differ (the pod worker's jittered requeue), and the container starts later still
+(create and start latencies). "Skip to next event" lands on the retry, where the trace records the
+restart; a second skip lands on the container's start. No behaviour was changed to make the times
+coincide.
+
+**D-175 — Endpoint membership is traced by the EndpointSlice controller only.** The legacy
+Endpoints controller computes the same membership; tracing both would show every change twice.
+
+**D-176 — The runner's own typing is not a command.** A plain session (scenario steps,
+transcripts) types `PS1=; PS2=` first and `exit` last. The host's mapper leaves the setup line
+out of the events, and a solution's replay reads its commands before the logins end. A learner
+who types exactly `PS1=; PS2=` loses one marker on the timeline; accepted.
+
+**D-177 — Chords for time.** `Ctrl+Shift+Space` pauses (as before), `Ctrl+Shift+S` steps to the
+next speed (1×, 2×, 5×, 10×, back to 1×) and `Ctrl+Shift+J` skips to the next event. Each is
+claimed every time (D-112); plain `Ctrl+S` and `Ctrl+J` still reach the shell. In an ordinary
+Chrome tab `Ctrl+Shift+J` opens the DevTools console unless the page prevents it; the browser
+tests see the default prevented, and the owner's Windows Chrome has yet to confirm it.
+
+**D-178 — A paused world says so in the terminal.** While time is paused a command that needs
+virtual time waits, which looked like a frozen terminal. The plan asks for a pause and does not
+say what typing does meanwhile. Resuming on a key would make the pause useless for reading a
+moment; letting commands run while the world stands still would be a second clock. The terminal
+shows a line saying time is paused, with Resume.
+

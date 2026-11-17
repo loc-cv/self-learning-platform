@@ -80,7 +80,7 @@ export function builtinStepSchemas(): Schema[] {
   ];
 }
 
-const HEADER_FIELDS = ['id', 'title', 'skills', 'curriculum', 'difficulty', 'targetMinutes'];
+const HEADER_FIELDS = ['id', 'title', 'skills', 'curriculum', 'difficulty', 'targetMinutes', 'assist'];
 
 export function itemSchema(registry: Registry): Schema {
   const checks = registry.list<CheckSpec>(CHECK);

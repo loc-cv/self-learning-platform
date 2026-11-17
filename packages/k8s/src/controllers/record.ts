@@ -68,6 +68,8 @@ export interface RecorderRef {
   /** EventSource.Host: empty for controllers. */
   host?: string;
   client: Client;
+  /** The trace record of the work that records the event (a controller's sync), for its causes. */
+  cause?: number;
 }
 
 function emptyState(): RecorderState {
@@ -237,6 +239,25 @@ export function recordEvent(ctx: Ctx, rec: RecorderRef, obj: ApiObject, type: Ev
     // UpdateState: keyed by the full event key of what the server returned.
     const saved = res.object as JsonObject;
     const sm = (saved.metadata ?? {}) as JsonObject;
+    ctx.trace({
+      source: `k8s.events/${rec.component}`,
+      kind: 'event.recorded',
+      ...(rec.cause !== undefined ? { causes: [rec.cause] } : {}),
+      subject: `${namespace}/${s(sm.name)}`,
+      message: `${type} ${reason} about ${s(ref.kind)} ${s(ref.namespace) ? `${s(ref.namespace)}/` : ''}${s(ref.name)}: ${s(saved.message)}`,
+      data: {
+        api: 'v1',
+        namespace,
+        name: s(sm.name),
+        type,
+        reason,
+        message: s(saved.message),
+        regarding: { kind: s(ref.kind), namespace: s(ref.namespace), name: s(ref.name), uid: s(ref.uid), ...(s(ref.fieldPath) ? { fieldPath: s(ref.fieldPath) } : {}) },
+        reportingController: rec.component,
+        reportingInstance: rec.host ?? '',
+        count: typeof saved.count === 'number' ? saved.count : 1,
+      },
+    });
     st.tick += 1;
     st.logs[eventKey(saved)] = { count: typeof saved.count === 'number' ? saved.count : 0, firstTimestamp: s(saved.firstTimestamp), name: s(sm.name), resourceVersion: s(sm.resourceVersion), u: st.tick };
     evict(st.logs);

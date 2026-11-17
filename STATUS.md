@@ -41,7 +41,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 **M2 — Learning loop**
 - [x] 11 `prompts/11-learning-core.md`
 - [x] 12 `prompts/12-learning-ui.md`
-- [ ] 13 `prompts/13-trace-replay-and-time-controls.md`
+- [x] 13 `prompts/13-trace-replay-and-time-controls.md`
 - [ ] 14 `prompts/14-curriculum-map-and-authoring.md`
 - [ ] R1 run, target `k8s-foundations`
 - [ ] **Checkpoint B** — use the daily session for a week, write `FEEDBACK.md`, run R3
@@ -216,15 +216,14 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
   25a decides whether the kernel frees them.
 - **The web app's gap records skip the server when it is not running** (a static host): the
   popover says so, nothing retries. The progress log and the attempt logs have outboxes since
-  phase 12 (`apps/web/src/app/progress.ts`, `attempts.ts`); the gap sink was not given one. R3,
-  or phase 13 when it touches the top bar.
+  phase 12 (`apps/web/src/app/progress.ts`, `attempts.ts`); the gap sink was not given one. R3.
 - **No event records command errors** (`PLAN.md` §5, "repeated command errors … raise the
   priority of related items"): mistakes are failed attempts, failed checks, hints and solutions
-  viewed. The debrief lists the shells' history since phase 12 (D-160); the event needs each
-  command's exit status, which phase 13's trace has.
-- **The command history in the debrief is the open shells' memory** (D-160): a closed terminal
-  and the world before a reset take theirs with them. Phase 13's replay of the attempt from its
-  input log replaces it.
+  viewed. Since phase 13 the trace has every command with its exit status and the debrief's
+  replay lists them; no progress event counts them per skill. Phase 14 (which skill a failing
+  command belongs to needs the curriculum map), or R3.
+- **The debrief's replay covers the world since the last reset.** Commands typed before a reset
+  are in the attempt's earlier logs and are not replayed. R3 if the owner misses them.
 - **The app's own words are English only.** The language setting covers content prose (PLAN §5);
   buttons, the home screen and skill, track and domain titles have no translations. No phase owns
   this; R2 translates content only.
@@ -237,7 +236,6 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 Entries of `FEEDBACK.md` and the gap log that a triage run assigned to a planned phase. The phase
 that takes one removes it here. Details and evidence: `docs/feedback-log.md`.
 
-- **13** — the debrief replays the attempt with its causes.
 - **16a** — nginx "built by" lines for every nginx tag in the catalog (16 gap records; the
   carry-over item "image facts read by hand" below is the same work).
 - **18b** — `kubectl top` (1 gap record).
@@ -319,6 +317,56 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-17 — **Phase 13 done.** Cause on screen: the "Why?" inspector, the timeline with past
+  moments, the attempt replayed in the debrief, scenes anchored to the trace, time controls,
+  assist levels. Built by the lead session with two parallel Opus agents (the trace audit in
+  `host` and `k8s`; the web UI), each from a written contract, reviewed here.
+  - **The contract** (`packages/kernel/src/view.ts`, `docs/ARCHITECTURE.md` §2.13, D-164). A view
+    provider maps its components' trace records to `ViewEvent`s (`events`) and answers `why` for
+    its entities. `buildEvents` resolves causes through records no event shows. A session keeps
+    its baseline's trace (`fork({ keepTrace })`, D-165), so a Pod that was rejected during setup
+    can be explained at once. `createReplayCursor` reads a past moment on a second world (D-167).
+  - **Trace audit** (`docs/ARCHITECTURE.md` §4.10). New records: `shell.command(.done)`,
+    `apiserver.write`, `endpoints.sync`, `deployment.scale`, `replicaset.scale`, `kubelet.status`,
+    `kubelet.container.restart`, `kubelet.kill`, `kubelet.node.ready`, `event.recorded`, and
+    structured `data` on all the old ones. `K8S_TRACE_KINDS` and `K8S_TRACE_NOT_SHOWN` list every
+    kind; a test fails on a kind in neither. A later engine phase that adds a component adds its
+    records, its mapping and a coverage test (`packages/k8s/src/view/trace.test.ts`).
+  - **Exit criteria, each by test.** "Why?" on a Pending Pod names per node what
+    `FailedScheduling` counts (`tools/src/content/why.test.ts`, six seeds; in the browser
+    `e2e/trace.spec.ts`). The debrief of a solved attempt has the fault's cause, the fix and the
+    convergence at the virtual times of the input log (`apps/web/src/engine/trace.test.ts`).
+    A skip during a back-off lands exactly on the restart (`packages/k8s/src/view/why.test.ts`
+    and the engine test). With assist off the worker sends nothing and the page draws nothing
+    outside the ticket (engine test and e2e). 30 Pods at 10× with the X-ray and timeline open:
+    keystroke echo p95 0.6 ms, frame gap p95 16.8 ms, no long task (e2e).
+  - **One criterion reads differently in the engine** (D-174): a back-off ends, the kubelet
+    retries at its next sync a little later, and the container starts after the create and start
+    latencies. The skip lands on the retry, where the trace records the restart; a second skip
+    lands on the container's start. No behaviour was changed to make the three times one.
+  - **Skip** stops at what shows: terminal output or a `key` event (D-166). **The worker makes up
+    time in slices within a budget** (D-171), so a busy world at 10× cannot hold the keys.
+  - **Replay** (`packages/learn/src/replay.ts`, `docs/LEARNING_MODEL.md` §14, D-168): frames at
+    the start, where each command returned, and at the last event before the next command. A
+    command's frame is kept when it acted on what is drawn even if nothing has reacted yet. The
+    reference solution's run is drawn step by step on request.
+  - **Content.** The scheduling lab's debrief gained a scene whose frames are drawn at the
+    scheduler's decisions (`at`, `{{@cause}}`; `docs/SCENARIO_FORMAT.md` §11.2.1, D-170). The
+    placeholder is `@cause` because that lab has a parameter called `cause`. Items may declare
+    `assist` (D-169); none does yet, and the first exam-like drill of an R1 run should.
+  - **Surprises.** `kubectl taint`, `kubectl set resources`, `-o jsonpath` and `sed` are not
+    simulated, so the tests fix the lab through `kubectl edit` and the editor protocol. The
+    workloads lab's cluster is still starting CoreDNS when the lab opens. An entity that left
+    fades out for a moment, which looked like a wrong past world in a screenshot; the browser
+    test now waits for it. Content validation looked three times slower while an agent was
+    running browser tests on the same machine; alone it takes what it took before.
+  - **For the owner to confirm on Windows Chrome with Vimium:** `Ctrl+Shift+J` (skip; normally
+    the DevTools console) and `Ctrl+Shift+S` (speed) reach the page (D-177); the timeline and the
+    replay at 125% and 150%.
+  - Known gaps: the replay covers the world since the last reset; command errors are not yet a
+    progress event (both under "Temporary shortcuts"); the timeline's "now" follows the clock
+    message, up to a second behind; `npm run lab` in a terminal has no replay or "why".
 
 - 2026-11-17 — **Phase 12 done.** The learning loop is on screen: home, the session runner, the
   flows of every item kind, the debrief, languages, the content browser, resume from the server.

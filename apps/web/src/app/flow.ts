@@ -38,6 +38,7 @@ export function resultEvents(attempt: string, result: LabResult, at: number, gav
     case 'debrief':
       return gaveUp ? [{ ...base, type: 'attempt.solution' }] : [];
     case 'reset':
+    case 'reference':
       return [];
   }
 }

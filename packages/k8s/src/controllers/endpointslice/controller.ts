@@ -19,6 +19,7 @@ import { aggregateError, LABEL_MANAGED_BY, reconcile } from './reconciler.ts';
 import { LABEL_SERVICE_NAME, serviceNN, trackerDeleteService, trackerHandleDeletion, trackerHas, trackerShouldSync } from './tracker.ts';
 import { computeEndpointLastChangeTriggerTime, deleteServiceTriggerTimes } from './triggertime.ts';
 import { keyOf, metaOf, podsForService, serviceSelector, servicesToUpdateOnPodEvent, specOf, str, strMap } from './util.ts';
+import { sliceSignature, traceMembership } from './membership.ts';
 
 /** ControllerName: the managed-by label value of the slices it owns. */
 export const CONTROLLER_NAME = 'endpointslice-controller.k8s.io';
@@ -79,6 +80,17 @@ function syncSliceEvent(c: SyncCtx, key: string): SyncResult {
   return { done: true };
 }
 
+/** The Service's slices this controller manages, without those pending deletion (dropEndpointSlicesPendingDeletion). */
+function managedSlices(c: SyncCtx, namespace: string, name: string): ApiObject[] {
+  return c
+    .list('discovery.k8s.io/v1/endpointslices', namespace)
+    .filter((s) => {
+      const l = strMap(metaOf(s).labels);
+      return l[LABEL_SERVICE_NAME] === name && managedByController(l);
+    })
+    .filter((s) => !metaOf(s).deletionTimestamp);
+}
+
 function syncService(c: SyncCtx, key: string): SyncResult {
   const [namespace, name] = key.split('/') as [string, string];
   const svc = c.get('v1/services', namespace, name);
@@ -93,19 +105,17 @@ function syncService(c: SyncCtx, key: string): SyncResult {
   // selector get slices made out of band (by users, or the mirroring controller from Endpoints).
   if (str(specOf(svc).type) === 'ExternalName') return { done: true };
   const selector = serviceSelector(svc);
-  if (selector === null) return { done: true };
+  if (selector === null) {
+    traceMembership(c, svc, null, [], false);
+    return { done: true };
+  }
   const pods = podsForService(c, svc, selector);
-  const slices = c
-    .list('discovery.k8s.io/v1/endpointslices', namespace)
-    .filter((s) => {
-      const l = strMap(metaOf(s).labels);
-      return l[LABEL_SERVICE_NAME] === name && managedByController(l);
-    })
-    // dropEndpointSlicesPendingDeletion
-    .filter((s) => !metaOf(s).deletionTimestamp);
+  const slices = managedSlices(c, namespace, name);
   // Computed before reconciling so the tracker advances even when nothing is written.
   const triggerTime = computeEndpointLastChangeTriggerTime(c, namespace, svc, pods);
+  const before = sliceSignature(slices);
   const errs = reconcile(c, { controllerName: CONTROLLER_NAME, maxEndpointsPerSlice: MAX_ENDPOINTS_PER_SLICE }, svc, pods, slices, triggerTime);
+  traceMembership(c, svc, selector, pods, sliceSignature(managedSlices(c, namespace, name)) !== before);
   const err = aggregateError(errs);
   if (err !== undefined) {
     c.event(svc, 'Warning', 'FailedToUpdateEndpointSlices', `Error updating Endpoint Slices for Service ${namespace}/${name}: ${err}`);

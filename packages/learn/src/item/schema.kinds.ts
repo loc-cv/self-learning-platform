@@ -12,7 +12,7 @@ const CHOICES: Schema = { type: 'array', minItems: 2, items: TEXT };
 const INDEX: Schema = { type: 'integer', minimum: 0 };
 const CHECKS: Schema = { type: 'array', minItems: 1, items: { $ref: '#/$defs/check' } };
 const header = (name: string): Schema => ({ $ref: `#/$defs/header/properties/${name}` });
-const HEADER: Schema = { id: header('id'), title: header('title'), skills: header('skills'), curriculum: header('curriculum'), difficulty: header('difficulty'), targetMinutes: header('targetMinutes') };
+const HEADER: Schema = { id: header('id'), title: header('title'), skills: header('skills'), curriculum: header('curriculum'), difficulty: header('difficulty'), targetMinutes: header('targetMinutes'), assist: header('assist') };
 const HEADER_REQUIRED = ['id', 'kind', 'title', 'skills', 'curriculum', 'difficulty', 'targetMinutes'];
 
 const block = (key: string, value: Schema): Schema => ({ type: 'object', properties: { [key]: value, when: WHEN }, required: [key], additionalProperties: false });

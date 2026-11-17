@@ -1,7 +1,8 @@
 // The page's side of the worker protocol: one engine worker, terminal output buffered per
 // terminal until its view attaches (a replay fills terminals before they are drawn), and
-// request/response for lab actions and terminal opening.
+// request/response for lab actions, terminal opening, "why" and the view of a past moment.
 
+import type { Millis, ViewModel, Why } from '@simlab/kernel';
 import type { Clock, FromWorker, LabAction, LabResult, LabState, ToWorker } from '../protocol.ts';
 
 type Listener = (m: FromWorker) => void;
@@ -17,6 +18,13 @@ export interface EngineClient {
   openTty(cols: number, rows: number): Promise<string>;
   /** A lab action; `step` names a lesson's guided task. The clock is the attempt's time when it ran. */
   lab(action: LabAction, step?: number): Promise<{ result: LabResult; state: LabState; clock: Clock }>;
+  /**
+   * Why an entity is in its state (assist level full; the worker records the question). The worker
+   * ignores it below that level, and the promise then never settles: ask only when allowed.
+   */
+  why(entity: string): Promise<Why | undefined>;
+  /** The view of a past moment of the attempt (assist level full), as `why`. `t` is clamped by the worker. */
+  past(t: Millis): Promise<{ t: Millis; model: ViewModel }>;
   /** Called with every message as it arrives, before listeners: the latency probe uses it. */
   tap?: (m: FromWorker) => void;
 }
@@ -63,6 +71,23 @@ export function createEngineClient(worker: { postMessage(m: ToWorker): void; onm
         worker.postMessage(step === undefined ? { type: 'lab', req: id, action } : { type: 'lab', req: id, action, step });
       });
     },
+    why(entity) {
+      const id = ++req;
+      return new Promise((ok) => {
+        waiting.set(id, (m) => ok((m as Extract<FromWorker, { type: 'why' }>).why));
+        worker.postMessage({ type: 'why', req: id, entity });
+      });
+    },
+    past(t) {
+      const id = ++req;
+      return new Promise((ok) => {
+        waiting.set(id, (m) => {
+          const r = m as Extract<FromWorker, { type: 'past' }>;
+          ok({ t: r.t, model: r.model });
+        });
+        worker.postMessage({ type: 'past', req: id, t });
+      });
+    },
   };
   worker.onmessage = (e) => {
     const m = e.data;
@@ -73,7 +98,7 @@ export function createEngineClient(worker: { postMessage(m: ToWorker): void; onm
       else pending.set(m.tty, [...(pending.get(m.tty) ?? []), m.data]);
       return;
     }
-    if (m.type === 'tty.opened' || m.type === 'lab.result') {
+    if (m.type === 'tty.opened' || m.type === 'lab.result' || m.type === 'why' || m.type === 'past') {
       const w = waiting.get(m.req);
       waiting.delete(m.req);
       w?.(m);

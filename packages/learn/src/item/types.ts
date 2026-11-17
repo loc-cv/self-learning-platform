@@ -3,6 +3,7 @@
 // name them. `Item` is the lab-like item (lab, drill, incident); lessons, cards and exams have
 // their own types, and `AnyItem` is any of them.
 
+import type { Assist } from '../assist.ts';
 import type { Json } from '@simlab/kernel';
 import type { Block, Figure, VariantBlock } from '../figure/types.ts';
 
@@ -61,6 +62,8 @@ export interface Item {
   curriculum: string[];
   difficulty: number;
   targetMinutes: number;
+  /** How much of the live view an attempt may use (assist.ts). Default `full`. */
+  assist?: Assist;
   world: World;
   /** Markdown, or blocks of prose and figures (§10, §11). */
   ticket: string | Block[];
@@ -120,6 +123,8 @@ export interface ItemHeader {
   curriculum: string[];
   difficulty: number;
   targetMinutes: number;
+  /** How much of the live view an attempt may use (assist.ts). Default `full`. */
+  assist?: Assist;
 }
 
 /** A prediction prompt: answered before the learner sees what happens (PLAN.md §5). */

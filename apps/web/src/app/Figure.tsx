@@ -2,14 +2,17 @@
 // worlds drawn by the same renderer as the X-ray, in its still mode. A comparison draws two worlds
 // with what differs marked; a scene steps through frames the engine ran, forward and back, and
 // replays them; a figure opens larger in a dialog. Under reduced motion nothing plays by itself.
+// A scene's frame anchored to the trace quotes its cause under the caption, and the causes that
+// travelled between two drawn entities move along their pair once when the frame appears.
 //
 // Like the renderer it names no domain: what it draws comes from the rendered figure.
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Panel, RenderedFigure } from '@simlab/learn';
 import { ViewCanvas, type CanvasMarks } from '../view/ViewCanvas.tsx';
 import { renderInline } from './markdown.ts';
+import { EventItems, SimTag, ToneMark, When } from './Trace.tsx';
 import { Button, Icon } from './ui.tsx';
 
 /** How long a replayed frame stays before the next (ms): long enough to read its caption. */
@@ -74,11 +77,13 @@ function ChangeLegend({ panels }: { panels: readonly Panel[] }) {
   );
 }
 
-function PanelView({ panel, label, reducedMotion }: { panel: Panel; label: string; reducedMotion: boolean }) {
+function PanelView({ panel, label, reducedMotion, linksKey }: { panel: Panel; label: string; reducedMotion: boolean; linksKey?: number }) {
+  // The drawing is memoized: the same panel gives it the same marks.
+  const marks = useMemo(() => marksOf(panel), [panel]);
   return (
     <div className="figure-panel">
       {panel.title ? <div className="figure-panel-title">{panel.title}</div> : null}
-      <ViewCanvas model={panel.model} filter="all" still marks={marksOf(panel)} reducedMotion={reducedMotion} label={label} />
+      <ViewCanvas model={panel.model} filter="all" still marks={marks} {...(panel.links ? { links: panel.links, linksKey: linksKey ?? 0 } : {})} reducedMotion={reducedMotion} label={label} />
     </div>
   );
 }
@@ -108,7 +113,7 @@ function Scene({ figure, second, reducedMotion }: { figure: Extract<RenderedFigu
   };
   return (
     <>
-      <PanelView panel={frame.panel} label={`Frame ${i + 1} of ${n}: ${frame.caption} ${figure.alt}`} reducedMotion={reducedMotion} />
+      <PanelView panel={frame.panel} label={`Frame ${i + 1} of ${n}: ${frame.caption} ${figure.alt}`} reducedMotion={reducedMotion} linksKey={i} />
       <div className="scene-bar">
         <Button small variant="ghost" title="Previous frame" aria-label="Previous frame" disabled={i === 0} onClick={() => go(i - 1)}>
           <Icon name="prev" />
@@ -138,13 +143,25 @@ function Scene({ figure, second, reducedMotion }: { figure: Extract<RenderedFigu
           ))}
         </ol>
       </div>
-      <p className="scene-caption" aria-live="polite">
+      <div className="scene-caption" aria-live="polite">
         <span className="scene-caption-n">{i + 1}</span>
         <span>
           <span dangerouslySetInnerHTML={{ __html: renderInline(frame.caption) }} />
           {other?.frames[i] && other.frames[i]?.caption !== frame.caption ? <span className="figure-second" lang="vi" dangerouslySetInnerHTML={{ __html: renderInline(other.frames[i]?.caption ?? '') }} /> : null}
+          {frame.cause ? (
+            <span className="scene-cause">
+              <span className="scene-cause-head">
+                {frame.t !== undefined && figure.frames[0]?.t !== undefined ? <When t={frame.t} start={figure.frames[0].t} /> : null}
+                <ToneMark tone={frame.cause.tone} />
+                <span className="trace-actor">{frame.cause.actor}</span>
+                <SimTag />
+              </span>
+              <span className="trace-text">{frame.cause.text}</span>
+              <EventItems items={frame.cause.items ?? []} />
+            </span>
+          ) : null}
         </span>
-      </p>
+      </div>
       <Notes panels={[frame.panel]} second={other?.frames[i] ? [other.frames[i].panel] : undefined} />
     </>
   );

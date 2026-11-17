@@ -8,7 +8,7 @@
 // Chords the browser never gives to a page in an ordinary tab (Ctrl+W, Ctrl+T, Ctrl+N) cannot be
 // shortcuts at all; `isBrowserChord` is for the windows where the page does get them (D-113).
 
-export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'prevTab' | 'nextTab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy' | 'fullscreen' | 'xray' | 'prevLabTab' | 'nextLabTab' | 'grabXray' | 'home' | 'next';
+export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'prevTab' | 'nextTab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy' | 'fullscreen' | 'xray' | 'prevLabTab' | 'nextLabTab' | 'grabXray' | 'home' | 'next' | 'speed' | 'skip';
 
 export interface ShortcutInfo {
   id: Shortcut;
@@ -30,6 +30,8 @@ export const SHORTCUTS: ShortcutInfo[] = [
   { id: 'xray', keys: 'Ctrl+Shift+Y', what: 'Open or close the X-ray (counts as help)' },
   { id: 'grabXray', keys: 'Ctrl+Shift+G', what: 'Floating X-ray: take its move handle (arrows move, Shift+arrows resize, Esc returns)' },
   { id: 'pause', keys: 'Ctrl+Shift+Space', what: 'Pause or resume time' },
+  { id: 'speed', keys: 'Ctrl+Shift+S', what: 'The next speed of time: 1×, 2×, 5×, 10×, then 1× again' },
+  { id: 'skip', keys: 'Ctrl+Shift+J', what: 'Jump to the next moment something shows (a terminal prints, the system acts), up to an hour ahead' },
   { id: 'labs', keys: 'Ctrl+Shift+O', what: 'Browse all content' },
   { id: 'copy', keys: 'Ctrl+Shift+C / V', what: 'Copy the selection / paste' },
   { id: 'fullscreen', keys: 'Ctrl+Shift+F', what: 'Full screen: every key reaches the shell' },
@@ -63,6 +65,12 @@ export function matchShortcut(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'a
       return { id: 'xray' };
     case 'Space':
       return { id: 'pause' };
+    // Ctrl+S (XOFF, forward-search-history) and Ctrl+J (newline) stay the shell's: the terminal
+    // sends the same byte for the unshifted chord.
+    case 'KeyS':
+      return { id: 'speed' };
+    case 'KeyJ':
+      return { id: 'skip' };
     case 'KeyO':
       return { id: 'labs' };
     case 'KeyD':

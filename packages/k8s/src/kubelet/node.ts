@@ -70,20 +70,20 @@ function nodeRef(node: string, uid?: string): JsonObject {
   return { kind: 'Node', name: node, ...(uid ? { uid } : {}), apiVersion: 'v1' };
 }
 
-function nodeEvent(ctx: Ctx, st: ControllerState, node: string, type: 'Normal' | 'Warning', reason: string, message: string, withUid: boolean): void {
+function nodeEvent(ctx: Ctx, st: ControllerState, node: string, type: 'Normal' | 'Warning', reason: string, message: string, withUid: boolean, cause: number): void {
   const n = client(ctx, st, node).resource('v1/nodes').get(undefined, node);
   const uid = n.ok ? str(obj((n.object as JsonObject).metadata).uid) : undefined;
   const ref = nodeRef(node, withUid ? uid : undefined);
-  recordEvent(ctx, { recorder: st.id, component: 'kubelet', host: node, client: client(ctx, st, node) }, { kind: 'Node', apiVersion: 'v1', metadata: { name: node } } as ApiObject, type, reason, message, ref);
+  recordEvent(ctx, { recorder: st.id, component: 'kubelet', host: node, client: client(ctx, st, node), cause }, { kind: 'Node', apiVersion: 'v1', metadata: { name: node } } as ApiObject, type, reason, message, ref);
 }
 
 /** What a kubelet does when its process starts, on a node that is already registered. */
-export function kubeletStarted(ctx: Ctx, node: string): void {
+export function kubeletStarted(ctx: Ctx, node: string, cause: number): void {
   const st = state(ctx, node);
   if (!st) return;
-  nodeEvent(ctx, st, node, 'Normal', 'Starting', 'Starting kubelet.', true);
-  for (const reason of ['NodeHasSufficientMemory', 'NodeHasNoDiskPressure', 'NodeHasSufficientPID']) nodeEvent(ctx, st, node, 'Normal', reason, `Node ${node} status is now: ${reason}`, true);
-  nodeEvent(ctx, st, node, 'Normal', 'NodeAllocatableEnforced', 'Updated Node Allocatable limit across pods', false);
+  nodeEvent(ctx, st, node, 'Normal', 'Starting', 'Starting kubelet.', true, cause);
+  for (const reason of ['NodeHasSufficientMemory', 'NodeHasNoDiskPressure', 'NodeHasSufficientPID']) nodeEvent(ctx, st, node, 'Normal', reason, `Node ${node} status is now: ${reason}`, true, cause);
+  nodeEvent(ctx, st, node, 'Normal', 'NodeAllocatableEnforced', 'Updated Node Allocatable limit across pods', false, cause);
   renewLease(ctx, node, true);
   syncNodeStatus(ctx, node);
 }
@@ -162,12 +162,13 @@ function syncNodeStatus(ctx: Ctx, node: string): void {
         // A change (or the first report) draws a new delay; a period-only patch resets it.
         const delay = changed || hb.lastReport === undefined ? Math.floor(REPORT_MS * (ctx.random('k8s.kubelet.report-delay').float() - 0.5)) : 0;
         const readyBefore = str(oldConds.find((c) => c.type === 'Ready')?.status);
+        const readyId = readyBefore === 'True' ? 0 : ctx.trace({ source: `k8s.kubelet/${node}`, kind: 'kubelet.node.ready', subject: `node/${node}`, message: `kubelet on ${node} posts Ready=True${readyBefore === '' ? '' : ` (was ${readyBefore})`}`, data: { node, from: readyBefore, to: 'True' } });
         if (readyBefore !== 'True' && readyBefore !== '') {
           for (const c of conds.slice(0, 3)) {
             const prev = oldConds.find((o) => o.type === c.type);
-            if (prev && prev.status !== c.status) nodeEvent(ctx, st, node, 'Normal', c.type === 'MemoryPressure' ? 'NodeHasSufficientMemory' : c.type === 'DiskPressure' ? 'NodeHasNoDiskPressure' : 'NodeHasSufficientPID', `Node ${node} status is now: ${c.type === 'MemoryPressure' ? 'NodeHasSufficientMemory' : c.type === 'DiskPressure' ? 'NodeHasNoDiskPressure' : 'NodeHasSufficientPID'}`, true);
+            if (prev && prev.status !== c.status) nodeEvent(ctx, st, node, 'Normal', c.type === 'MemoryPressure' ? 'NodeHasSufficientMemory' : c.type === 'DiskPressure' ? 'NodeHasNoDiskPressure' : 'NodeHasSufficientPID', `Node ${node} status is now: ${c.type === 'MemoryPressure' ? 'NodeHasSufficientMemory' : c.type === 'DiskPressure' ? 'NodeHasNoDiskPressure' : 'NodeHasSufficientPID'}`, true, readyId);
           }
-          nodeEvent(ctx, st, node, 'Normal', 'NodeReady', `Node ${node} status is now: NodeReady`, true);
+          nodeEvent(ctx, st, node, 'Normal', 'NodeReady', `Node ${node} status is now: NodeReady`, true, readyId);
         }
         hb = { ...hb, lastReport: ctx.now, reportDelay: delay, ready: 'True' };
       }

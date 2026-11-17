@@ -416,6 +416,41 @@ debrief:
         - { on: affinity, text: Removes nodes whose labels the node selector or node affinity does not match. }
         - { on: fit, text: Removes nodes without room for the Pod's requests. }
         - { on: score, text: "Ranks the rest. When no node is left, the Pod stays Pending." }
+  - figure:
+      kind: scene
+      world:
+        setup:
+          - run: kubectl label node {{ssdNode}} disktype=ssd
+      focus: { scope: default, kinds: [Pod, Node] }
+      show: [{ fact: Labels, keys: [disktype] }, Node-Selectors, Taints]
+      frames:
+        - caption: "A cluster with one labelled node: `{{ssdNode}}` carries `disktype=ssd`."
+        - steps:
+            - apply: |
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  name: probe
+                spec:
+                  nodeSelector:
+                    disktype: nvme
+                  containers:
+                    - name: probe
+                      image: nginx:1.31.8
+          at: { actor: kube-scheduler, about: Pod/probe }
+          caption: "A Pod that asks for `disktype=nvme` arrives. The scheduler filters every node: {{@cause}}"
+        - steps:
+            - run: kubectl label node {{ssdNode}} disktype=nvme --overwrite
+          at: { actor: kube-scheduler, about: Pod/probe }
+          caption: "The label changes, the scheduler tries the Pod again: {{@cause}}"
+      caption: >-
+        One scheduling decision, node by node: each node is kept or removed by a filter, and a
+        change to a node makes the scheduler try a waiting Pod again.
+      alt: >-
+        Three frames. First, three nodes, one labelled disktype=ssd. Second, a Pod named probe
+        with the node selector disktype=nvme is Pending, and the scheduler's verdict lists a
+        reason for each of the three nodes. Third, after the node is relabelled disktype=nvme,
+        the scheduler binds probe to it.
   - text: |
       **Read the scheduler's reason first.** For a Pod it cannot place, the scheduler records a
       `FailedScheduling` event that counts the rejected nodes per reason

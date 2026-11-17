@@ -7,7 +7,7 @@ import { CHECK, FAULT, STEP, TOPOLOGY, type CheckSpec, type FaultSpec, type Json
 import { formatSchemaErrors, validateSchema } from './item/jsonschema.ts';
 import { itemSchema } from './item/schema.ts';
 import { isScenario, type AnyItem, type CardItem, type Check, type ExamItem, type Item, type ItemKind, type JsonObject, type LessonItem, type Step, type Variant } from './item/types.ts';
-import { cardVariantOf, lessonVariantOf, matches, PlaceholderError, resolveParams, scenarioShape, variantOf } from './item/variant.ts';
+import { cardVariantOf, lessonVariantOf, matches, PlaceholderError, RESERVED_PLACEHOLDER, resolveParams, scenarioShape, variantOf } from './item/variant.ts';
 import { BUILTIN_STEP_NAMES } from './runner/builtin.ts';
 import { buildBaseline, ItemError, startSession, type Baseline, type BuildOptions } from './runner/build.ts';
 import { grade, type GradeReport } from './runner/grader.ts';
@@ -207,7 +207,10 @@ export function staticProblems(raw: Json, ctx: StaticContext): string[] {
     for (const m of s.text.matchAll(PLACEHOLDER)) {
       const name = m[1] as string;
       used.add(name);
-      if (!Object.hasOwn(params, name)) out.push(`${s.path}: {{${name}}} names no parameter`);
+      if (Object.hasOwn(params, name)) continue;
+      // A scene frame's caption may quote the trace event the frame is anchored to (§11.6).
+      if (name === RESERVED_PLACEHOLDER && /\.frames\[\d+\]\.caption$/.test(s.path)) continue;
+      out.push(`${s.path}: {{${name}}} names no parameter`);
     }
   }
   const ws: { path: string; when: JsonObject }[] = [];

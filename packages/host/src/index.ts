@@ -35,3 +35,4 @@ export { applyEditorOps, runLine, stepShell, stepTarget, STEP_COMMAND_TIMEOUT, t
 export { HOST_STEPS, runStep, writeStep, ON_SCHEMA, AS_SCHEMA } from './scenario/steps.ts';
 export { HOST_CHECKS, hostFileCheck, shellExecCheck, matchFailure, describeMatcher, type Matcher } from './scenario/checks.ts';
 export { hostView, hostViewProvider, machineViewId, MACHINE_KIND } from './view/provider.ts';
+export { hostEvents, HOST_TRACE_KINDS } from './view/events.ts';

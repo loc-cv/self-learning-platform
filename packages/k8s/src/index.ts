@@ -68,3 +68,7 @@ export {
   type YamlResult,
 } from './apimachinery/yaml/index.ts';
 export { K8S_STEPS, applyStep } from './scenario/apply.ts';
+export { k8sView, k8sViewProvider, KINDS as K8S_VIEW_KINDS } from './view/provider.ts';
+export { namespaceId, nodeId, objectId } from './view/ids.ts';
+export { k8sEvents, NOT_SHOWN as K8S_TRACE_NOT_SHOWN, SHOWN_KINDS as K8S_TRACE_KINDS, type K8sEventDetail, type K8sViewEvent } from './view/trace.ts';
+export { k8sWhy } from './view/why.ts';

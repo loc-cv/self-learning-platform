@@ -170,12 +170,28 @@ export function getPodsToDelete(filteredPods: ApiObject[], relatedPods: readonly
   return filteredPods.slice(0, diff);
 }
 
+/**
+ * `replicaset.scale`: manageReplicas found the active Pods off spec.replicas and acts. The creates
+ * and deletes that follow are its `controller.write` records.
+ */
+function traceScale(c: SyncCtx, rs: ApiObject, active: number, action: 'create' | 'delete', count: number, pods: string[]): void {
+  const replicas = num(specOf(rs).replicas);
+  const m = rs.metadata as JsonObject;
+  c.trace(
+    'replicaset.scale',
+    `ReplicaSet ${namespaceOf(rs)}/${nameOf(rs)} has ${active} active Pod(s) of ${replicas}: ${action === 'create' ? 'creating' : 'deleting'} ${count}${pods.length > 0 ? ` (${pods.join(', ')})` : ''}`,
+    { namespace: namespaceOf(rs), name: nameOf(rs), uid: String(m.uid ?? ''), replicas, active, action, count, pods },
+    `${namespaceOf(rs)}/${nameOf(rs)}`,
+  );
+}
+
 /** manageReplicas: create or delete Pods to bring the active count to spec.replicas. */
 function manageReplicas(c: SyncCtx, activePods: ApiObject[], rs: ApiObject): ApiError | undefined {
   let diff = activePods.length - num(specOf(rs).replicas);
   const ns = namespaceOf(rs);
   if (diff < 0) {
     diff = Math.min(-diff, BURST_REPLICAS);
+    traceScale(c, rs, activePods.length, 'create', diff, []);
     const template = specOf(rs).template as JsonObject;
     const ref = newControllerRef(rs, API_VERSION, KIND);
     const r = slowStartBatch(diff, SLOW_START_INITIAL_BATCH_SIZE, () => {
@@ -189,6 +205,7 @@ function manageReplicas(c: SyncCtx, activePods: ApiObject[], rs: ApiObject): Api
   if (diff > 0) {
     diff = Math.min(diff, BURST_REPLICAS);
     const podsToDelete = getPodsToDelete(activePods, getIndirectlyRelatedPods(c, rs), diff, c.now);
+    traceScale(c, rs, activePods.length, 'delete', diff, podsToDelete.map(nameOf));
     let first: ApiError | undefined;
     for (const pod of podsToDelete) {
       const err = deletePod(c, ns, nameOf(pod), rs);

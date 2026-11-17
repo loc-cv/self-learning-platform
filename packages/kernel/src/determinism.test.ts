@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest';
 import { createInteractiveDriver } from './driver.ts';
 import { bootKernel, createKernel, type Kernel } from './kernel.ts';
 import { createRegistry, type Registry } from './registry.ts';
-import { createRecorder, replay, type SessionHeader, type SessionLog } from './replay.ts';
+import { createRecorder, createReplayCursor, replay, type SessionHeader, type SessionLog } from './replay.ts';
 import { restore, snapshot } from './snapshot.ts';
 import { put } from './table.ts';
 import { ENGINE_VERSION } from './version.ts';
@@ -265,6 +265,62 @@ describe('input log and replay', () => {
   });
 });
 
+describe('replay cursor', () => {
+  const header: SessionHeader = { topology: 'sim', seed: 5, startTime: 1_000_000, engine: ENGINE_VERSION };
+
+  test('reading a past moment: the world at t is the world the session had at t', () => {
+    const k = bootSim(5);
+    const rec = createRecorder(k, header);
+    const hashes = new Map<number, string>();
+    const mark = (): void => void hashes.set(k.now, k.hash());
+    k.advance(300);
+    mark();
+    rec.deliver({ kind: 'sim.add', name: 'alpha' });
+    k.advance(700);
+    mark();
+    rec.deliver({ kind: 'sim.add', name: 'beta' });
+    rec.deliver({ kind: 'sim.add', name: 'gamma' });
+    mark();
+    k.advance(2_000);
+    mark();
+    const log = rec.log();
+    // Forward in one cursor, and each moment from a fresh one.
+    const one = createReplayCursor(log, bootSim(5));
+    for (const [t, hash] of hashes) {
+      if (t === 1_000_300) continue; // marked before the input at that instant was delivered
+      one.seek(t);
+      expect(one.kernel.now).toBe(t);
+      expect(one.kernel.hash()).toBe(hash);
+      const fresh = createReplayCursor(log, bootSim(5));
+      fresh.seek(t);
+      expect(fresh.kernel.hash()).toBe(hash);
+    }
+    expect(one.delivered).toBe(3);
+    // Never backward, never past the end of the log.
+    one.seek(1_000_000);
+    expect(one.kernel.now).toBe(log.end);
+    one.seek(log.end + 5_000);
+    expect(one.kernel.now).toBe(log.end);
+  });
+
+  test('step by step: each input is delivered at its time', () => {
+    const k = bootSim(5);
+    const rec = createRecorder(k, header);
+    play(k, (i) => rec.deliver(i));
+    const log = rec.log();
+    const c = createReplayCursor(log, bootSim(5));
+    const times: number[] = [];
+    while (c.pending) {
+      c.deliverNext();
+      times.push(c.kernel.now);
+    }
+    expect(times).toEqual(log.inputs.map((i) => i.t));
+    expect(c.deliverNext()).toBe(false);
+    c.seek(log.end);
+    expect(c.kernel.hash()).toBe(k.hash());
+  });
+});
+
 describe('interactive driver', () => {
   const header: SessionHeader = { topology: 'sim', seed: 2, startTime: 1_000_000, engine: ENGINE_VERSION };
 
@@ -299,6 +355,29 @@ describe('interactive driver', () => {
     expect(log.inputs[0]?.t).toBe(1_000_200);
     const r = replay(log, (h) => bootSim(h.seed));
     expect(r.kernel.hash()).toBe(k.hash());
+  });
+
+  test('a skip with a condition runs event after event until it holds, within the limit', () => {
+    const k = bootSim(2);
+    const d = createInteractiveDriver(createRecorder(k, header));
+    d.deliver({ kind: 'sim.add', name: 'alpha' });
+    const start = k.now;
+    let jumps = 0;
+    // Stops at the first event after which the condition holds, exactly at that event's time.
+    expect(d.skipToNextEvent(() => ++jumps === 2)).toBe(true);
+    const fork = bootSim(2);
+    fork.input({ kind: 'sim.add', name: 'alpha' });
+    fork.runUntil(fork.nextEventTime() as number);
+    fork.runUntil(fork.nextEventTime() as number);
+    expect(k.now).toBe(fork.now);
+    expect(k.hash()).toBe(fork.hash());
+    expect(k.now).toBeGreaterThan(start);
+    // A condition that never holds: the skip stops before the first event past the limit.
+    const before = k.now;
+    expect(d.skipToNextEvent(() => false, 50)).toBe(false);
+    expect(k.now).toBeLessThanOrEqual(before + 50);
+    const next = k.nextEventTime();
+    expect(next === undefined || next > before + 50).toBe(true);
   });
 
   test('skip to next event ignores idle work', () => {

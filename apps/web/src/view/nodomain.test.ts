@@ -1,4 +1,4 @@
-// The view contract, the renderer, the X-ray pane and figures know no domain (hard rule 8, PLAN.md §6.5):
+// The view contract, the renderer, the X-ray pane, its timeline, the trace in words, the replay and figures know no domain (hard rule 8, PLAN.md §6.5):
 // no word of a Kubernetes concept appears in their code or comments. Kind names, scope names and
 // the words of states reach them only through the view model.
 
@@ -13,6 +13,10 @@ const FILES = [
   'apps/web/src/view/ViewCanvas.tsx',
   'apps/web/src/app/XRay.tsx',
   'apps/web/src/app/Figure.tsx',
+  'apps/web/src/app/Timeline.tsx',
+  'apps/web/src/app/timeline.ts',
+  'apps/web/src/app/Trace.tsx',
+  'apps/web/src/app/Replay.tsx',
   'packages/learn/src/figure/types.ts',
   'packages/learn/src/figure/focus.ts',
   'packages/learn/src/figure/render.ts',

@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { createRegistry } from './registry.ts';
-import { buildView, validateView, VIEW, type ViewPart, type ViewProviderSpec } from './view.ts';
+import { buildEvents, buildView, buildWhy, validateEvents, validateView, VIEW, type ViewEvent, type ViewPart, type ViewProviderSpec } from './view.ts';
+import type { TraceRecord } from './trace.ts';
 import { emptyWorld } from './world.ts';
 
 const part = (p: Partial<ViewPart>): ViewPart => ({ kinds: [], entities: [], relations: [], ...p });
@@ -73,4 +74,39 @@ test('validation names duplicates, unknown kinds and containers, bad scopes and 
     '3: container nope is not in the model',
     'relation owns 1 → 9: an end is not in the model',
   ]);
+});
+
+const rec = (id: number, kind: string, causes?: number[]): TraceRecord => ({ id, t: 100 + id, source: kind.split('.')[0] as string, kind, message: `${kind} ${id}`, during: 'x', ...(causes ? { causes } : {}) });
+const ev = (r: TraceRecord, extra: Partial<ViewEvent> = {}): ViewEvent => ({ id: r.id, t: r.t, actor: r.source, text: r.message, about: [], level: 'key', tone: 'neutral', causes: r.causes ?? [], ...extra });
+
+test('events of every provider merge in record order, and causes skip records no event shows', () => {
+  const a: ViewProviderSpec = { name: 'a', view: () => part({}), events: (rs) => rs.filter((r) => r.kind.startsWith('a.') && r.kind !== 'a.hidden').map((r) => ev(r)) };
+  const b: ViewProviderSpec = {
+    name: 'b',
+    view: () => part({}),
+    events: (rs) => rs.filter((r) => r.kind.startsWith('b.')).map((r) => ev(r, { about: ['b/1'] })),
+    why: (_w, events, entity) => (entity === 'b/1' ? { entity, summary: 'because', steps: events.filter((e) => e.about.includes(entity)) } : undefined),
+  };
+  const registry = createRegistry([{ name: 'p', contributions: { [VIEW]: [b, a] } }]);
+  // 1 a.shown ← 2 a.hidden ← 3 a.hidden ← 4 b.act ; 5 b.act ← 4 and ← 2 (both reach 1 or 4)
+  const records = [rec(1, 'a.shown'), rec(2, 'a.hidden', [1]), rec(3, 'a.hidden', [2]), rec(4, 'b.act', [3]), rec(5, 'b.act', [4, 2]), rec(6, 'c.unmapped', [5])];
+  const events = buildEvents(registry, records);
+  expect(events.map((e) => [e.id, e.causes])).toEqual([
+    [1, []],
+    [4, [1]],
+    [5, [1, 4]],
+  ]);
+  expect(validateEvents(events)).toEqual([]);
+  expect(buildWhy(registry, emptyWorld(1, 0), events, 'b/1')?.steps.map((e) => e.id)).toEqual([4, 5]);
+  expect(buildWhy(registry, emptyWorld(1, 0), events, 'a/x')).toBeUndefined();
+});
+
+test('validateEvents names what is wrong', () => {
+  const bad: ViewEvent[] = [
+    ev(rec(2, 'a.x'), { causes: [2] }),
+    ev(rec(1, 'a.x'), { actor: '' }),
+    ev(rec(1, 'a.x'), { tone: 'loud' as never, items: [{ label: '', value: 'v', tone: 'good' }] }),
+  ];
+  const problems = validateEvents(bad).join('\n');
+  for (const want of ['cause 2 does not precede', 'out of record order', 'names who acted', 'two events with this id', 'unknown tone loud', 'malformed item']) expect(problems).toContain(want);
 });

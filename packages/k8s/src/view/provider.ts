@@ -18,6 +18,9 @@ import { strategyFor } from '../apiserver/strategies.ts';
 import { sortedTaints, sortedTolerations, taintString, tolerationString } from '../kubectl/describe/common.ts';
 import { printHandler } from '../printers/handlers.ts';
 import { bool, metadata, num, obj, objs, str, strMap, type GenerateOptions } from '../printers/helpers.ts';
+import { namespaceId, nodeId, objectId } from './ids.ts';
+import { k8sEvents } from './trace.ts';
+import { k8sWhy } from './why.ts';
 
 export const KINDS = {
   namespace: 'k8s.Namespace',
@@ -43,9 +46,7 @@ const VIEW_KINDS: ViewKind[] = [
  */
 const SYSTEM_NAMESPACES = new Set(['kube-system', 'kube-public', 'kube-node-lease']);
 
-export const namespaceId = (ns: string): string => `k8s/Namespace/${ns}`;
-export const nodeId = (name: string): string => `k8s/Node/${name}`;
-const objectId = (kind: string, ns: string, name: string): string => `k8s/${kind}/${ns}/${name}`;
+export { namespaceId, nodeId, objectId };
 
 const nameOf = (o: JsonObject): string => str(metadata(o).name);
 const nsOf = (o: JsonObject): string => str(metadata(o).namespace);
@@ -358,7 +359,7 @@ export function k8sView(world: World): ViewPart {
   return { kinds: VIEW_KINDS, entities, relations };
 }
 
-export const k8sViewProvider: ViewProviderSpec = { name: 'k8s', view: k8sView };
+export const k8sViewProvider: ViewProviderSpec = { name: 'k8s', view: k8sView, events: k8sEvents, why: k8sWhy };
 
 /** The words the view shows that kubectl also prints (docs/FIDELITY.md §3). */
 export const VIEW_PROVENANCE: ProvenanceSpec[] = [
@@ -371,5 +372,16 @@ export const VIEW_PROVENANCE: ProvenanceSpec[] = [
       'staging/src/k8s.io/apimachinery/pkg/labels FormatLabels',
     ],
     note: 'status words, fact labels (the printers\' column names) and fact values of the X-ray; the judgement of each state is the simulator\'s (D-120)',
+  },
+  {
+    name: 'view.k8s.trace.quotes',
+    tag: 'source-derived',
+    sources: [
+      'pkg/scheduler/framework/plugins (the Filter reasons, through packages/k8s/src/scheduler/plugins/filters.ts and cycle.ts)',
+      'containerd v1.7.28 pkg/cri/server/container_status.go (exit reasons Completed and Error, through packages/k8s/src/runtime/runtime.ts exitReason)',
+      'pkg/kubelet/status/generate.go (the Ready condition reasons, through packages/k8s/src/kubelet/status.ts)',
+      'the Events the components record (reason and message, as their own provenance registers them)',
+    ],
+    note: 'what the X-ray\'s events and "Why?" quote; the sentences around them are simulator vocabulary (docs/ARCHITECTURE.md §2.9, view/trace.ts)',
   },
 ];

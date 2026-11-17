@@ -25,6 +25,7 @@ import { closeSubscription, etcdData, k8sSlice, objectKey, storeGet, storeList, 
 import { strategyFor } from '../apiserver/strategies.ts';
 import type { UserInfo } from '../apiserver/types.ts';
 import { createClient, gvr } from '../client/client.ts';
+import { writeData } from '../client/writes.ts';
 import { recordEvent } from './record.ts';
 import type { ControllerEvent, ControllerSpec, Reader, SyncCtx, SyncResult } from './types.ts';
 
@@ -238,8 +239,8 @@ function runSync(ctx: Ctx, id: string): void {
   save(ctx, st);
   const spec = controllerSpec(ctx, st.name);
   const source = traceSource(spec);
-  const syncId = ctx.trace({ source, kind: 'controller.sync', subject: item.key, message: `sync ${item.key}, queued by ${item.cause}`, data: { key: item.key, cause: item.cause } });
-  const result = spec.sync(syncCtx(ctx, spec, st, syncId), item.key);
+  const syncId = ctx.trace({ source, kind: 'controller.sync', subject: item.key, message: `sync ${item.key}, queued by ${item.cause}`, data: { controller: st.name, instance: st.instance, key: item.key, cause: item.cause } });
+  const result = spec.sync(syncCtx(ctx, spec, st, syncId, item.key), item.key);
   settle(ctx, spec, id, item.key, result, syncId);
 }
 
@@ -253,10 +254,10 @@ function settle(ctx: Ctx, spec: ControllerSpec, id: string, key: string, result:
       const failures = { ...st.failures };
       delete failures[key];
       save(ctx, { ...st, failures });
-      ctx.trace({ source, kind: 'controller.dropped', subject: key, message: `dropping ${key} out of the queue after ${n} retries: ${result.error}`, causes: [syncId] });
+      ctx.trace({ source, kind: 'controller.dropped', subject: key, message: `dropping ${key} out of the queue after ${n} retries: ${result.error}`, data: { controller: spec.name, instance: st.instance, key, retries: n, error: result.error }, causes: [syncId] });
     } else {
       save(ctx, { ...st, failures: { ...st.failures, [key]: n + 1 } });
-      ctx.trace({ source, kind: 'controller.error', subject: key, message: `error syncing ${key}, retrying in ${backoff(n, spec)} ms: ${result.error}`, causes: [syncId] });
+      ctx.trace({ source, kind: 'controller.error', subject: key, message: `error syncing ${key}, retrying in ${backoff(n, spec)} ms: ${result.error}`, data: { controller: spec.name, instance: st.instance, key, retryIn: backoff(n, spec), error: result.error }, causes: [syncId] });
       enqueue(ctx, id, key, backoff(n, spec), `retry after error: ${result.error}`);
     }
   } else {
@@ -275,7 +276,7 @@ function describeRequest(verb: string, resource: string, namespace: string | und
   return `${verb} ${resource}${subresource ? `/${subresource}` : ''} ${objectKey(namespace, name ?? '')}`;
 }
 
-function syncCtx(ctx: Ctx, spec: ControllerSpec, st: ControllerState, syncId: number): SyncCtx {
+function syncCtx(ctx: Ctx, spec: ControllerSpec, st: ControllerState, syncId: number, currentKey: string): SyncCtx {
   const source = traceSource(spec);
   const reader = storeReader(ctx, st.server);
   const client = createClient(ctx, st.server, controllerUser(spec, st.instance), (req, res) => {
@@ -283,11 +284,13 @@ function syncCtx(ctx: Ctx, spec: ControllerSpec, st: ControllerState, syncId: nu
     const body = req.body as { metadata?: { name?: string; generateName?: string } } | undefined;
     const name = req.name ?? (res.ok ? ((res.object as { metadata?: { name?: string } }).metadata?.name ?? undefined) : body?.metadata?.name ?? body?.metadata?.generateName);
     const what = describeRequest(req.verb, req.group ? `${req.group}/${req.resource}` : req.resource, req.namespace, name, req.subresource);
+    const failure = res.ok ? '' : 'status' in res ? String(res.status.message ?? '') : 'notSimulated' in res ? res.notSimulated : '';
     ctx.trace({
       source,
       kind: res.ok ? 'controller.write' : 'controller.write-failed',
       subject: what,
-      message: res.ok ? what : `${what}: ${res.code} ${'status' in res ? String(res.status.message ?? '') : 'notSimulated' in res ? res.notSimulated : ''}`,
+      message: res.ok ? what : `${what}: ${res.code} ${failure}`,
+      data: { ...writeData(req, res, name), controller: spec.name, instance: st.instance, key: currentKey },
       causes: [syncId],
     });
   });
@@ -300,10 +303,11 @@ function syncCtx(ctx: Ctx, spec: ControllerSpec, st: ControllerState, syncId: nu
     list: reader.list,
     event(object: ApiObject, type, reason, message) {
       if (!spec.eventSource) throw new Error(`controller ${spec.name} records events but has no eventSource`);
-      recordEvent(ctx, { recorder: st.id, component: spec.eventSource, client }, object, type, reason, message);
+      recordEvent(ctx, { recorder: st.id, component: spec.eventSource, client, cause: syncId }, object, type, reason, message);
     },
     enqueueAfter: (key, delay) => enqueue(ctx, st.id, key, delay, 'queued by a sync'),
-    trace: (kind, message, data, subject) => ctx.trace({ source, kind, message, ...(subject ? { subject } : {}), ...(data !== undefined ? { data } : {}), causes: [syncId] }),
+    syncId,
+    trace: (kind, message, data, subject, causes) => ctx.trace({ source, kind, message, ...(subject ? { subject } : {}), ...(data !== undefined ? { data } : {}), causes: [syncId, ...(causes ?? [])] }),
     data: () => (stateOf(ctx, st.id) as ControllerState).data,
     setData(key, value) {
       const cur = stateOf(ctx, st.id) as ControllerState;

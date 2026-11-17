@@ -43,7 +43,7 @@ npm start                     # build apps/web, then serve it and the API (progr
                               # settings, gap log: plain files under data/) on http://127.0.0.1:4317/;
                               # server options --port N, --data DIR
 npm run e2e                   # Playwright: build, serve, smoke test and exit-criteria tests in Chromium
-                              # (not part of the gate, D-110); `npm run e2e -- <file|-g name>` for one;
+                              # (not part of the gate, D-110); `npm run e2e -w apps/web -- <file> [--grep name]` for one;
                               # screens.spec.ts writes screenshots of every screen to .tsbuild/playwright/screens/;
                               # the build bundles the fixture pack (SIMLAB_FIXTURES=1, D-161) and a second
                               # server on 4320 starts from an empty data directory
@@ -93,11 +93,11 @@ tools run as `node tools/src/<tool>.ts`. The Kubernetes pin is `KUBERNETES_VERSI
 
 ```
 packages/kernel    virtual clock, event queue, world state, snapshot/replay, PRNG, plugin registry, trace,
-                   the view contract (view.ts)
+                   the view contract (view.ts: view models, the trace as events, "why"), the replay cursor
 packages/host      simulated Linux machines: VFS, shell, TTY, coreutils, systemd, processes;
                    src/models behavior models (the contract, the container shell, utilities, image programs);
                    src/scenario the `run` and `write` steps, the `shell.exec` and `host.file` checks,
-                   src/view the host's view provider (machines)
+                   src/view the host's view provider (machines; events.ts commands from the trace)
 packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kubelet, network, kubectl, kubeadm, …
                    (src/apiserver pipeline and store, src/registry strategies, src/apis defaulting and
                    validation, src/apimachinery Go JSON and errors, src/openapi and src/discovery vendored data,
@@ -113,7 +113,8 @@ packages/k8s       Kubernetes plugin: API machinery, controllers, scheduler, kub
                    one directory per group under cmd/: generate/, change/, rollout/, logs/, explain/,
                    info/, config/, with cmd/typed.ts their typed printer; completion/ cobra's
                    __complete and the bash script's presentation),
-                   src/checks the k8s.* checks, src/scenario the `apply` step, src/view the view provider,
+                   src/checks the k8s.* checks, src/scenario the `apply` step, src/view the view provider
+                   (trace.ts the trace as events, why.ts "why" per entity),
                    src/printers the API server's Table printers, src/apimachinery/yaml go-yaml and
                    sigs.k8s.io/yaml (kubectl's YAML/JSON output and manifest parsing),
                    src/apimachinery/strategicpatch strategic merge patch (server and three-way),
@@ -122,7 +123,9 @@ packages/learn     content model, scenario runner, checks, grader, skills, FSRS,
                    (src/item the item types of every kind, variants and the generated schema with its
                    validator, src/runner steps, check evaluation, grader and baselines, src/lab.ts a
                    learner's attempt, src/figure figures: blocks, focus and marks, rendering worlds and
-                   scenes, src/validate.ts content validation, src/pack.ts the pack manifest and the
+                   scenes (events.ts frames anchored to the trace), src/replay.ts an attempt or a
+                   solution replayed as frames, src/assist.ts assist levels,
+                   src/validate.ts content validation, src/pack.ts the pack manifest and the
                    catalog, src/i18n text units, source hashes and sidecar resolution,
                    src/progress the event log, the reducer, the automatic rating, FSRS (ts-fsrs),
                    review seeds, the daily queue, statistics and the simulated learner,
@@ -137,7 +140,9 @@ apps/web           Vite + React workspace: src/engine (worker.ts and session.ts,
                    (report, rating, next), Prose (EN, VI, side by side), Figure, TopBar (the session bar),
                    progress.ts (the page's copy of the progress log and its outbox), daily.ts (the session),
                    flow.ts (attempt → progress events), attempts.ts (the attempt's log, to storage and the
-                   server), XRay (docked or floating; floating.ts its geometry), ui.tsx (buttons, the tab
+                   server), XRay (docked or floating; floating.ts its geometry), Trace (the "Why?" chain), Timeline and
+                   timeline.ts (events over virtual time, reading a past moment), Replay (the attempt
+                   replayed in the debrief), ui.tsx (buttons, the tab
                    strip, the select, icons), storage, shortcuts and fullscreen, the probe for tests,
                    tokens.css the design tokens of docs/DESIGN.md, styles.css and learning.css the rules
                    that use them (no literal values; tokens.test.ts also measures text contrast), fonts.ts),

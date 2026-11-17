@@ -59,11 +59,12 @@ export function deleteNamespace(c: SyncCtx, name: string): SyncResult {
   if (r.errors.length > 0) return { error: aggregate(r.errors) };
   if (r.estimate > 0) {
     // ResourcesRemainingError: the worker requeues after estimate/2 + 1 seconds.
-    c.trace('namespace.content-remaining', `some content remains in the namespace, estimate ${r.estimate} seconds before it is removed`, { estimate: r.estimate });
+    c.trace('namespace.content-remaining', `some content remains in the namespace, estimate ${r.estimate} seconds before it is removed`, { namespace: name, estimate: r.estimate, remaining: r.remaining }, name);
     return { requeueAfter: (Math.floor(r.estimate / 2) + 1) * 1000 };
   }
   const fin = retryOnConflictError(c, namespace, finalizeNamespace);
   if ('error' in fin && fin.error.code !== 404) return { error: fin.error.message };
+  if (!('error' in fin)) c.trace('namespace.finalized', `namespace ${name} is empty: its kubernetes finalizer is removed`, { namespace: name }, name);
   return { done: true };
 }
 
@@ -126,7 +127,7 @@ interface GvrDeletionMetadata {
 const isPods = (r: ApiResource): boolean => r.group === '' && r.version === 'v1' && r.resource === 'pods';
 
 /** deleteAllContent: every namespaced resource that supports delete, Pods first. */
-function deleteAllContent(c: SyncCtx, ns: ApiObject): { estimate: number; errors: string[] } {
+function deleteAllContent(c: SyncCtx, ns: ApiObject): { estimate: number; errors: string[]; remaining: Record<string, number> } {
   const namespace = str(meta(ns).name);
   const deletedAt = timeMs(str(meta(ns).deletionTimestamp));
   const errors: string[] = [];
@@ -152,7 +153,7 @@ function deleteAllContent(c: SyncCtx, ns: ApiObject): { estimate: number; errors
     if ((totals.gvrToNumRemaining.get('pods.') ?? 0) > 0) {
       // Pods still remain: other resources wait (their controllers would recreate Pods otherwise).
       updateStatus(c, ns, u);
-      return { estimate, errors };
+      return { estimate, errors, remaining: Object.fromEntries(totals.gvrToNumRemaining) };
     }
   }
   for (const r of resources) {
@@ -166,7 +167,7 @@ function deleteAllContent(c: SyncCtx, ns: ApiObject): { estimate: number; errors
   }
   processContentTotals(u, totals);
   updateStatus(c, ns, u);
-  return { estimate, errors };
+  return { estimate, errors, remaining: Object.fromEntries([...totals.gvrToNumRemaining].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) };
 }
 
 /** The conditions update; an error is only logged upstream (HandleError). */

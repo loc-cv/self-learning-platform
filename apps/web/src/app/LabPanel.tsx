@@ -5,24 +5,33 @@
 // PLAN.md §5); the debrief asks for the root cause in the learner's words before it shows its own.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { LabAction, LabInfo, LabState, Note, PBlock, SolutionText } from '../protocol.ts';
+import type { LabAction, LabInfo, LabState, Note, PBlock, SolutionText, Text } from '../protocol.ts';
 import { Button, Dots, Icon, panelDomId, tabDomId, TabStrip, type TabItem } from './ui.tsx';
 import { Blocks, T, TranslationNote } from './Prose.tsx';
 import { Empty, NextButton, RatingStrip, Report, CheckRow, type NextStep, type Rated, type Review } from './parts.tsx';
 import type { Lang } from './storage.ts';
-import type { Rating } from '@simlab/learn';
+import type { Rating, Replay } from '@simlab/learn';
+import { ReplayInputs, ReplayStepper } from './Replay.tsx';
 
 export type LabTab = 'ticket' | 'check' | 'hints' | 'debrief' | 'solutions';
 export const LAB_TABS: readonly LabTab[] = ['ticket', 'check', 'hints', 'debrief', 'solutions'];
 
 /** The tab that shows an action's result. */
-export const TAB_OF_ACTION: Record<LabAction, LabTab> = { check: 'check', hint: 'hints', debrief: 'debrief', solutions: 'solutions', reset: 'ticket' };
+export const TAB_OF_ACTION: Record<LabAction, LabTab> = { check: 'check', hint: 'hints', debrief: 'debrief', solutions: 'solutions', reset: 'ticket', reference: 'debrief' };
 
 export interface DebriefData {
   blocks: PBlock[];
-  /** The commands the learner's shells remember. */
+  /** The commands the learner's shells remember: what the debrief shows when it has no replay. */
   history: string[];
   solutions: SolutionText[];
+  /** The attempt replayed from its input log. */
+  replay?: Replay;
+}
+
+/** The reference solution's run, asked for from the debrief; `replay` absent: the item has none to run. */
+export interface ReferenceRun {
+  name?: Text;
+  replay?: Replay;
 }
 
 interface Props {
@@ -30,6 +39,7 @@ interface Props {
   state: LabState;
   lang: Lang;
   debrief?: DebriefData;
+  reference?: ReferenceRun;
   reducedMotion: boolean;
   solutions?: SolutionText[];
   busy?: LabAction;
@@ -138,6 +148,22 @@ function Debrief({ p, data }: { p: Props; data: DebriefData }) {
   return (
     <div className="debrief">
       <Blocks blocks={figures} lang={p.lang} reducedMotion={p.reducedMotion} />
+      {data.replay ? (
+        <section className="debrief-part" aria-label="Your attempt, replayed">
+          <div className={`replay-pair${p.reference?.replay ? ' has-two' : ''}`}>
+            <ReplayStepper replay={data.replay} title="Your attempt, replayed" reducedMotion={p.reducedMotion} />
+            {p.reference?.replay ? <ReplayStepper replay={p.reference.replay} title={p.reference.name ? `The reference solution’s run: ${p.lang !== 'en' && p.reference.name.vi !== undefined ? p.reference.name.vi : p.reference.name.en}` : 'The reference solution’s run'} reducedMotion={p.reducedMotion} /> : null}
+          </div>
+          {p.reference === undefined ? (
+            <Button variant="ghost" small className="replay-ask" disabled={p.busy === 'reference'} onClick={() => p.act('reference')}>
+              <Icon name="key" />
+              {p.busy === 'reference' ? 'Running the reference solution…' : 'Show the reference solution’s run beside it'}
+            </Button>
+          ) : p.reference.replay === undefined ? (
+            <p className="versus-none">This item has no reference solution to run.</p>
+          ) : null}
+        </section>
+      ) : null}
       {report ? (
         <section className="debrief-part" aria-label="Checks">
           <h2 className="part-title">Checks</h2>
@@ -152,7 +178,9 @@ function Debrief({ p, data }: { p: Props; data: DebriefData }) {
         <div className="versus">
           <div className="versus-side">
             <h2 className="part-title">Your commands</h2>
-            {data.history.length > 0 ? (
+            {data.replay ? (
+              <ReplayInputs inputs={data.replay.inputs} start={data.replay.start} label="Your commands" />
+            ) : data.history.length > 0 ? (
               <pre className="versus-code" tabIndex={0} aria-label="Your commands">
                 <code>{data.history.join('\n')}</code>
               </pre>

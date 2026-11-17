@@ -8,3 +8,4 @@
 - [pkill matches its own shell](pkill-matches-own-shell.md) — find PIDs with ps and kill by PID; never stop the owner's server on 4317
 - [Next prompt at phase end](next-prompt-at-phase-end.md) — end each phase report with the next prompt's path alone in a code block
 - [Cap the output of data files](cap-output-of-data-files.md) — never print attempt or progress logs or their assertion diffs uncut; assert on counts or parsed fields
+- [Timings under load](timings-under-load.md) — the machine runs other jobs; compare by profile, and never stash while agents edit the tree

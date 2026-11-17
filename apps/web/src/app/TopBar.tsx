@@ -1,8 +1,10 @@
-// The top bar: where you are, the clock with its pause, the [sim] notices of this session, the
-// settings and the keyboard shortcuts.
+// The top bar: where you are, the clock with the time controls (pause, speed, skip to the next
+// event), the [sim] notices of this session, the settings and the keyboard shortcuts.
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import type { Clock } from '../protocol.ts';
+import type { Assist } from '@simlab/learn';
+import { SPEEDS, type Clock } from '../protocol.ts';
+import { formatJump } from './timeline.ts';
 import type { GapEntry, SinkState } from './gaps.ts';
 import { SHORTCUTS } from './shortcuts.ts';
 import type { SyncState } from './progress.ts';
@@ -22,6 +24,13 @@ interface Props {
   setPopover(p: Popover): void;
   setSettings(s: Settings): void;
   togglePause(): void;
+  setSpeed(speed: number): void;
+  /** To the next moment something shows. */
+  skip(): void;
+  /** What the last skip did, while it is worth saying. */
+  skipNote?: SkipNote;
+  /** The assist level of the attempt on screen, when one is. */
+  attemptAssist?: Assist;
   togglePanel(): void;
   /** Undefined when there is no lab to look at. */
   xrayOpen?: boolean;
@@ -38,6 +47,20 @@ interface Props {
   fullscreen: boolean;
   toggleFullscreen(): void;
 }
+
+/** A skip's answer: whether it found something to show and how far it jumped; `n` tells two apart. */
+export interface SkipNote {
+  found: boolean;
+  by: number;
+  n: number;
+}
+
+/** The assist levels as the settings offer them (docs/LEARNING_MODEL.md §13). */
+const ASSISTS: { value: Assist; label: string; means: string }[] = [
+  { value: 'full', label: 'Full', means: 'the X-ray, with Why? and the timeline' },
+  { value: 'view', label: 'View', means: 'the X-ray shows the world, and explains nothing' },
+  { value: 'off', label: 'Off', means: 'no X-ray: the terminal and the ticket only' },
+];
 
 export interface SessionBar {
   /** Items the session went through, and how many it holds with the ones ahead. */
@@ -152,14 +175,29 @@ export function TopBar(p: Props) {
       ) : null}
       <div className="topbar-title">{p.title ?? ''}</div>
       {p.clock ? (
-        <div className={`clock${p.clock.paused ? ' is-paused' : ''}`}>
+        <div className={`clock${p.clock.paused ? ' is-paused' : ''}${p.clock.speed !== 1 ? ' is-fast' : ''}`} role="group" aria-label="Time">
           <span className="clock-time" title="Time spent in the lab (virtual time, over every attempt)">
             {formatElapsed(p.clock.elapsed)}
           </span>
-          <Button variant="ghost" small shortcut="Ctrl+Shift+Space" title={p.clock.paused ? 'Resume time' : 'Pause time: nothing in the world moves'} onClick={p.togglePause}>
+          <Button variant="ghost" small className="clock-pause" shortcut="Ctrl+Shift+Space" title={p.clock.paused ? 'Resume time' : 'Pause time: nothing in the world moves'} aria-pressed={p.clock.paused} onClick={p.togglePause}>
             <Icon name={p.clock.paused ? 'play' : 'pause'} />
             {p.clock.paused ? 'Paused' : null}
           </Button>
+          <div className="segmented speed-switch" role="radiogroup" aria-label="Speed of virtual time (Ctrl+Shift+S: the next speed)">
+            {SPEEDS.map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={p.clock?.speed === n} title={n === 1 ? 'Time runs as the clock on the wall' : `Time runs ${n} times as fast as the clock on the wall`} className={p.clock?.speed === n ? 'is-on' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => p.setSpeed(n)}>
+                {n}×
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" small className="clock-skip" shortcut="Ctrl+Shift+J" title="Skip to the next event: the next moment a terminal prints or the system acts, up to an hour ahead" aria-label="Skip to the next event" onClick={p.skip}>
+            <Icon name="skip" />
+          </Button>
+          {p.skipNote ? (
+            <span key={p.skipNote.n} className={`skip-note${p.skipNote.found ? '' : ' is-none'}`} role="status" title={p.skipNote.found ? `Virtual time jumped ${formatJump(p.skipNote.by).slice(1)} to the next event` : undefined}>
+              {p.skipNote.found ? formatJump(p.skipNote.by) : `Nothing is scheduled to happen within the hour${p.skipNote.by > 0 ? ` (${formatJump(p.skipNote.by)})` : ''}`}
+            </span>
+          ) : null}
         </div>
       ) : null}
       <div className="topbar-right">
@@ -244,6 +282,20 @@ export function TopBar(p: Props) {
               <small>how views show change</small>
             </span>
             <Segmented value={p.settings.motion} options={[{ value: 'system', label: 'As the system' }, { value: 'reduced', label: 'Reduced' }]} onChange={(motion) => p.setSettings({ ...p.settings, motion })} />
+          </div>
+          <div className="setting setting-assist">
+            <span>
+              X-ray help
+              <small>
+                {ASSISTS.find((a) => a.value === p.settings.assist)?.label}: {ASSISTS.find((a) => a.value === p.settings.assist)?.means}. The exam gives none. A change applies from the next attempt.
+              </small>
+              {p.attemptAssist !== undefined && p.attemptAssist !== p.settings.assist ? (
+                <small className="setting-now">
+                  This attempt runs at {ASSISTS.find((a) => a.value === p.attemptAssist)?.label}: the level is fixed when an attempt starts, and an item may allow less.
+                </small>
+              ) : null}
+            </span>
+            <Segmented value={p.settings.assist} options={ASSISTS.map((a) => ({ value: a.value, label: a.label }))} onChange={(assist) => p.setSettings({ ...p.settings, assist })} />
           </div>
           <div className="setting">
             <span>Terminal text</span>

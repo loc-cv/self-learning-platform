@@ -42,6 +42,14 @@ test('previous and next terminal, full screen, and copy whatever is selected', (
   expect(neighbourTab(0, 1, 1)).toBe(0);
 });
 
+test('the time controls: pause, the next speed, skip to the next event; the shell keeps Ctrl+S and Ctrl+J', () => {
+  expect(matchShortcut(key('Space'))).toEqual({ id: 'pause' });
+  expect(matchShortcut(key('KeyS'))).toEqual({ id: 'speed' });
+  expect(matchShortcut(key('KeyJ'))).toEqual({ id: 'skip' });
+  expect(matchShortcut(key('KeyS', { ctrlKey: true }))).toBeUndefined();
+  expect(matchShortcut(key('KeyJ', { ctrlKey: true }))).toBeUndefined();
+});
+
 test('the chords the browser keeps in a tab', () => {
   for (const code of ['KeyW', 'KeyT', 'KeyN']) expect(isBrowserChord(key(code, { ctrlKey: true }))).toBe(true);
   expect(isBrowserChord(key('KeyW'))).toBe(false);
@@ -50,7 +58,7 @@ test('the chords the browser keeps in a tab', () => {
 });
 
 test('every shortcut the help lists is one the matcher knows', () => {
-  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'KeyY', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash', 'Comma', 'Period', 'KeyG', 'KeyD', 'KeyK'];
+  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'KeyY', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash', 'Comma', 'Period', 'KeyG', 'KeyD', 'KeyK', 'KeyS', 'KeyJ'];
   const matched = new Set(codes.map((c) => matchShortcut(key(c))?.id));
   // PageDown is listed on PageUp's line, the comma on the period's.
   for (const s of SHORTCUTS) expect(matched.has(s.id), s.id).toBe(true);

@@ -115,7 +115,8 @@ export interface ProcApi {
   /** The file system as this process sees it: its credentials, working directory and umask. */
   fs(): Fs;
   random(stream: string): Random;
-  trace(record: TraceInput): void;
+  /** Emits a trace record; returns its id, for the `causes` of later records. */
+  trace(record: TraceInput): number;
 
   read(fd: number, opts?: { max?: number; line?: boolean }): Op<string | null>;
   /**

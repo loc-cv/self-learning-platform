@@ -3004,3 +3004,723 @@ button.brand:hover {
 .vcanvas.is-afresh * {
   transition: none;
 }
+
+/* ---------- time controls (phase 13): in the clock's group of the top bar ---------- */
+
+.clock {
+  gap: var(--sp-1);
+}
+
+.speed-switch button {
+  min-width: var(--size-seg);
+  padding: 0 var(--sp-1h);
+  font-family: var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Faster than the wall clock: the time itself says so, quietly. */
+.clock.is-fast .clock-time {
+  color: var(--accent);
+}
+
+.skip-note {
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text);
+  font: var(--fw-medium) var(--fs-xs) / var(--size-chip-line) var(--font-code);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.skip-note.is-none {
+  max-width: var(--select-max);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+}
+
+/* While time is paused the terminal says what that means, over its lower edge. */
+.paused-note {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-4);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: calc(100% - var(--sp-8));
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border-radius: var(--r-pill);
+  background: var(--overlay-bg);
+  backdrop-filter: var(--overlay-blur);
+  box-shadow: var(--elev-3);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.paused-note > .icon {
+  flex: none;
+  color: var(--warn);
+}
+
+.paused-note > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paused-note .btn {
+  flex: none;
+}
+
+.setting-now {
+  color: var(--warn);
+}
+
+/* ---------- the trace in words (Trace.tsx): the simulator speaking, never terminal output ---------- */
+
+.tone-good {
+  --tone: var(--state-healthy);
+}
+
+.tone-bad {
+  --tone: var(--state-failed);
+}
+
+.tone-neutral {
+  --tone: var(--text-muted);
+}
+
+.sim-voice {
+  flex: none;
+  padding: 0 var(--sp-1h);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--size-tabbadge-line) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.trace-event {
+  min-width: 0;
+}
+
+.trace-event-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-1h);
+  min-width: 0;
+}
+
+.trace-when {
+  flex: none;
+  color: var(--text-muted);
+  font: var(--fw-medium) var(--fs-xs) / var(--lh-snug) var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.trace-tone {
+  flex: none;
+  width: var(--sp-2h);
+  color: var(--tone);
+  font-weight: var(--fw-bold);
+  text-align: center;
+}
+
+.trace-actor {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--lh-snug) var(--font-ui);
+}
+
+.trace-text {
+  margin: var(--sp-0h) 0 0;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+/* What the learner typed is the one thing in the code font. */
+.trace-input {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: var(--sp-0h);
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-sm);
+  background: var(--code-bg);
+  color: var(--code-text);
+  font: var(--fs-sm) / var(--lh-snug) var(--font-code);
+  overflow-wrap: anywhere;
+}
+
+.trace-items {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: var(--sp-0h) var(--sp-1h);
+  margin: var(--sp-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+
+.trace-items li {
+  display: contents;
+}
+
+.trace-item-label {
+  font-family: var(--font-code);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.trace-item-value {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.trace-items li.tone-bad .trace-item-value {
+  color: var(--text);
+}
+
+.trace-about,
+.trace-causes {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm);
+}
+
+.trace-about > span:first-child,
+.trace-causes-title {
+  margin-right: var(--sp-1h);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.trace-causes ul {
+  margin: var(--sp-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trace-gone {
+  color: var(--text-faint);
+  font-family: var(--font-code);
+}
+
+/* ---------- "Why?" on the X-ray's selection ---------- */
+
+/* In a narrow X-ray the head's buttons go to a line of their own before the name is cut short. */
+.xray-detail-head {
+  flex-wrap: wrap;
+  row-gap: var(--sp-1);
+}
+
+.xray-detail-head strong {
+  flex: 1 1 var(--detail-name-min);
+}
+
+.xray-detail.has-why {
+  max-height: var(--detail-why-max-h);
+}
+
+.xray-why.is-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.why {
+  margin-top: var(--sp-3);
+}
+
+.why-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.why-title {
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--lh-1) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.why-summary {
+  margin: var(--sp-1h) 0 0;
+  font: var(--fw-medium) var(--fs-sm) / var(--lh-snug) var(--font-ui);
+}
+
+.why-steps {
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.why-steps li + li {
+  margin-top: var(--sp-2h);
+}
+
+.why-none,
+.why-wait {
+  margin: var(--sp-1h) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+/* ---------- a past moment on the X-ray: read-only until "Back to now" ---------- */
+
+.xray-body.is-past {
+  outline: var(--line-2) dashed var(--accent);
+  outline-offset: calc(-1 * var(--line-2));
+}
+
+.xray-past {
+  position: absolute;
+  z-index: var(--z-splitter);
+  top: var(--sp-2);
+  left: var(--sp-2);
+  right: var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--overlay-bg);
+  backdrop-filter: var(--overlay-blur);
+  box-shadow: var(--elev-3);
+  font-size: var(--fs-sm);
+}
+
+.xray-past > .icon {
+  flex: none;
+  color: var(--accent);
+}
+
+.xray-past > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xray-past strong {
+  font: var(--fw-semibold) var(--fs-sm) / var(--lh-1) var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.xray-past-more {
+  color: var(--text-muted);
+}
+
+.xray-past-now {
+  flex: none;
+  color: var(--accent);
+}
+
+@container xray (max-width: 470px) {
+  .xray-past-more,
+  .timeline-head .sim-voice {
+    display: none;
+  }
+}
+
+.xray-level {
+  margin: 0 0 var(--sp-1h);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+/* ---------- the timeline (Timeline.tsx) ---------- */
+
+.timeline {
+  flex: none;
+  margin: var(--sp-2) var(--sp-2) 0;
+}
+
+.timeline-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--ctl-h-sm);
+  padding-left: var(--sp-2);
+}
+
+.timeline-title {
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--lh-1) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.timeline-span {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+  font: var(--fw-medium) var(--fs-xs) / var(--lh-1) var(--font-code);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timeline-density button {
+  height: var(--size-seg);
+  min-width: var(--size-seg);
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-xs);
+}
+
+.timeline-track {
+  position: relative;
+  margin-top: var(--sp-1);
+  border-radius: var(--r-md);
+  background: var(--canvas-bg);
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.timeline-track:focus-visible {
+  outline: var(--line-2) solid var(--focus-ring);
+  outline-offset: var(--line);
+}
+
+.timeline-track svg {
+  display: block;
+}
+
+.tl-lane {
+  fill: var(--text-faint);
+  font: var(--fw-medium) var(--vfs-kind) / var(--lh-1) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.tl-row {
+  stroke: var(--canvas-grid);
+  stroke-width: var(--w-link);
+}
+
+.tl-axis,
+.tl-tick {
+  stroke: var(--surface-3);
+  stroke-width: var(--w-link);
+}
+
+.tl-tick-label {
+  fill: var(--text-faint);
+  font: var(--vfs-kind) / var(--lh-1) var(--font-code);
+}
+
+.tl-event circle,
+.tl-mark path {
+  fill: var(--tone);
+}
+
+.tl-event.is-many circle {
+  stroke: var(--canvas-bg);
+  stroke-width: var(--w-tl-ring);
+}
+
+.tl-input rect {
+  fill: var(--text);
+}
+
+.tl-input.tone-bad rect {
+  fill: var(--state-failed);
+}
+
+.tl-ran {
+  stroke: var(--text-faint);
+  stroke-width: var(--w-tl-ran);
+  stroke-linecap: round;
+}
+
+.tl-detail {
+  fill: var(--text-faint);
+}
+
+.tl-detail.tone-bad {
+  fill: var(--state-failed);
+}
+
+.tl-ring {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: var(--w-tl-ring);
+}
+
+.tl-ring.is-selected {
+  stroke: var(--state-selected);
+  stroke-width: var(--w-tl-head);
+}
+
+.tl-marks .is-after {
+  opacity: var(--o-after);
+}
+
+.tl-head line {
+  stroke: var(--accent);
+  stroke-width: var(--w-tl-head);
+}
+
+.tl-head circle {
+  fill: var(--accent);
+}
+
+.tl-head.is-live line {
+  stroke: var(--text-faint);
+  stroke-width: var(--w-link);
+  stroke-dasharray: var(--dash-now);
+}
+
+.timeline-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-1h);
+  min-width: 0;
+  height: calc(var(--lh-snug) * var(--fs-sm) + var(--sp-2));
+  margin: 0;
+  padding: var(--sp-1) var(--sp-2) 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+}
+
+.timeline-readout > * {
+  flex: none;
+}
+
+.timeline-readout .timeline-text,
+.timeline-readout .trace-input,
+.timeline-hint {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-readout .trace-input {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.timeline-hint,
+.timeline-more {
+  color: var(--text-muted);
+}
+
+/* ---------- causes along their pair (ViewCanvas.tsx links) ---------- */
+
+.vcause-path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: var(--w-cause);
+  stroke-dasharray: var(--dash-cause);
+  opacity: var(--o-cause);
+}
+
+.vcause-arrow {
+  fill: var(--accent);
+}
+
+/* The stroke that travels the pair once, after the drawing has settled into the frame. */
+.vcause-comet {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: var(--w-comet);
+  stroke-linecap: round;
+  stroke-dasharray: var(--comet-dash);
+  stroke-dashoffset: var(--comet-to);
+  animation: vcause-travel var(--motion-travel) var(--ease-standard) var(--motion-enter) 1 both;
+}
+
+@keyframes vcause-travel {
+  from {
+    stroke-dashoffset: var(--comet-from);
+  }
+  to {
+    stroke-dashoffset: var(--comet-to);
+  }
+}
+
+/* Reduced motion: nothing travels; the static mark says what moved. */
+.motion-reduced .vcause-comet {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vcause-comet {
+    display: none;
+  }
+}
+
+.replay-cause-key {
+  display: inline-block;
+  width: var(--size-cause-key);
+  vertical-align: middle;
+  border-top: var(--line-2) dashed var(--accent);
+}
+
+/* ---------- a scene's frame anchored to the trace: its cause under the caption ---------- */
+
+.scene-cause {
+  display: block;
+  margin-top: var(--sp-1h);
+  padding: var(--sp-1h) var(--sp-2h);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.scene-cause-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-1h);
+}
+
+.scene-cause .trace-text {
+  display: block;
+}
+
+/* ---------- the replay in the debrief (Replay.tsx) ---------- */
+
+/* Drawn like a scene, but not one of the debrief's figures. */
+.replay {
+  margin: 0;
+  container-type: inline-size;
+}
+
+.replay-pair {
+  display: grid;
+  gap: var(--sp-5);
+}
+
+@container labpanel (min-width: 760px) {
+  .replay-pair.has-two {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.replay-span {
+  margin-left: var(--sp-2);
+  color: var(--text-muted);
+  font: var(--fw-regular) var(--fs-xs) / var(--lh-1) var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.replay .scene-dots {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.replay .scene-dots li.is-change {
+  border-radius: var(--r-sm);
+}
+
+.replay-frame {
+  margin-top: var(--sp-2);
+}
+
+.replay-frame-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+}
+
+.replay-kind {
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text);
+  font: var(--fw-semibold) var(--fs-xs) / var(--size-state-line) var(--font-ui);
+}
+
+.replay-kind.is-change {
+  background: var(--accent-soft);
+}
+
+.replay-labels {
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--code-bg);
+  color: var(--code-text);
+  font: var(--fs-sm) / var(--lh-snug) var(--font-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.replay-events,
+.replay-causes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replay-events li + li,
+.replay-causes li + li {
+  margin-top: var(--sp-2h);
+}
+
+.replay-causes .why {
+  margin-top: 0;
+}
+
+.replay-cause-title {
+  margin: 0;
+  font: var(--fw-semibold) var(--fs-sm) / var(--lh-snug) var(--font-ui);
+}
+
+.replay-none,
+.replay-omitted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.replay-omitted {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+
+.replay-ask {
+  margin-top: var(--sp-3);
+}
+
+.replay-inputs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replay-inputs li {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--sp-0h) var(--sp-1h);
+}
+
+.replay-inputs li + li {
+  margin-top: var(--sp-1h);
+}
+
+.replay-inputs .trace-input {
+  margin-top: 0;
+  justify-self: start;
+}
+
+.replay-inputs .trace-items {
+  grid-column: 3;
+  margin-top: 0;
+}

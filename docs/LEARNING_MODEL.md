@@ -303,7 +303,7 @@ model FSRS-7 with its default weights (D-142). Per item the state keeps the mode
   either way. `retrievability(memory, elapsedDays)` is the estimated recall at any moment.
 
 The weights are FSRS's defaults, fitted to flashcard reviews. They are a starting point for labs;
-fitting them to the owner's own log is possible once it holds a few hundred reviews (§13).
+fitting them to the owner's own log is possible once it holds a few hundred reviews (§15).
 
 ## 8. The daily queue
 
@@ -406,7 +406,7 @@ Built in phase 12 (`apps/web/src/app/`); `docs/DESIGN.md` §7 describes how they
 | An attempt's events | `flow.ts`, `App.tsx` | `attempt.started` when the world is ready; check, hint, X-ray, solution, confidence, prediction as they happen; `finishAttempt` when it passes (D-153) or when the learner leaves it (D-155); one manual `rating` per click on the override |
 | Lessons | `LessonPanel.tsx`, `apps/web/src/engine/session.ts` | Steps in pages that end at a prediction or a task (D-159); a task is graded with `grade` on the session world |
 | Cards | `CardView.tsx` | `cardReview`: by choice, self-graded, or by the checks of the card's world |
-| The debrief | `LabPanel.tsx` | The learner's explanation first, then figures, checks, command history beside the solution, prose, the rating with its override, the next review |
+| The debrief | `LabPanel.tsx` | The learner's explanation first, then figures, the replay of the attempt (§14), checks, the commands beside the solution, prose, the rating with its override, the next review |
 | Languages | `Prose.tsx`, `apps/web/src/engine/bilingual.ts` | `localize` and `tagUnits` (§4, D-158) |
 | Home, content browser | `Home.tsx`, `Browser.tsx`, `homeModel.ts` | §9's functions, drawn |
 | Resume | `attempts.ts` | An open attempt of the log reopens by replay from the server's records or the browser's copy, whichever is longer (D-157) |
@@ -415,12 +415,58 @@ A rating shown to the learner is always the one in the log. Time in the screens 
 read in `App.tsx` and passed down; the browser tests move it with Playwright's clock to see the
 next day's queue.
 
-## 13. Not covered yet
+## 13. Assist levels
+
+How much of the live view of the world an attempt may use (`packages/learn/src/assist.ts`). The
+exam gives none, so it must be possible to practice without it.
+
+| Level | The workspace has |
+|---|---|
+| `full` | The X-ray, its "Why?" inspector and its timeline |
+| `view` | The X-ray: the world as it is, nothing that explains it |
+| `off` | The terminal and the ticket's own figures, nothing else |
+
+- An item declares `assist` (default `full`); the learner has a global setting (default `full`).
+  The lower of the two applies (`assistFor`), and an item played as an exam task gets `off`.
+- The level is fixed when the attempt starts. The engine worker enforces it: below the level a
+  message needs, it is ignored, so the page cannot show what the level forbids.
+- Use is help, and is rated as before (§6): opening the X-ray before the pass makes a pass Hard.
+  Asking "Why?" and reading a past moment need the X-ray open, so they add no event to the
+  progress log; the attempt's input log records each `why` (with the entity) as a `learn.action`.
+- The time controls are not help: speed, pause and "skip to next event" change when things
+  happen, never what the learner is shown. The debrief and its replay are feedback after the
+  attempt and exist at every level.
+
+## 14. The replay of an attempt
+
+`replayAttempt(log, baseline, registry)` (`packages/learn/src/replay.ts`) turns an attempt's input
+log into frames, and `replaySolution` does the same for a reference solution's steps. Both read
+the world through the view contract and the trace through the providers' events
+(`docs/ARCHITECTURE.md` §2.13), so they name no domain.
+
+- The log is replayed twice on forks of the baseline, never on the session: once to the end, to
+  read the trace; once stopping at each moment worth drawing.
+- Frames: `start` (the world as the attempt found it), `change` (a command returned: the moment
+  its effect is in the world) and `settled` (the last recorded event before the next command was
+  entered, or before the log's end). A command's frame is kept when the drawing
+  differs from the frame before, or when the trace recorded the command doing something to what
+  is drawn (a declaration changed and nothing has reacted yet); a command that only read gives no
+  frame. Every command appears in `inputs` with its exit status.
+- Each frame has its virtual time, what the trace recorded since the frame before about the
+  entities drawn, what changed against the frame before, and the causes that travelled along
+  drawn pairs. `causes` explains, at the start, each entity that is degraded or failed, with the
+  trace of the setup: the scenario's faults. At most 60 frames; a longer run keeps its first and
+  last and says how many it left out.
+- A solution's replay has a frame after each step that changed the drawing, labelled as the
+  solutions tab shows the step; a step that waits (`until`, `advance`) gives a `settled` frame.
+- The debrief shows the attempt's replay after its figures and, on request, the first reference
+  solution's beside it (the lab action `reference`, valid once the debrief is open).
+
+## 15. Not covered yet
 
 | Topic | Phase |
 |---|---|
-| The debrief's replay of an attempt from its input log | 13 |
 | The curriculum map over competencies; the authoring guide for lessons and cards | 14 |
 | Exam mode, scoring per domain | 31 |
-| Repeated command errors as mistakes (`PLAN.md` §5): no event records them yet | 13, with the trace (the debrief already lists the shells' history, D-160) |
+| Repeated command errors as mistakes (`PLAN.md` §5): the trace has every command with its exit status since phase 13 and the debrief's replay lists them; no progress event counts them per skill yet | 14, with the curriculum map (which skills a failing command belongs to needs the map) |
 | FSRS weights fitted to the owner's log (needs the optimizer, a separate package) | a candidate, once the log is large enough |

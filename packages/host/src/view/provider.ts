@@ -4,11 +4,11 @@
 
 import { compareCodeUnits, type ViewEntity, type ViewPart, type ViewProviderSpec, type World } from '@simlab/kernel';
 import type { HostSlice, Machine } from '../machine.ts';
+import { hostEvents, machineViewId } from './events.ts';
+
+export { machineViewId };
 
 export const MACHINE_KIND = 'host.Machine';
-
-/** The view id of a machine, for other providers to place things on it. */
-export const machineViewId = (id: string): string => `host/machine/${id}`;
 
 /** The role words are the host's own `Machine.kind` values. */
 const ROLE: Record<Machine['kind'], string> = { node: 'node', workstation: 'workstation', container: 'container' };
@@ -31,4 +31,4 @@ export function hostView(world: World): ViewPart {
   };
 }
 
-export const hostViewProvider: ViewProviderSpec = { name: 'host', view: hostView };
+export const hostViewProvider: ViewProviderSpec = { name: 'host', view: hostView, events: hostEvents };

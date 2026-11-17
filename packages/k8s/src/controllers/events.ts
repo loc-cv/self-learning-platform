@@ -87,6 +87,8 @@ export interface EventsRecorderRef {
   reportingInstance: string;
   /** The sink's client (the component's identity). */
   client: Client;
+  /** The trace record of the work that records the event (the scheduler's sync), for its causes. */
+  cause?: number;
 }
 
 const s = (v: Json | undefined): string => (typeof v === 'string' ? v : '');
@@ -193,7 +195,28 @@ export function eventf(ctx: Ctx, rec: EventsRecorderRef, regarding: ApiObject, r
   reschedule(ctx, rec.recorder, st);
   put(t, rec.recorder, st);
   // attemptRecording: the server's answer does not go into the cache.
-  if (toRecord) recordEvent(ctx, rec.recorder, rec.client, toRecord);
+  if (toRecord && recordEvent(ctx, rec.recorder, rec.client, toRecord)) {
+    const m = (toRecord.event.metadata ?? {}) as JsonObject;
+    ctx.trace({
+      source: traceSource(rec.recorder),
+      kind: 'event.recorded',
+      ...(rec.cause !== undefined ? { causes: [rec.cause] } : {}),
+      subject: `${s(m.namespace)}/${s(m.name)}`,
+      message: `${type} ${reason} about ${s(refRegarding.kind)} ${s(refRegarding.namespace) ? `${s(refRegarding.namespace)}/` : ''}${s(refRegarding.name)}: ${note}`,
+      data: {
+        api: 'events.k8s.io/v1',
+        namespace: s(m.namespace),
+        name: s(m.name),
+        type,
+        reason,
+        message: note,
+        regarding: { kind: s(refRegarding.kind), namespace: s(refRegarding.namespace), name: s(refRegarding.name), uid: s(refRegarding.uid), ...(s(refRegarding.fieldPath) ? { fieldPath: s(refRegarding.fieldPath) } : {}) },
+        reportingController: rec.reportingController,
+        reportingInstance: rec.reportingInstance,
+        count: toRecord.series?.count ?? 1,
+      },
+    });
+  }
 }
 
 /** recordEvent: a series is patched (created when gone), a new event created. */

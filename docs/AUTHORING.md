@@ -37,6 +37,23 @@ between worlds; prefer two views. A scene runs for real, so give it the smallest
 the idea (`world.setup` of its own) rather than the item's baseline when the baseline is already
 broken; four replicas show `maxSurge` and `maxUnavailable`, three do not.
 
+### Scenes that show a cause
+
+A scene's frame can be drawn at the moment a component decided something, and quote the decision
+(`docs/SCENARIO_FORMAT.md` §11.2.1): `at: { actor: kube-scheduler, about: "Pod/web-*" }` and
+`{{@cause}}` in the caption.
+
+- Use it where the lesson is the decision itself: the scheduler rejecting each node, a Service
+  finding no ready Pod, a container exiting and the kubelet backing off. The per-candidate lines
+  (each node with its reason) appear under the caption; do not repeat them in prose.
+- Put the step that triggers the decision in the frame, and steps that wait in a later frame.
+- The quoted text is the simulator's explanation, not kubectl output. Where the learner should
+  recognise what a real tool prints (an Event's message, a STATUS column), show that with a fact
+  or name the command in the prose.
+- The learner's own run needs no scene: the debrief replays the attempt from its input log, with
+  its causes, after your figures (`docs/LEARNING_MODEL.md` §14). It looks at what your debrief's
+  first figure of a world looks at, so give that figure the focus the story needs.
+
 ### Choosing what it shows
 
 - **Focus narrowly**: the namespace and the kinds the story needs. Pods bring their Nodes with them.

@@ -153,14 +153,24 @@ export function truncateMessage(message: string): string {
 
 function recorder(c: SyncCtx): EventsRecorderRef {
   const host = (c.data().host as string | undefined) ?? 'controlplane';
-  return { recorder: KUBE_SCHEDULER, reportingController: DEFAULT_SCHEDULER_NAME, reportingInstance: `${DEFAULT_SCHEDULER_NAME}-${host}`, client: c.client };
+  return { recorder: KUBE_SCHEDULER, reportingController: DEFAULT_SCHEDULER_NAME, reportingInstance: `${DEFAULT_SCHEDULER_NAME}-${host}`, client: c.client, cause: c.syncId };
 }
 
-function traceVerdicts(c: SyncCtx, key: string, verdicts: NodeVerdict[]): void {
-  for (const v of verdicts) {
+/**
+ * One `scheduler.filter` record per node: the plugin that rejected it and its reasons, the very
+ * strings FitError.Error counts in the FailedScheduling message (cycle.ts fitErrorMessage). The
+ * decision record that follows names these records in its causes. Returns their ids.
+ */
+function traceVerdicts(c: SyncCtx, key: string, pod: ApiObject, verdicts: NodeVerdict[]): number[] {
+  return verdicts.map((v) => {
     const msg = v.status.code === 'Success' ? `${key}: node ${v.node} passed every filter` : `${key}: node ${v.node} rejected by ${v.plugin ?? 'PreFilter'}: ${v.status.reasons.join(', ')} (${v.status.code})`;
-    c.trace('scheduler.filter', msg, { pod: key, node: v.node, ...(v.plugin ? { plugin: v.plugin } : {}), code: v.status.code, reasons: v.status.reasons }, key);
-  }
+    return c.trace('scheduler.filter', msg, { ...podData(pod), node: v.node, ...(v.plugin ? { plugin: v.plugin } : {}), code: v.status.code, reasons: v.status.reasons }, key);
+  });
+}
+
+/** The Pod a scheduling record is about: `pod` is the queue key, the rest its coordinates. */
+function podData(pod: ApiObject): JsonObject {
+  return { pod: podKey(pod), namespace: namespaceOf(pod), name: nameOf(pod), uid: uidOf(pod) };
 }
 
 function sync(c: SyncCtx, key: string): SyncResult {
@@ -186,10 +196,10 @@ function sync(c: SyncCtx, key: string): SyncResult {
   const nodes = snapshot(c.list('v1/nodes'), c.list('v1/pods'));
   const random = c.ctx.random('k8s.scheduler.filter-order');
   const result: CycleResult & { victimsExist?: boolean } = schedulePod(pod, nodes, { order: (f) => (f.length > 1 ? random.shuffle(f) : f) });
-  traceVerdicts(c, key, result.verdicts);
+  const verdictIds = traceVerdicts(c, key, pod, result.verdicts);
 
   if (result.kind === 'scheduled') {
-    for (const s of result.scores) c.trace('scheduler.score', `${key}: node ${s.node} scored ${s.total}`, { pod: key, node: s.node, total: s.total, plugins: s.plugins as unknown as Json }, key);
+    const scoreIds = result.scores.map((s) => c.trace('scheduler.score', `${key}: node ${s.node} scored ${s.total}`, { ...podData(pod), node: s.node, total: s.total, plugins: s.plugins as unknown as Json }, key));
     const res = c.client.request({
       verb: 'create', group: '', version: 'v1', resource: 'pods', subresource: 'binding', namespace, name,
       body: { apiVersion: 'v1', kind: 'Binding', metadata: { name, namespace, uid: uidOf(pod) }, target: { kind: 'Node', name: result.node } },
@@ -197,10 +207,11 @@ function sync(c: SyncCtx, key: string): SyncResult {
     delete d.attempts[key];
     setData(c, d);
     if (!res.ok) {
-      c.trace('scheduler.bind-failed', `${key}: binding to ${result.node} failed: ${res.code}`, { pod: key, node: result.node }, key);
+      const why = 'status' in res ? String(res.status.message ?? '') : 'notSimulated' in res ? res.notSimulated : '';
+      c.trace('scheduler.bind-failed', `${key}: binding to ${result.node} failed: ${res.code}`, { ...podData(pod), node: result.node, code: res.code, message: why }, key, [...verdictIds, ...scoreIds]);
       return { done: true };
     }
-    c.trace('scheduler.bound', `${key}: bound to ${result.node} (${result.feasible} feasible of ${nodes.length})`, { pod: key, node: result.node }, key);
+    c.trace('scheduler.bound', `${key}: bound to ${result.node} (${result.feasible} feasible of ${nodes.length})`, { ...podData(pod), node: result.node, feasible: result.feasible, nodes: nodes.length }, key, [...verdictIds, ...scoreIds]);
     eventf(c.ctx, recorder(c), pod, undefined, 'Normal', 'Scheduled', 'Binding', `Successfully assigned ${namespace}/${name} to ${result.node}`);
     return { done: true };
   }
@@ -208,7 +219,7 @@ function sync(c: SyncCtx, key: string): SyncResult {
   if (result.victimsExist) {
     c.ctx.gap({ kind: 'behavior', program: KUBE_SCHEDULER, what: 'preemption of lower-priority Pods', commandLine: '', machine: (c.data().host as string | undefined) ?? 'controlplane' });
   }
-  c.trace('scheduler.unschedulable', `${key}: ${result.message}`, { pod: key, plugins: result.plugins }, key);
+  c.trace('scheduler.unschedulable', `${key}: ${result.message}`, { ...podData(pod), plugins: result.plugins, nodes: nodes.length, message: result.message }, key, verdictIds);
   d.attempts[key] = attempts + 1;
   d.unschedulable[key] = { uid: uidOf(pod), plugins: result.plugins, since: c.now };
   setData(c, d);

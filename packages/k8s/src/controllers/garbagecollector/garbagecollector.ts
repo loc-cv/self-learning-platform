@@ -74,7 +74,7 @@ function attemptToDeleteWorker(c: SyncCtx, id: ObjectReference): SyncResult {
  * every one of its own references.
  */
 function enqueueVirtualDeleteEvent(c: SyncCtx, id: ObjectReference): void {
-  c.trace('gc.virtual-delete', `virtual delete event for ${referenceString(id)}`, null, referenceString(id));
+  c.trace('gc.virtual-delete', `virtual delete event for ${referenceString(id)}`, { apiVersion: id.apiVersion, kind: id.kind, namespace: id.namespace, name: id.name, uid: id.uid }, referenceString(id));
   for (const dep of dependentsOf(c, id.uid)) c.enqueueAfter(gcKey('attemptToDelete', dep.identity), 0);
 }
 
@@ -104,6 +104,10 @@ function attemptToDeleteItem(c: SyncCtx, id: ObjectReference): Outcome {
   }
   const { solid, dangling, waiting } = classified;
   c.trace('gc.classify', `classify ${referenceString(id)}: solid ${solid.length}, dangling ${dangling.length}, waitingForDependentsDeletion ${waiting.length}`, {
+    kind: id.kind,
+    namespace: id.namespace,
+    name: id.name,
+    uid: id.uid,
     solid: solid.map((r) => r.uid),
     dangling: dangling.map((r) => r.uid),
     waitingForDependentsDeletion: waiting.map((r) => r.uid),
@@ -130,15 +134,32 @@ function attemptToDeleteItem(c: SyncCtx, id: ObjectReference): Outcome {
       }
     }
     // Deleted in Foreground: processDeletingDependentsItem finishes it once its own dependents go.
+    traceDelete(c, id, dangling, waiting, 'Foreground');
     const err = deleteObject(c, id, rv, refs, 'Foreground');
     if (notFound(err)) return { virtualDelete: true };
     return err ? { error: err } : OK;
   }
   // No solid owner and none waiting for its dependents: delete, honoring a GC finalizer already set.
   const policy = hasFinalizer(latest, FINALIZER_ORPHAN_DEPENDENTS) ? 'Orphan' : hasFinalizer(latest, FINALIZER_DELETE_DEPENDENTS) ? 'Foreground' : 'Background';
+  traceDelete(c, id, dangling, waiting, policy);
   const err = deleteObject(c, id, rv, refs, policy);
   if (notFound(err)) return { virtualDelete: true };
   return err ? { error: err } : OK;
+}
+
+/**
+ * `gc.delete`: the collector deletes an object because none of its owners is left (dangling) or
+ * the remaining ones wait for their dependents to go (foreground deletion). The delete request
+ * that follows is its `controller.write` record.
+ */
+function traceDelete(c: SyncCtx, id: ObjectReference, dangling: OwnerReference[], waiting: OwnerReference[], policy: string): void {
+  const owners = [...dangling.map((r) => ({ kind: r.kind, name: r.name, uid: r.uid, gone: true })), ...waiting.map((r) => ({ kind: r.kind, name: r.name, uid: r.uid, gone: false }))];
+  c.trace(
+    'gc.delete',
+    `deleting ${referenceString(id)}: ${owners.map((o) => `${o.kind} ${o.name} ${o.gone ? 'is gone' : 'waits for its dependents'}`).join(', ')} (propagation ${policy})`,
+    { apiVersion: id.apiVersion, kind: id.kind, namespace: id.namespace, name: id.name, uid: id.uid, owners, policy },
+    referenceString(id),
+  );
 }
 
 /**

@@ -95,7 +95,7 @@ export function startKubelet(ctx: Ctx, server: ApiServerConfig, node: KubeletNod
     nextId: 1,
   };
   startController(ctx, node.name, KUBELET, server, data as unknown as Record<string, Json>);
-  ctx.trace({ source: `k8s.kubelet/${node.name}`, kind: 'kubelet.start', message: `kubelet on ${node.name} started` });
+  const started = ctx.trace({ source: `k8s.kubelet/${node.name}`, kind: 'kubelet.start', subject: `node/${node.name}`, message: `kubelet on ${node.name} started`, data: { node: node.name } });
   // Pods the runtime still has but the API no longer lists are found by the first relist.
   const rt = runtimeOf(ctx, node.name);
   const seen = new Set<string>();
@@ -105,7 +105,7 @@ export function startKubelet(ctx: Ctx, server: ApiServerConfig, node: KubeletNod
     seen.add(key);
     enqueue(ctx, kubeletId(node.name), key, KUBELET_LATENCY_MS, 'PLEG: first relist');
   }
-  kubeletStarted(ctx, node.name);
+  kubeletStarted(ctx, node.name, started);
 }
 
 /** Stops the kubelet: its memory is gone; containers keep running in the runtime. */
@@ -113,7 +113,7 @@ export function stopKubelet(ctx: Ctx, node: string): void {
   if (!isRunning(ctx, node, KUBELET)) return;
   cancelHeartbeats(ctx, node);
   stopController(ctx, node, KUBELET);
-  ctx.trace({ source: `k8s.kubelet/${node}`, kind: 'kubelet.stop', message: `kubelet on ${node} stopped` });
+  ctx.trace({ source: `k8s.kubelet/${node}`, kind: 'kubelet.stop', subject: `node/${node}`, message: `kubelet on ${node} stopped`, data: { node } });
   // The log streams it served end with its connections (kubelet/logs.ts).
   ctx.publish(LOG_TOPIC);
 }

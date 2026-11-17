@@ -44,6 +44,27 @@ const PATHS: Record<string, ReactNode> = {
     </>
   ),
   pause: <path d="M7 4.5v11M13 4.5v11" />,
+  // To the next event: play to a bar.
+  skip: (
+    <>
+      <path d="M5 4.5l8 5.5-8 5.5z" />
+      <path d="M15.5 4.5v11" />
+    </>
+  ),
+  why: (
+    <>
+      <circle cx="10" cy="10" r="7.5" />
+      <path d="M7.8 7.8a2.3 2.3 0 1 1 3.2 2.1c-.6.3-1 .8-1 1.4v.4M10 14.4h.01" />
+    </>
+  ),
+  // A past moment: a clock with its arrow turned back.
+  history: (
+    <>
+      <path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6" />
+      <path d="M3 3.5v3h3" />
+      <path d="M10 6.5V10l2.5 1.5" />
+    </>
+  ),
   play: <path d="M6.5 4.5l9 5.5-9 5.5z" />,
   plus: <path d="M10 4.5v11M4.5 10h11" />,
   minus: <path d="M4.5 10h11" />,

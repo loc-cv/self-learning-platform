@@ -268,6 +268,9 @@ function* readLoop(sh: Shell): Op<number> {
     // 5.2.21, readline.json `multiline-heredoc`: Up shows the entry ending on a new line).
     if (state.interactive && buf.trim() !== '') state.history.push(result.kind === 'ok' && result.list && hasHeredoc(result.list) ? buf : buf.replace(/\n$/, ''));
     const lines = buf.split('\n').length - (buf.endsWith('\n') ? 1 : 0);
+    // The command line as typed, for the trace: its start now, its end with the status below. The
+    // id lives in this frame only (a fork ends the frame, and with it the command).
+    const started = state.interactive && buf.trim() !== '' ? traceCommand(sh, buf.replace(/\n$/, '')) : undefined;
     try {
       if (result.kind === 'ok') {
         for (const w of result.warnings) yield* sh.diag(w);
@@ -287,13 +290,41 @@ function* readLoop(sh: Shell): Op<number> {
         state.status = 2;
       }
     } catch (e) {
-      if (e instanceof ShellExit) return e.code;
+      if (e instanceof ShellExit) {
+        if (started !== undefined) traceCommandDone(sh, started, e.code);
+        return e.code;
+      }
       if (e instanceof AbortLine) state.status = e.status;
       else throw e;
     }
+    if (started !== undefined) traceCommandDone(sh, started, state.status);
     line += lines;
     if (eof) return state.status;
   }
+}
+
+/**
+ * `shell.command`: an interactive shell read a command line and runs it. One record per line the
+ * user entered, whatever it holds (a pipeline, a list); lines read by the programs it runs are
+ * theirs, not the shell's. A root of the trace: someone typed it.
+ */
+function traceCommand(sh: Shell, line: string): number {
+  const { p } = sh;
+  const hostname = getMachine(p.ctx, p.machine).hostname;
+  const user = userByUid(p.ctx, p.machine, p.cred.uid)?.name ?? String(p.cred.uid);
+  return p.trace({
+    source: `host.bash/${p.machine}`,
+    kind: 'shell.command',
+    subject: `${p.machine}/${p.pid}`,
+    message: `${user}@${hostname}: ${line}`,
+    data: { machine: p.machine, hostname, user, uid: p.cred.uid, pid: p.pid, ...(p.proc.tty !== undefined ? { tty: p.proc.tty } : {}), line },
+  });
+}
+
+/** `shell.command.done`: the command line finished with this status (`$?`). */
+function traceCommandDone(sh: Shell, started: number, status: number): void {
+  const { p } = sh;
+  p.trace({ source: `host.bash/${p.machine}`, kind: 'shell.command.done', subject: `${p.machine}/${p.pid}`, message: `exit status ${status}`, data: { machine: p.machine, pid: p.pid, status }, causes: [started] });
 }
 
 function hasHeredoc(list: List): boolean {

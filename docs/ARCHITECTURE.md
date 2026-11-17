@@ -266,7 +266,8 @@ interface Kernel {
   nextEventTime(): Millis | undefined;
   /** Runs code with a `Ctx` outside any event: topology build, setup and solution steps, faults, tests. */
   act<T>(label: string, fn: (ctx: Ctx) => T): T;
-  fork(options?: { ports?: Ports }): Kernel;
+  /** `keepTrace`: the fork starts with this kernel's trace records and continues their ids (§2.9). */
+  fork(options?: { ports?: Ports; traceCapacity?: number; keepTrace?: boolean }): Kernel;
   hash(): string;
   traceRecords(): TraceRecord[];
 }
@@ -281,7 +282,7 @@ is the one component allowed to look at a real clock.
 
 | Driver | Where | Behavior |
 |---|---|---|
-| Interactive | `apps/web` (worker), `apps/cli` player | On each tick: `target = now + realElapsed × speed`; `runUntil(target)`. Before delivering an input: `runUntil(target)`, then `input(...)`. "Skip to next event" sets `target = nextEventTime()`. Pausing stops ticking. |
+| Interactive | `apps/web` (worker), `apps/cli` player | On each tick: `target = now + realElapsed × speed`; `runUntil(target)`. Before delivering an input: `runUntil(target)`, then `input(...)`. "Skip to next event" runs to `nextEventTime()`, and with a condition keeps going from event to event until it holds (below). Pausing stops ticking. |
 | Headless | scenario runner, tests, `npm run sim` | Time moves only through `advance`, `settle` and the steps of a scenario. A command runs with the clock advancing only as far as the command itself waits. |
 | Replay | session resume, debrief, bug reports | For each logged input: `runUntil(input.t)`, `input(...)`. Then `runUntil(log.end)`. |
 
@@ -308,6 +309,14 @@ The interactive driver's logic is in the kernel (`createInteractiveDriver` in `d
 tested headlessly: the app calls `tick(realElapsed)` and `deliver(input, realElapsed)`, and the
 driver carries fractions of a virtual millisecond between ticks. Only reading the wall clock is
 left to the app.
+
+**Skip to next event** (phase 13, D-166). The next pending non-idle event is rarely something a
+learner can see: a busy system has bookkeeping due every few hundred milliseconds. So
+`skipToNextEvent(until, limit)` runs event after event until `until()` holds after one, and gives
+up at the first event more than `limit` (one hour) after the start, having changed nothing past
+the last event it ran. The web worker's condition is "a terminal printed something, or the trace
+recorded an event of level `key`" (§2.13), so a skip during a restart back-off lands exactly on
+the restart. Like speed and pause, a skip is not an input: its whole effect is in later stamps.
 
 **In the web app** (phase 10, D-104, D-106) the driver runs in the engine worker
 (`apps/web/src/engine/worker.ts`). The worker wakes when the next pending event is due at the
@@ -466,6 +475,10 @@ type Input =
 - **Resume** replays the log on a fresh world. **Reset** starts a new log from the baseline.
   `createRecorder(kernel, header, from)` continues a log on the world its replay reached, so a
   resumed session keeps one log (phase 10; the web app's resume, D-105).
+- `createReplayCursor(log, kernel)` steps through a log on a world of its own: `seek(t)` delivers
+  every input stamped at or before `t` and runs the clock to `t`, forward only. Reading a past
+  moment (the X-ray's timeline) and the debrief's replay use it; neither touches the session
+  world, and neither is time travel: nothing can be changed there (phase 13).
 - A replay is valid for the engine version that recorded it. After an engine change a replay can
   diverge; the checkpoints detect that. On divergence the app says so and offers to start the item
   again; it never continues on a world it cannot vouch for.
@@ -499,6 +512,13 @@ interface TraceRecord {
   handed to a sink. Engine logic never reads it; a check never asserts on it.
 - It is deterministic all the same, because it is emitted by deterministic code. A resumed
   session gets its trace back by replay.
+- A fork gets an empty buffer, unless it is made with `keepTrace`: then it starts with a copy of
+  its parent's records and continues their ids, so a cause can name a record from before the
+  fork. A session world is forked from its baseline this way (`startSession`), so the views can
+  explain a state the scenario's setup produced. Baselines and sessions keep 50 000 records
+  (`SESSION_TRACE`); an idle three-node cluster emits about 30 a minute.
+- Every component decision built so far emits a record with a cause, and a test per component
+  holds that (phase 13; the kinds are listed in §4.10).
 - `during` plus each event's `cause` field give the causal chain from an input to its
   consequences without any component having to thread ids by hand.
 - Trace messages are simulator vocabulary, not real tool output. They are not subject to the
@@ -675,6 +695,41 @@ machines with their role) and `k8s` (`packages/k8s/src/view/provider.ts`: namesp
 their machines, Pods, Deployments, ReplicaSets, Services, with owns, selects and routesTo). The k8s
 provider reads the store of the first serving API server directly, as the checks' reader does, and
 sends no request, so building a view changes nothing.
+
+**Events and "why"** (phase 13). The trace reaches the views through the same providers:
+
+```ts
+interface ViewProviderSpec {
+  view(world: World): ViewPart;
+  events?(records: readonly TraceRecord[]): ViewEvent[];       // the provider's reading of the trace
+  why?(world: World, events: readonly ViewEvent[], entity: string): Why | undefined;
+}
+interface ViewEvent {
+  id: number; t: Millis; until?: Millis;      // the trace record's id and time; when a lasting action ended
+  actor: string; text: string;                // the component in the domain's words; what it did and why
+  about: string[];                            // entity ids, the one it happened to first
+  level: 'key' | 'detail'; tone: 'good' | 'bad' | 'neutral';
+  link?: { from: string; to: string };        // the cause travelled between two entities
+  input?: true;                               // a command typed in a terminal
+  items?: { entity?: string; label: string; value: string; tone }[];   // one line per candidate or member
+  causes: number[];                           // ids of the events it follows from
+}
+interface Why { entity: string; summary: string; steps: ViewEvent[] }
+```
+
+- `events` is a function of the records alone, so the trace of a replay reads the same. A record
+  no provider maps appears in no view. One decision is one event: a scheduling attempt is a single
+  event with a line per node, not a record per node.
+- `buildEvents(registry, records)` merges the providers' events in record order and resolves
+  `causes`: a cause is followed through the records' own `causes` until it reaches a record that
+  is an event, so a chain reads from event to event where the steps between are not shown.
+- `buildWhy(registry, world, events, entity)` asks the provider that owns the entity. It reads the
+  world only to know the entity's state, and the events to explain it.
+- `level: 'key'` means the learner could see something change, or a decision was made. It is what
+  "skip to next event" stops at (§2.5) and what the timeline shows by default.
+- `link` is the only thing the renderer may move along a relation (`PLAN.md` §6.5).
+- Event text is simulator vocabulary (§2.9). The surfaces that show it (the "Why?" inspector, the
+  timeline, a scene's cause, the debrief's replay) mark it as the simulator's explanation.
 
 The web worker builds the view of the session world while the X-ray is open, at most every 200 ms
 of real time and only sends it when it changed (`apps/web/src/engine/session.ts`, D-119).
@@ -1853,6 +1908,41 @@ flowchart LR
 - **Provenance**: `kubectl/provenance.ts` (framework, client, get) and the printers' own lists,
   gathered by `packages/k8s/src/provenance.ts` and contributed as `provenance` (docs/FIDELITY.md §3,
   `npm run fidelity:report`).
+
+### 4.10 Trace records and how the views read them
+
+Phase 13 audited every component built so far: each decision or change emits a record with
+structured `data` (never parsed from the message) and a cause. The mappers are
+`packages/host/src/view/events.ts` and `packages/k8s/src/view/trace.ts` (events) and
+`packages/k8s/src/view/why.ts` ("why"); `K8S_TRACE_KINDS` and `K8S_TRACE_NOT_SHOWN` list every
+kind with what the views make of it, and a test fails when a component emits a kind that is in
+neither table.
+
+| Component | Records | Shown as |
+|---|---|---|
+| Interactive and step shells | `shell.command` (machine, user, tty, line), `shell.command.done` (status) | One input event per command line, with `until` and the exit status |
+| kubectl | `apiserver.write`: every mutating request (verb, resource, object, user, code, message) | key; a dry run is detail |
+| Controller runtime | `controller.sync`, `controller.write`, `controller.write-failed`, `controller.error`, `controller.dropped` | Creating or deleting an owned object is key with a link owner → object; other writes are detail; a sync is not shown |
+| Scheduler | `scheduler.filter` per node, `scheduler.score`, `scheduler.bound`, `scheduler.unschedulable`, `scheduler.bind-failed` | One key event per decision with a line per node (the plugin's reason, as `FailedScheduling` counts it); link Pod → Node on binding |
+| Deployment, ReplicaSet | `deployment.scale` (with the surge and unavailable arithmetic of the step), `deployment.rollout.waiting`, `replicaset.scale` | The Deployment's scale step is key with a link to the ReplicaSet; the rest detail |
+| EndpointSlice | `endpoints.sync`: the Pods the selector matched, each ready or not and why | key when membership changed, with a line per Pod |
+| Kubelet | `kubelet.status` (phase, Ready, container states), `kubelet.backoff` (duration, `endsAt`, `retryAt`), `kubelet.container.restart`, `kubelet.kill`, `kubelet.pod.delete`, pulls, sandbox, `kubelet.node.ready` | Phase and Ready changes, the first back-off after an exit, a restart, a kill, a failed pull are key |
+| Runtime | `runtime.container.started`, `.exited` (code, reason), `.start-failed`, sandbox and signal records | Start, exit and start failure are key |
+| Node lifecycle | `nodelifecycle.unknown`, `nodelifecycle.pod-not-ready` | key |
+| Garbage collector, namespace | `gc.delete` (owners, policy), `namespace.finalized`, `namespace.content-remaining` | Deletes and finalization are key |
+| Event recorders | `event.recorded` (the Event as written), `event.rejected` | detail: the timeline can show Kubernetes Events |
+
+- **Causes inside one sync are record ids** (a write names its sync; a decision names its
+  per-node verdicts). A cause that crosses a kernel event is joined by the mapper from structured
+  data, because trace ids never enter world state: a back-off and a restart find their exit by
+  container id (D-172).
+- **Why** (`k8sWhy`): a Pending Pod gets its creation and the latest scheduling decision with
+  every node's reason; a Pod in back-off the exit (code, reason) and the back-off with its end
+  and the kubelet's next retry; a Service the latest membership with each Pod ready or not; a
+  workload who created and scaled it and what its rollout waits for; a Node its readiness changes.
+- A back-off ends at `endsAt`; the kubelet retries at its next sync, `retryAt`, which is the
+  moment "skip to next event" lands on (`kubelet.container.restart`); the container starts after
+  the create and start latencies. The record carries both times and the "why" says which is which.
 
 ## 5. The hard questions, answered in one place
 

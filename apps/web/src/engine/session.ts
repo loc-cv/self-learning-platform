@@ -7,12 +7,12 @@
 // for one terminal in one message. A resumed attempt is replayed first; its terminal output goes
 // to the page so the terminals show what they showed before the reload.
 
-import { buildView, createInteractiveDriver, createRecorder, createRegistry, ENGINE_VERSION, hashNode, replay, type GapEvent, type InteractiveDriver, type Input, type Json, type LoggedInput, type Millis, type OutputRecord, type Ports, type SessionHeader, type SessionLog, type SessionRecorder } from '@simlab/kernel';
+import { buildEvents, buildView, buildWhy, createInteractiveDriver, createRecorder, createRegistry, createReplayCursor, ENGINE_VERSION, hashNode, replay, type GapEvent, type InteractiveDriver, type Input, type Json, type Kernel, type LoggedInput, type Millis, type OutputRecord, type Ports, type SessionHeader, type SessionLog, type SessionRecorder, type TraceRecord, type ViewEvent } from '@simlab/kernel';
 import { hostPlugin, type EditorRequest, type HostSlice } from '@simlab/host';
 import { k8sPlugin, KUBERNETES_TAG } from '@simlab/k8s';
-import { buildBaseline, cardVariantOf, grade, isScenario, lessonVariantOf, localize, openLab, scenarioShape, showSolution, tagUnits, variantOf, type Baseline, type CardVariant, type Check, type GradeReport, type Lab, type LessonVariant, type SidecarResolution, type Variant } from '@simlab/learn';
+import { assistAllows, assistFor, buildBaseline, cardVariantOf, grade, isScenario, lastRecord, lessonVariantOf, localize, openLab, replayAttempt, replaySolution, scenarioShape, showSolution, startSession, tagUnits, variantOf, type Assist, type Baseline, type ReplayOptions, type CardVariant, type Check, type GradeReport, type Lab, type LessonVariant, type SidecarResolution, type Variant } from '@simlab/learn';
 import type { Practiced } from '../content.ts';
-import type { CardInfo, Clock, FromWorker, LabAction, LabInfo, LabResult, LabState, LessonStep, Note, OpenEditor, SolutionText, StoredAttempt, TaskState, ToWorker, TtyInfo } from '../protocol.ts';
+import type { CardInfo, Clock, FromWorker, LabAction, LabInfo, LabResult, LabState, LessonStep, Note, OpenEditor, SolutionText, StoredAttempt, TaskState, TimelineMark, ToWorker, TtyInfo } from '../protocol.ts';
 import { blocksOf, figureBlock, textOf, three, translationOf, unitStates, type Three, type UnitStates } from './bilingual.ts';
 
 export const registry = createRegistry([hostPlugin, k8sPlugin]);
@@ -23,6 +23,12 @@ export const SAVE_IDLE = 5_000;
 export const CHECKPOINT_EVERY = 120_000;
 /** How often the clock is reported (real ms). */
 export const CLOCK_EVERY = 1_000;
+/** One slice of a tick, in virtual ms: the unit the budget is checked after. */
+export const TICK_SLICE = 50;
+/** Real ms a tick may spend letting virtual time catch up before it yields to the next message. */
+export const TICK_BUDGET = 16;
+/** Real ms of catching up that may stay owed when the budget ran out; more is dropped. */
+export const MAX_OWED = 1_000;
 /** The X-ray's view model is sent at most this often (real ms), and only when it changed. */
 export const VIEW_EVERY = 200;
 
@@ -62,6 +68,10 @@ interface Active {
   debriefSeen: boolean;
   inputsAtCheckpoint: number;
   checkpointAt: Millis;
+  /** The assist level of the attempt: what of the live view the page may ask for. */
+  assist: Assist;
+  /** The newest trace record of the baseline: what came after it happened in the session. */
+  traceBase: number;
 }
 
 /** The session header of an attempt, as `npm run lab` writes it (apps/cli/src/labsession.ts). */
@@ -91,6 +101,8 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
   /** Output of a replay, per terminal, sent once the replay is known to be good. */
   let replayOut = new Map<string, string>();
   let last = clock();
+  /** Real time the driver has not been given yet (catchUp). */
+  let owed = 0;
   let lastSave = last;
   let lastClock = last;
   /** How much of the current log the page has: inputs and checkpoints. */
@@ -99,6 +111,17 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
   let viewOpen = false;
   let lastView = '';
   let lastViewAt = -Infinity;
+  /** Trace records the session world has emitted: the events are rebuilt only when it grew. */
+  let traced = 0;
+  let tracedAtSend = -1;
+  /** What the page has of the events, by id, to send only what is new or has changed. */
+  let sentEvents = new Map<number, string>();
+  let sentMarks = '';
+  let eventsReset = true;
+  /** During a skip: what the world emitted since it began. */
+  let skip: { records: TraceRecord[]; output: boolean } | undefined;
+  /** The world the timeline reads past moments from: a replay of the current log, moved forward only. */
+  let past: { kernel: Kernel; delivered: number } | undefined;
 
   const push = (m: FromWorker): void => {
     const prev = queue[queue.length - 1];
@@ -117,11 +140,44 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
     return d;
   };
 
+  /**
+   * Lets virtual time follow the wall clock, in slices and within a budget of real time, so a
+   * busy world at a high speed cannot hold the worker (and with it the keys the learner types)
+   * for long. What does not fit stays owed and is worked off on the next ticks; when the world
+   * cannot keep up at all, time beyond MAX_OWED is dropped: the simulation then runs slower than
+   * asked, and stays responsive. Dropping changes nothing recorded: the wall clock only decides
+   * which virtual time an input is stamped with (docs/ARCHITECTURE.md §2.5).
+   */
+  const catchUp = (): void => {
+    const a = active;
+    owed += elapsed();
+    if (!a?.driver || a.driver.paused) {
+      owed = 0;
+      return;
+    }
+    const t0 = clock();
+    while (owed > 0) {
+      const step = Math.min(owed, TICK_SLICE / a.driver.speed);
+      a.driver.tick(step);
+      owed -= step;
+      if (owed > 0 && clock() - t0 >= TICK_BUDGET) {
+        owed = Math.min(owed, MAX_OWED);
+        break;
+      }
+    }
+  };
+
   const host = (a: Active): HostSlice => a.lab.kernel.world.slices['host'] as HostSlice;
+
+  const onTrace = (r: TraceRecord): void => {
+    traced++;
+    skip?.records.push(r);
+  };
 
   const onOutput = (r: OutputRecord): void => {
     const a = active;
     if (r.kind === 'tty') {
+      if (skip && a?.ttys.has(r.tty)) skip.output = true;
       if (replaying) replayOut.set(r.tty, (replayOut.get(r.tty) ?? '') + r.data);
       else if (a?.ttys.has(r.tty)) push({ type: 'tty.out', tty: r.tty, data: r.data });
       return;
@@ -140,7 +196,7 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
     if (!replaying) push(r.message === undefined ? { type: 'editor.status', session: r.session, ok: r.ok } : { type: 'editor.status', session: r.session, ok: r.ok, message: r.message });
   };
   const onGap = (gap: GapEvent): void => push({ type: 'gap', gap, replayed: replaying });
-  const ports: Ports = { output: onOutput, gap: onGap };
+  const ports: Ports = { output: onOutput, gap: onGap, trace: onTrace };
 
   const deliver = (a: Active, input: Input, real: number): void => {
     a.driver.deliver(input, real);
@@ -260,6 +316,7 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
       checkTitles: {},
       translation: translationOf(r),
       world: true,
+      assist: a.assist,
       engine: { version: ENGINE_VERSION, kubernetes: KUBERNETES_TAG },
     };
     const titles = (c3: Three<readonly Check[]>): void => {
@@ -304,7 +361,7 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
   const clockOf = (a: Active): Clock => {
     const start = a.baseline.kernel.now;
     const before = a.previous.reduce((sum, l) => sum + (l.end - start), 0);
-    return { elapsed: before + (a.lab.kernel.now - start), paused: a.driver.paused, speed: a.driver.speed };
+    return { now: a.lab.kernel.now, elapsed: before + (a.lab.kernel.now - start), paused: a.driver.paused, speed: a.driver.speed };
   };
 
   const attempt = (a: Active): StoredAttempt => {
@@ -353,9 +410,74 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
         lastClock = now;
         push({ type: 'clock', clock: clockOf(a) });
       }
-      if (viewOpen && now - lastViewAt >= VIEW_EVERY) sendView(a, now);
+      if (viewOpen && now - lastViewAt >= VIEW_EVERY) {
+        sendView(a, now);
+        sendEvents(a);
+      }
     }
     flush();
+  };
+
+  /** The events of the session (what happened after the baseline), oldest first. */
+  const sessionEvents = (a: Active): ViewEvent[] => buildEvents(registry, a.lab.kernel.traceRecords()).filter((e) => e.id > a.traceBase);
+
+  /** What the learner did outside the terminal in the current world, for the timeline. */
+  const marks = (a: Active): TimelineMark[] => {
+    const out: TimelineMark[] = [];
+    for (const i of a.recorder.log().inputs) {
+      if (i.kind !== 'learn.action') continue;
+      const action = String(i['action']);
+      if (action === 'check') out.push({ t: i.t, action, passed: (i['data'] as { passed?: boolean } | undefined)?.passed === true });
+      else if (action === 'hint' ? i['data'] !== null && i['data'] !== undefined : action === 'solution' || action === 'debrief') out.push({ t: i.t, action: action as TimelineMark['action'] });
+    }
+    return out;
+  };
+
+  /** Sends the events the page lacks or has an older form of (assist level full, X-ray open). */
+  const sendEvents = (a: Active): void => {
+    if (!viewOpen || !assistAllows(a.assist, 'full')) return;
+    const m = marks(a);
+    const mk = JSON.stringify(m);
+    if (!eventsReset && traced === tracedAtSend && mk === sentMarks) return;
+    tracedAtSend = traced;
+    sentMarks = mk;
+    if (eventsReset) sentEvents = new Map();
+    const fresh: ViewEvent[] = [];
+    for (const e of sessionEvents(a)) {
+      const key = JSON.stringify(e);
+      if (sentEvents.get(e.id) === key) continue;
+      sentEvents.set(e.id, key);
+      fresh.push(e);
+    }
+    push({ type: 'events', reset: eventsReset, events: fresh, marks: m, start: a.baseline.kernel.now });
+    eventsReset = false;
+  };
+
+  /** What the replay of this attempt draws: the part of the world the debrief's first figure looks at. */
+  const replayOptions = (a: Active): ReplayOptions => {
+    if (a.variants.kind !== 'scenario') return {};
+    for (const b of a.variants.v.en.debrief) {
+      if (!('figure' in b) || b.figure.kind === 'diagram') continue;
+      const o: ReplayOptions = {};
+      if (b.figure.focus) o.focus = b.figure.focus;
+      if (b.figure.show) o.show = b.figure.show;
+      return o;
+    }
+    return {};
+  };
+
+  /**
+   * The view of a past moment: the current log replayed on a world of its own up to `t`. The
+   * world is kept and moved forward for a later moment; an earlier one starts it again.
+   */
+  const pastView = (a: Active, t: Millis) => {
+    const log = a.recorder.log();
+    const to = Math.max(a.baseline.kernel.now, Math.min(t, log.end));
+    if (!past || past.kernel.now > to) past = { kernel: startSession(a.baseline).kernel, delivered: 0 };
+    const cursor = createReplayCursor(log, past.kernel, past.delivered);
+    cursor.seek(to);
+    past.delivered = cursor.delivered;
+    return { t: to, model: buildView(registry, past.kernel.world) };
   };
 
   /** Sends the world's view model if it differs from the last one sent. */
@@ -379,6 +501,9 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
     // The page opens the X-ray of the new attempt again if it is open (an event of this attempt).
     viewOpen = false;
     lastView = '';
+    traced = 0;
+    eventsReset = true;
+    past = undefined;
     const item = items.find((i) => i.id === msg.item);
     if (!item) return fail('unknown-item', `There is no content item ${msg.item}.`);
     const resolution = resolutionOf(item.id);
@@ -393,12 +518,12 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
       const t3 = three(v, (x) => x.item.title);
       push({
         type: 'ready',
-        lab: { id: item.id, kind: 'card', title: textOf(states, t3.en, t3.vi, t3.tag), seed: msg.seed, targetMinutes: item.targetMinutes, difficulty: item.difficulty, ticket: cardBlocks(undefined, states, v), hintCount: 0, checkTitles: {}, translation: translationOf(resolution), card: cardInfo(states, v, false), world: false, engine: { version: ENGINE_VERSION, kubernetes: KUBERNETES_TAG } },
+        lab: { id: item.id, kind: 'card', title: textOf(states, t3.en, t3.vi, t3.tag), seed: msg.seed, targetMinutes: item.targetMinutes, difficulty: item.difficulty, ticket: cardBlocks(undefined, states, v), hintCount: 0, checkTitles: {}, translation: translationOf(resolution), card: cardInfo(states, v, false), world: false, assist: 'off', engine: { version: ENGINE_VERSION, kubernetes: KUBERNETES_TAG } },
         state: { hints: [], solved: false, solutionViewed: false, debriefSeen: false },
         ttys: [],
         editors: [],
         resumed: false,
-        clock: { elapsed: 0, paused: false, speed: 1 },
+        clock: { now: msg.startTime, elapsed: 0, paused: false, speed: 1 },
       });
       return;
     }
@@ -426,7 +551,7 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
     const baseline = buildBaseline(variant, registry, { startTime });
     const header = labHeader(worldItem, seed, startTime, variant.params);
     let lab: Lab | undefined;
-    const a: Partial<Active> & Pick<Active, 'ttys' | 'editors' | 'tasks' | 'notes'> = { item, variants, states, tasks: new Map(), notes: { predictions: {} }, seed, startTime, header, baseline, previous: resume?.previous ?? [], ttys: new Map(), editors: new Map(), solved: false, debriefSeen: false };
+    const a: Partial<Active> & Pick<Active, 'ttys' | 'editors' | 'tasks' | 'notes'> = { item, variants, states, tasks: new Map(), notes: { predictions: {} }, seed, startTime, header, baseline, previous: resume?.previous ?? [], ttys: new Map(), editors: new Map(), solved: false, debriefSeen: false, assist: assistFor(item, msg.assist ?? 'full'), traceBase: lastRecord(baseline.kernel) };
     active = a as Active;
     if (resume) {
       replaying = true;
@@ -547,13 +672,32 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
         result = h ? { action, hint: { index: h.index, text: hintText(a, h.index) } } : { action };
         break;
       }
-      case 'debrief':
+      case 'debrief': {
         act('debrief');
         a.debriefSeen = true;
-        // Figures build their worlds on forks (a solution, a scene): the time that takes is not the learner's.
+        // Figures build their worlds on forks (a solution, a scene), and the replay runs the input
+        // log twice on worlds of its own: the time that takes is not the learner's.
         result = { action, blocks: a.variants.kind === 'scenario' ? blocksOf(a.lab, a.states, three(a.variants.v, (v) => v.debrief)) : [], history: commandHistory(a), solutions: solutionTexts(a) };
+        if (a.variants.kind === 'scenario') result.replay = replayAttempt(a.recorder.log(), a.baseline, registry, replayOptions(a));
         last = clock();
         break;
+      }
+      case 'reference': {
+        // The reference run shows the solution: only next to the debrief, which is opened after
+        // the attempt passed or was given up (docs/LEARNING_MODEL.md §12).
+        if (!a.debriefSeen) throw new Error('the reference run is part of the debrief; open the debrief first');
+        result = { action };
+        if (a.variants.kind === 'scenario') {
+          const v = a.variants.v;
+          const sol = v.en.solutions[0];
+          if (sol) {
+            result.replay = replaySolution(sol, a.baseline, registry, replayOptions(a));
+            if (sol.name !== undefined) result.name = textOf(a.states, sol.name, v.vi?.solutions[0]?.name, v.tag?.solutions[0]?.name);
+          }
+        }
+        last = clock();
+        break;
+      }
       case 'solutions':
         act('solution');
         a.lab.solutions();
@@ -575,11 +719,13 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
         a.inputsAtCheckpoint = 0;
         a.checkpointAt = a.lab.kernel.now;
         lastViewAt = -Infinity;
+        eventsReset = true;
+        past = undefined;
         result = { action };
         break;
       }
     }
-    if (action !== 'reset') checkpoint(a);
+    if (action !== 'reset' && action !== 'reference') checkpoint(a);
     push({ type: 'lab.result', req, result, state: labState(a, figuresChanged), clock: clockOf(a) });
     if (figuresChanged) last = clock();
     push({ type: 'clock', clock: clockOf(a) });
@@ -587,8 +733,14 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
   };
 
   const handle = (msg: ToWorker): void => {
-    const real = elapsed();
-    if (msg.type === 'start') return start(msg);
+    if (msg.type === 'start') {
+      elapsed();
+      owed = 0;
+      return start(msg);
+    }
+    // Virtual time catches up first (within the budget); the input is then delivered at once.
+    catchUp();
+    const real = 0;
     const a = active;
     if (!a) return;
     switch (msg.type) {
@@ -644,23 +796,50 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
         return;
       case 'advance':
         a.driver.tick(real);
-        if (msg.ms === undefined) a.driver.skipToNextEvent();
-        else a.lab.kernel.advance(msg.ms);
+        if (msg.ms === undefined) {
+          // To the next moment something shows: a terminal prints, or the trace records a key event.
+          const from = a.lab.kernel.now;
+          const heard = (skip = { records: [], output: false });
+          try {
+            const found = a.driver.skipToNextEvent(() => heard.output || buildEvents(registry, heard.records).some((e) => e.level === 'key'));
+            push({ type: 'skipped', found, by: a.lab.kernel.now - from });
+          } finally {
+            skip = undefined;
+          }
+        } else a.lab.kernel.advance(msg.ms);
         push({ type: 'clock', clock: clockOf(a) });
         return;
       case 'flush':
         a.driver.tick(real);
         save(a);
         return;
+      case 'why': {
+        if (!assistAllows(a.assist, 'full')) return;
+        // Asking why is help: logged with the attempt, like opening the X-ray.
+        deliver(a, { kind: 'learn.action', action: 'why', data: { entity: msg.entity } }, real);
+        const why = buildWhy(registry, a.lab.kernel.world, buildEvents(registry, a.lab.kernel.traceRecords()), msg.entity);
+        push(why ? { type: 'why', req: msg.req, why } : { type: 'why', req: msg.req });
+        return;
+      }
+      case 'past': {
+        if (!assistAllows(a.assist, 'full')) return;
+        a.driver.tick(real);
+        push({ type: 'past', req: msg.req, ...pastView(a, msg.t) });
+        // Replaying is the simulator's work, not the learner's time.
+        last = clock();
+        return;
+      }
       case 'view':
-        if (msg.open === viewOpen) return;
+        if (msg.open === viewOpen || !assistAllows(a.assist, 'view')) return;
         viewOpen = msg.open;
         // Opening the X-ray is help: logged as a lab action, so it survives a reload.
         deliver(a, { kind: 'learn.action', action: 'view', data: { open: msg.open } }, real);
         a.lab.view(msg.open);
         if (msg.open) {
           lastView = '';
+          eventsReset = true;
           sendView(a, clock());
+          sendEvents(a);
         }
         return;
       case 'gap': {
@@ -680,6 +859,7 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
     nextEventIn() {
       const a = active;
       if (!a?.driver || a.driver.paused) return undefined;
+      if (owed > 0) return 0;
       const next = a.lab.kernel.nextEventTime();
       return next === undefined ? undefined : Math.max(0, next - a.lab.kernel.now) / a.driver.speed;
     },
@@ -695,8 +875,7 @@ export function createEngine(items: readonly Practiced[], emit: (m: FromWorker) 
     },
     tick() {
       try {
-        if (active) active.driver.tick(elapsed());
-        else elapsed();
+        catchUp();
       } catch (e) {
         const err = e as Error;
         push({ type: 'error', message: `${err.message}\n${err.stack ?? ''}` });

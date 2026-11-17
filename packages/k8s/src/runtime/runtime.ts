@@ -43,8 +43,17 @@ function newId(ctx: Ctx): string {
   return ctx.random('k8s.runtime.id').chars(64, HEX);
 }
 
-function trace(ctx: Ctx, node: string, kind: string, subject: string, message: string, data?: Json): number {
-  return ctx.trace({ source: `${SOURCE}/${node}`, kind, subject, message, ...(data !== undefined ? { data } : {}) });
+/**
+ * A runtime record. `cause` is the record of the kubelet call that asked for the operation (its
+ * sync); an operation the runtime does on its own (a process exits) has none.
+ */
+function trace(ctx: Ctx, node: string, kind: string, subject: string, message: string, data?: Json, cause?: number): number {
+  return ctx.trace({ source: `${SOURCE}/${node}`, kind, subject, message, ...(data !== undefined ? { data } : {}), ...(cause !== undefined ? { causes: [cause] } : {}) });
+}
+
+/** The container a record is about: the Pod, the container's name and id. */
+function containerData(node: string, c: RuntimeContainer): { [k: string]: Json } {
+  return { node, namespace: c.namespace, name: c.podName, uid: c.podUID, container: c.name, containerId: c.id, attempt: c.attempt };
 }
 
 // ---- images ----
@@ -109,7 +118,7 @@ function allocateIp(rt: NodeRuntime, cidr: string): { ip: string; last: number }
 }
 
 /** RunPodSandbox, completed: the pause container runs and the network is set up. */
-export function runPodSandbox(ctx: Ctx, node: string, req: SandboxRequest): Sandbox {
+export function runPodSandbox(ctx: Ctx, node: string, req: SandboxRequest, cause?: number): Sandbox {
   let created: Sandbox | undefined;
   update(ctx, node, (rt) => {
     const attempt = Object.values(rt.sandboxes).filter((s) => s.podUID === req.podUID).length;
@@ -124,17 +133,17 @@ export function runPodSandbox(ctx: Ctx, node: string, req: SandboxRequest): Sand
     return { ...rt, lastIp, sandboxes: { ...rt.sandboxes, [created.id]: created } };
   });
   const sb = created as Sandbox;
-  trace(ctx, node, 'runtime.sandbox.ready', `pod/${req.namespace}/${req.name}`, `sandbox ${sb.id.slice(0, 13)} ready with IP ${sb.ip}`, { sandbox: sb.id, ip: sb.ip });
+  trace(ctx, node, 'runtime.sandbox.ready', `pod/${req.namespace}/${req.name}`, `sandbox ${sb.id.slice(0, 13)} ready with IP ${sb.ip}`, { node, namespace: req.namespace, name: req.name, uid: req.podUID, sandbox: sb.id, ip: sb.ip, attempt: sb.attempt }, cause);
   plegEvent(ctx, node, podKey(req.namespace, req.name, req.podUID), 'sandbox ready');
   return sb;
 }
 
 /** StopPodSandbox: the network is torn down (the address goes back to the pool) and the pause container stops. */
-export function stopPodSandbox(ctx: Ctx, node: string, id: string): void {
+export function stopPodSandbox(ctx: Ctx, node: string, id: string, cause?: number): void {
   const sb = runtimeOf(ctx, node).sandboxes[id];
   if (!sb || sb.state === 'notready') return;
   update(ctx, node, (rt) => ({ ...rt, sandboxes: { ...rt.sandboxes, [id]: { ...sb, state: 'notready' } } }));
-  trace(ctx, node, 'runtime.sandbox.stopped', `pod/${sb.namespace}/${sb.name}`, `sandbox ${id.slice(0, 13)} stopped`);
+  trace(ctx, node, 'runtime.sandbox.stopped', `pod/${sb.namespace}/${sb.name}`, `sandbox ${id.slice(0, 13)} stopped`, { node, namespace: sb.namespace, name: sb.name, uid: sb.podUID, sandbox: id }, cause);
   plegEvent(ctx, node, podKey(sb.namespace, sb.name, sb.podUID), 'sandbox stopped');
 }
 
@@ -178,7 +187,7 @@ export interface ContainerRequest {
 }
 
 /** CreateContainer: the container exists, its log file is open, nothing runs yet. */
-export function createContainer(ctx: Ctx, node: string, req: ContainerRequest): RuntimeContainer {
+export function createContainer(ctx: Ctx, node: string, req: ContainerRequest, cause?: number): RuntimeContainer {
   const c: RuntimeContainer = {
     id: newId(ctx),
     sandboxId: req.sandbox.id,
@@ -200,7 +209,7 @@ export function createContainer(ctx: Ctx, node: string, req: ContainerRequest): 
   };
   setContainer(ctx, node, c);
   createLogFile(ctx, node, c.logPath);
-  trace(ctx, node, 'runtime.container.created', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} created from ${req.imageRef}`, { container: c.id });
+  trace(ctx, node, 'runtime.container.created', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} created from ${req.imageRef}`, { ...containerData(node, c), image: req.imageRef }, cause);
   return c;
 }
 
@@ -214,22 +223,22 @@ export interface ProcessSpec {
 }
 
 /** StartContainer, failed: the process could not be started. The container is exited. */
-export function failStart(ctx: Ctx, node: string, id: string, exitCode: number, reason: string, message: string): void {
+export function failStart(ctx: Ctx, node: string, id: string, exitCode: number, reason: string, message: string, cause?: number): void {
   const c = getContainer(ctx, node, id);
   if (!c) return;
   setContainer(ctx, node, { ...c, state: 'exited', exitCode, reason, message, finishedAt: ctx.now });
-  trace(ctx, node, 'runtime.container.start-failed', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} failed to start: ${message}`);
+  trace(ctx, node, 'runtime.container.start-failed', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} failed to start: ${message}`, { ...containerData(node, c), exitCode, reason, message }, cause);
   plegEvent(ctx, node, podKey(c.namespace, c.podName, c.podUID), `container ${c.name} start failed`);
 }
 
 /** StartContainer, succeeded: the init process runs its model. */
-export function startProcess(ctx: Ctx, node: string, id: string, exe: Executable, spec: ProcessSpec): void {
+export function startProcess(ctx: Ctx, node: string, id: string, exe: Executable, spec: ProcessSpec, cause?: number): void {
   const c = getContainer(ctx, node, id);
   if (!c) return;
   const proc: ProcessState = { exe, argv: spec.argv, env: spec.env, pid: 1, state: null, listen: [] };
   setContainer(ctx, node, { ...c, state: 'running', startedAt: ctx.now, proc });
   createLegacySymlink(ctx, node, legacyLogSymlink(c.namespace, c.podName, c.name, c.id), c.logPath);
-  const tid = trace(ctx, node, 'runtime.container.started', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} started: ${spec.argv.join(' ')}`, { container: c.id, model: exe.model });
+  const tid = trace(ctx, node, 'runtime.container.started', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} started: ${spec.argv.join(' ')}`, { ...containerData(node, c), model: exe.model, argv: spec.argv }, cause);
   const model = modelOf(ctx, exe.model);
   applyStep(ctx, node, id, model.start(processInput(ctx, node, id)), tid);
   plegEvent(ctx, node, podKey(c.namespace, c.podName, c.podUID), `container ${c.name} started`);
@@ -273,7 +282,7 @@ function applyStep(ctx: Ctx, node: string, id: string, step: ModelStep, cause: n
   if (!c?.proc) return;
   for (const g of step.gaps ?? []) {
     ctx.gap({ kind: 'behavior', program: c.proc.exe.model, what: g.what, commandLine: c.proc.argv.join(' '), machine: node });
-    ctx.trace({ source: `${SOURCE}/${node}`, kind: 'runtime.model.gap', subject: `pod/${c.namespace}/${c.podName}/${c.name}`, message: `${g.what}${g.detail ? `: ${g.detail}` : ''}`, causes: [cause] });
+    ctx.trace({ source: `${SOURCE}/${node}`, kind: 'runtime.model.gap', subject: `pod/${c.namespace}/${c.podName}/${c.name}`, message: `${g.what}${g.detail ? `: ${g.detail}` : ''}`, data: { ...containerData(node, c), what: g.what }, causes: [cause] });
   }
   const pending = [...c.pending];
   for (const o of step.output ?? []) {
@@ -320,7 +329,7 @@ function reschedule(ctx: Ctx, node: string, id: string): void {
 }
 
 /** The process ended: flush its partial lines, record the exit (containerd's reason), tell the kubelet. */
-function exited(ctx: Ctx, node: string, id: string, exitCode: number, cause: string): void {
+function exited(ctx: Ctx, node: string, id: string, exitCode: number, cause: string, causeId?: number): void {
   let c = getContainer(ctx, node, id);
   if (!c || c.state !== 'running') return;
   for (const p of c.pending) c = writeOutput(ctx, node, c, p.stream, p.text);
@@ -332,7 +341,7 @@ function exited(ctx: Ctx, node: string, id: string, exitCode: number, cause: str
   delete next.event;
   delete next.killAt;
   setContainer(ctx, node, next);
-  trace(ctx, node, 'runtime.container.exited', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} exited with ${exitCode}: ${cause}`, { container: id, exitCode });
+  trace(ctx, node, 'runtime.container.exited', `pod/${c.namespace}/${c.podName}/${c.name}`, `container ${c.id.slice(0, 13)} exited with ${exitCode}: ${cause}`, { ...containerData(node, c), exitCode, reason: exitReason(exitCode), cause, startedAt: c.startedAt ?? null, ...(c.stopping ? { stopping: true } : {}) }, causeId);
   // A log stream following this container ends once it has read what is left.
   ctx.publish(LOG_TOPIC);
   plegEvent(ctx, node, podKey(c.namespace, c.podName, c.podUID), `container ${c.name} exited with ${exitCode}`);
@@ -380,13 +389,13 @@ function runDue(ctx: Ctx, node: string, id: string): void {
     if (end.exec) {
       const p2: ProcessState = { exe: end.exec.exe, argv: end.exec.argv, env: end.exec.env ?? proc.env, pid: proc.pid, state: null, listen: proc.listen };
       setContainer(ctx, node, { ...c, proc: p2 });
-      const tid = trace(ctx, node, 'runtime.process.exec', `pod/${c.namespace}/${c.podName}/${c.name}`, `exec ${end.exec.argv.join(' ')}`, { model: end.exec.exe.model });
+      const tid = trace(ctx, node, 'runtime.process.exec', `pod/${c.namespace}/${c.podName}/${c.name}`, `exec ${end.exec.argv.join(' ')}`, { ...containerData(node, c), model: end.exec.exe.model, argv: end.exec.argv });
       applyStep(ctx, node, id, modelOf(ctx, end.exec.exe.model).start(processInput(ctx, node, id)), tid);
       return;
     }
   }
   if (proc.wakeAt !== undefined && proc.wakeAt <= ctx.now) {
-    const tid = trace(ctx, node, 'runtime.process.wake', `pod/${c.namespace}/${c.podName}/${c.name}`, `${proc.exe.model} wakes up`);
+    const tid = trace(ctx, node, 'runtime.process.wake', `pod/${c.namespace}/${c.podName}/${c.name}`, `${proc.exe.model} wakes up`, { ...containerData(node, c), model: proc.exe.model });
     applyStep(ctx, node, id, modelOf(ctx, proc.exe.model).resume(processInput(ctx, node, id), proc.state), tid);
     return;
   }
@@ -399,7 +408,7 @@ const SIGNALS: Record<string, Signal> = { SIGTERM: 'SIGTERM', SIGINT: 'SIGINT', 
  * StopContainer(timeout): the image's StopSignal (SIGTERM when it names none) now, SIGKILL when
  * the timeout passes (pkg/cri/server/container_stop.go stopContainer).
  */
-export function stopContainer(ctx: Ctx, node: string, id: string, timeout: Millis, stopSignal: string | undefined): void {
+export function stopContainer(ctx: Ctx, node: string, id: string, timeout: Millis, stopSignal: string | undefined, cause?: number): void {
   const c = getContainer(ctx, node, id);
   if (!c) return;
   if (c.state !== 'running' || !c.proc) {
@@ -410,7 +419,7 @@ export function stopContainer(ctx: Ctx, node: string, id: string, timeout: Milli
   }
   const signal = SIGNALS[(stopSignal ?? 'SIGTERM').toUpperCase()] ?? 'SIGTERM';
   setContainer(ctx, node, { ...c, stopping: true, killAt: ctx.now + timeout });
-  const tid = trace(ctx, node, 'runtime.container.signal', `pod/${c.namespace}/${c.podName}/${c.name}`, `${signal} to container ${c.id.slice(0, 13)}, SIGKILL in ${timeout} ms`);
+  const tid = trace(ctx, node, 'runtime.container.signal', `pod/${c.namespace}/${c.podName}/${c.name}`, `${signal} to container ${c.id.slice(0, 13)}, SIGKILL in ${timeout} ms`, { ...containerData(node, c), signal, killAt: ctx.now + timeout }, cause);
   deliver(ctx, node, id, signal, tid);
 }
 
@@ -421,9 +430,9 @@ function deliver(ctx: Ctx, node: string, id: string, signal: Signal, cause: numb
   const r = model.signal ? model.signal(processInput(ctx, node, id), c.proc.state, signal) : 'default';
   if (r === 'default') {
     const action = defaultSignalAction(signal, true);
-    if (action) exited(ctx, node, id, action.exit, `killed by ${signal}`);
+    if (action) exited(ctx, node, id, action.exit, `killed by ${signal}`, cause);
     else {
-      trace(ctx, node, 'runtime.signal.ignored', `pod/${c.namespace}/${c.podName}/${c.name}`, `${signal} ignored: PID 1 has no handler for it`);
+      trace(ctx, node, 'runtime.signal.ignored', `pod/${c.namespace}/${c.podName}/${c.name}`, `${signal} ignored: PID 1 has no handler for it`, { ...containerData(node, c), signal }, cause);
       reschedule(ctx, node, id);
     }
     return;

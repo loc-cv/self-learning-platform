@@ -8,8 +8,9 @@ import { buildView, type Registry, type ViewEntity, type ViewKind, type ViewMode
 import { validateView } from '@simlab/kernel';
 import { buildBaseline, startSession, type Baseline, type BuildOptions } from '../runner/build.ts';
 import { runSteps, StepFailure } from '../runner/steps.ts';
+import { awaitAnchor, eventsOf, lastRecord, linksIn } from './events.ts';
 import { focusView, markChanges, markPanel, resolveRef, viewKey } from './focus.ts';
-import type { DiagramFigure, Figure, Panel, RenderedFigure, SceneFigure, WorldName } from './types.ts';
+import type { DiagramFigure, Figure, Panel, RenderedFigure, RenderedFrame, SceneFigure, WorldName } from './types.ts';
 
 /** The worlds a figure can name, built when first asked for. */
 export interface FigureWorlds {
@@ -112,16 +113,21 @@ export function renderFigure(fig: Figure, worlds: FigureWorlds, env: FigureEnv):
   }
 }
 
+/** In a frame's caption: the text of the event the frame is anchored to. */
+export const CAUSE = '{{@cause}}';
+
 function renderScene(fig: SceneFigure, env: FigureEnv): Rendering {
   const base = fig.world ? buildBaseline({ ...env.baseline.variant, topology: fig.world.topology ?? env.baseline.variant.topology, setup: fig.world.setup }, env.registry, env.build) : env.baseline;
   const { kernel, hub } = startSession(base);
   const problems: string[] = [];
-  const frames: { caption: string; panel: Panel }[] = [];
+  const frames: RenderedFrame[] = [];
   const figureLevel = { highlight: new Set(fig.highlight ?? []), notes: new Set((fig.notes ?? []).flatMap((n) => (n.on === undefined ? [] : [n.on]))) };
   const found = new Set<string>();
   let previous = '';
+  let since = lastRecord(kernel);
   fig.frames.forEach((f, i) => {
     if (problems.length > 0) return;
+    let cause: RenderedFrame['cause'];
     try {
       if (f.steps && f.steps.length > 0) runSteps(kernel, f.steps, { registry: env.registry, entry: base.entry, hub, baseline: base.kernel.world }, `scene frame ${i + 1}`);
     } catch (e) {
@@ -131,17 +137,32 @@ function renderScene(fig: SceneFigure, env: FigureEnv): Rendering {
       }
       throw e;
     }
+    if (f.at) {
+      const r = awaitAnchor(kernel, env.registry, f.at, since, () => buildView(env.registry, kernel.world));
+      if ('problem' in r) {
+        problems.push(`frame ${i + 1}: ${r.problem}`);
+        return;
+      }
+      cause = r.event;
+    }
     const model = focused(env, kernel.world, fig);
     if (model.entities.length === 0) problems.push(`the focus selects nothing in frame ${i + 1}`);
     const key = viewKey(model);
-    if (i > 0 && key === previous) problems.push(`frame ${i + 1} shows the same as frame ${i}; a frame must change something`);
+    // A frame drawn at a recorded event shows that event, even when the drawing itself is unchanged.
+    if (i > 0 && key === previous && !cause) problems.push(`frame ${i + 1} shows the same as frame ${i}; a frame must change something`);
     previous = key;
+    const links = linksIn(eventsOf(env.registry, kernel).filter((e) => e.id > since && e.level === 'key'), model);
+    since = lastRecord(kernel);
     for (const r of [...figureLevel.highlight, ...figureLevel.notes]) if (resolveRef(model, r).length > 0) found.add(r);
     const { panel: shared } = markPanel(model, fig, undefined);
     const own = markPanel(model, f, undefined, shared.notes.length + 1);
     problems.push(...own.missing.map((r) => `${r} names no entity in frame ${i + 1}`));
     const panel: Panel = { model, highlight: [...new Set([...shared.highlight, ...own.panel.highlight])], notes: [...shared.notes, ...own.panel.notes], changes: {} };
-    frames.push({ caption: f.caption, panel });
+    if (i > 0 && links.length > 0) panel.links = links;
+    const frame: RenderedFrame = { caption: cause ? f.caption.replaceAll(CAUSE, cause.text) : f.caption, panel, t: kernel.now };
+    if (cause) frame.cause = cause;
+    else if (f.caption.includes(CAUSE)) problems.push(`frame ${i + 1}: the caption quotes ${CAUSE}, but the frame has no \`at\``);
+    frames.push(frame);
   });
   if (problems.length === 0) for (const r of new Set([...figureLevel.highlight, ...figureLevel.notes])) if (!found.has(r)) problems.push(`${r} names no entity in any frame`);
   return problems.length > 0 ? { problems, empty: [] } : { figure: { kind: 'scene', caption: fig.caption, alt: fig.alt, frames }, problems, empty: [] };

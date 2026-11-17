@@ -76,9 +76,7 @@ export function createProcApi(ctx: Ctx, machineId: string, pid: string): ProcApi
       return createFs(ctx, machineId, { cred: api.cred, cwd: p.cwd, umask: p.umask });
     },
     random: (stream) => ctx.random(stream),
-    trace(record) {
-      ctx.trace(record);
-    },
+    trace: (record) => ctx.trace(record),
 
     *read(fd, opts = {}) {
       const sc: Syscall = { op: 'read', fd };

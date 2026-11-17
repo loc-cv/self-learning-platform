@@ -1,14 +1,13 @@
-// Terminal colors for the two themes. The UI's own colors are CSS variables (styles.css); xterm
-// needs concrete values, kept here next to each other so they stay in tune.
+// Terminal colors for the two themes: a terminal's own palette, whatever the interface's look.
+// xterm needs concrete values. The background and the default foreground are the tokens
+// `--term-bg` and `--term-fg` (tokens.css), read from the page so the terminal's surface is the
+// pane it sits in; the cursor and the sixteen ANSI colors are kept here.
 
 import type { ITheme } from '@xterm/xterm';
 
 export const TERMINAL_THEMES: Record<'dark' | 'light', ITheme> = {
   dark: {
-    background: '#0f1318',
-    foreground: '#d3dae3',
     cursor: '#9cc7f0',
-    cursorAccent: '#0f1318',
     selectionBackground: 'rgba(127, 180, 230, 0.30)',
     black: '#1c2229',
     red: '#e07b7b',
@@ -28,10 +27,7 @@ export const TERMINAL_THEMES: Record<'dark' | 'light', ITheme> = {
     brightWhite: '#eef2f6',
   },
   light: {
-    background: '#fcfbf8',
-    foreground: '#24292f',
     cursor: '#2f6fb0',
-    cursorAccent: '#fcfbf8',
     selectionBackground: 'rgba(47, 111, 176, 0.22)',
     black: '#24292f',
     red: '#b8312f',
@@ -51,5 +47,15 @@ export const TERMINAL_THEMES: Record<'dark' | 'light', ITheme> = {
     brightWhite: '#3d444d',
   },
 };
+
+/** The theme for xterm: the palette above on the terminal surface the tokens define. */
+export function terminalTheme(theme: 'dark' | 'light'): ITheme {
+  const base = TERMINAL_THEMES[theme];
+  if (typeof document === 'undefined') return base;
+  const css = getComputedStyle(document.documentElement);
+  const background = css.getPropertyValue('--term-bg').trim();
+  const foreground = css.getPropertyValue('--term-fg').trim();
+  return { ...base, ...(background ? { background, cursorAccent: background } : {}), ...(foreground ? { foreground } : {}) };
+}
 
 export const MONO_FONT = '"JetBrains Mono", "Fira Mono", "DejaVu Sans Mono", "Cascadia Mono", Menlo, Consolas, monospace';

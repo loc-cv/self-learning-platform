@@ -10,7 +10,7 @@ import { createEngineClient, type EngineClient } from './engine.ts';
 import { EditorOverlay, type SaveResult } from './EditorOverlay.tsx';
 import { createGapSink, type GapEntry, type SinkState } from './gaps.ts';
 import { ItemPicker } from './ItemPicker.tsx';
-import { LabPanel } from './LabPanel.tsx';
+import { LAB_TABS, LabPanel, TAB_OF_ACTION, type LabTab } from './LabPanel.tsx';
 import { isBrowserChord, matchShortcut, neighbourTab } from './shortcuts.ts';
 import { isFullscreen, toggleFullscreen, watchFullscreen } from './fullscreen.ts';
 import { createStore, type Settings } from './storage.ts';
@@ -19,7 +19,10 @@ import { TopBar, type Popover } from './TopBar.tsx';
 import { Button, Icon } from './ui.tsx';
 import { installProbe } from './probe.ts';
 import { createAttemptKeeper } from './attempts.ts';
-import { XRay } from './XRay.tsx';
+import { XRay, type XRayMode } from './XRay.tsx';
+import type { Rect } from './floating.ts';
+import { tabDomId } from './ui.tsx';
+import { MONO_FONT } from './theme.ts';
 import { usePrefersReducedMotion } from './motion.ts';
 
 type Phase = { kind: 'picker' } | { kind: 'loading'; title: string; resuming: boolean } | { kind: 'ready' } | { kind: 'failed'; problem: ResumeProblem; message: string; item: string };
@@ -45,6 +48,8 @@ export function App() {
   const [solutions, setSolutions] = useState<{ name: string; text: string }[]>();
   const [busy, setBusy] = useState<LabAction>();
   const [note, setNote] = useState<string>();
+  /** The lab panel's open tab: the ticket at the start of every attempt. */
+  const [labTab, setLabTab] = useState<LabTab>('ticket');
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTab, setActiveTab] = useState<number>();
   const [editors, setEditors] = useState<Record<string, OpenEditor>>({});
@@ -90,6 +95,8 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
   }, []);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   const focusTerminal = useCallback(() => {
     const k = current.current.activeTab;
@@ -113,6 +120,7 @@ export function App() {
       setDebrief(undefined);
       setSolutions(undefined);
       setNote(undefined);
+      setLabTab('ticket');
       setLab(undefined);
       setLabState(undefined);
       setClock(undefined);
@@ -239,6 +247,10 @@ export function App() {
     async (action: LabAction) => {
       setBusy(action);
       setNote(undefined);
+      // An action shows its result: its tab opens, and the panel if it was hidden.
+      setLabTab(TAB_OF_ACTION[action]);
+      const now = settingsRef.current;
+      if (!now.panelOpen) setSettings({ ...now, panelOpen: true });
       const { result, state } = await client.lab(action);
       setBusy(undefined);
       setLabState(state);
@@ -253,10 +265,21 @@ export function App() {
         setEditors({});
         setNote('The world is back where it started.');
       }
-      focusTerminal();
+      // Back to the terminal, unless the action was run from the lab panel with the keyboard.
+      if (!document.activeElement?.closest('.lab-panel')) focusTerminal();
     },
-    [client, focusTerminal],
+    [client, focusTerminal, setSettings],
   );
+
+  /** After Escape in the lab panel or a drag of the X-ray: the terminal has the keyboard again at
+   *  once, so the next key is not lost and a later focus is not undone. */
+  const focusTerminalNow = useCallback(() => {
+    // An open editor keeps the keyboard: a drag never took it away.
+    if (document.activeElement?.closest('.editor-overlay')) return;
+    const k = current.current.activeTab;
+    if (k !== undefined) handles.current.get(k)?.focus();
+  }, []);
+  const actNow = useCallback((a: LabAction) => void act(a), [act]);
 
   const openTerminal = useCallback(() => {
     const t = newTab();
@@ -301,6 +324,23 @@ export function App() {
     focusTerminal();
   }, [settings, setSettings, focusTerminal]);
 
+  /** The lab panel's previous or next tab, by chord: the panel opens and the tab takes focus. */
+  const stepLabTab = useCallback(
+    (step: -1 | 1) => {
+      const now = settingsRef.current;
+      if (!now.panelOpen) setSettings({ ...now, panelOpen: true });
+      setLabTab((t) => {
+        // A panel that was hidden opens on the tab it had.
+        const to = now.panelOpen ? (LAB_TABS[(LAB_TABS.indexOf(t) + step + LAB_TABS.length) % LAB_TABS.length] as LabTab) : t;
+        requestAnimationFrame(() => document.getElementById(tabDomId('lab', to))?.focus());
+        return to;
+      });
+    },
+    [setSettings],
+  );
+  const setXrayMode = useCallback((xrayMode: XRayMode) => setSettings({ ...settingsRef.current, xrayMode }), [setSettings]);
+  const setXrayFloat = useCallback((xrayFloat: Rect) => setSettings({ ...settingsRef.current, xrayFloat }), [setSettings]);
+
   // Workspace shortcuts, before the terminal or the editor sees the key (shortcuts.ts).
   useEffect(() => {
     const down = (e: KeyboardEvent): void => {
@@ -342,7 +382,10 @@ export function App() {
           const t = ts[neighbourTab(Math.max(at, 0), ts.length, m.id === 'prevTab' ? -1 : 1)];
           if (t) setActiveTab(t.key);
         } else if (m.id === 'panel') togglePanel();
+        else if ((m.id === 'prevLabTab' || m.id === 'nextLabTab') && ready) stepLabTab(m.id === 'prevLabTab' ? -1 : 1);
         else if (m.id === 'xray' && ready) toggleXray();
+        // The floating X-ray's move handle takes the keyboard; docked or closed there is none.
+        else if (m.id === 'grabXray') document.querySelector<HTMLElement>('.xray-grip')?.focus();
         else if (m.id === 'pause' && ready) togglePause();
         else if (m.id === 'labs') setPicker((v) => !v);
         else if (m.id === 'help') setPopover((v) => (v === 'help' ? undefined : 'help'));
@@ -364,7 +407,7 @@ export function App() {
     };
     window.addEventListener('keydown', down, true);
     return () => window.removeEventListener('keydown', down, true);
-  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, toggleXray, togglePause, focusTerminal]);
+  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, stepLabTab, toggleXray, togglePause, focusTerminal]);
 
   // In full screen or an installed app window the browser hands over Ctrl+W, Ctrl+T and Ctrl+N.
   // The terminal and vim's insert mode use them; where nothing does (vim's normal mode, no
@@ -446,11 +489,22 @@ export function App() {
     document.documentElement.style.setProperty('--panel-width', `${settings.panelWidth}px`);
   }, [settings.panelWidth]);
 
+  // The terminal keeps 80 columns while the window has room for them: the lab panel and a docked
+  // X-ray give way down to their own minimums first (styles.css, .terminals).
+  useEffect(() => {
+    const c = document.createElement('canvas').getContext('2d');
+    if (!c) return;
+    c.font = `${settings.fontSize}px ${MONO_FONT}`;
+    document.documentElement.style.setProperty('--term-cell', `${c.measureText('M').width.toFixed(3)}px`);
+  }, [settings.fontSize]);
+
+  const xrayDocked = phase.kind === 'ready' && xray && settings.xrayMode === 'docked';
+  const panelShown = phase.kind === 'ready' && settings.panelOpen;
   const editorFor = (t: Tab): OpenEditor | undefined => Object.values(editors).find((e) => e.tty !== undefined && e.tty === t.tty);
   const showPicker = phase.kind === 'picker' || picker;
 
   return (
-    <div className={`app${settings.panelOpen ? '' : ' panel-closed'}${reducedMotion ? ' motion-reduced' : ''}`}>
+    <div className={`app${settings.panelOpen ? '' : ' panel-closed'}${panelShown ? ' has-panel' : ''}${xrayDocked ? ' has-xray-docked' : ''}${reducedMotion ? ' motion-reduced' : ''}`}>
       <TopBar
         {...(lab ? { title: lab.title } : {})}
         {...(clock ? { clock } : {})}
@@ -484,14 +538,14 @@ export function App() {
       <main className="workspace">
         {phase.kind === 'ready' && lab && labState && settings.panelOpen ? (
           <>
-            <LabPanel lab={lab} state={labState} reducedMotion={reducedMotion} {...(debrief ? { debrief } : {})} {...(solutions ? { solutions } : {})} {...(busy ? { busy } : {})} {...(note ? { note } : {})} act={(a) => void act(a)} />
+            <LabPanel lab={lab} state={labState} reducedMotion={reducedMotion} {...(debrief ? { debrief } : {})} {...(solutions ? { solutions } : {})} {...(busy ? { busy } : {})} {...(note ? { note } : {})} tab={labTab} setTab={setLabTab} act={actNow} leave={focusTerminalNow} />
             <div className="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the lab panel" tabIndex={0} onPointerDown={startPanelDrag} onKeyDown={nudgePanel} />
           </>
         ) : null}
-        <section className="terminals" aria-label="Terminals">
+        <section className="terminals pane" aria-label="Terminals">
           {phase.kind === 'ready' ? (
             <>
-              <nav className="tabs" role="tablist">
+              <nav className="tabs" role="tablist" aria-label="Terminals">
                 {tabs.map((t, i) => (
                   <div key={t.key} role="tab" aria-selected={t.key === activeTab} className={`tab${t.key === activeTab ? ' is-active' : ''}${t.ended ? ' is-ended' : ''}`} onMouseDown={(e) => e.preventDefault()} onClick={() => setActiveTab(t.key)} title={`Ctrl+Shift+${i + 1}`}>
                     <Icon name="terminal" size={14} />
@@ -603,8 +657,8 @@ export function App() {
         </section>
         {phase.kind === 'ready' && xray ? (
           <>
-            <div className="splitter splitter-xray" role="separator" aria-orientation="vertical" aria-label="Resize the X-ray" tabIndex={0} onPointerDown={startXrayDrag} onKeyDown={nudgeXray} />
-            <XRay {...(viewModel ? { model: viewModel } : {})} reducedMotion={reducedMotion} close={toggleXray} />
+            {xrayDocked ? <div className="splitter splitter-xray" role="separator" aria-orientation="vertical" aria-label="Resize the X-ray" tabIndex={0} onPointerDown={startXrayDrag} onKeyDown={nudgeXray} /> : null}
+            <XRay {...(viewModel ? { model: viewModel } : {})} reducedMotion={reducedMotion} mode={settings.xrayMode} setMode={setXrayMode} {...(settings.xrayFloat ? { rect: settings.xrayFloat } : {})} setRect={setXrayFloat} close={toggleXray} done={focusTerminalNow} />
           </>
         ) : null}
         {showPicker ? (

@@ -1,16 +1,13 @@
 // Phase 10b: the X-ray, the live view of the world beside the terminal. In the scheduling lab it
 // shows the Pending Pods apart from every node, and after the fix in the terminal the new Pods on
 // the right node, without a reload. A 30-Pod rollout keeps the page responsive; reduced motion
-// makes change instant. Screenshots of the workspace with the X-ray open and closed, both themes.
+// makes change instant. (The screenshots of the workspace are taken by screens.spec.ts.)
 
 import { expect, test, type Page } from '@playwright/test';
-import { advance, openLab, run, screen, vimEx, waitForPrompt } from './workspace.ts';
+import { advance, openLab, run, screen, settings, vimEx, waitForPrompt } from './workspace.ts';
 
 const SHOTS = '../../.tsbuild/playwright';
 
-async function settings(page: Page, extra: Record<string, unknown>): Promise<void> {
-  await page.addInitScript((s) => localStorage.setItem('simlab.settings.v1', JSON.stringify(s)), { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 560, motion: 'system', ...extra });
-}
 
 /** Opens the X-ray with its chord and checks the page claimed the chord. */
 async function openXray(page: Page): Promise<void> {
@@ -101,19 +98,6 @@ test('the scheduling lab: Pending Pods outside every node, then Running on node0
   expect(names.sort()).toEqual((await running.evaluateAll((els) => els.map((e) => (e.getAttribute('data-id') ?? '').split('/').pop()))).sort());
 });
 
-for (const theme of ['dark', 'light'] as const) {
-  test(`screenshots, ${theme} theme: the X-ray open and closed`, async ({ page }) => {
-    await settings(page, { theme });
-    await openLab(page, 'k8s.troubleshooting.broken-rollout-01', 3);
-    await run(page, 'kubectl -n shop get pods');
-    await page.screenshot({ path: `${SHOTS}/workspace-${theme}-xray-closed.png` });
-    await openXray(page);
-    await page.locator('.xray [data-id^="k8s/Service/shop/"]').first().click();
-    await page.waitForTimeout(600);
-    await page.screenshot({ path: `${SHOTS}/workspace-${theme}-xray-open.png` });
-  });
-}
-
 test('a 30-Pod rollout with the X-ray open: keystrokes still echo at once, no long frame', async ({ page }) => {
   await settings(page, { panelOpen: false });
   await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
@@ -199,8 +183,8 @@ test('selecting an entity never moves or rescales the drawing, also after fit an
     await expect(page.locator('.xray-detail')).toBeVisible();
     await page.waitForTimeout(400);
     const after = await box(page, node);
-    // The facts did take room from the drawing, which is what used to move it.
-    expect((await box(page, '.xray-body')).height, name).toBeLessThan(bodyBefore.height);
+    // The facts lie over the drawing's lower edge and take no height from it (phase 10d).
+    expect((await box(page, '.xray-body')).height, name).toBe(bodyBefore.height);
     for (const k of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[k] - before[k]), `${name}: ${k}`).toBeLessThan(0.5);
     await pod.click();
     await expect(page.locator('.xray-detail')).toHaveCount(0);
@@ -218,7 +202,7 @@ test('a narrow X-ray keeps its title on one line', async ({ page }) => {
   expect(tools.x + tools.width).toBeLessThanOrEqual(head.x + head.width + 0.5);
   expect(tools.x).toBeGreaterThanOrEqual(h2.x + h2.width);
   // Every tool is still there and wide enough to hit.
-  for (const name of ['Zoom out', 'Zoom in', 'Fit everything', 'Close the X-ray']) expect((await page.getByRole('button', { name }).boundingBox())?.width).toBeGreaterThanOrEqual(24);
-  expect((await box(page, '.xray-filter select')).width).toBeGreaterThan(60);
+  for (const name of ['Zoom out', 'Zoom in', 'Fit everything', 'Float the X-ray', 'Close the X-ray']) expect((await page.getByRole('button', { name }).boundingBox())?.width).toBeGreaterThanOrEqual(24);
+  expect((await box(page, '.xray-filter .select-trigger')).width).toBeGreaterThan(60);
   await page.screenshot({ path: `${SHOTS}/xray-narrow.png` });
 });

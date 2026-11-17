@@ -1,0 +1,334 @@
+/* The design tokens of docs/DESIGN.md. Every color, size, radius, shadow and duration the interface
+   uses is defined here and nowhere else: styles.css holds rules and no literal value
+   (tokens.test.ts, which also measures the contrast of the text and surface pairs in use).
+   Structure first, then the look's shape, then its colors per theme. The look is Quiet, chosen
+   by the owner in phase 10d (docs/DESIGN.md §1). */
+
+/* ---------- structure ---------- */
+
+:root {
+  --font-code: "JetBrains Mono", "Fira Mono", "DejaVu Sans Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-1: 1;
+  --lh-tight: 1.25;
+  --lh-snug: 1.45;
+  --lh-body: 1.6;
+  --tracking-caps: 0.08em;
+  --tracking-title: -0.015em;
+
+  /* Space: a 4px base with half steps. */
+  --sp-0h: 2px;
+  --sp-1: 4px;
+  --sp-1h: 6px;
+  --sp-2: 8px;
+  --sp-2h: 10px;
+  --sp-3: 12px;
+  --sp-3h: 14px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Lines and rings. */
+  --line: 1px;
+  --line-2: 2px;
+  --line-3: 3px;
+  --r-pill: 999px;
+  --r-round: 50%;
+
+  /* Fixed sizes of small things. */
+  --size-dot: 6px;
+  --size-fresh: 7px;
+  --size-meter: 6px;
+  --size-mark: 20px;
+  --size-badge: 18px;
+  --size-close: 18px;
+  --size-spinner: 22px;
+  --size-grip: 24px;
+  --size-handle: 10px;
+  --size-corner: 18px;
+  --size-empty-icon: 44px;
+  --size-brand: 22px;
+  --size-clock: 44px;
+  --size-scene-count: 44px;
+  --size-kbd-line: 17px;
+  --size-chip-line: 19px;
+  --size-pill-line: 18px;
+  --size-state-line: 20px;
+  --size-tabbadge-line: 16px;
+  --size-seg: 24px;
+  --size-seg-min: 30px;
+  --size-option: 28px;
+  --size-grid: 16px;
+  --size-grid-dot: 1px;
+  --size-grid-fade: 1.2px;
+  --size-editor-bar: 36px;
+  --size-editor-status: 26px;
+
+  /* Widths. */
+  --panel-width: 440px;
+  --panel-min: 300px;
+  --xray-width: 520px;
+  --xray-min: 320px;
+  --pane-max: 60vw;
+  --panel-overlay-max: 88vw;
+  --popover-w: 380px;
+  --popover-max-h: calc(100vh - 70px);
+  --picker-max: 760px;
+  --picker-lead-max: 600px;
+  --failed-max: 520px;
+  --dialog-w: min(1200px, 94vw);
+  --dialog-max-h: 92vh;
+  --tab-title-max: 220px;
+  --select-max: 190px;
+  --select-menu-min: 200px;
+  --select-menu-max-h: 240px;
+  --detail-max-h: 46%;
+  --empty-max: 320px;
+  /* The terminal's 80 columns: the cell's width comes from the terminal's font size (App.tsx),
+     the rest is the scroll bar and the padding around the text. */
+  --term-cell: 8.43px;
+  --term-cols-min: 80;
+  --term-chrome: 40px;
+  --term-floor: 200px;
+  --viewport-w: 100vw;
+  --none: 0px;
+  /* The cursor while a floating panel is dragged; the drag sets it (XRay.tsx). */
+  --drag-cursor: grabbing;
+
+  /* Layers. */
+  --z-splitter: 2;
+  --z-editor: 5;
+  --z-panel-overlay: 10;
+  --z-float: 15;
+  --z-picker: 20;
+  --z-popover: 30;
+  --z-menu: 40;
+  --z-dialog: 50;
+
+  /* Motion (DESIGN.md §4): only what changed moves. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-move: 420ms;
+  --motion-enter: 280ms;
+  --motion-exit: 320ms;
+  --motion-spin: 900ms;
+  --motion-none: 0ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Strengths of things in a view. */
+  --o-disabled: 0.45;
+  --o-muted: 0.5;
+  --o-dim: 0.32;
+  --o-link: 0.35;
+  --o-link-route: 0.4;
+  --o-link-hot: 0.95;
+  --o-link-dim: 0.08;
+  --o-link-still: 0.7;
+  --o-host-head: 0.55;
+  --w-link: 1.2;
+  --w-link-hot: 1.8;
+  --w-glyph: 1.8;
+  --dash-scope: 5 4;
+  --dash-lane: 2 4;
+  --dash-select: 4 4;
+  --dash-mark: 5 3;
+  --dash-removed: 4 3;
+  --mix-state-fill: 86%;
+  --mix-state-stroke: 40%;
+  --mix-scope: 55%;
+
+  /* Text in a view (SVG user units). */
+  --vfs-kind: 9.5px;
+  --vfs-sm: 11px;
+  --vfs-base: 12px;
+  --vfs-title: 13px;
+}
+
+/* ---------- the look's shape: type scale, radii, heights ---------- */
+
+:root {
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Ubuntu, sans-serif;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-body: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --fs-2xl: 24px;
+  --fs-score: 26px;
+  --fw-title: 600;
+
+  --gap: 8px;
+  --pane-pad: 20px;
+  --r-sm: 3px;
+  --r-md: 5px;
+  --r-lg: 6px;
+  --r-pane: 8px;
+  --r-ctl: 5px;
+  --r-tab: 5px;
+  --topbar-h: 44px;
+  --tabs-h: 38px;
+  --ctl-h: 30px;
+  --ctl-h-sm: 26px;
+  --ctl-pad: 12px;
+  --ctl-pad-sm: 8px;
+  --tab-h: 38px;
+  --tabstrip-inset: 10px;
+  --tab-line-h: 2px;
+  --overlay-blur: blur(14px);
+}
+
+/* ---------- dark theme ---------- */
+
+:root {
+  --bg: #08090b;
+  --pane-bg: #111215;
+  --pane-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+  --float-bg: rgba(20, 21, 25, 0.94);
+  --float-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 20px 60px rgba(0, 0, 0, 0.6);
+  --surface: #111215;
+  --surface-2: #191a1f;
+  --surface-3: #23252b;
+  --raised: #1b1c21;
+  --overlay-bg: rgba(27, 28, 33, 0.9);
+  --scrim: rgba(8, 9, 11, 0.7);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: #3a3d46;
+  --elev-2: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --elev-3: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 18px 50px rgba(0, 0, 0, 0.55);
+  --text: #f2f3f5;
+  --text-muted: #a3a7b1;
+  --text-faint: #858a96;
+  --accent: #8f97f5;
+  --accent-fill: #5e6ad2;
+  --accent-fill-hover: #5562cb;
+  --accent-solid: #5e6ad2;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(94, 106, 210, 0.2);
+  --focus-ring: #8f97f5;
+  --tab-ink: #a3a7b1;
+  --tab-active-ink: #f2f3f5;
+  --tab-line: #8f97f5;
+  --ctl-bg: #1f2126;
+  --ctl-bg-hover: #2a2c33;
+  --ghost-hover: rgba(255, 255, 255, 0.06);
+
+  --state-healthy: #62c88f;
+  --state-progressing: #4fc3d9;
+  --state-degraded: #e5b452;
+  --state-failed: #f07a7a;
+  --state-unknown: #9aa4b0;
+  --state-selected: #f2f3f5;
+  --state-healthy-bg: rgba(98, 200, 143, 0.12);
+  --state-progressing-bg: rgba(79, 195, 217, 0.12);
+  --state-degraded-bg: rgba(229, 180, 82, 0.13);
+  --state-failed-bg: rgba(240, 122, 122, 0.12);
+  --state-unknown-bg: rgba(154, 164, 176, 0.12);
+
+  --code-bg: #1e2026;
+  --code-text: #d7dae0;
+  --term-bg: #0d0e11;
+  --term-fg: #d3dae3;
+  --canvas-bg: #0c0d10;
+  --canvas-grid: rgba(150, 160, 190, 0.08);
+  --host-shadow: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  --line-active: rgba(143, 151, 245, 0.06);
+  --selection: rgba(127, 140, 240, 0.32);
+  --search-match: rgba(229, 180, 82, 0.25);
+  --brand-bg: #5e6ad2;
+  --brand-ink: #ffffff;
+  --syn-key: #9fb4f0;
+  --syn-string: #a9d3a4;
+  --syn-atom: #e2b98a;
+  --syn-comment: #747a87;
+  --syn-keyword: #c7a2e0;
+  --syn-punct: #8f95a3;
+  --syn-type: #85cfd0;
+  color-scheme: dark;
+}
+
+/* ---------- light theme ---------- */
+
+:root[data-theme="light"] {
+  --bg: #eff0f3;
+  --pane-bg: #ffffff;
+  --pane-shadow: inset 0 0 0 1px rgba(15, 20, 40, 0.06), 0 1px 2px rgba(15, 20, 40, 0.04);
+  --float-bg: rgba(255, 255, 255, 0.95);
+  --float-shadow: inset 0 0 0 1px rgba(15, 20, 40, 0.1), 0 20px 60px rgba(15, 20, 40, 0.22);
+  --surface: #ffffff;
+  --surface-2: #f4f5f7;
+  --surface-3: #e9eaee;
+  --raised: #ffffff;
+  --overlay-bg: rgba(255, 255, 255, 0.92);
+  --scrim: rgba(230, 232, 238, 0.72);
+  --border: rgba(15, 20, 40, 0.08);
+  --border-strong: #bfc3cc;
+  --elev-2: 0 2px 8px rgba(15, 20, 40, 0.08);
+  --elev-3: inset 0 0 0 1px rgba(15, 20, 40, 0.08), 0 18px 50px rgba(15, 20, 40, 0.18);
+  --text: #17181c;
+  --text-muted: #555a66;
+  --text-faint: #686d79;
+  --accent: #4650c0;
+  --accent-fill: #5560cf;
+  --accent-fill-hover: #4954c2;
+  --accent-solid: #5560cf;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(85, 96, 207, 0.12);
+  --focus-ring: #4650c0;
+  --tab-ink: #555a66;
+  --tab-active-ink: #17181c;
+  --tab-line: #4650c0;
+  --ctl-bg: #eff0f3;
+  --ctl-bg-hover: #e4e6ea;
+  --ghost-hover: rgba(15, 20, 40, 0.06);
+
+  --state-healthy: #1f7a49;
+  --state-progressing: #0c7789;
+  --state-degraded: #8d610a;
+  --state-failed: #bd352c;
+  --state-unknown: #606774;
+  --state-selected: #17181c;
+  --state-healthy-bg: rgba(31, 122, 73, 0.1);
+  --state-progressing-bg: rgba(12, 119, 137, 0.1);
+  --state-degraded-bg: rgba(141, 97, 10, 0.11);
+  --state-failed-bg: rgba(189, 53, 44, 0.09);
+  --state-unknown-bg: rgba(96, 103, 116, 0.1);
+
+  --code-bg: #eef0f3;
+  --code-text: #2a2d34;
+  --term-bg: #fdfdfd;
+  --term-fg: #24292f;
+  --canvas-bg: #f6f7f9;
+  --canvas-grid: rgba(30, 40, 70, 0.08);
+  --host-shadow: drop-shadow(0 2px 4px rgba(15, 20, 40, 0.1));
+  --line-active: rgba(70, 80, 192, 0.05);
+  --selection: rgba(70, 80, 192, 0.2);
+  --search-match: rgba(160, 125, 0, 0.18);
+  --syn-key: #2f4bb0;
+  --syn-string: #2b7a3d;
+  --syn-atom: #9a5b13;
+  --syn-comment: #7d838f;
+  --syn-keyword: #8a3fa0;
+  --syn-punct: #6a707c;
+  --syn-type: #1f7a80;
+  color-scheme: light;
+}
+
+/* ---------- names shared with the states ---------- */
+
+:root {
+  --ok: var(--state-healthy);
+  --ok-bg: var(--state-healthy-bg);
+  --bad: var(--state-failed);
+  --bad-bg: var(--state-failed-bg);
+  --warn: var(--state-degraded);
+  --warn-bg: var(--state-degraded-bg);
+}

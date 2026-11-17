@@ -1,75 +1,120 @@
 # Design language
 
 The look of Simlab, for the interface and the views alike (`PLAN.md` §6.5, §10). Written in phase
-10b. The tokens live in `apps/web/src/app/styles.css`; this file says what they are for and the
-rules for using them. A literal size, color, radius, shadow or duration in a stylesheet is a defect:
-use a token, or add one here first.
+10b; §1 to §4 and §7 rewritten in phase 10d for the look chosen there. The tokens live in
+`apps/web/src/app/tokens.css`; this file says what they are for and the rules for using them.
+`apps/web/src/app/styles.css` holds rules only: a literal size, color, radius, shadow or duration
+there is a defect, and `tokens.test.ts` fails on one. Use a token, or add one here first.
 
 ## 1. What it answers
 
-The owner's verdict at Checkpoint A (`docs/feedback-log.md`, 2026-11-17): the type and the spacing
-were dull, everything was flat with no depth, and nothing showed the system. Color was not the
-complaint. Two directions were shown as screenshots of the real workspace running the scheduling
-lab with the X-ray open, each in both themes:
+**Checkpoint A** (2026-11-17, `docs/feedback-log.md`): the type and the spacing were dull,
+everything was flat with no depth, and nothing showed the system. Phase 10b showed two directions
+and the owner chose *Instrument* (IBM Plex Sans, compact, panes joined edge to edge as tonal layers
+with hairline bevels) over *Studio* (Inter, roomier, rounded island panes).
 
-- **Instrument**: IBM Plex Sans, a compact rhythm, panes joined edge to edge as tonal layers with
-  hairline bevels, small radii, a faint dot grid behind the views, a blue accent.
-- **Studio**: Inter, a roomier rhythm, panes as rounded islands floating on a darker floor with soft
-  shadows, larger titles, a violet accent.
+**Checkpoint A2** (2026-11-17): the result felt "like old Bootstrap websites": bordered buttons
+with a bevel and a shadow, a hairline around every region, gray slabs in the light theme, a native
+select. Asked what modern means, the owner said: panes as floating rounded surfaces; fewer lines
+and more air; more color and depth; and "show me options". Phase 10d showed three directions as
+screenshots of the real workspace running the scheduling lab (check failed, one hint taken, the
+X-ray docked and floating), each in both themes:
 
-The owner chose **Instrument** (2026-11-17). Studio's tokens and its font were removed.
+| | Floating panes | Lines and air | Color and depth |
+|---|---|---|---|
+| **Glass** (Inter) | translucent panes, 18px corners, 12px apart, over a floor with still color glows | no rules; a pill strip of tabs | a violet-to-blue gradient on the primary action, a glow on the selected tab, glass everywhere |
+| **Quiet** (IBM Plex Sans) | opaque tonal panes, 12px corners, 8px apart, on a flat floor | no rules but the line under the selected tab; compact | one indigo accent, no gradient or glow; depth by tone; translucency only on what floats |
+| **Stage** (Geist) | the terminal as the floor to the window's edge, the other panes as cards with 24px corners and deep shadows | no rules; larger type, pill controls | a mint-to-cyan gradient with dark ink, the selected tab inverted |
 
-**Reopened at Checkpoint A2** (2026-11-17, `docs/feedback-log.md`): the owner finds the result
-"like old Bootstrap websites" and wants floating rounded panes, fewer lines and more air, more
-color and depth. Phase 10d shows new directions and rewrites §1 to §4 and §7 for the chosen one.
-Until then this file describes the interface as it is.
+The owner chose **Quiet, "with less rounded boxes"** (2026-11-17, D-132): the corners below are
+tighter than the ones shown. Glass and Stage, their tokens and their fonts were removed. From
+Instrument, Quiet keeps the font, the compact rhythm, the tonal layers and a blue-family accent;
+from Studio, panes as separate rounded surfaces with a gap between them.
 
-The system on screen is what gives the product its character: the views carry the look, and the
-chrome around them stays quiet.
+What the look is, in one paragraph: panes are rounded surfaces that float on a darker floor with a
+small gap; areas are told apart by space and tone, never by a rule; controls are flat; one accent
+marks actions and what is selected; only what floats above the panes is translucent. The system on
+screen is what gives the product its character: the views carry the look, and the chrome around
+them stays quiet.
 
 ## 2. Type
 
 | Token | Size | Use |
 |---|---|---|
-| `--fs-xs` | 11px | micro-labels (uppercase, tracked), meta text, chips |
+| `--fs-xs` | 11px | micro-labels (uppercase, tracked), meta text, chips, badges |
 | `--fs-sm` | 12px | secondary text, code in prose, controls in dense rows |
-| `--fs-base` | 13px | controls, lists, the default for chrome |
+| `--fs-base` | 13px | controls, lists, tabs, the default for chrome |
 | `--fs-body` | 14px | prose: tickets, hints, debriefs |
-| `--fs-lg` | 15px | item titles in lists |
+| `--fs-lg` | 15px | item titles in lists, headings in prose and popovers |
 | `--fs-xl` | 18px | pane titles (the lab's title) |
-| `--fs-2xl` | 22px | page titles (the lab list) |
+| `--fs-2xl` | 24px | page titles (the lab list) |
+| `--fs-score` | 26px | the one big number of a pane (the check's score; a mastery figure in phase 12) |
 
 - **Faces.** `--font-ui` is IBM Plex Sans, bundled (`apps/web/src/app/fonts.ts`, weights 400, 500,
-  600, every subset including Vietnamese; D-117), so it looks the same on Windows and Linux and needs
-  no network. `--font-code` is the system's monospace stack for code in prose and for names in views
-  (a Pod name, a path). The terminal and the editor keep their own font and colors (`theme.ts`).
+  600, every subset including Vietnamese; D-117, kept by D-132), so it looks the same on Windows
+  and Linux and needs no network. `--font-code` is the system's monospace stack for code in prose,
+  for names in views (a Pod name, a path) and for the editor overlay. The terminal keeps a
+  terminal's font and its sixteen colors (`theme.ts`); only its background and default foreground
+  are tokens (`--term-bg`, `--term-fg`), so its surface is the pane it sits in.
 - **Weights.** `--fw-regular` 400 for prose, `--fw-medium` 500 for controls and names,
-  `--fw-semibold` 600 for titles, headers and states. Bold (700) only for a mark inside a control.
-- **Leading.** `--lh-tight` 1.25 for titles, `--lh-body` 1.6 for prose; chrome uses 1 or 1.5.
+  `--fw-semibold` 600 for titles (`--fw-title`), the selected tab, headers and states. Bold (700)
+  only for a mark inside a badge.
+- **Contrast of type.** Three strengths of text: `--text` for what is read, `--text-muted` for
+  labels and secondary text, `--text-faint` for identifiers nobody needs to read twice (an item's
+  id). All three meet WCAG AA (4.5:1) on every surface they are used on, in both themes;
+  `tokens.test.ts` measures the pairs.
+- **Leading.** `--lh-tight` 1.25 for titles, `--lh-snug` 1.45 for chrome that wraps, `--lh-body`
+  1.6 for prose, `--lh-1` for single lines.
 - **Tracking.** Uppercase micro-labels take `--tracking-caps` (0.08em); titles are tightened
-  slightly (−0.012em). Nothing else is tracked.
+  slightly (`--tracking-title`). Nothing else is tracked.
 
 ## 3. Spacing, sizes, radii
 
-- **Rhythm.** A 4px base: `--sp-1` 4, `--sp-2` 8, `--sp-3` 12, `--sp-4` 16, `--sp-5` 20, `--sp-6`
-  24, `--sp-8` 32. Padding inside a pane is `--pane-pad` (20px); sections inside a pane are separated
-  by `--sp-5` with a hairline.
-- **Fixed heights.** `--topbar-h` 42px, `--tabs-h` 34px (the terminal tabs and the X-ray's header
-  share it, so the panes' headers line up).
-- **Radii.** `--r-sm` 4px (inputs, small chips), `--r-md` 6px (buttons, code blocks, cards),
-  `--r-lg` 8px (popovers). Pills are fully round. Views use their own radii for their shapes (§6).
+- **Rhythm.** A 4px base with half steps: `--sp-0h` 2, `--sp-1` 4, `--sp-1h` 6, `--sp-2` 8,
+  `--sp-2h` 10, `--sp-3` 12, `--sp-3h` 14, `--sp-4` 16, `--sp-5` 20, `--sp-6` 24, `--sp-8` 32,
+  `--sp-10` 40, `--sp-12` 48. Padding inside a pane is `--pane-pad` (20px). Sections inside a pane
+  are separated by space, and blocks that belong together sit on a tinted surface.
+- **The gap.** `--gap` (8px) is the space between panes and between the panes and the window. The
+  gap between two panes is the handle that resizes them; it shows a short accent bar on hover and
+  on focus.
+- **Fixed heights.** `--topbar-h` 44px; `--tabs-h` 38px (the terminal tabs, the X-ray's header and
+  the lab panel's tab strip share it); controls are `--ctl-h` 30px and `--ctl-h-sm` 26px; a button
+  that holds only an icon is square.
+- **Radii.** `--r-sm` 3px (code chips, small marks), `--r-md` 5px (cards inside a pane, code
+  blocks), `--r-lg` 6px (popovers, list cards, the bench of a view), `--r-pane` 8px (panes, the
+  floating X-ray, dialogs), `--r-ctl` 5px (buttons, selects, segmented controls). Badges, state
+  chips and skill chips are pills (`--r-pill`). Views use their own radii for their shapes (§6).
+- **Lines.** `--line` 1px, `--line-2` 2px (focus rings, the selected tab's line, a selection in a
+  view), `--line-3` 3px (the splitter's bar). Other fixed sizes of small things are the `--size-*`
+  tokens, named after what they size.
 
 ## 4. Surfaces, depth and motion
 
-**Surface levels** (colors per theme): `--bg` is the floor (level 0), `--surface` a pane (1),
-`--surface-2` something raised inside a pane: a card, an input, a host in a view (2), `--surface-3`
-hover and pressed (3), `--raised` an overlay: popovers, dialogs, the cards of a view.
+**Surface levels** (colors per theme): `--bg` is the floor (level 0), `--pane-bg` a pane (1),
+`--surface-2` something raised inside a pane: a card, a check, a hint (2), `--surface-3` a chip or
+a track inside that (3), `--raised` a dialog. `--ctl-bg` and `--ctl-bg-hover` are a control's fill;
+`--ghost-hover` is the hover of a control that has no fill at rest.
 
-**Depth.** Panes meet edge to edge and are told apart by tone and a hairline, with a bevel
-(`--bevel`, a one-pixel highlight along the top edge) that makes each read as a layer. Shadows are
-for things above the floor's plane: `--elev-1` buttons, `--elev-2` raised cards, `--elev-3`
-popovers, dialogs and floating notes. The X-ray's canvas sits a step below the panes
-(`--canvas-bg`) with a faint dot grid (`--canvas-grid`), so its boxes read as objects on a bench.
+**Depth** comes from tone first. A pane is a step lighter than the floor and carries a one-pixel
+ring of very low contrast (`--pane-shadow`), which is an edge, not a rule between regions. Shadows
+are for what floats above the panes: `--elev-2` a raised card, `--elev-3` popovers, menus, dialogs,
+the facts card of the X-ray, `--float-shadow` the floating X-ray. The X-ray's canvas sits a step
+below its pane (`--canvas-bg`) with a faint dot grid (`--canvas-grid`), so its boxes read as
+objects on a bench.
+
+**Translucency** is for what floats, and only there: `--overlay-bg` with `--overlay-blur` on
+popovers, the select's menu, the facts card and the notes over the terminal; `--float-bg` on the
+floating X-ray; `--scrim` behind a dialog and behind the lab list when it lies over the workspace.
+Panes are opaque. The blur costs nothing measurable: `npm run bench:web` reports the same latency
+with the X-ray closed, docked and floating.
+
+**Color.** One accent, indigo: `--accent` as text and icons, `--accent-fill` (with `--accent-ink`)
+for the primary action, `--accent-soft` for a pressed or chosen control, `--focus-ring` for
+keyboard focus. There is no gradient and no glow. The accent is never a state (§5).
+
+**Lines.** The interface draws one: the line under the selected tab of a tab strip. Everything
+else that used to be a rule is a gap or a change of tone; where scrolled text meets the actions
+below it, it fades out (a mask) instead of ending at a border.
 
 **Motion.** Something moves only when the world changed or the learner acted.
 
@@ -80,6 +125,7 @@ popovers, dialogs and floating notes. The X-ray's canvas sits a step below the p
 | `--motion-move` | 420ms | an entity that moves or a container that resizes in a view |
 | `--motion-enter` | 280ms | an entity that appears (fade in) |
 | `--motion-exit` | 320ms | an entity that leaves (fade out in place) |
+| `--motion-spin` | 900ms | one turn of the spinner while a world is built |
 
 Easing: `--ease-standard` (cubic-bezier(0.2, 0, 0, 1)) for everything that arrives or moves,
 `--ease-exit` for what leaves.
@@ -89,10 +135,11 @@ Rules:
 - **What may move.** In a view: an entity that appears, leaves, changes state or moves to another
   container; a container that must grow or shrink for that, and what lies below it in the same
   band, in the same transition. In the interface: the hover and press feedback of a control, the
-  check meter filling, the spinner while a world is built.
+  check meter filling, the spinner while a world is built, a panel following the pointer that
+  drags it.
 - **What never moves.** Anything decorative: no idle animation, no pulsing, no traffic drawn where
-  the model has none (`PLAN.md` §6.5 "Honesty"). An entity keeps its place while others come and go
-  (the renderer remembers slots, §6). The terminal never animates.
+  the model has none (`PLAN.md` §6.5 "Honesty"). Tabs switch at once. An entity keeps its place
+  while others come and go (the renderer remembers slots, §6). The terminal never animates.
 - **Reduced motion.** The system's `prefers-reduced-motion`, or the Motion setting set to
   Reduced, makes every change instant: durations go to zero and leaving entities are removed at once.
   The setting can only reduce motion, never turn it on against the system.
@@ -105,17 +152,20 @@ glyph.
 
 | State | Meaning | Glyph | Dark | Light |
 |---|---|---|---|---|
-| healthy | doing what it is declared to do | filled dot | `#62c88f` | `#23824e` |
-| progressing | on its way there, expected to arrive without help | open arc | `#4fc3d9` | `#0f8296` |
-| degraded | partly working, or blocked waiting for something that will not change by itself | triangle | `#e5b452` | `#9a6a0c` |
-| failed | not working | cross | `#f07a7a` | `#c0392f` |
-| unknown | the model cannot tell | question mark | `#9aa4b0` | `#6b7480` |
+| healthy | doing what it is declared to do | filled dot | `#62c88f` | `#1f7a49` |
+| progressing | on its way there, expected to arrive without help | open arc | `#4fc3d9` | `#0c7789` |
+| degraded | partly working, or blocked waiting for something that will not change by itself | triangle | `#e5b452` | `#8d610a` |
+| failed | not working | cross | `#f07a7a` | `#bd352c` |
+| unknown | the model cannot tell | question mark | `#9aa4b0` | `#606774` |
 | selected | the learner's selection in a view | 2px outline | the text color | the text color |
 
 Each state has a tint (`--state-<name>-bg`) for chips and failing cards. `--ok`, `--warn` and
-`--bad` in the interface are the healthy, degraded and failed colors. The accent (`--accent`, blue)
-is for actions and focus, never for a state; focus rings are the accent, the selection in a view is
-the text color, so neither is mistaken for progressing.
+`--bad` in the interface are the healthy, degraded and failed colors. The light theme's values were
+darkened slightly in phase 10d so each reads at 4.5:1 on its own tint (`tokens.test.ts`). The
+accent (`--accent`, indigo) is for actions and focus, never for a state; focus rings are the
+accent, the selection in a view is the text color, so neither is mistaken for progressing. In the
+interface a state is never color alone either: a check has ✓, ✗ or !, a tab's badge has its count,
+a solved lab says "solved".
 
 Who decides the state: the view provider, in its domain's terms (`packages/k8s/src/view/provider.ts`
 writes down why an unschedulable Pod is degraded and a Pod in ImagePullBackOff failed). The status
@@ -189,8 +239,9 @@ selection; the wheel scrolls, Ctrl+wheel zooms, dragging the background pans. Ev
 accessible name: kind, name, status and state.
 
 Selecting never moves the drawing. The visible part is kept as a corner and a zoom; its height
-follows the pane, so a pane that loses height to the facts of a selection shows less at the bottom
-and nothing rescales (D-129).
+follows the pane, so a pane that changes height shows more or less at the bottom and nothing
+rescales (D-129). The facts of a selection lie on a card over the drawing's lower edge and take no
+height from it (D-138).
 
 ### 6.4 Honesty
 
@@ -210,16 +261,17 @@ its resting strength, and the facts the figure names drawn under each card's sta
 container's header, one line per fact or per entry of a list fact (three at most, then "+N more"),
 the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in the middle to fit.
 
-- **Panel.** The canvas's bench (`--canvas-bg`, the dot grid) in a box with `--r-md` and a hairline,
+- **Panel.** The canvas's bench (`--canvas-bg`, the dot grid) in a box with `--r-lg` and no border,
   a micro-label title above the drawing for each side of a comparison. A comparison sits side by
   side from 760px of figure width and stacked below that, which is how it reads in the lab panel;
-  the enlarge button opens the figure in a dialog (`--raised`, `--elev-3`) wide enough for two.
+  the enlarge button opens the figure in a dialog (`--raised`, `--elev-3`, over `--scrim`) wide
+  enough for two.
 - **Caption** above the figure in `--fs-body` medium; **notes** below it in `--fs-sm`, each with its
   number in a round badge; a cited divergence id in a small code chip after the note.
 - **Marks.** A highlight is a dashed 2px outline in the accent around the entity; a note's number
-  is a round badge in `--accent-bg` on the entity's top right; a comparison's change is a badge on
-  the top left: `+` only on the right and `•` changed (both in `--accent-bg`), `−` only on the left
-  (`--text-muted`), and an entity only on the left keeps a dashed outline but full strength: in a
+  is a round badge in `--accent-solid` on the entity's top right; a comparison's change is a badge on
+  the top left: `+` only on the right and `•` changed (both in `--accent-solid`), `−` only on the left
+  (`--surface-3`), and an entity only on the left keeps a dashed outline but full strength: in a
   comparison of start and solved it is the broken state the figure is about. Marks
   point; they are never a state, so they use the accent and never a state color.
 - **Scenes.** Under the drawing: previous and next, the frame count in tabular figures, Replay, and
@@ -231,16 +283,46 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
 
 ## 7. Surfaces of the interface
 
-- **Top bar**: the floor's darkest pane, `--topbar-h`, brand, lab title, clock, notices, the
-  X-ray toggle (pressed state in the accent), settings.
 - **The page** never scrolls: the workspace fills the window and only panes scroll (D-130).
-- **Lab panel**, **terminals**, **X-ray**: three panes edge to edge, resizable by their splitters.
-  In a narrow X-ray the filter shrinks first and the "counts as help" note goes; the title and
-  the buttons stay.
-  The X-ray is closed at the start of every attempt (it is help); its width is remembered.
-- **Popovers and dialogs**: `--raised` with `--elev-3` and `--r-lg`.
-- **The lab list** (the current home until phase 12): a page title in `--fs-2xl`, items as cards.
+- **Top bar**: on the floor, with no surface of its own: brand, the lab panel's toggle, the lab
+  list, the lab's title, the clock, notices, the X-ray toggle (pressed: `--accent-soft`), full
+  screen, settings, shortcuts.
+- **Panes.** The lab panel, the terminals and the docked X-ray lie side by side with `--gap`
+  between them, resizable by the gaps. **The terminal keeps 80 columns** while the window has room
+  for them: the docked X-ray gives way first, down to its minimum (320px), then the lab panel
+  (300px); at 1440px all three fit (D-136). Below 900px the lab panel lies over the terminal.
+- **Tab strip** (`TabStrip` in `ui.tsx`): the ARIA tabs pattern. One tab stop; the arrow keys move
+  and select, Home and End go to the ends; a click selects without taking focus from the terminal.
+  The tabs share the strip's width; in a narrow strip they drop their icons, then the strip
+  scrolls sideways, so it holds any number of tabs. A tab can carry an icon, a badge (what it
+  holds: a score, a count, with a spoken form) and a dot when something arrived since it was last
+  open. Phase 12's lesson steps are more tabs of this strip, not a second mechanism.
+- **Lab panel**: the lab's kicker, title and id; the tab strip with **Ticket, Check, Hints,
+  Debrief, Solutions**; one tab panel at a time, each with its own scroller, so every tab keeps
+  its scroll position; the actions (Check, Hint, Reset) under every tab. An action opens the tab
+  that shows its result, and the panel if it was hidden. The Check tab's badge is the score
+  (`3/5`, with a check mark once solved), the Hints tab's the hints taken of how many. An empty
+  tab says what will appear in it. **What gives the answer away asks first, in its tab**: Debrief
+  before the lab is solved, and Solutions; both show a lock until then, and both are recorded as
+  before. Reset asks above the actions. `Ctrl+Shift+,` and `Ctrl+Shift+.` go to the previous and
+  next tab from anywhere and put the focus on it; Escape returns to the terminal (D-135).
+- **X-ray**: closed at the start of every attempt (it is help). It opens in the mode last used:
+  **docked** as the third pane, or **floating** over the workspace; a control in its header
+  switches. Floating, it is moved by its header and resized from its edges and corners with the
+  pointer, and from its move handle with the keyboard (`Ctrl+Shift+G` takes the handle; arrow keys
+  move, Shift+arrow keys resize, in steps of 24px; Escape returns to the terminal); all of it stays inside the workspace, also when the window shrinks; its place and
+  size are remembered and come back when the window has room again (`floating.ts`, D-137). While
+  it floats the terminal keeps its full width, and neither dragging it nor its buttons take the
+  keyboard from the terminal. In a narrow X-ray the filter shrinks first and the "counts as help"
+  note goes; the title and the buttons stay. The filter is the interface's own select (`Select` in
+  `ui.tsx`), not the system's.
+- **Editor overlay**: the terminal's surface (`--term-bg`) in the code font, a file bar above and
+  a status bar below, no borders.
+- **Popovers, menus and dialogs**: `--overlay-bg` with `--overlay-blur` and `--elev-3`; a dialog is
+  `--raised` over `--scrim`.
+- **The lab list** (the current home until phase 12): a page title in `--fs-2xl`, items as cards on
+  the floor (`--pane-bg`, `--r-lg`); the item in progress has an accent ring.
 
 Phase 12's home and learning screens are built from the same tokens: the type scale and states
-already cover mastery, due counts and scores (a meter uses the state colors; a count uses
-`--font-code` with tabular figures).
+already cover mastery, due counts and scores (a meter uses the accent or a state color; a count
+uses `--font-code` with tabular figures; the one big number of a pane is `--fs-score`).

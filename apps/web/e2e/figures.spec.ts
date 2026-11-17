@@ -4,24 +4,14 @@
 // .tsbuild/playwright/ (copy them out before the next run: Playwright empties the directory).
 
 import { expect, test, type Page } from '@playwright/test';
-import { openLab } from './workspace.ts';
+import { openDebrief, openLab, settings } from './workspace.ts';
 
 const SHOTS = '../../.tsbuild/playwright';
 
-async function settings(page: Page, extra: Record<string, unknown> = {}): Promise<void> {
-  await page.addInitScript((s) => localStorage.setItem('simlab.settings.v1', JSON.stringify(s)), { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, motion: 'system', ...extra });
-}
-
-async function openDebrief(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Debrief' }).click();
-  await page.getByRole('button', { name: 'Read it anyway' }).click();
-  await expect(page.locator('.debrief .figure').first()).toBeVisible();
-}
-
-/** The lab panel's scroll area at full height, so a screenshot holds the whole debrief. */
+/** The Debrief tab's scroll area at full height, so a screenshot holds the whole debrief. */
 async function shootDebrief(page: Page, name: string): Promise<void> {
-  const height = await page.locator('.lab-scroll').evaluate((el) => el.scrollHeight);
-  await page.setViewportSize({ width: 1440, height: Math.min(6000, height + 260) });
+  const height = await page.locator('.lab-scroll.is-active').evaluate((el) => el.scrollHeight);
+  await page.setViewportSize({ width: 1440, height: Math.min(6000, height + 320) });
   await page.locator('.debrief').scrollIntoViewIfNeeded();
   await page.locator('.debrief').screenshot({ path: `${SHOTS}/${name}.png` });
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -44,7 +34,7 @@ for (const lab of LABS) {
     // The drawing is one image whose name is the alt text.
     if (lab.ticket > 0) await expect(ticket.locator('svg[role="img"]')).toHaveAttribute('aria-label', /.{40,}/);
     await openDebrief(page);
-    const body = page.locator('.debrief > :not(header)');
+    const body = page.locator('.debrief > *');
     // The first thing in the debrief is a figure.
     await expect(body.first()).toHaveClass(/\bfigure\b/);
     const kinds = await page.locator('.debrief .figure').evaluateAll((els) => els.map((e) => /figure-(view|compare|scene|diagram)/.exec(e.className)?.[1]));

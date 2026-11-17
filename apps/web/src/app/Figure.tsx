@@ -6,6 +6,7 @@
 // Like the renderer it names no domain: what it draws comes from the rendered figure.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Panel, RenderedBlock, RenderedFigure } from '@simlab/learn';
 import { ViewCanvas, type CanvasMarks } from '../view/ViewCanvas.tsx';
 import { renderInline, renderMarkdown } from './markdown.ts';
@@ -191,7 +192,8 @@ function FigureDialog({ figure, reducedMotion, close }: { figure: RenderedFigure
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [close]);
-  return (
+  // In the body, not inside the pane: a pane may become the containing block of fixed boxes.
+  return createPortal(
     <div className="figure-dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="figure-dialog" role="dialog" aria-modal="true" aria-label={figure.caption} tabIndex={-1} ref={ref}>
         <Button small variant="ghost" className="figure-dialog-close" title="Close (Escape)" aria-label="Close" onClick={close}>
@@ -199,7 +201,8 @@ function FigureDialog({ figure, reducedMotion, close }: { figure: RenderedFigure
         </Button>
         <Figure figure={figure} reducedMotion={reducedMotion} large />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

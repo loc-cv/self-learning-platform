@@ -76,11 +76,12 @@ export function TopBar(p: Props) {
   return (
     <header className="topbar">
       <div className="brand" aria-label="Simlab">
-        <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
-          <rect width="32" height="32" rx="7" fill="var(--brand-bg)" />
-          <path d="M8 11l6 5-6 5" stroke="var(--accent)" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M16 22h8" stroke="var(--text)" strokeWidth="2.6" strokeLinecap="round" />
-        </svg>
+        <span className="brand-mark">
+          <svg width="16" height="16" viewBox="4 4 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 11l6 5-6 5" />
+            <path d="M16 22h8" />
+          </svg>
+        </span>
         <span>simlab</span>
       </div>
       <Button variant="ghost" small className="topbar-trigger" shortcut="Ctrl+Shift+L" title={p.panelOpen ? 'Hide the lab panel' : 'Show the lab panel'} aria-pressed={p.panelOpen} onClick={p.togglePanel}>

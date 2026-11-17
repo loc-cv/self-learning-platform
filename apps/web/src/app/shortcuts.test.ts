@@ -22,6 +22,13 @@ test('previous and next terminal, full screen, and copy whatever is selected', (
   expect(matchShortcut(key('PageDown'))).toEqual({ id: 'nextTab' });
   expect(matchShortcut(key('KeyF'))).toEqual({ id: 'fullscreen' });
   expect(matchShortcut(key('KeyY'))).toEqual({ id: 'xray' });
+  // The lab panel's tabs: < and > without their Shift meaning.
+  expect(matchShortcut(key('Comma'))).toEqual({ id: 'prevLabTab' });
+  expect(matchShortcut(key('Period'))).toEqual({ id: 'nextLabTab' });
+  expect(matchShortcut(key('Period', { ctrlKey: true }))).toBeUndefined();
+  // The floating X-ray's move handle; Ctrl+G is readline's abort.
+  expect(matchShortcut(key('KeyG'))).toEqual({ id: 'grabXray' });
+  expect(matchShortcut(key('KeyG', { ctrlKey: true }))).toBeUndefined();
   // Ctrl+Y is readline's yank: the X-ray takes only the shifted chord.
   expect(matchShortcut(key('KeyY', { ctrlKey: true }))).toBeUndefined();
   // Ctrl+Shift+C is a shortcut with or without a selection: unclaimed, Chrome opens DevTools.
@@ -43,8 +50,8 @@ test('the chords the browser keeps in a tab', () => {
 });
 
 test('every shortcut the help lists is one the matcher knows', () => {
-  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'KeyY', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash'];
+  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'KeyY', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash', 'Comma', 'Period', 'KeyG'];
   const matched = new Set(codes.map((c) => matchShortcut(key(c))?.id));
-  // PageDown is listed on PageUp's line.
+  // PageDown is listed on PageUp's line, the comma on the period's.
   for (const s of SHORTCUTS) expect(matched.has(s.id), s.id).toBe(true);
 });

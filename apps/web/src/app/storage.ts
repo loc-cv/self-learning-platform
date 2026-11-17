@@ -3,6 +3,7 @@
 // then a private window or cleared site data loses the attempt, and every access is guarded.
 
 import type { StoredAttempt } from '../protocol.ts';
+import type { Rect } from './floating.ts';
 
 export interface Settings {
   theme: 'dark' | 'light';
@@ -12,13 +13,17 @@ export interface Settings {
   panelWidth: number;
   panelOpen: boolean;
   fontSize: number;
-  /** Width of the X-ray in CSS pixels. Whether it is open is not stored: every attempt starts without it. */
+  /** Width of the docked X-ray in CSS pixels. Whether it is open is not stored: every attempt starts without it. */
   xrayWidth: number;
+  /** How the X-ray opens: docked beside the terminal, or floating over the workspace. */
+  xrayMode: 'docked' | 'floating';
+  /** Where the floating X-ray was left, in the workspace's coordinates; absent until it has floated. */
+  xrayFloat?: Rect;
   /** Animation of change in views: as the system asks (prefers-reduced-motion), or reduced. */
   motion: 'system' | 'reduced';
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, motion: 'system' };
+export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, xrayMode: 'docked', motion: 'system' };
 
 const SETTINGS = 'simlab.settings.v1';
 const ACTIVE = 'simlab.active.v1';

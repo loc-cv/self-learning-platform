@@ -250,25 +250,19 @@ test('the page itself never scrolls: showing the solutions moves only the lab pa
   await page.evaluate(() => {
     const tall = document.createElement('div');
     tall.style.height = '3000px';
-    document.querySelector('.app')?.append(tall);
+    // After the app, not inside it: inside, it would be a flex item that squeezes the workspace away.
+    document.body.append(tall);
   });
   await page.getByRole('button', { name: /^Check/ }).click();
   await expect(page.locator('.report .verdict')).toBeVisible();
-  await page.getByRole('button', { name: 'Solutions' }).click();
+  // The check's report is taller than its tab here; a second check brings it back to its top.
+  await page.locator('.lab-scroll.is-active').evaluate((el) => el.scrollTo(0, 400));
+  await page.getByRole('button', { name: /^Check/ }).click();
+  await expect.poll(() => page.locator('.lab-scroll.is-active').evaluate((el) => el.scrollTop)).toBe(0);
+  await page.locator('.lab-scroll.is-active').evaluate((el) => el.scrollTo(0, 400));
+  await page.getByRole('tab', { name: /^Solutions/ }).click();
   await page.getByRole('button', { name: 'Show solutions' }).click();
   await expect(page.locator('.solutions')).toBeVisible();
-  // The solutions come to the top of the panel's scroller.
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const box = document.querySelector('.lab-scroll') as HTMLElement;
-        const el = document.querySelector('.solutions') as HTMLElement;
-        const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 1;
-        return atEnd || Math.abs(el.getBoundingClientRect().top - box.getBoundingClientRect().top) < 2;
-      }),
-    )
-    .toBe(true);
-  expect(await page.evaluate(() => (document.querySelector('.lab-scroll') as HTMLElement).scrollTop)).toBeGreaterThan(0);
   const moved = await page.evaluate(() => {
     // A script that tries to scroll the page, as scrollIntoView and focus do.
     window.scrollTo(0, 200);

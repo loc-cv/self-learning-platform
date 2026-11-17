@@ -8,6 +8,8 @@ import type { Tab, TerminalHandle } from './Terminal.tsx';
 export interface Probe {
   /** The active terminal's screen rows. */
   screen(): string[];
+  /** The active terminal's width in columns. */
+  cols(): number;
   /** The active terminal's TTY id. */
   tty(): string | undefined;
   /** Types `text` one key at a time; resolves with each key's time from send to echo on screen (ms). */
@@ -43,6 +45,7 @@ export function installProbe(client: EngineClient, handles: Map<number, Terminal
     });
   const probe: Probe = {
     screen: () => active()?.h.screen() ?? [],
+    cols: () => active()?.h.cols() ?? 0,
     tty: () => active()?.tty,
     async type(text) {
       const a = active();

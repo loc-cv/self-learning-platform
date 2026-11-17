@@ -1,13 +1,20 @@
-// The lab panel: the ticket, check results per check, the hint ladder, the debrief and the
-// reference solutions, with the actions at the bottom. Actions that give something away ask
-// first, in the words `npm run lab` uses (apps/cli/src/labsession.ts).
+// The lab panel: the ticket, the check's results, the hint ladder, the debrief and the reference
+// solutions, each in its own tab, with the actions below every tab. What gives the answer away
+// asks first, in the words `npm run lab` uses (apps/cli/src/labsession.ts): the Debrief tab before
+// the lab is solved, and the Solutions tab.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CheckReport, GradeReport, RenderedBlock } from '@simlab/learn';
 import type { LabAction, LabInfo, LabState } from '../protocol.ts';
 import { renderInline, renderMarkdown } from './markdown.ts';
-import { Button, Dots, Icon } from './ui.tsx';
+import { Button, Dots, Icon, panelDomId, tabDomId, TabStrip, type TabItem } from './ui.tsx';
 import { Blocks } from './Figure.tsx';
+
+export type LabTab = 'ticket' | 'check' | 'hints' | 'debrief' | 'solutions';
+export const LAB_TABS: readonly LabTab[] = ['ticket', 'check', 'hints', 'debrief', 'solutions'];
+
+/** The tab that shows an action's result. */
+export const TAB_OF_ACTION: Record<LabAction, LabTab> = { check: 'check', hint: 'hints', debrief: 'debrief', solutions: 'solutions', reset: 'ticket' };
 
 interface Props {
   lab: LabInfo;
@@ -18,16 +25,20 @@ interface Props {
   busy?: LabAction;
   /** A short message from the last action (no more hints). */
   note?: string;
+  tab: LabTab;
+  setTab(tab: LabTab): void;
   act(action: LabAction): void;
+  /** Escape in the panel goes back to the terminal. */
+  leave(): void;
 }
 
-type Pending = 'debrief' | 'solutions' | 'reset';
-
-const CONFIRM: Record<Pending, { text: string; yes: string; danger?: boolean }> = {
+const ASK = {
   debrief: { text: 'The lab is not solved yet, and the debrief gives the answer away.', yes: 'Read it anyway' },
   solutions: { text: 'Viewing the reference solutions is recorded and lowers the rating.', yes: 'Show solutions' },
-  reset: { text: 'This throws away everything you changed and starts again from the initial state. The hints you saw stay seen.', yes: 'Reset the world', danger: true },
-};
+  reset: { text: 'This throws away everything you changed and starts again from the initial state. The hints you saw stay seen.', yes: 'Reset the world' },
+} as const;
+
+const PREFIX = 'lab';
 
 function CheckRow({ c }: { c: CheckReport }) {
   const mark = c.status === 'pass' ? '✓' : c.status === 'fail' ? '✗' : '!';
@@ -55,15 +66,15 @@ function CheckRow({ c }: { c: CheckReport }) {
   );
 }
 
-function Report({ r }: { r: GradeReport }) {
+function Report({ r, openDebrief }: { r: GradeReport; openDebrief(): void }) {
   const passed = r.checks.filter((c) => c.status === 'pass').length;
   const pct = Math.round(r.score * 100);
   return (
-    <section className={`lab-section report${r.passed ? ' is-solved' : ''}`} aria-live="polite">
-      <header className="section-head">
-        <h2>Check</h2>
-        <span className="section-meta">
-          {passed} of {r.checks.length} pass · {pct}%
+    <section className={`report${r.passed ? ' is-solved' : ''}`} aria-live="polite">
+      <header className="score">
+        <span className="score-pct">{pct}%</span>
+        <span className="score-count">
+          {passed} of {r.checks.length} checks pass
         </span>
       </header>
       <div className="meter" aria-hidden="true">
@@ -75,55 +86,182 @@ function Report({ r }: { r: GradeReport }) {
         ))}
       </ul>
       <p className="verdict">{r.passed ? <strong>Solved. Every check passes; the debrief explains what was behind it.</strong> : `${pct}% of the checks' weight passes. Keep going, or take a hint.`}</p>
+      {r.passed ? (
+        <Button variant="primary" onClick={openDebrief}>
+          <Icon name="book" />
+          Read the debrief
+        </Button>
+      ) : null}
     </section>
   );
 }
 
-export function LabPanel(p: Props) {
-  const [pending, setPending] = useState<Pending | undefined>();
-  const scroller = useRef<HTMLDivElement>(null);
-  const reportAt = p.state.report?.at;
+/** What a tab says while it holds nothing, and the question before something that gives the answer away. */
+function Empty({ icon, title, children, ask, onYes, busy }: { icon: string; title: string; children: ReactNode; ask?: { text: string; yes: string }; onYes?: () => void; busy?: boolean }) {
+  return (
+    <div className="tab-empty">
+      <span className="tab-empty-icon">
+        <Icon name={icon} size={20} />
+      </span>
+      <h2>{title}</h2>
+      <p>{children}</p>
+      {ask ? (
+        <div className="tab-ask">
+          <p>{ask.text}</p>
+          <Button variant="primary" disabled={busy} onClick={onYes}>
+            {ask.yes}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
-  // Bring new results into view. Only the panel's own scroller moves: `scrollIntoView` also scrolls
-  // every ancestor that can scroll, the page included.
-  const reveal = (selector: string, block: 'nearest' | 'start'): void => {
-    const box = scroller.current;
-    const el = box?.querySelector<HTMLElement>(selector);
-    if (!box || !el) return;
-    const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
-    const bottom = top + el.offsetHeight;
-    let to = top;
-    if (block === 'nearest') {
-      if (top >= box.scrollTop && bottom <= box.scrollTop + box.clientHeight) return;
-      // Whichever edge is nearer; an element taller than the scroller shows its start.
-      to = top < box.scrollTop || el.offsetHeight > box.clientHeight ? top : bottom - box.clientHeight;
-    }
-    box.scrollTo({ top: to, behavior: p.reducedMotion ? 'auto' : 'smooth' });
-  };
-  const revealRef = useRef(reveal);
-  revealRef.current = reveal;
+export function LabPanel(p: Props) {
+  const [resetting, setResetting] = useState(false);
+  const scrollers = useRef(new Map<LabTab, HTMLDivElement>());
+  const hintsLeft = p.lab.hintCount - p.state.hints.length;
+  const debriefFree = p.state.solved || p.state.debriefSeen;
+  const solutionsFree = p.state.solutionViewed;
+
+  // What each tab holds, as a number that changes when something arrives. A tab whose number
+  // moved while another tab was open says so until it is opened.
+  const holds: Record<LabTab, number> = { ticket: 0, check: p.state.report?.at ?? 0, hints: p.state.hints.length, debrief: p.state.solved ? 1 : 0, solutions: 0 };
+  const [seen, setSeen] = useState(holds);
+  const held = holds[p.tab];
   useEffect(() => {
-    if (reportAt !== undefined) revealRef.current('.report', 'nearest');
+    setSeen((s) => (s[p.tab] === held ? s : { ...s, [p.tab]: held }));
+  }, [p.tab, held]);
+  const fresh = (t: LabTab): boolean => t !== p.tab && holds[t] !== 0 && holds[t] !== seen[t];
+
+  // New results come into view. Only the tab's own scroller moves (D-130): `scrollIntoView` also
+  // scrolls every ancestor that can scroll, the page included.
+  const scrollTo = (tab: LabTab, selector?: string): void => {
+    const box = scrollers.current.get(tab);
+    if (!box) return;
+    const el = selector === undefined ? undefined : box.querySelector<HTMLElement>(selector);
+    let top = 0;
+    if (el) {
+      const at = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+      const bottom = at + el.offsetHeight;
+      if (at >= box.scrollTop && bottom <= box.scrollTop + box.clientHeight) return;
+      // Whichever edge is nearer; an element taller than the scroller shows its start.
+      top = at < box.scrollTop || el.offsetHeight > box.clientHeight ? at : bottom - box.clientHeight;
+    }
+    box.scrollTo({ top, behavior: p.reducedMotion ? 'auto' : 'smooth' });
+  };
+  const scroll = useRef(scrollTo);
+  scroll.current = scrollTo;
+  const reportAt = p.state.report?.at;
+  useEffect(() => {
+    if (reportAt !== undefined) scroll.current('check');
   }, [reportAt]);
   useEffect(() => {
-    revealRef.current('.hints li:last-child', 'nearest');
+    scroll.current('hints', '.hints li:last-child');
   }, [p.state.hints.length]);
   useEffect(() => {
-    if (p.debrief) revealRef.current('.debrief', 'start');
+    if (p.debrief) scroll.current('debrief');
   }, [p.debrief]);
   useEffect(() => {
-    if (p.solutions) revealRef.current('.solutions', 'start');
+    if (p.solutions) scroll.current('solutions');
   }, [p.solutions]);
 
-  const ask = (what: Pending): void => {
-    const free = (what === 'debrief' && (p.state.solved || p.state.debriefSeen)) || (what === 'solutions' && p.state.solutionViewed);
-    if (free) p.act(what);
-    else setPending(what);
+  // A tab that no longer asks (the lab is solved, or its content was already seen before a
+  // reload) fetches its content when it is opened.
+  const { tab, act, busy } = p;
+  const wantDebrief = tab === 'debrief' && debriefFree && !p.debrief;
+  const wantSolutions = tab === 'solutions' && solutionsFree && !p.solutions;
+  useEffect(() => {
+    if (busy !== undefined) return;
+    if (wantDebrief) act('debrief');
+    else if (wantSolutions) act('solutions');
+  }, [wantDebrief, wantSolutions, busy, act]);
+
+  const report = p.state.report;
+  const passed = report?.checks.filter((c) => c.status === 'pass').length ?? 0;
+  const tabs: TabItem<LabTab>[] = [
+    { id: 'ticket', label: 'Ticket' },
+    { id: 'check', label: 'Check', ...(report ? { badge: `${passed}/${report.checks.length}`, badgeLabel: `${passed} of ${report.checks.length} checks pass`, ...(report.passed ? { tone: 'ok' as const, icon: 'check' } : {}) } : {}), fresh: fresh('check') },
+    { id: 'hints', label: 'Hints', badge: `${p.state.hints.length}/${p.lab.hintCount}`, badgeLabel: `${p.state.hints.length} of ${p.lab.hintCount} hints taken`, fresh: fresh('hints') },
+    { id: 'debrief', label: 'Debrief', ...(debriefFree ? {} : { icon: 'lock' }), fresh: fresh('debrief') },
+    { id: 'solutions', label: 'Solutions', ...(solutionsFree ? {} : { icon: 'lock' }) },
+  ];
+
+  const content: Record<LabTab, ReactNode> = {
+    ticket: (
+      <section className="ticket">
+        <Blocks blocks={p.lab.ticket} reducedMotion={p.reducedMotion} />
+      </section>
+    ),
+    check: report ? (
+      <Report r={report} openDebrief={() => p.setTab('debrief')} />
+    ) : (
+      <Empty icon="check" title="Not checked yet">
+        Check grades the world as it is now: the state of the cluster, never the commands you typed. Run it as often as you like.
+      </Empty>
+    ),
+    hints:
+      p.state.hints.length > 0 ? (
+        <ol className="hints">
+          {p.state.hints.map((h, i) => (
+            <li key={i}>
+              <span className="hint-n" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div className="markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(h) }} />
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <Empty icon="hint" title="No hint taken">
+          This lab has {p.lab.hintCount} {p.lab.hintCount === 1 ? 'hint' : 'hints'}, each more direct than the one before. Hints lower the rating.
+        </Empty>
+      ),
+    debrief: p.debrief ? (
+      <div className="debrief">
+        <Blocks blocks={p.debrief} reducedMotion={p.reducedMotion} />
+      </div>
+    ) : debriefFree ? (
+      <Empty icon="book" title="Debrief">
+        Drawing the debrief…
+      </Empty>
+    ) : (
+      <Empty icon="book" title="Debrief" ask={ASK.debrief} onYes={() => p.act('debrief')} busy={p.busy === 'debrief'}>
+        The root cause and the mental model behind this lab, shown on your world and on the solved one. It opens by itself once the lab is solved.
+      </Empty>
+    ),
+    solutions: p.solutions ? (
+      <div className="solutions">
+        {p.solutions.map((s) => (
+          <div key={s.name} className="solution">
+            <h3>{s.name}</h3>
+            <pre>
+              <code>{s.text}</code>
+            </pre>
+          </div>
+        ))}
+      </div>
+    ) : solutionsFree ? (
+      <Empty icon="key" title="Reference solutions">
+        Fetching the solutions…
+      </Empty>
+    ) : (
+      <Empty icon="key" title="Reference solutions" ask={ASK.solutions} onYes={() => p.act('solutions')} busy={p.busy === 'solutions'}>
+        The commands of each reference solution, the ones this lab is validated with.
+      </Empty>
+    ),
   };
-  const hintsLeft = p.lab.hintCount - p.state.hints.length;
 
   return (
-    <aside className="lab-panel" aria-label="Lab">
+    <aside
+      className="lab-panel pane"
+      aria-label="Lab"
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented) return;
+        e.preventDefault();
+        p.leave();
+      }}
+    >
       <header className="lab-head">
         <div className="lab-kicker">
           <span>Lab</span>
@@ -136,72 +274,47 @@ export function LabPanel(p: Props) {
           {p.lab.id} · seed {p.lab.seed}
         </div>
       </header>
-      <div className="lab-scroll" ref={scroller}>
-        <section className="ticket">
-          <Blocks blocks={p.lab.ticket} reducedMotion={p.reducedMotion} />
-        </section>
-        {p.state.report ? <Report r={p.state.report} /> : null}
-        {p.state.hints.length > 0 ? (
-          <section className="lab-section">
-            <header className="section-head">
-              <h2>Hints</h2>
-              <span className="section-meta">
-                {p.state.hints.length} of {p.lab.hintCount}
-              </span>
-            </header>
-            <ol className="hints">
-              {p.state.hints.map((h, i) => (
-                <li key={i} className="markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(h) }} />
-              ))}
-            </ol>
-          </section>
-        ) : null}
-        {p.debrief ? (
-          <section className="lab-section debrief">
-            <header className="section-head">
-              <h2>Debrief</h2>
-            </header>
-            <Blocks blocks={p.debrief} reducedMotion={p.reducedMotion} />
-          </section>
-        ) : null}
-        {p.solutions ? (
-          <section className="lab-section solutions">
-            <header className="section-head">
-              <h2>Reference solutions</h2>
-            </header>
-            {p.solutions.map((s) => (
-              <div key={s.name} className="solution">
-                <h3>{s.name}</h3>
-                <pre>
-                  <code>{s.text}</code>
-                </pre>
-              </div>
-            ))}
-          </section>
-        ) : null}
+      <TabStrip tabs={tabs} active={p.tab} onSelect={p.setTab} label="The lab" prefix={PREFIX} />
+      <div className="lab-tabpanels">
+        {LAB_TABS.map((t) => (
+          <div
+            key={t}
+            role="tabpanel"
+            id={panelDomId(PREFIX, t)}
+            aria-labelledby={tabDomId(PREFIX, t)}
+            className={`lab-scroll${t === p.tab ? ' is-active' : ''}`}
+            tabIndex={t === p.tab ? 0 : -1}
+            ref={(el) => {
+              if (el) scrollers.current.set(t, el);
+              else scrollers.current.delete(t);
+            }}
+          >
+            {content[t]}
+          </div>
+        ))}
       </div>
       <footer className="lab-actions">
-        {pending ? (
-          <div className="confirm" role="alertdialog">
-            <p>{CONFIRM[pending].text}</p>
+        {resetting ? (
+          <div className="confirm" role="alertdialog" aria-label="Reset the world">
+            <p>{ASK.reset.text}</p>
             <div className="confirm-buttons">
               <Button
-                variant={CONFIRM[pending].danger ? 'danger' : 'primary'}
+                variant="danger"
                 small
                 onClick={() => {
-                  setPending(undefined);
-                  p.act(pending);
+                  setResetting(false);
+                  p.act('reset');
                 }}
               >
-                {CONFIRM[pending].yes}
+                {ASK.reset.yes}
               </Button>
-              <Button variant="ghost" small onClick={() => setPending(undefined)}>
+              <Button variant="ghost" small onClick={() => setResetting(false)}>
                 Cancel
               </Button>
             </div>
           </div>
         ) : null}
-        {p.note && !pending ? <p className="action-note">{p.note}</p> : null}
+        {p.note && !resetting ? <p className="action-note">{p.note}</p> : null}
         <div className="action-row">
           <Button variant="primary" shortcut="Ctrl+Shift+Enter" title="Grade the current state of the world" disabled={p.busy === 'check'} onClick={() => p.act('check')}>
             <Icon name="check" />
@@ -212,16 +325,9 @@ export function LabPanel(p: Props) {
             Hint{hintsLeft > 0 ? ` ${p.state.hints.length + 1}/${p.lab.hintCount}` : 's used'}
           </Button>
           <span className="spacer" />
-          <Button variant="ghost" small title="Debrief: the root cause and the mental model" aria-label="Debrief" onClick={() => ask('debrief')}>
-            <Icon name="book" />
-            <span className="label">Debrief</span>
-          </Button>
-          <Button variant="ghost" small title="Solutions: the reference solutions" aria-label="Solutions" onClick={() => ask('solutions')}>
-            <Icon name="key" />
-            <span className="label">Solutions</span>
-          </Button>
-          <Button variant="ghost" small title="Reset: start again from the initial state" aria-label="Reset" onClick={() => setPending('reset')}>
+          <Button variant="ghost" title="Reset: start again from the initial state" aria-label="Reset" onClick={() => setResetting(true)}>
             <Icon name="reset" />
+            <span className="label">Reset</span>
           </Button>
         </div>
       </footer>

@@ -102,7 +102,7 @@ const chrome = EditorView.theme({
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'var(--selection) !important' },
   '.cm-fat-cursor': { background: 'var(--accent) !important', color: 'var(--term-bg) !important' },
   '&:not(.cm-focused) .cm-fat-cursor': { background: 'none !important', outline: '1px solid var(--accent)' },
-  '.cm-panels': { backgroundColor: 'var(--surface-2)', color: 'var(--text)', borderTop: '1px solid var(--border)' },
+  '.cm-panels': { backgroundColor: 'var(--surface-2)', color: 'var(--text)', border: 'none' },
   '.cm-panels input': { fontFamily: 'var(--font-code)', color: 'var(--text)', background: 'transparent', border: 'none', outline: 'none' },
   '.cm-vim-panel': { padding: '3px 10px', fontFamily: 'var(--font-code)', fontSize: '13px' },
   '.cm-searchMatch': { backgroundColor: 'var(--search-match)' },

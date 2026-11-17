@@ -8,7 +8,7 @@
 // Chords the browser never gives to a page in an ordinary tab (Ctrl+W, Ctrl+T, Ctrl+N) cannot be
 // shortcuts at all; `isBrowserChord` is for the windows where the page does get them (D-113).
 
-export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'prevTab' | 'nextTab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy' | 'fullscreen' | 'xray';
+export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'prevTab' | 'nextTab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy' | 'fullscreen' | 'xray' | 'prevLabTab' | 'nextLabTab' | 'grabXray';
 
 export interface ShortcutInfo {
   id: Shortcut;
@@ -24,7 +24,9 @@ export const SHORTCUTS: ShortcutInfo[] = [
   { id: 'tab', keys: 'Ctrl+Shift+1…9', what: 'Go to terminal 1…9' },
   { id: 'prevTab', keys: 'Ctrl+Shift+PgUp / PgDn', what: 'Go to the previous / next terminal' },
   { id: 'panel', keys: 'Ctrl+Shift+L', what: 'Show or hide the lab panel' },
+  { id: 'nextLabTab', keys: 'Ctrl+Shift+, / .', what: 'Go to the previous / next tab of the lab panel (Esc returns to the terminal)' },
   { id: 'xray', keys: 'Ctrl+Shift+Y', what: 'Open or close the X-ray (counts as help)' },
+  { id: 'grabXray', keys: 'Ctrl+Shift+G', what: 'Floating X-ray: take its move handle (arrows move, Shift+arrows resize, Esc returns)' },
   { id: 'pause', keys: 'Ctrl+Shift+Space', what: 'Pause or resume time' },
   { id: 'labs', keys: 'Ctrl+Shift+O', what: 'Open the lab list' },
   { id: 'copy', keys: 'Ctrl+Shift+C / V', what: 'Copy the selection / paste' },
@@ -71,6 +73,12 @@ export function matchShortcut(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'a
       return { id: 'nextTab' };
     case 'Slash':
       return { id: 'help' };
+    case 'KeyG':
+      return { id: 'grabXray' };
+    case 'Comma':
+      return { id: 'prevLabTab' };
+    case 'Period':
+      return { id: 'nextLabTab' };
     default:
       return undefined;
   }

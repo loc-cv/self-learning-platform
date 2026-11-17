@@ -36,7 +36,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
   nothing against the figures or what the X-ray shows; the interface looks dated, the lab panel is
   one long scroll, the docked X-ray takes the terminal's width. Three bugs fixed by R3; the rest is
   phase 10d (`PLAN.md` §15)
-- [ ] 10d `prompts/10d-interface-refresh.md`
+- [x] 10d `prompts/10d-interface-refresh.md`
 
 **M2 — Learning loop**
 - [ ] 11 `prompts/11-learning-core.md`
@@ -313,6 +313,66 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-17 — **Phase 10d done.** The look chosen again, the lab panel in tabs, a floating X-ray.
+  - The look. Three directions shown as screenshots of the real workspace (scheduling lab, check
+    failed, one hint, X-ray docked and floating, both themes), each already with the tabs and the
+    floating X-ray: Glass, Quiet, Stage (`docs/DESIGN.md` §1 has what each was). The owner chose
+    **Quiet "with less rounded boxes"** (D-132): IBM Plex Sans stays, panes are opaque rounded
+    surfaces (8px) with an 8px gap on a flat floor, no rules except the line under the selected
+    tab, flat controls, one indigo accent, translucency only on what floats. Glass, Stage and the
+    two fonts installed to show them are gone; `package.json` and the lock file are unchanged.
+    Applied to every screen: workspace, lab list, editor overlay, popovers, the figure dialog,
+    figures, the X-ray. `docs/DESIGN.md` §1 to §4 and §7 rewritten.
+  - Tokens. `apps/web/src/app/tokens.css` defines every value; `styles.css` was rewritten as rules
+    only. `tokens.test.ts` (in the gate) fails on a literal color, size or duration in a rule, on a
+    `var(--x)` nothing defines (CSS and TypeScript), on a theme that misses a color, and on text
+    below WCAG AA for the pairs in use (D-133). The terminal's background and foreground are tokens
+    read by `theme.ts`; its ANSI palette is not (D-134). The native `select` is `Select` in `ui.tsx`.
+  - Tabs. `TabStrip` in `ui.tsx` (ARIA tabs, badges, a "new" dot, scrolls when full; phase 12's
+    lesson steps are more tabs of it). `LabPanel`: Ticket, Check, Hints, Debrief, Solutions; an
+    action opens its tab and a hidden panel; Debrief before solving and Solutions ask in their tab
+    and are recorded as before; panels are stacked so each keeps its scroll and its figures
+    (D-139). New chords `Ctrl+Shift+,` and `Ctrl+Shift+.` go to the previous and next tab and focus
+    it; Escape returns to the terminal (D-135).
+  - X-ray. Settings `xrayMode` and `xrayFloat`; `floating.ts` (pure geometry, unit-tested) and
+    `useFloat` in `XRay.tsx`: header drag, eight pointer handles, keyboard on the move handle
+    (`Ctrl+Shift+G` takes it),
+    always inside the workspace, remembered, a dock/float control (D-137). Facts of a selection
+    are a card over the drawing instead of a footer that took its height (D-138). The terminal
+    keeps 80 columns at 1440px with the lab panel open and the X-ray docked: the panes beside it
+    give way to their minimums (D-136).
+  - Exit criteria. (1) Look chosen from screenshots and applied everywhere; no literal left in
+    `styles.css` (test). (2) Five tabs, keyboard reach, the two that give the answer away ask
+    first: `e2e/labpanel.spec.ts` (6 tests). (3) Floats, moves, resizes, stays inside, docks,
+    remembers: `e2e/floating.spec.ts` (3 tests). (4) `npm run e2e`: 44 browser tests pass; read
+    latency p95 8.4 ms closed, 8.7 ms docked, 9.4 ms floating, keystroke echo p95 0.2 to 0.3 ms
+    (phase 10b: 8.6 to 9.1 ms and 0.2 ms); the 30-Pod rollout has no long task;
+    `unshare -rn npm run build` in `apps/web` builds without a network and the offline test
+    passes; the reduced-motion test passes. (5) Screenshots of every screen in both themes:
+    `e2e/screens.spec.ts` writes them to `.tsbuild/playwright/screens/`.
+  - Fixed on the way. The "page never scrolls" test put its 3000px element inside the flex column,
+    which squeezed the workspace to nothing (it only passed because the old panel overflowed
+    visibly); it now appends to `body`. `--text-faint` was 3.7:1 and 3.1:1, below AA. After Escape
+    in the panel or a drag, focus went back to the terminal a frame late and a key typed at once
+    was lost; both are synchronous now. The app icon and manifest colors follow the look.
+  - Surprises. `svg:only-child` matches an icon that has text beside it (text nodes are not
+    children), so icon-only buttons get a class from `Button`. The outer 3px of a rounded pane's
+    corner are outside its hit area: corner handles are grabbed a few pixels in. A flex item with
+    `flex: 1` and `min-height: 0` gives up all its height to an oversized sibling. Fonts for the
+    candidates had to be installed to show them; uninstalling restored the lock file exactly.
+  - Not verified on Chrome for Windows (listed in `FEEDBACK.md`): how the look renders with
+    Windows' font smoothing and what the blur behind floating surfaces costs on a real GPU (the
+    headless shell renders in software); whether anything outside the page takes `Ctrl+Shift+,`,
+    `Ctrl+Shift+.` or `Ctrl+Shift+G`; dragging and resizing the floating X-ray with a real mouse; 80 columns at
+    the owner's window size and scaling.
+  - Known gaps. The lab panel at its 300px minimum scrolls the tab strip sideways. Text widths in the renderer are still estimated (10b). Phase 13's "Why?"
+    inspector should extend the facts card of D-138.
+  - For 11 and 12. Build screens from `tokens.css` only; a new value is a new token plus a line in
+    `docs/DESIGN.md`. A new pair of text and surface goes into `PAIRS` in `tokens.test.ts`. Lesson
+    steps: pass more `TabItem`s to `TabStrip`. The e2e helpers `settings`, `openXray`, `labTab`
+    and `openDebrief` are in `e2e/workspace.ts`; `settings` writes only when nothing is stored, so
+    a reload keeps what the page saved.
 
 - 2026-11-17 — **R3 after Checkpoint A2.** Three bugs fixed, one phase added.
   - The owner's verdict: nothing against the figures or what the X-ray shows. The interface

@@ -7,6 +7,7 @@ declare global {
   interface Window {
     __simlab: {
       screen(): string[];
+      cols(): number;
       tty(): string | undefined;
       type(text: string): Promise<number[]>;
       enter(prompt?: RegExp): Promise<{ parsed: number; painted: number }>;
@@ -46,6 +47,30 @@ export async function run(page: Page, command: string): Promise<string> {
 export async function advance(page: Page, ms: number): Promise<void> {
   await page.evaluate((d) => window.__simlab.advance(d), ms);
   await page.waitForTimeout(150);
+}
+
+/** The settings a test starts with (browser storage), before the page loads. */
+export async function settings(page: Page, extra: Record<string, unknown> = {}): Promise<void> {
+  // Only when nothing is stored yet: a reload keeps what the page saved.
+  await page.addInitScript((s) => {
+    if (localStorage.getItem('simlab.settings.v1') === null) localStorage.setItem('simlab.settings.v1', JSON.stringify(s));
+  }, { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, xrayMode: 'docked', motion: 'system', ...extra });
+}
+
+/** Opens the X-ray with its chord, in the mode the settings name. */
+export async function openXray(page: Page): Promise<void> {
+  await page.keyboard.press('Control+Shift+Y');
+  await expect(page.locator('.xray .vcanvas .vbox').first()).toBeVisible();
+}
+
+/** The lab panel's tab of that name. */
+export const labTab = (page: Page, name: string) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
+
+/** Opens the debrief before the lab is solved: its tab asks first. */
+export async function openDebrief(page: Page): Promise<void> {
+  await labTab(page, 'Debrief').click();
+  await page.getByRole('button', { name: 'Read it anyway' }).click();
+  await expect(page.locator('.debrief .figure').first()).toBeVisible();
 }
 
 /** Runs the check from the lab panel and returns the verdict text. */

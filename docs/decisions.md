@@ -1269,4 +1269,73 @@ Propagation"). `e2e/workspace.spec.ts` puts a 3000px element in the page and tri
 
 **D-131 — The look is reopened; phase 10d.** The owner's verdict at Checkpoint A2 and the answers
 that shape phase 10d are in `PLAN.md` §15 and `docs/feedback-log.md`. D-117's font and the
-Instrument tokens stand until the owner chooses a direction in that phase.
+Instrument tokens stand until the owner chooses a direction in that phase. (Chosen: D-132.)
+
+## Phase 10d (2026-11-17)
+
+**D-132 — The look is Quiet, with tighter corners; the font stays IBM Plex Sans.** Three directions
+were shown as screenshots of the real workspace in both themes, each with the tabbed lab panel and
+the floating X-ray already in place: Glass (Inter, translucent panes over color glows, a gradient
+and a glow), Quiet (IBM Plex Sans, opaque tonal panes with a gap, one indigo accent, translucency
+only on what floats) and Stage (Geist, the terminal as the floor, cards with deep shadows, a mint
+gradient). The owner chose Quiet "with less rounded boxes", so panes have 8px corners where the
+screenshot had 12px, and the other radii came down with them. Glass and Stage were removed with
+their tokens, and the two font packages installed to show them (`@fontsource-variable/inter`,
+`@fontsource-variable/geist`) were uninstalled: D-117's font stands, and no new dependency came
+out of the phase. `docs/DESIGN.md` §1 to §4 and §7 describe the result.
+
+**D-133 — Tokens and rules are separate files, and tests hold the line.** `tokens.css` defines
+every value; `styles.css` uses them and holds no literal color, size or duration.
+`tokens.test.ts` fails on a literal in a rule, on a `var(--name)` that nothing defines (in CSS or
+in TypeScript: the editor's theme is CSS in strings, which is how the editor lost its font in
+10b), on a theme that does not redefine every color, and on a pair of text and surface in use
+below WCAG AA (4.5:1). Contrast is computed from the tokens, with translucent layers composited
+over what lies under them, not measured from pixels: the pairs are listed in the test next to the
+rule that uses them. Three values failed and were changed: `--text-faint` (3.7:1 in the dark theme and 3.1:1 in the light one before), the
+hover of the primary button, and the light theme's state colors on their own tints (3.7:1 to 4.45:1 before).
+
+**D-134 — The terminal's background is a token; its palette is not.** xterm needs concrete colors.
+`theme.ts` keeps the cursor and the sixteen ANSI colors per theme, and reads `--term-bg` and
+`--term-fg` from the page, so the terminal's surface is the pane the look gives it and the two
+cannot drift apart.
+
+**D-135 — Tabs by chord put the focus on the tab.** Every other workspace chord leaves the focus
+in the terminal. `Ctrl+Shift+,` and `Ctrl+Shift+.` (the keys of `<` and `>`; Chrome has no action
+on them) select the lab panel's previous or next tab and focus it, because from there the ARIA
+pattern does the rest: arrows, Tab into the panel, Enter on "Read it anyway". Escape anywhere in
+the panel returns to the terminal at once. A click on a tab leaves the focus in the terminal, like
+every button. Not verified on Windows: whether something outside the page takes those two chords, or
+`Ctrl+Shift+G` of D-137 (Chrome's "find previous", which a page may claim).
+
+**D-136 — The terminal keeps 80 columns; the panes beside it give way.** With three panes at
+1440px the terminal had about 50 columns. The terminal now has a minimum width of 80 cells of its
+font (measured from the Terminal text setting) plus its padding, capped by what the window can
+give once the other panes are at their own minimums. The docked X-ray shrinks first (to 320px),
+then the lab panel (to 300px): the stored widths are wishes, honored when there is room. At 1440px
+all three fit with 80 columns; `e2e/labpanel.spec.ts` measures it at display scales 1, 1.25 and
+1.5.
+
+**D-137 — The floating X-ray lives in the workspace's box.** It is positioned inside the workspace
+(below the top bar), in that box's coordinates. The stored rectangle is what the owner left; what
+is drawn is that rectangle fitted into the box as it is now (`clampRect`), so a smaller window
+moves and shrinks the panel and a larger one gives its place back. A drag moves the element
+directly and stores once, on release. Its minimum size is 320 by 240. The X-ray defaults to
+docked, as before; the mode last used is stored with the settings. Pointer resizing uses strips on
+the four edges and squares in the four corners; keyboard resizing is on the move handle
+(Shift+arrow keys move the lower right corner), which with moving reaches every size and place
+without eight more tab stops. `Ctrl+Shift+G` puts the focus on that handle from the terminal
+(Tab cannot: the shell takes it), and Escape gives the keyboard back. A separate browser window was considered at Checkpoint A2 and not
+asked for.
+
+**D-138 — A selection's facts lie over the drawing.** In the X-ray the facts of the selected
+entity were a footer that took height from the canvas (D-129's note: after "Fit everything" they
+covered the bottom of the drawing by shrinking it). They are now a translucent card over the lower
+edge of the drawing, at most 46% of its height, with its own close button; the canvas keeps its
+height and the legend stays in the footer. What the card covers can be panned into view.
+
+**D-139 — The tab panels are stacked, not unmounted.** Each of the five tab panels stays in the
+page with its own scroller and is hidden with `visibility`, the way terminals are. So a tab keeps
+its scroll position without bookkeeping, a scene keeps the frame it was on, and a figure in a tab
+that is not shown still has a width to measure (10c: a drawing measured without a width kept a
+one-column height). The figure dialog moved to a portal in `body`, so no pane can become the
+containing block of its fixed backdrop.

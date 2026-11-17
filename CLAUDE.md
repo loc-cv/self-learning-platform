@@ -41,8 +41,9 @@ npm run dev                   # web app with hot reload: http://127.0.0.1:4317/ 
 npm start                     # build apps/web, then serve it and the API (gap log; phase 11 adds persistence)
                               # on http://127.0.0.1:4317/; server options --port N, --data DIR
 npm run e2e                   # Playwright: build, serve, smoke test and exit-criteria tests in Chromium
-                              # (not part of the gate, D-110); `npm run e2e -- <file|-g name>` for one
-npm run bench:web             # in-browser latency of read commands and keystrokes (p50/p95), X-ray closed and open
+                              # (not part of the gate, D-110); `npm run e2e -- <file|-g name>` for one;
+                              # screens.spec.ts writes screenshots of every screen to .tsbuild/playwright/screens/
+npm run bench:web             # in-browser latency of read commands and keystrokes (p50/p95), X-ray closed, docked and floating
 npm run play -- --topology kubeadm-1cp-2w [--seed N]  # sit in a simulated machine from this terminal (Ctrl-] leaves);
                                                   # records to data/play/, $EDITOR answers vim/nano
 npm run play -- --replay <file>                   # replay a recording; checks it reaches the same world hash
@@ -119,8 +120,11 @@ packages/learn     content model, scenario runner, checks, grader, skills, FSRS,
 packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml
 apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side, tested in
                    Node), src/app (App, Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
-                   LabPanel, Figure (figures in the ticket and debrief), TopBar, ItemPicker, XRay, storage, shortcuts and fullscreen, the probe for tests,
-                   styles.css with the design tokens of docs/DESIGN.md, fonts.ts the bundled font),
+                   LabPanel (the lab's tabs), Figure (figures in the ticket and debrief), TopBar, ItemPicker,
+                   XRay (docked or floating; floating.ts its geometry), ui.tsx (buttons, the tab strip, the
+                   select, icons), storage, shortcuts and fullscreen, the probe for tests,
+                   tokens.css the design tokens of docs/DESIGN.md and styles.css the rules that use them
+                   (no literal values; tokens.test.ts also measures text contrast), fonts.ts the bundled font),
                    src/view (the renderer: layout.ts, filter.ts, ViewCanvas.tsx; no domain names),
                    src/protocol.ts (page ↔ worker messages), vite.config.ts (bundles the content packs,
                    D-103), public/ (web app manifest and icons, D-113), e2e/ (Playwright)

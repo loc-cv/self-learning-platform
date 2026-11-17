@@ -5,7 +5,7 @@
 
 import { writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { openLab, run } from './workspace.ts';
+import { openLab, run, settings } from './workspace.ts';
 
 const COMMANDS = [
   'kubectl get pods -A',
@@ -26,16 +26,18 @@ const pct = (xs: number[], p: number): number => {
   return s[Math.min(s.length - 1, Math.ceil((p / 100) * s.length) - 1)] as number;
 };
 
-for (const xray of [false, true]) {
-  test(`read commands answer in under 50 ms at p95; keystrokes echo at once${xray ? ' (X-ray open)' : ''}`, async ({ page }) => {
+// Phase 10b: the numbers must hold while the X-ray redraws the world after every command. Phase
+// 10d: also while it floats over the terminal, where the browser composites it above the text.
+for (const xray of ['closed', 'docked', 'floating'] as const) {
+  test(`read commands answer in under 50 ms at p95; keystrokes echo at once${xray === 'closed' ? '' : ` (X-ray ${xray})`}`, async ({ page }) => {
+    await settings(page, xray === 'closed' ? {} : { xrayMode: xray });
     await openLab(page, 'k8s.troubleshooting.broken-rollout-01', 3);
-    if (xray) {
-      // Phase 10b: the numbers must hold while the X-ray redraws the world after every command.
+    if (xray !== 'closed') {
       await page.keyboard.press('Control+Shift+Y');
-      await expect(page.locator('.vcanvas .vbox').first()).toBeVisible();
-      // The lab panel goes, so the terminal keeps its width: the probe reads the cursor's row, and
-      // a command that wraps would never appear on it.
-      await page.keyboard.press('Control+Shift+L');
+      await expect(page.locator(`.xray.is-${xray} .vcanvas .vbox`).first()).toBeVisible();
+      // The probe reads the cursor's row, and a command that wraps would never appear on it: the
+      // terminal keeps 80 columns beside the lab panel and a docked X-ray.
+      expect(await page.evaluate(() => window.__simlab.cols())).toBeGreaterThanOrEqual(80);
     }
     await run(page, 'clear');
     const samples = new Map<string, { parsed: number[]; painted: number[] }>(COMMANDS.map((c) => [c, { parsed: [], painted: [] }]));
@@ -61,8 +63,8 @@ for (const xray of [false, true]) {
     const summary = { rounds: ROUNDS, samples: all.length, p50: pct(all, 50), p95: pct(all, 95), painted95: pct(allPainted, 95), keystroke: { p50: pct(keys, 50), p95: pct(keys, 95), samples: keys.length } };
     const ms = (x: number): string => `${x.toFixed(1).padStart(6)} ms`;
     const table = rows.map((r) => `${r.command.padEnd(52)} p50 ${ms(r.p50)}   p95 ${ms(r.p95)}   painted p95 ${ms(r.painted95)}`).join('\n');
-    console.log(`${xray ? 'X-ray open\n' : ''}${table}\n\nall read commands: p50 ${summary.p50.toFixed(1)} ms, p95 ${summary.p95.toFixed(1)} ms, painted p95 ${summary.painted95.toFixed(1)} ms (${summary.samples} samples)\nkeystroke echo: p50 ${summary.keystroke.p50.toFixed(1)} ms, p95 ${summary.keystroke.p95.toFixed(1)} ms (${summary.keystroke.samples} keys)`);
-    writeFileSync(`../../.tsbuild/playwright/latency${xray ? '-xray' : ''}.json`, `${JSON.stringify({ summary, rows }, null, 2)}\n`);
+    console.log(`${xray === 'closed' ? '' : `X-ray ${xray}\n`}${table}\n\nall read commands: p50 ${summary.p50.toFixed(1)} ms, p95 ${summary.p95.toFixed(1)} ms, painted p95 ${summary.painted95.toFixed(1)} ms (${summary.samples} samples)\nkeystroke echo: p50 ${summary.keystroke.p50.toFixed(1)} ms, p95 ${summary.keystroke.p95.toFixed(1)} ms (${summary.keystroke.samples} keys)`);
+    writeFileSync(`../../.tsbuild/playwright/latency${xray === 'closed' ? '' : `-xray-${xray}`}.json`, `${JSON.stringify({ summary, rows }, null, 2)}\n`);
     expect(summary.p95).toBeLessThan(50);
     expect(summary.keystroke.p95).toBeLessThan(16);
   });

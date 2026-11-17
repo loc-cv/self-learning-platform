@@ -8,7 +8,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import type { EngineClient } from './engine.ts';
 import { isPasteChord, matchShortcut } from './shortcuts.ts';
-import { MONO_FONT, TERMINAL_THEMES } from './theme.ts';
+import { MONO_FONT, terminalTheme } from './theme.ts';
 
 export interface Tab {
   key: number;
@@ -26,6 +26,8 @@ export interface TerminalHandle {
   selection(): string;
   /** Types text as if the user had (keys pressed while focus was elsewhere). */
   input(data: string): void;
+  /** The terminal's width in columns. */
+  cols(): number;
   /** The visible screen as text, one string per row (tests and the latency probe). */
   screen(): string[];
   /** The cursor's row up to the cursor: the prompt and what is typed after it. */
@@ -79,7 +81,7 @@ export function TerminalView(p: Props) {
       cursorStyle: 'block',
       cursorInactiveStyle: 'outline',
       scrollback: 10_000,
-      theme: TERMINAL_THEMES[props.current.theme],
+      theme: terminalTheme(props.current.theme),
       allowProposedApi: false,
       macOptionIsMeta: true,
       rightClickSelectsWord: true,
@@ -111,6 +113,7 @@ export function TerminalView(p: Props) {
       hasSelection: () => t.hasSelection(),
       selection: () => t.getSelection(),
       input: (d) => t.input(d, true),
+      cols: () => t.cols,
       screen() {
         const b = t.buffer.active;
         const rows: string[] = [];
@@ -164,7 +167,7 @@ export function TerminalView(p: Props) {
   useEffect(() => {
     const t = term.current;
     if (!t) return;
-    t.options.theme = TERMINAL_THEMES[p.theme];
+    t.options.theme = terminalTheme(p.theme);
     t.options.fontSize = p.fontSize;
     requestAnimationFrame(fit);
   }, [p.theme, p.fontSize]);

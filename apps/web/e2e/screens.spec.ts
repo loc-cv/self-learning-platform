@@ -4,7 +4,7 @@
 // the directory). The workspace is the scheduling lab after a failed check and one hint.
 
 import { expect, test } from '@playwright/test';
-import { labTab, openDebrief, openLab, openXray, run, settings } from './workspace.ts';
+import { labTab, openDebrief, openLab, openXray, run, settings, pressCheck, openBrowser } from './workspace.ts';
 
 const SHOTS = '../../.tsbuild/playwright/screens';
 
@@ -12,14 +12,16 @@ for (const theme of ['dark', 'light'] as const) {
   test(`screenshots, ${theme} theme`, async ({ page }) => {
     await settings(page, { theme });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Labs' })).toBeVisible();
-    await page.screenshot({ path: `${SHOTS}/${theme}-lab-list.png` });
+    await expect(page.getByRole('heading', { name: "Today's session" })).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/${theme}-home.png` });
+    await openBrowser(page);
+    await page.screenshot({ path: `${SHOTS}/${theme}-browser.png` });
     await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
     await run(page, 'kubectl -n billing get pods');
     await page.getByRole('button', { name: /^Hint/ }).click();
     await expect(page.locator('.hints li')).toHaveCount(1);
     await page.screenshot({ path: `${SHOTS}/${theme}-workspace-hints.png` });
-    await page.getByRole('button', { name: /^Check/ }).click();
+    await pressCheck(page);
     await expect(page.locator('.report .verdict')).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/${theme}-workspace-xray-closed.png` });
     await openXray(page);

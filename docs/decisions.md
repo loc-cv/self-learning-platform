@@ -1428,3 +1428,73 @@ YAML fixture pack lives in `packages/content/fixtures/learning/`, which `loadPac
 read, and runs on the real Kubernetes registry from a tools test, so lessons, cards and exams have
 a consumer before the first content run writes real ones.
 
+
+## Phase 12: learning UI
+
+**D-153 — An attempt ends in the log the moment it passes.** `attempt.finished` and the automatic
+`rating` are recorded when the last check passes (a lesson: when every task has passed and every
+prediction is answered), not when the learner leaves the item. Nothing is then left half-finished
+by a closed tab, and the debrief can show the grade and the next review. The explanation the
+learner writes before the debrief is therefore recorded after `attempt.finished`; the reducer
+ignores it for the state (it never fed a rating) and the log keeps it.
+
+**D-154 — Seeing the answer early is giving up.** The Solutions tab before the lab is solved, and
+the Debrief tab before it is solved, both ask first and both record one `attempt.solution`. The
+attempt stays usable (the learner can apply the solution and watch it work), is rated Again if it
+then passes, and ends `failed` when the learner leaves it. The debrief used to be a softer path
+than the solutions; it gives the same answer away.
+
+**D-155 — How an unfinished attempt ends when the learner leaves.** Skipped in a session, or
+replaced by a new variant: `abandoned`, no rating, no change to the schedule; the session
+remembers the skip for the day (browser storage), so the queue does not offer the item again
+until tomorrow. Left any other way (home, another item, a closed tab): it stays open in the log
+and resumes. An item has one open attempt: starting a new one abandons the old.
+
+**D-156 — Confidence is asked before every check of a lab until it is solved**, in the panel's
+action area, answered by one click or one digit and skippable with Enter. Lessons and cards do
+not ask: a guided task is not a test of calibration, and a card takes seconds.
+
+**D-157 — The attempt's input log goes to the server as records, and the browser's copy is a
+cache.** `POST /api/attempts/<id>` gets the whole attempt once (`{k:"full"}`), then what the
+current log gained (`{k:"delta", from, …}`), batched every two seconds and sent with a beacon when
+the page goes away. Folding the records gives the attempt; a delta that does not continue what is
+there is skipped, so a record that arrives twice is harmless. Resume takes the longer of the
+browser's copy and the server's. The progress log has an outbox in browser storage with the same
+property: events the server already has are dropped at the next load.
+
+**D-158 — Languages by resolving the item three times.** The engine resolves an item with the same
+seed as written, with its current Vietnamese in place (`localize`) and with every text replaced by
+its unit key (`tagUnits`, new in `packages/learn`). The three have the same shape, so a text's
+translation and state are found by position, also after `when` dropped blocks. A figure is drawn
+from the English item and once more with its Vietnamese texts when it has any. Side by side, each
+text unit is one row of two cells. An item with no sidecar says "English only" once in its header
+instead of carrying a badge on every paragraph. An outdated translation is not shown: the English
+it was made from is gone, and showing it beside different English would mislead.
+
+**D-159 — A lesson's steps are pages of the tab strip, and a page ends at its gate.** A prediction
+or a guided task closes a page; the next page is locked until the prediction is locked in or the
+task's checks pass, and opens by itself when a task passes. One tab per step would put a sentence
+and its figure on different tabs.
+
+**D-160 — "My command history" is what the learner's shells remember.** An interactive bash at
+its prompt keeps its state as data, history included (`packages/host/src/shell/bash.ts`); the
+debrief lists the history of the shells on the terminals the page opened, in the order the shells
+started. A closed terminal and the world before a reset took theirs with them, and the debrief
+says so. Reconstructing commands from keystrokes would guess at what line editing did. The
+"repeated command errors" event (`PLAN.md` §5) still waits for phase 13, which has the trace.
+
+**D-161 — The browser tests' build bundles the fixture pack; the app never does.**
+`SIMLAB_FIXTURES=1` at build time adds `packages/content/fixtures/` to the bundle (D-152 said the
+apps do not load it; that stays true of `npm start` and `npm run dev`). No real lesson or card
+exists until the first content run, and their screens need a consumer and a test now. A second
+test server over the same build has its own data directory, for the tests that start from an
+empty log.
+
+**D-162 — A view laid out afresh is drawn in place.** When a view's pane gets its width, or the
+filter changes, the new layout appears without the move transition (`.vcanvas.is-afresh`). Only a
+change of the world moves things (`docs/DESIGN.md` §4); before, every figure slid from a layout
+at width zero into its real one when it first appeared.
+
+**D-163 — Two more chords.** `Ctrl+Shift+D` goes home and `Ctrl+Shift+K` is the session's next
+item (or skip). Both are claimed every time like the others (D-112). `Ctrl+Shift+O` now opens the
+content browser, which replaced the lab list.

@@ -4,7 +4,7 @@
 // from the terminal by chord; each tab keeps its own scroll position.
 
 import { expect, test, type Page } from '@playwright/test';
-import { advance, check, labTab, openLab, run, settings, vimEx, waitForPrompt } from './workspace.ts';
+import { advance, check, labTab, openLab, run, settings, vimEx, waitForPrompt, pressCheck } from './workspace.ts';
 
 const strip = (page: Page) => page.getByRole('tablist', { name: 'The lab' });
 const selected = (page: Page) => strip(page).getByRole('tab', { selected: true });
@@ -25,7 +25,7 @@ test('each part has its tab; an action opens the tab that shows its result', asy
   await expect(panel(page)).toContainText('This lab has 3 hints');
   await labTab(page, 'Ticket').click();
   // Check, from the button under every tab: its tab opens with the report, the badge has the score.
-  await page.getByRole('button', { name: /^Check/ }).click();
+  await pressCheck(page);
   await expect(selected(page)).toHaveText(/^Check3\/5$/);
   await expect(labTab(page, 'Check').locator('.tabstrip-badge')).toHaveAttribute('aria-label', '3 of 5 checks pass');
   await expect(panel(page).locator('.check.is-fail')).toHaveCount(2);
@@ -54,12 +54,13 @@ test('Debrief and Solutions ask first, and what was opened is recorded', async (
   await expect(page.locator('.debrief')).toHaveCount(0);
   // Leaving without answering opens nothing.
   await labTab(page, 'Solutions').click();
-  await expect(panel(page)).toContainText('Viewing the reference solutions is recorded and lowers the rating.');
+  await expect(panel(page)).toContainText('Seeing the reference solutions before the lab is solved is giving up');
   await expect(page.locator('.solutions')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Show solutions' }).click();
+  await page.getByRole('button', { name: 'Give up and see the solution' }).click();
   await expect(page.locator('.solutions .solution').first()).toBeVisible();
+  // Having given up, the debrief no longer asks: the answer is out.
+  await expect(page.locator('.lab-kicker')).toContainText('gave up');
   await labTab(page, 'Debrief').click();
-  await page.getByRole('button', { name: 'Read it anyway' }).click();
   await expect(page.locator('.debrief .figure').first()).toBeVisible();
   // Both were recorded with the attempt: after a reload neither asks again.
   await page.reload();
@@ -69,7 +70,8 @@ test('Debrief and Solutions ask first, and what was opened is recorded', async (
   await expect(page.locator('.solutions .solution').first()).toBeVisible();
   await labTab(page, 'Debrief').click();
   await expect(page.locator('.debrief .figure').first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Read it anyway' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Give up and read it' })).toHaveCount(0);
+  await expect(page.locator('.lab-kicker')).toContainText('gave up');
 });
 
 test('a solved lab: the Check tab says so and the Debrief tab says it has something new', async ({ page }) => {
@@ -89,8 +91,13 @@ test('a solved lab: the Check tab says so and the Debrief tab says it has someth
   await expect(labTab(page, 'Check')).toHaveClass(/is-ok/);
   // The debrief no longer asks; its tab is marked until it is opened.
   await expect(labTab(page, 'Debrief').locator('.tabstrip-fresh')).toHaveText('new');
+  // The grade is there with the result, and can be changed with one click.
+  await expect(page.locator('.report .rating')).toContainText('Next review');
   await page.getByRole('button', { name: 'Read the debrief' }).click();
   await expect(selected(page)).toHaveText(/^Debrief/);
+  // The debrief first asks for the cause in the learner's words; it can be skipped.
+  await expect(page.locator('.debrief')).toHaveCount(0);
+  await page.locator('.explain').getByRole('button', { name: 'Skip' }).click();
   await expect(page.locator('.debrief .figure').first()).toBeVisible();
   await expect(labTab(page, 'Debrief').locator('.tabstrip-fresh')).toHaveCount(0);
 });
@@ -139,7 +146,7 @@ test('keyboard: a chord goes to the tabs, arrows move between them, Escape retur
   await page.keyboard.press('Tab');
   expect(await focused()).toBe('lab-panel-solutions');
   await page.keyboard.press('Tab');
-  expect(await page.evaluate(() => document.activeElement?.textContent)).toBe('Show solutions');
+  expect(await page.evaluate(() => document.activeElement?.textContent)).toBe('Give up and see the solution');
   await page.keyboard.press('Enter');
   await expect(page.locator('.solutions .solution').first()).toBeVisible();
   // Nothing typed so far reached the shell; Escape goes back to it.
@@ -154,7 +161,7 @@ test('each tab keeps its own scroll position', async ({ page }) => {
   await settings(page);
   await page.setViewportSize({ width: 1280, height: 600 });
   await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
-  await page.getByRole('button', { name: /^Check/ }).click();
+  await pressCheck(page);
   await expect(page.locator('.report .verdict')).toBeVisible();
   await panel(page).evaluate((el) => el.scrollTo(0, 180));
   await labTab(page, 'Ticket').click();

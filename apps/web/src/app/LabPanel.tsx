@@ -1,14 +1,16 @@
 // The lab panel: the ticket, the check's results, the hint ladder, the debrief and the reference
 // solutions, each in its own tab, with the actions below every tab. What gives the answer away
-// asks first, in the words `npm run lab` uses (apps/cli/src/labsession.ts): the Debrief tab before
-// the lab is solved, and the Solutions tab.
+// asks first: the Debrief tab before the lab is solved, and the Solutions tab; saying yes is
+// giving up, recorded and rated as such. Check asks how sure the learner is first (calibration,
+// PLAN.md §5); the debrief asks for the root cause in the learner's words before it shows its own.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { CheckReport, GradeReport, RenderedBlock } from '@simlab/learn';
-import type { LabAction, LabInfo, LabState } from '../protocol.ts';
-import { renderInline, renderMarkdown } from './markdown.ts';
+import type { LabAction, LabInfo, LabState, Note, PBlock, SolutionText } from '../protocol.ts';
 import { Button, Dots, Icon, panelDomId, tabDomId, TabStrip, type TabItem } from './ui.tsx';
-import { Blocks } from './Figure.tsx';
+import { Blocks, T, TranslationNote } from './Prose.tsx';
+import { Empty, NextButton, RatingStrip, Report, CheckRow, type NextStep, type Rated, type Review } from './parts.tsx';
+import type { Lang } from './storage.ts';
+import type { Rating } from '@simlab/learn';
 
 export type LabTab = 'ticket' | 'check' | 'hints' | 'debrief' | 'solutions';
 export const LAB_TABS: readonly LabTab[] = ['ticket', 'check', 'hints', 'debrief', 'solutions'];
@@ -16,103 +18,174 @@ export const LAB_TABS: readonly LabTab[] = ['ticket', 'check', 'hints', 'debrief
 /** The tab that shows an action's result. */
 export const TAB_OF_ACTION: Record<LabAction, LabTab> = { check: 'check', hint: 'hints', debrief: 'debrief', solutions: 'solutions', reset: 'ticket' };
 
+export interface DebriefData {
+  blocks: PBlock[];
+  /** The commands the learner's shells remember. */
+  history: string[];
+  solutions: SolutionText[];
+}
+
 interface Props {
   lab: LabInfo;
   state: LabState;
-  debrief?: RenderedBlock[];
+  lang: Lang;
+  debrief?: DebriefData;
   reducedMotion: boolean;
-  solutions?: { name: string; text: string }[];
+  solutions?: SolutionText[];
   busy?: LabAction;
   /** A short message from the last action (no more hints). */
   note?: string;
   tab: LabTab;
   setTab(tab: LabTab): void;
   act(action: LabAction): void;
+  say(note: Note): void;
+  /** Check was asked for and waits for the confidence; `answer(undefined)` checks without one. */
+  asking: boolean;
+  answer(confidence: number | undefined): void;
+  cancelAsk(): void;
+  /** The grade of the finished attempt and when the item comes back. */
+  rated?: Rated;
+  review?: Review;
+  rate(r: Rating): void;
+  next?: NextStep;
   /** Escape in the panel goes back to the terminal. */
   leave(): void;
 }
 
 const ASK = {
-  debrief: { text: 'The lab is not solved yet, and the debrief gives the answer away.', yes: 'Read it anyway' },
-  solutions: { text: 'Viewing the reference solutions is recorded and lowers the rating.', yes: 'Show solutions' },
+  debrief: { text: 'The lab is not solved yet, and the debrief gives the answer away. Reading it now is giving up: it is recorded, and the lab is rated Again.', yes: 'Give up and read it' },
+  solutions: { text: 'Seeing the reference solutions before the lab is solved is giving up: it is recorded, and the lab is rated Again.', yes: 'Give up and see the solution' },
   reset: { text: 'This throws away everything you changed and starts again from the initial state. The hints you saw stay seen.', yes: 'Reset the world' },
 } as const;
 
 const PREFIX = 'lab';
+const KIND: Record<LabInfo['kind'], string> = { lab: 'Lab', drill: 'Drill', incident: 'Incident', lesson: 'Lesson', card: 'Card' };
+const CONFIDENCE = ['guessing', 'unsure', 'maybe', 'fairly sure', 'certain'];
 
-function CheckRow({ c }: { c: CheckReport }) {
-  const mark = c.status === 'pass' ? '✓' : c.status === 'fail' ? '✗' : '!';
+/** How sure before the check: 1 to 5 by click or by digit, Enter or Skip to check without saying. */
+export function ConfidencePrompt({ answer, cancel }: { answer(c: number | undefined): void; cancel(): void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    box.current?.focus();
+  }, []);
   return (
-    <li className={`check is-${c.status}`}>
-      <span className="check-mark" aria-label={c.status}>
-        {mark}
-      </span>
-      <div className="check-body">
-        <div className="check-title">
-          <span dangerouslySetInnerHTML={{ __html: renderInline(c.title) }} />
-          {c.weight !== 1 ? <span className="check-weight">weight {c.weight}</span> : null}
-        </div>
-        {c.status === 'fail' ? (
-          <dl className="check-detail">
-            <dt>wanted</dt>
-            <dd>{c.expected}</dd>
-            <dt>found</dt>
-            <dd>{c.observed}</dd>
-          </dl>
-        ) : null}
-        {c.status === 'error' ? <div className="check-detail">could not be evaluated: {c.error ?? ''}</div> : null}
-      </div>
-    </li>
-  );
-}
-
-function Report({ r, openDebrief }: { r: GradeReport; openDebrief(): void }) {
-  const passed = r.checks.filter((c) => c.status === 'pass').length;
-  const pct = Math.round(r.score * 100);
-  return (
-    <section className={`report${r.passed ? ' is-solved' : ''}`} aria-live="polite">
-      <header className="score">
-        <span className="score-pct">{pct}%</span>
-        <span className="score-count">
-          {passed} of {r.checks.length} checks pass
-        </span>
-      </header>
-      <div className="meter" aria-hidden="true">
-        <div className="meter-fill" style={{ width: `${pct}%` }} />
-      </div>
-      <ul className="checks">
-        {r.checks.map((c) => (
-          <CheckRow key={c.id} c={c} />
+    <div
+      className="confidence"
+      role="group"
+      aria-label="How sure are you that every check passes?"
+      tabIndex={-1}
+      ref={box}
+      onKeyDown={(e) => {
+        if (/^[1-5]$/.test(e.key)) answer(Number(e.key));
+        else if (e.key === 'Enter' && e.target === e.currentTarget) answer(undefined);
+        else if (e.key === 'Escape') cancel();
+        else return;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      <p>How sure are you that every check passes?</p>
+      <div className="confidence-scale">
+        {CONFIDENCE.map((word, i) => (
+          <button key={word} type="button" className="confidence-n" title={word} aria-label={`${i + 1}: ${word}`} onMouseDown={(e) => e.preventDefault()} onClick={() => answer(i + 1)}>
+            <span className="confidence-digit">{i + 1}</span>
+            <span className="confidence-word">{word}</span>
+          </button>
         ))}
-      </ul>
-      <p className="verdict">{r.passed ? <strong>Solved. Every check passes; the debrief explains what was behind it.</strong> : `${pct}% of the checks' weight passes. Keep going, or take a hint.`}</p>
-      {r.passed ? (
-        <Button variant="primary" onClick={openDebrief}>
-          <Icon name="book" />
-          Read the debrief
+      </div>
+      <div className="confidence-foot">
+        <span className="confidence-keys">Press 1 to 5, or Enter to skip</span>
+        <Button variant="ghost" small onClick={() => answer(undefined)}>
+          Skip
         </Button>
-      ) : null}
-    </section>
+      </div>
+    </div>
   );
 }
 
-/** What a tab says while it holds nothing, and the question before something that gives the answer away. */
-function Empty({ icon, title, children, ask, onYes, busy }: { icon: string; title: string; children: ReactNode; ask?: { text: string; yes: string }; onYes?: () => void; busy?: boolean }) {
+/** The root cause in the learner's words, written before the debrief shows its own (PLAN.md §5). */
+function ExplainPrompt({ submit, busy }: { submit(text: string): void; busy: boolean }) {
+  const [text, setText] = useState('');
   return (
-    <div className="tab-empty">
-      <span className="tab-empty-icon">
-        <Icon name={icon} size={20} />
-      </span>
-      <h2>{title}</h2>
-      <p>{children}</p>
-      {ask ? (
-        <div className="tab-ask">
-          <p>{ask.text}</p>
-          <Button variant="primary" disabled={busy} onClick={onYes}>
-            {ask.yes}
-          </Button>
-        </div>
+    <form
+      className="explain"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(text);
+      }}
+    >
+      <h2>Before the debrief: what was behind it?</h2>
+      <p>One sentence, in your own words. Writing it first is what makes the debrief stick; it is stored with the attempt.</p>
+      <textarea className="textarea" aria-label="The root cause in your words" rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="The Pods stayed Pending because…" />
+      <div className="explain-actions">
+        <Button variant="primary" type="submit" disabled={busy}>
+          Show the debrief
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={() => submit('')}>
+          Skip
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** The debrief's parts in order: figures, the checks, the two command lists, the explanation and the prose, the rating. */
+function Debrief({ p, data }: { p: Props; data: DebriefData }) {
+  const firstText = data.blocks.findIndex((b) => 'text' in b);
+  const figures = firstText === -1 ? data.blocks : data.blocks.slice(0, firstText);
+  const rest = firstText === -1 ? [] : data.blocks.slice(firstText);
+  const report = p.state.report;
+  return (
+    <div className="debrief">
+      <Blocks blocks={figures} lang={p.lang} reducedMotion={p.reducedMotion} />
+      {report ? (
+        <section className="debrief-part" aria-label="Checks">
+          <h2 className="part-title">Checks</h2>
+          <ul className="checks">
+            {report.checks.map((c) => (
+              <CheckRow key={c.id} c={c} title={p.lab.checkTitles[c.id]} lang={p.lang} />
+            ))}
+          </ul>
+        </section>
       ) : null}
+      <section className="debrief-part" aria-label="Your commands and the reference solution">
+        <div className="versus">
+          <div className="versus-side">
+            <h2 className="part-title">Your commands</h2>
+            {data.history.length > 0 ? (
+              <pre className="versus-code" tabIndex={0} aria-label="Your commands">
+                <code>{data.history.join('\n')}</code>
+              </pre>
+            ) : (
+              <p className="versus-none">The open terminals remember no command. A closed terminal and a reset world take their history with them.</p>
+            )}
+          </div>
+          <div className="versus-side">
+            <h2 className="part-title">Reference solution</h2>
+            {data.solutions.map((s, i) => (
+              <div key={i} className="versus-solution">
+                {data.solutions.length > 1 ? (
+                  <h3>
+                    <T t={s.name} lang={p.lang} inline />
+                  </h3>
+                ) : null}
+                <pre className="versus-code" tabIndex={0} aria-label="Reference solution">
+                  <code>{s.text}</code>
+                </pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      {p.state.explanation ? (
+        <section className="debrief-part" aria-label="Your explanation">
+          <h2 className="part-title">Your explanation</h2>
+          <blockquote className="explained">{p.state.explanation}</blockquote>
+        </section>
+      ) : null}
+      <Blocks blocks={rest} lang={p.lang} reducedMotion={p.reducedMotion} />
+      {p.rated ? <RatingStrip rated={p.rated} review={p.review} rate={p.rate} /> : null}
+      <NextButton next={p.next} />
     </div>
   );
 }
@@ -121,8 +194,12 @@ export function LabPanel(p: Props) {
   const [resetting, setResetting] = useState(false);
   const scrollers = useRef(new Map<LabTab, HTMLDivElement>());
   const hintsLeft = p.lab.hintCount - p.state.hints.length;
-  const debriefFree = p.state.solved || p.state.debriefSeen;
-  const solutionsFree = p.state.solutionViewed;
+  /** The answer was seen before the lab was solved: the attempt is given up. */
+  const gaveUp = p.state.solutionViewed && !p.state.solved;
+  const debriefFree = p.state.solved || p.state.solutionViewed || p.state.debriefSeen;
+  const solutionsFree = p.state.solved || p.state.solutionViewed;
+  /** Solved unaided: the debrief waits for the learner's own explanation. */
+  const explainFirst = p.state.solved && p.state.explanation === undefined && !p.state.debriefSeen;
 
   // What each tab holds, as a number that changes when something arrives. A tab whose number
   // moved while another tab was open says so until it is opened.
@@ -169,7 +246,7 @@ export function LabPanel(p: Props) {
   // A tab that no longer asks (the lab is solved, or its content was already seen before a
   // reload) fetches its content when it is opened.
   const { tab, act, busy } = p;
-  const wantDebrief = tab === 'debrief' && debriefFree && !p.debrief;
+  const wantDebrief = tab === 'debrief' && debriefFree && !explainFirst && !p.debrief;
   const wantSolutions = tab === 'solutions' && solutionsFree && !p.solutions;
   useEffect(() => {
     if (busy !== undefined) return;
@@ -190,11 +267,24 @@ export function LabPanel(p: Props) {
   const content: Record<LabTab, ReactNode> = {
     ticket: (
       <section className="ticket">
-        <Blocks blocks={p.lab.ticket} reducedMotion={p.reducedMotion} />
+        <Blocks blocks={p.lab.ticket} lang={p.lang} reducedMotion={p.reducedMotion} />
       </section>
     ),
     check: report ? (
-      <Report r={report} openDebrief={() => p.setTab('debrief')} />
+      <Report r={report} titles={p.lab.checkTitles} lang={p.lang} verdict={report.passed ? <strong>Solved. Every check passes; the debrief explains what was behind it.</strong> : `${Math.round(report.score * 100)}% of the checks' weight passes. Keep going, or take a hint.`}>
+        {report.passed || p.state.solved ? (
+          <>
+            {p.rated ? <RatingStrip rated={p.rated} review={p.review} rate={p.rate} /> : null}
+            <div className="report-actions">
+              <Button variant={p.next ? 'plain' : 'primary'} onClick={() => p.setTab('debrief')}>
+                <Icon name="book" />
+                Read the debrief
+              </Button>
+              <NextButton next={p.next} />
+            </div>
+          </>
+        ) : null}
+      </Report>
     ) : (
       <Empty icon="check" title="Not checked yet">
         Check grades the world as it is now: the state of the cluster, never the commands you typed. Run it as often as you like.
@@ -208,19 +298,19 @@ export function LabPanel(p: Props) {
               <span className="hint-n" aria-hidden="true">
                 {i + 1}
               </span>
-              <div className="markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(h) }} />
+              <T t={h} lang={p.lang} />
             </li>
           ))}
         </ol>
       ) : (
         <Empty icon="hint" title="No hint taken">
-          This lab has {p.lab.hintCount} {p.lab.hintCount === 1 ? 'hint' : 'hints'}, each more direct than the one before. Hints lower the rating.
+          This {KIND[p.lab.kind].toLowerCase()} has {p.lab.hintCount} {p.lab.hintCount === 1 ? 'hint' : 'hints'}, each more direct than the one before. Every hint is recorded and lowers the rating.
         </Empty>
       ),
-    debrief: p.debrief ? (
-      <div className="debrief">
-        <Blocks blocks={p.debrief} reducedMotion={p.reducedMotion} />
-      </div>
+    debrief: explainFirst ? (
+      <ExplainPrompt busy={p.busy === 'debrief'} submit={(text) => p.say({ kind: 'explanation', text })} />
+    ) : p.debrief ? (
+      <Debrief p={p} data={p.debrief} />
     ) : debriefFree ? (
       <Empty icon="book" title="Debrief">
         Drawing the debrief…
@@ -232,14 +322,18 @@ export function LabPanel(p: Props) {
     ),
     solutions: p.solutions ? (
       <div className="solutions">
-        {p.solutions.map((s) => (
-          <div key={s.name} className="solution">
-            <h3>{s.name}</h3>
+        {gaveUp ? <p className="gave-up">You gave up on this attempt. Apply the solution to see it work, then move on; the lab comes back tomorrow.</p> : null}
+        {p.solutions.map((s, i) => (
+          <div key={i} className="solution">
+            <h3>
+              <T t={s.name} lang={p.lang} inline />
+            </h3>
             <pre>
               <code>{s.text}</code>
             </pre>
           </div>
         ))}
+        {gaveUp ? <NextButton next={p.next} /> : null}
       </div>
     ) : solutionsFree ? (
       <Empty icon="key" title="Reference solutions">
@@ -264,12 +358,15 @@ export function LabPanel(p: Props) {
     >
       <header className="lab-head">
         <div className="lab-kicker">
-          <span>Lab</span>
+          <span>{KIND[p.lab.kind]}</span>
           <Dots n={p.lab.difficulty} of={5} />
-          <span>about {p.lab.targetMinutes} min</span>
-          {p.state.solved ? <span className="pill pill-ok">solved</span> : null}
+          <span>target {p.lab.targetMinutes} min</span>
+          {p.state.solved ? <span className="pill pill-ok">solved</span> : gaveUp ? <span className="pill pill-warn">gave up</span> : null}
+          <TranslationNote translation={p.lab.translation} lang={p.lang} />
         </div>
-        <h1 className="lab-title">{p.lab.title}</h1>
+        <h1 className="lab-title">
+          <T t={p.lab.title} lang={p.lang} inline />
+        </h1>
         <div className="lab-id">
           {p.lab.id} · seed {p.lab.seed}
         </div>
@@ -314,13 +411,14 @@ export function LabPanel(p: Props) {
             </div>
           </div>
         ) : null}
-        {p.note && !resetting ? <p className="action-note">{p.note}</p> : null}
+        {p.asking && !resetting ? <ConfidencePrompt answer={p.answer} cancel={p.cancelAsk} /> : null}
+        {p.note && !resetting && !p.asking ? <p className="action-note">{p.note}</p> : null}
         <div className="action-row">
           <Button variant="primary" shortcut="Ctrl+Shift+Enter" title="Grade the current state of the world" disabled={p.busy === 'check'} onClick={() => p.act('check')}>
             <Icon name="check" />
             {p.busy === 'check' ? 'Checking…' : 'Check'}
           </Button>
-          <Button shortcut="Ctrl+Shift+H" title="The next hint (hints lower the rating)" disabled={hintsLeft <= 0} onClick={() => p.act('hint')}>
+          <Button shortcut="Ctrl+Shift+H" title="The next hint (recorded; hints lower the rating)" disabled={hintsLeft <= 0} onClick={() => p.act('hint')}>
             <Icon name="hint" />
             Hint{hintsLeft > 0 ? ` ${p.state.hints.length + 1}/${p.lab.hintCount}` : 's used'}
           </Button>

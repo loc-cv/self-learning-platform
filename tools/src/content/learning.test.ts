@@ -5,7 +5,7 @@
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { competencyIds, CONTENT_ROOT, isLabLike, kindOf, loadPacks, skillIds, strandedSidecars } from '@simlab/content';
-import { buildCatalog, buildQueue, cardVariantOf, initialState, lessonVariantOf, localize, parseSidecar, PROGRESS_VERSION, resolveSidecar, applyEvent, type AnyItem, type CardItem, type LessonItem, type Sidecar } from '@simlab/learn';
+import { buildCatalog, buildQueue, cardVariantOf, initialState, lessonVariantOf, localize, parseSidecar, tagUnits, unitKeyOf, textUnits, PROGRESS_VERSION, resolveSidecar, applyEvent, type AnyItem, type CardItem, type LessonItem, type Sidecar } from '@simlab/learn';
 import { checkItem, itemKinds, packProblems } from './check.ts';
 import { formatReport, reportItem, totals } from './i18n.ts';
 
@@ -69,6 +69,21 @@ describe('the fixture pack', () => {
     expect(lesson.steps[3]).toMatchObject({ task: { text: `Scale \`web\` in namespace \`${String(lesson.params['ns'])}\` to ${n} replicas.` } });
     const card = cardVariantOf(file('fx.workloads.scale-card-01').raw as unknown as CardItem, 1);
     expect(card.answer).toBe(`\`kubectl -n ${String(card.params['ns'])} scale deployment web --replicas=${String(card.params['replicas'])}\``);
+  });
+
+  test('a tagged item says which unit each text of a variant came from', () => {
+    const item = file('fx.workloads.scaling-lesson-01').raw as unknown as LessonItem;
+    const tagged = lessonVariantOf(tagUnits(item), 1);
+    const plain = lessonVariantOf(item, 1);
+    expect(tagged.params).toEqual(plain.params);
+    const keys = tagged.steps.map((s) => ('text' in s ? unitKeyOf(s.text) : 'figure' in s ? unitKeyOf(s.figure.caption) : 'predict' in s ? unitKeyOf(s.predict.prompt) : unitKeyOf(s.task.text)));
+    expect(keys).toEqual(['steps.0', 'steps.1.caption', 'steps.2.prompt', 'steps.3.text', 'steps.4.prompt', 'steps.5.caption']);
+    const step = tagged.steps[3] as { task: { hints: string[]; checks: { title: string }[] } };
+    expect([unitKeyOf(step.task.hints[0] as string), unitKeyOf(step.task.checks[0]?.title ?? '')]).toEqual(['steps.3.hints.0', 'steps.3.checks.scaled.title']);
+    // Every key a tag carries is a unit of the item, and plain text is not a tag.
+    const units = new Set(textUnits(item).map((u) => u.key));
+    for (const k of keys) expect(units.has(k as string)).toBe(true);
+    expect(unitKeyOf('Scale `web`')).toBeUndefined();
   });
 
   test('the catalog drives the queue: the lesson first, then what it opens', () => {

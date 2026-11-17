@@ -196,6 +196,10 @@ text unit with the hash of the English it was translated from. The keys of lesso
 - `localize(item, resolution)` returns the item with every current translation in place. Outdated
   and missing units stay English. The result has the item's shape, so variants, labs and figures
   work on it unchanged.
+- `tagUnits(item)` returns the item with every text replaced by its unit key between markers, and
+  `unitKeyOf(text)` reads a key back. Resolved with the same seed as the item, the tagged copy
+  says which unit each text of a variant came from, also where `when` dropped blocks. The web app
+  uses it to show a text's translation and its state (D-158).
 - `npm run content:i18n` prints the report: per item `current/total`, outdated and missing
   counts, orphans, violations, sidecars that fail their schema or name another item, sidecars
   with no item. With `-v` it lists every unit that is not current with the hash a translation must
@@ -221,10 +225,10 @@ server asks it before appending (§10). An event with a higher `v` is refused, n
 | `attempt.check` | `attempt`, `passed`, `score`, `checks` (`id`, `status`), optional `step` | Check is pressed. `step` is the lesson step of a guided task |
 | `attempt.hint` | `attempt`, `index`, optional `step` | A rung of the hint ladder is shown |
 | `attempt.xray` | `attempt`, `open` | The live view of the world opens or closes |
-| `attempt.solution` | `attempt` | The reference solution is viewed |
+| `attempt.solution` | `attempt` | The answer is seen before the attempt passed: the reference solutions, or the debrief (D-154) |
 | `attempt.prediction` | `attempt`, `step`, optional `choice`, `text`, `correct` | A prediction prompt is answered |
-| `attempt.confidence` | `attempt`, `confidence` 1 to 5 | Before checking |
-| `attempt.explanation` | `attempt`, `text` | The root cause in the learner's words, before the debrief |
+| `attempt.confidence` | `attempt`, `confidence` 1 to 5 | Before a check of a lab, drill or incident that is not solved yet; the learner may skip it (D-156) |
+| `attempt.explanation` | `attempt`, `text` | The root cause in the learner's words, before the debrief. Recorded after `attempt.finished`, since an attempt ends when it passes (D-153): the log keeps it, the state ignores it |
 | `attempt.finished` | `attempt`, `outcome` (`passed`, `failed`, `abandoned`), `activeMs` | The attempt ends. `activeMs` is the time spent working |
 | `card.reviewed` | `attempt`, `item`, `seed`, `outcome` (`passed`, `failed`), `activeMs`, optional `choice` | A card is answered: one event for the whole attempt |
 | `rating` | `attempt`, `item`, `rating` 1 to 4, `source` (`auto`, `manual`), optional `reasons` | The grade FSRS gets for an attempt (§6) |
@@ -358,7 +362,7 @@ Vite as middleware, so the API is identical). Plain files, no database; it liste
 | `data/progress.jsonl` | `GET /api/progress` | The log as NDJSON (empty when absent) |
 | | `POST /api/progress` | `{ "events": [...] }`; each must pass `eventProblem`; 204 |
 | `data/attempts/<id>.jsonl` | `GET /api/attempts/<id>` | An attempt's input log as NDJSON; 404 when absent |
-| | `POST /api/attempts/<id>` | `{ "records": [...] }` (JSON objects, not interpreted); 204 |
+| | `POST /api/attempts/<id>` | `{ "records": [...] }` (JSON objects, not interpreted by the server); 204. The web app writes `{k:"full", attempt}` and `{k:"delta", from, inputs, checkpoints, end, report?}`; `foldAttempt` in `apps/web/src/app/attempts.ts` reads them back (D-157) |
 | `data/settings.json` | `GET /api/settings` | The object, `{}` when absent |
 | | `PUT /api/settings` | A JSON object; replaces the file; 204 |
 | `data/gaps.jsonl` | `POST /api/gaps` | `{ "records": [...] }` (`docs/FIDELITY.md` §4.4) |
@@ -391,27 +395,32 @@ Vite as middleware, so the API is identical). Plain files, no database; it liste
   only); `tools/src/content/learning.test.ts` validates it with the code behind `content:check`
   and `content:i18n`. Copy from it when writing the first real lesson or card.
 
-## 12. For the learning screens (phase 12)
+## 12. The learning screens
 
-- Load: `GET /api/progress`, `parseLog`, `replay`. Keep the state; apply each event you post.
-- A session: `buildQueue(state, catalog, Date.now(), { items })`; open the first entry with its
-  seed; rebuild after it ends.
-- An attempt of a lab: `attempt.started`, then the lab's events as they happen (a `LabEvent` of
-  kind `hint`, `check`, `solution`, `view` maps to `attempt.hint`, `attempt.check`,
-  `attempt.solution`, `attempt.xray`), then `finishAttempt`. The override button posts one
-  `rating` with `source: manual`.
-- The web bundle (`virtual:simlab/content`) carries every item; the workspace today filters to
-  lab-like kinds, and sidecars are not bundled yet.
-- A lesson's guided task is graded like a lab: `grade(kernel, task.checks, env)` on the session
-  world of a baseline built from `scenarioShape(...)`; content validation does exactly this.
+Built in phase 12 (`apps/web/src/app/`); `docs/DESIGN.md` §7 describes how they look.
+
+| What | Code | How it uses this document |
+|---|---|---|
+| The log in the page | `progress.ts` | Loads `GET /api/progress`, keeps the state, applies and posts each event; an outbox in browser storage holds what the server has not confirmed |
+| Today's session | `daily.ts`, `App.tsx` | `buildQueue` after every item; the first entry opens with its seed; a skip is remembered for the day; the session survives a reload |
+| An attempt's events | `flow.ts`, `App.tsx` | `attempt.started` when the world is ready; check, hint, X-ray, solution, confidence, prediction as they happen; `finishAttempt` when it passes (D-153) or when the learner leaves it (D-155); one manual `rating` per click on the override |
+| Lessons | `LessonPanel.tsx`, `apps/web/src/engine/session.ts` | Steps in pages that end at a prediction or a task (D-159); a task is graded with `grade` on the session world |
+| Cards | `CardView.tsx` | `cardReview`: by choice, self-graded, or by the checks of the card's world |
+| The debrief | `LabPanel.tsx` | The learner's explanation first, then figures, checks, command history beside the solution, prose, the rating with its override, the next review |
+| Languages | `Prose.tsx`, `apps/web/src/engine/bilingual.ts` | `localize` and `tagUnits` (§4, D-158) |
+| Home, content browser | `Home.tsx`, `Browser.tsx`, `homeModel.ts` | §9's functions, drawn |
+| Resume | `attempts.ts` | An open attempt of the log reopens by replay from the server's records or the browser's copy, whichever is longer (D-157) |
+
+A rating shown to the learner is always the one in the log. Time in the screens is `Date.now()`
+read in `App.tsx` and passed down; the browser tests move it with Playwright's clock to see the
+next day's queue.
 
 ## 13. Not covered yet
 
 | Topic | Phase |
 |---|---|
-| Screens for the queue, lessons, cards, ratings, languages | 12 |
 | The debrief's replay of an attempt from its input log | 13 |
 | The curriculum map over competencies; the authoring guide for lessons and cards | 14 |
 | Exam mode, scoring per domain | 31 |
-| Repeated command errors as mistakes (`PLAN.md` §5): no event records them yet | 12 or 13, with the command history |
+| Repeated command errors as mistakes (`PLAN.md` §5): no event records them yet | 13, with the trace (the debrief already lists the shells' history, D-160) |
 | FSRS weights fitted to the owner's log (needs the optimizer, a separate package) | a candidate, once the log is large enough |

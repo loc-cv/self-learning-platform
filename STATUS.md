@@ -40,7 +40,7 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
 
 **M2 — Learning loop**
 - [x] 11 `prompts/11-learning-core.md`
-- [ ] 12 `prompts/12-learning-ui.md`
+- [x] 12 `prompts/12-learning-ui.md`
 - [ ] 13 `prompts/13-trace-replay-and-time-controls.md`
 - [ ] 14 `prompts/14-curriculum-map-and-authoring.md`
 - [ ] R1 run, target `k8s-foundations`
@@ -214,19 +214,20 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 - **Closed terminals stay in the world** as tty records with `closed: true` (setup logins leave
   them; `openTerminal` and the player skip ids in use). Invisible until `/dev/pts` exists; phase
   25a decides whether the kernel frees them.
-- **Lab attempts live in browser storage** (`simlab.attempt.v1.<item>`, D-105): a private window
-  or cleared site data loses them, and the localStorage quota (about 5 MB) bounds a session's log.
-  The server stores attempt logs and the progress log since phase 11 (`docs/LEARNING_MODEL.md`
-  §10); the web app does not use that API yet. Phase 12 posts attempts and progress events there
-  and keeps the page's copy as a cache.
 - **The web app's gap records skip the server when it is not running** (a static host): the
-  popover says so, nothing retries. Phase 12's client for the API can retry them with the rest.
-- **The web bundle carries no sidecars and the workspace lists lab-like items only**
-  (`apps/web/src/content.ts`, `vite.config.ts`). Phase 12 bundles `<id>.vi.yaml` and gives
-  lessons and cards their screens.
+  popover says so, nothing retries. The progress log and the attempt logs have outboxes since
+  phase 12 (`apps/web/src/app/progress.ts`, `attempts.ts`); the gap sink was not given one. R3,
+  or phase 13 when it touches the top bar.
 - **No event records command errors** (`PLAN.md` §5, "repeated command errors … raise the
   priority of related items"): mistakes are failed attempts, failed checks, hints and solutions
-  viewed. Phase 12 or 13 adds the event with the command history.
+  viewed. The debrief lists the shells' history since phase 12 (D-160); the event needs each
+  command's exit status, which phase 13's trace has.
+- **The command history in the debrief is the open shells' memory** (D-160): a closed terminal
+  and the world before a reset take theirs with them. Phase 13's replay of the attempt from its
+  input log replaces it.
+- **The app's own words are English only.** The language setting covers content prose (PLAN §5);
+  buttons, the home screen and skill, track and domain titles have no translations. No phase owns
+  this; R2 translates content only.
 - **`/bin/sh` is dash, which is not simulated**: `sh -c`, `egrep`, `fgrep`, `zgrep` and scripts
   without `#!` run through `env` reach the "not simulated" stub. No phase owns dash yet; R3 decides
   when learners hit it.
@@ -236,8 +237,6 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 Entries of `FEEDBACK.md` and the gap log that a triage run assigned to a planned phase. The phase
 that takes one removes it here. Details and evidence: `docs/feedback-log.md`.
 
-- **10d** — a modern look chosen from screenshots; Ticket, Check, Hints, Debrief and Solutions as
-  tabs of the lab panel; the X-ray as a floating panel in the page (Checkpoint A2).
 - **13** — the debrief replays the attempt with its causes.
 - **16a** — nginx "built by" lines for every nginx tag in the catalog (16 gap records; the
   carry-over item "image facts read by hand" below is the same work).
@@ -321,6 +320,50 @@ Unfinished work from a phase, precise enough for the next session to continue.
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
 
+- 2026-11-17 — **Phase 12 done.** The learning loop is on screen: home, the session runner, the
+  flows of every item kind, the debrief, languages, the content browser, resume from the server.
+  - **Still open from phase 11, for the owner:** lessons are done once and not scheduled (D-141),
+    and two items on one primary skill may follow each other when nothing else is left (D-146).
+    Both differ from a sentence of `PLAN.md` §5. The screens follow the code as it is: a finished
+    lesson says it will not come back, and the queue shows what `buildQueue` gives.
+  - What opens. The app starts on **Home** (`Home.tsx`, built by a parallel agent from a fixed
+    props contract, reviewed in the browser here): today's session with a selectable time box,
+    mastery by curriculum domain and by skill, streak and activity, the due forecast, recent
+    mistakes, unfinished attempts. **Browse** (`Ctrl+Shift+O`) is the content browser with
+    filters. `ItemPicker.tsx` is gone.
+  - Events (`flow.ts`, `App.tsx`; `docs/LEARNING_MODEL.md` §12). An attempt is finished in the
+    log when it passes (D-153). Solutions or the debrief before a solve is giving up: one
+    `attempt.solution`, rated Again, `failed` when left (D-154). Skip abandons; anything else
+    left unfinished stays open and resumes (D-155). Check asks for a confidence first (D-156).
+    The override is one click and one `rating` event.
+  - Engine side (`apps/web/src/engine/session.ts`, `bilingual.ts`). One session code path runs
+    labs, lessons and cards: a lesson or a card with a world goes through `scenarioShape`; a
+    card without a world never builds one. `LabInfo` and `LabState` carry `Text` (English,
+    Vietnamese, why not) instead of strings. New protocol messages: `note` (confidence,
+    explanation, prediction; kept in the attempt's log as `learn.action` inputs, so they survive
+    a reload) and `step` on `lab` for a lesson's task. `lab.result` carries the clock.
+  - Languages (D-158). `tagUnits` in `packages/learn` is new. Side by side is one row per unit.
+    Only the fixture pack has sidecars, so the owner sees "English only" on every real item
+    until an R2 run.
+  - Persistence (D-157). Progress events go through an outbox; attempt logs go to
+    `data/attempts/<id>.jsonl` as records. A browser with no settings takes the server's
+    (`data/settings.json`); the tests had to learn that one test's setting reaches the next.
+  - Tests. `e2e/session.spec.ts` (a daily session from an empty log on a second server with its
+    own data directory, the next day by Playwright's clock; a mixed session on the fixture
+    track; keyboard only), `e2e/language.spec.ts`, `engine/kinds.test.ts`, `flow.test.ts`,
+    `progress.test.ts`, `attempts.test.ts`, `homeModel.test.ts`. The e2e build sets
+    `SIMLAB_FIXTURES=1` (D-161).
+  - Fixed on the way: every figure slid in from a zero-width layout when it first appeared
+    (D-162); the attempt record repeated the check report after every action.
+  - Surprises. The fixture track's queue puts the drill before the card after the lesson
+    (interleaving by primary skill); a test that assumed track order failed. Dumping an
+    attempt log to the terminal costs a great deal of context: one record per keystroke.
+  - Known gaps: no real lesson or card exists, so the owner can see those screens only in the
+    test build (`SIMLAB_FIXTURES=1 npm run build -w apps/web`, then `npm start`) until R1; the
+    debrief's figure of a wide world is cramped in a 440px panel (the enlarge button helps; the
+    panel can be widened); nothing was checked in Chrome on Windows with Vimium: the new chords
+    `Ctrl+Shift+D` and `Ctrl+Shift+K`, digits in the confidence prompt and on cards, and
+    Escape in the browser sheet want the owner's confirmation.
 - 2026-11-17 — **Phase 11 done.** The learning core: item kinds, packs, sidecars, the progress
   log, FSRS, the daily queue, persistence. No screen changed. `docs/LEARNING_MODEL.md` is the spec.
   - **Two decisions touch sentences of `PLAN.md` §5 and want the owner's word.** (1) Lessons are

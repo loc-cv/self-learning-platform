@@ -108,3 +108,26 @@ export function textUnits(item: AnyItem): TextUnit[] {
   proseUnits(item.debrief, 'debrief', out);
   return out;
 }
+
+const TAG_OPEN = '⟦';
+const TAG_CLOSE = '⟧';
+
+/**
+ * The item with every text unit replaced by its key between markers. Run through the same
+ * variant code as the item itself (`when` drops blocks, so positions shift), it says which unit
+ * each resolved text came from: that is how an interface finds a text's translation state.
+ */
+export function tagUnits<T extends AnyItem>(item: T): T {
+  const copy = JSON.parse(JSON.stringify(item)) as T;
+  for (const u of textUnits(item)) {
+    let node = copy as unknown as Record<string | number, unknown>;
+    for (const part of u.path.slice(0, -1)) node = node[part] as Record<string | number, unknown>;
+    node[u.path[u.path.length - 1] as string | number] = `${TAG_OPEN}${u.key}${TAG_CLOSE}`;
+  }
+  return copy;
+}
+
+/** The unit key of a text of a tagged item (`tagUnits`), or undefined when it is not one. */
+export function unitKeyOf(text: string): string | undefined {
+  return text.startsWith(TAG_OPEN) && text.endsWith(TAG_CLOSE) ? text.slice(1, -1) : undefined;
+}

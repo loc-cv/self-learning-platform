@@ -2432,3 +2432,575 @@ kbd {
   padding-right: var(--sp-10);
   font-size: var(--fs-lg);
 }
+
+/* ---- Learning flows (phase 12): languages, confidence, debrief, rating, lessons, cards, the session ---- */
+
+/* The home screen and other full pages lie in the workspace's place and scroll inside (D-130). */
+.page {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+/* Languages: a badge where Vietnamese is missing or outdated; side by side, one row per text unit. */
+.lang-badge {
+  display: inline-block;
+  margin-left: var(--sp-1h);
+  padding: 0 var(--sp-1h);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--size-pill-line) var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.lang-badge.is-outdated {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+div.lang-fallback > .lang-badge {
+  margin: 0 0 var(--sp-2);
+}
+.bi {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 var(--sp-4);
+  align-items: start;
+}
+span.bi {
+  display: inline-grid;
+  width: 100%;
+}
+.bi-vi {
+  padding-left: var(--sp-3);
+  box-shadow: inset var(--line-2) 0 0 var(--surface-3);
+}
+.bi-vi > .lang-badge {
+  margin-left: 0;
+}
+.figure-second {
+  display: block;
+  color: var(--text-muted);
+}
+
+/* How sure before the check. */
+.confidence {
+  margin-bottom: var(--sp-2h);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.confidence:focus-visible {
+  outline: var(--line-2) solid var(--focus-ring);
+  outline-offset: var(--line-2);
+}
+.confidence p {
+  margin: 0 0 var(--sp-2);
+  font: var(--fw-medium) var(--fs-base) / var(--lh-snug) var(--font-ui);
+}
+.confidence-scale {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--sp-1);
+}
+.confidence-n {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-0h);
+  padding: var(--sp-1h) var(--sp-0h);
+  border: none;
+  border-radius: var(--r-ctl);
+  background: var(--ctl-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.confidence-n:hover {
+  background: var(--accent-soft);
+}
+.confidence-n:focus-visible,
+.choice:focus-visible,
+.grade:focus-visible,
+.textarea:focus-visible,
+.brand:focus-visible,
+.versus-code:focus-visible {
+  outline: var(--line-2) solid var(--focus-ring);
+  outline-offset: var(--line-2);
+}
+.confidence-digit {
+  font: var(--fw-semibold) var(--fs-lg) / var(--lh-1) var(--font-code);
+}
+.confidence-word {
+  color: var(--text-muted);
+  font: var(--fs-xs) / var(--lh-tight) var(--font-ui);
+  text-align: center;
+}
+.confidence-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-2);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+/* Text the learner writes: the root cause, a prediction, a card's answer. */
+.textarea {
+  display: block;
+  width: 100%;
+  min-height: var(--textarea-min);
+  padding: var(--sp-2) var(--sp-2h);
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--ctl-bg);
+  color: var(--text);
+  font: var(--fs-body) / var(--lh-snug) var(--font-ui);
+  resize: vertical;
+}
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+.explain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.explain h2 {
+  margin: 0;
+  font: var(--fw-title) var(--fs-lg) / var(--lh-tight) var(--font-ui);
+  letter-spacing: var(--tracking-title);
+}
+.explain p {
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--fs-body) / var(--lh-snug) var(--font-ui);
+}
+.explain-actions,
+.report-actions,
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.report-actions {
+  margin-top: var(--sp-3);
+}
+.explained {
+  margin: 0;
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  box-shadow: inset var(--line-2) 0 0 var(--accent);
+  font: var(--fs-body) / var(--lh-snug) var(--font-ui);
+  white-space: pre-wrap;
+}
+
+/* The debrief's parts after its figures. */
+.debrief-part {
+  margin: var(--sp-5) 0;
+}
+.part-title {
+  margin: 0 0 var(--sp-2);
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--lh-1) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.versus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+}
+.versus-code {
+  max-height: var(--versus-max-h);
+  margin: 0;
+  padding: var(--sp-3) var(--sp-3h);
+  border-radius: var(--r-md);
+  background: var(--code-bg);
+  color: var(--code-text);
+  overflow: auto;
+  font: var(--fs-sm) / var(--lh-body) var(--font-code);
+  scrollbar-width: thin;
+}
+.versus-solution + .versus-solution {
+  margin-top: var(--sp-3);
+}
+.versus-solution h3 {
+  margin: 0 0 var(--sp-1h);
+  font: var(--fw-medium) var(--fs-sm) / var(--lh-snug) var(--font-ui);
+}
+.versus-none,
+.gave-up,
+.card-how {
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--fs-sm) / var(--lh-snug) var(--font-ui);
+}
+.gave-up {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--warn-bg);
+  color: var(--text);
+}
+.pill-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* The rating the schedule got, the override and the next review. */
+.rating {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.rating-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-2);
+}
+.rating-label {
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--lh-1) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.rating-name {
+  font: var(--fw-semibold) var(--fs-lg) / var(--lh-tight) var(--font-ui);
+}
+.rating-name.is-r1 {
+  color: var(--bad);
+}
+.rating-name.is-r2 {
+  color: var(--warn);
+}
+.rating-name.is-r3,
+.rating-name.is-r4 {
+  color: var(--ok);
+}
+.rating-why {
+  color: var(--text-muted);
+  font: var(--fs-sm) / var(--lh-snug) var(--font-ui);
+}
+.rating-seg {
+  align-self: flex-start;
+}
+.rating-next {
+  margin: 0;
+  font: var(--fs-base) / var(--lh-snug) var(--font-ui);
+}
+.rating-date {
+  margin-left: var(--sp-2);
+  color: var(--text-muted);
+  font: var(--fs-sm) / var(--lh-1) var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+.next-button {
+  margin-top: var(--sp-2);
+}
+.action-row .next-button {
+  margin-top: 0;
+}
+
+/* Lessons: a page of steps, predictions, guided tasks. */
+.lesson-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.lesson-page > .markdown > :first-child,
+.predict > .markdown > :first-child,
+.task > .markdown > :first-child,
+.card-prompt > .markdown > :first-child,
+.card-answer > .markdown > :first-child {
+  margin-top: 0;
+}
+.lesson-page > .markdown > :last-child,
+.predict .markdown > :last-child,
+.task > .markdown > :last-child,
+.card-prompt > .markdown > :last-child,
+.card-answer > .markdown > :last-child {
+  margin-bottom: 0;
+}
+.predict,
+.task,
+.lesson-done,
+.card-answer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.predict > *,
+.task > *,
+.card-answer > * {
+  max-width: 100%;
+}
+.predict > .markdown,
+.predict > .choices,
+.predict > .textarea,
+.predict > .explained,
+.predict-reveal,
+.task > .markdown,
+.task > .hints,
+.task > .report,
+.card-answer > .markdown {
+  align-self: stretch;
+}
+.task .report,
+.task .hints li {
+  background: var(--surface-3);
+}
+.predict-kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  color: var(--accent);
+  font: var(--fw-semibold) var(--fs-xs) / var(--lh-1) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1h);
+}
+.choice {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2h);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-2h);
+  border: none;
+  border-radius: var(--r-ctl);
+  background: var(--ctl-bg);
+  color: var(--text);
+  font: var(--fs-body) / var(--lh-snug) var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.choice:hover:not(:disabled) {
+  background: var(--ctl-bg-hover);
+}
+.choice.is-chosen {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 var(--line) var(--accent);
+}
+.choice:disabled {
+  cursor: default;
+}
+.choice.is-right {
+  background: var(--ok-bg);
+  box-shadow: inset 0 0 0 var(--line) var(--ok);
+}
+.choice.is-wrong {
+  background: var(--bad-bg);
+  box-shadow: inset 0 0 0 var(--line) var(--bad);
+}
+.choice-key {
+  flex: none;
+  width: var(--size-choice-key);
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-sm) / var(--lh-snug) var(--font-code);
+  text-align: center;
+}
+.choice.is-right .choice-key {
+  color: var(--ok);
+}
+.choice.is-wrong .choice-key {
+  color: var(--bad);
+}
+.predict-verdict {
+  margin: 0 0 var(--sp-1h);
+  font: var(--fw-semibold) var(--fs-body) / var(--lh-snug) var(--font-ui);
+}
+.predict-verdict.is-right,
+.task-passed {
+  color: var(--ok);
+}
+.predict-verdict.is-wrong {
+  color: var(--bad);
+}
+.task-passed {
+  margin: 0;
+  font: var(--fw-semibold) var(--fs-body) / var(--lh-snug) var(--font-ui);
+}
+.lesson-done h2 {
+  margin: 0;
+  font: var(--fw-title) var(--fs-lg) / var(--lh-tight) var(--font-ui);
+}
+.lesson-done p {
+  margin: 0;
+  color: var(--text-muted);
+  font: var(--fs-body) / var(--lh-snug) var(--font-ui);
+}
+
+/* Cards: the whole workspace when the card has no world, the lab panel's place when it has one. */
+.card-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--sp-8) var(--sp-4);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.card {
+  width: 100%;
+  max-width: var(--card-max);
+  padding-bottom: var(--pane-pad);
+}
+.card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: 0 var(--pane-pad);
+  outline: none;
+}
+.card-panel .card-body {
+  padding: 0;
+}
+.card-body > .card-prompt,
+.card-body > .choices,
+.card-body > .textarea,
+.card-body > .card-answer,
+.card-body > .rating,
+.card-body > .grades,
+.card-body > .report,
+.card-body > .explained {
+  align-self: stretch;
+  margin: 0;
+}
+.card-prompt {
+  font-size: var(--fs-lg);
+}
+.grades p {
+  margin: 0 0 var(--sp-2);
+  color: var(--text-muted);
+  font: var(--fs-sm) / var(--lh-snug) var(--font-ui);
+}
+.grades-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-1h);
+}
+.grade {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-0h);
+  padding: var(--sp-2) var(--sp-2h);
+  border: none;
+  border-radius: var(--r-ctl);
+  background: var(--ctl-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.grade:hover {
+  background: var(--ctl-bg-hover);
+}
+.grade .choice-key {
+  width: auto;
+}
+.grade-name {
+  font: var(--fw-semibold) var(--fs-base) / var(--lh-tight) var(--font-ui);
+}
+.grade-hint {
+  color: var(--text-muted);
+  font: var(--fs-xs) / var(--lh-tight) var(--font-ui);
+}
+
+/* The top bar: the brand goes home, the running session, the language of prose. */
+button.brand {
+  padding: var(--sp-1) var(--sp-1h);
+  border: none;
+  border-radius: var(--r-ctl);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+button.brand:hover {
+  background: var(--ghost-hover);
+}
+.session-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-1) 0 var(--sp-2h);
+  height: var(--ctl-h);
+  border-radius: var(--r-ctl);
+  background: var(--pane-bg);
+  font: var(--fs-sm) / var(--lh-1) var(--font-ui);
+  white-space: nowrap;
+}
+.session-label {
+  color: var(--text-muted);
+  font: var(--fw-semibold) var(--fs-xs) / var(--lh-1) var(--font-ui);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.session-pips {
+  display: inline-flex;
+  gap: var(--sp-0h);
+}
+.session-pip {
+  width: var(--size-pip);
+  height: var(--size-pip);
+  border-radius: var(--r-round);
+  background: var(--surface-3);
+}
+.session-pip.is-done {
+  background: var(--ok);
+}
+.session-pip.is-current {
+  background: var(--accent-solid);
+}
+.session-count,
+.session-left {
+  font-family: var(--font-code);
+  font-variant-numeric: tabular-nums;
+}
+.session-left {
+  color: var(--text-muted);
+}
+.sync-note {
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--warn-bg);
+  color: var(--warn);
+  font: var(--fw-semibold) var(--fs-xs) / var(--size-pill-line) var(--font-ui);
+}
+.lang-switch {
+  margin-right: var(--sp-1);
+}
+
+/* Your commands beside the reference solution, once the lab panel is wide enough for two columns. */
+@container labpanel (min-width: 620px) {
+  .versus {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* A view laid out afresh (its pane got a width, the filter changed) is drawn in place, not moved there. */
+.vcanvas.is-afresh * {
+  transition: none;
+}

@@ -1,4 +1,5 @@
-// The design tokens (docs/DESIGN.md): styles.css holds no literal value, every variable in use is
+// The design tokens (docs/DESIGN.md): the stylesheets of rules (styles.css, and learning.css for
+// the home screen and the content browser) hold no literal value, every variable in use is
 // defined, and the pairs of text and surface in use meet WCAG AA (4.5:1) in both themes.
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -8,7 +9,10 @@ import { describe, expect, it } from 'vitest';
 const dir = join(import.meta.dirname, '.');
 const strip = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, '');
 const tokensCss = strip(readFileSync(join(dir, 'tokens.css'), 'utf8'));
-const stylesCss = strip(readFileSync(join(dir, 'styles.css'), 'utf8'));
+/** The stylesheets that hold rules only. */
+const RULES = ['styles.css', 'learning.css'] as const;
+const rulesCss = RULES.map((f) => strip(readFileSync(join(dir, f), 'utf8')));
+const stylesCss = rulesCss.join('\n');
 
 interface Block {
   selector: string;
@@ -63,7 +67,7 @@ function contrast(a: Rgba, b: Rgba): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe('styles.css holds rules, tokens.css holds values', () => {
+describe('styles.css and learning.css hold rules, tokens.css holds values', () => {
   it('no literal color, size or duration in a rule', () => {
     const bad: string[] = [];
     for (const line of stylesCss.split('\n')) {
@@ -138,6 +142,9 @@ const PAIRS: [text: string, ...surface: string[]][] = [
     [`--state-${s}`, '--overlay-bg', `--state-${s}-bg`],
     ['--text', '--pane-bg', `--state-${s}-bg`],
   ]),
+  // The learning screens (learning.css): a chosen filter in the browser over the workspace.
+  ['--text', '--raised', '--accent-soft'],
+  ['--text', '--bg', '--accent-soft'],
 ];
 
 describe('text contrast meets WCAG AA', () => {

@@ -2,7 +2,7 @@
 // the page makes goes to the local server, and with the browser offline a lab still runs.
 
 import { expect, test } from '@playwright/test';
-import { check, run, waitForPrompt } from './workspace.ts';
+import { check, run, waitForPrompt, startFromBrowser } from './workspace.ts';
 
 test('every request stays on the local server, and the app runs offline once loaded', async ({ page, context, baseURL }) => {
   const origin = new URL(baseURL as string).origin;
@@ -12,9 +12,9 @@ test('every request stays on the local server, and the app runs offline once loa
     if (!u.startsWith(origin) && !u.startsWith('data:') && !u.startsWith('blob:')) foreign.push(u);
   });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Labs' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Today's session" })).toBeVisible();
   await context.setOffline(true);
-  await page.locator('.picker-item', { hasText: 'Last night' }).getByRole('button', { name: 'Start' }).click();
+  await startFromBrowser(page, 'Last night');
   await waitForPrompt(page);
   expect(await run(page, 'kubectl get deploy -A')).toMatch(/kube-system\s+coredns/);
   expect(await check(page)).toMatch(/passes/);

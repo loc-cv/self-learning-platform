@@ -275,6 +275,20 @@ export function ViewCanvas(props: ViewCanvasProps) {
     memory.current = emptyMemory();
     memoryKey.current = key;
   }
+  // A layout made afresh is drawn where it lies: only a change of the world moves things
+  // (docs/DESIGN.md §4), and a pane that got its width, or a new filter, is not one.
+  const [settled, setSettled] = useState(key);
+  useEffect(() => {
+    if (settled === key) return;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setSettled(key));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [key, settled]);
   const lay: Layout = useMemo(
     () => layout({ model, visible, width, facts: still, leaving: new Map([...leaving].map(([id, x]) => [id, x.e])) }, memory.current),
     // memoryKey changes reset the memory above; the layout depends on it through `width` and `filter`.
@@ -473,7 +487,7 @@ export function ViewCanvas(props: ViewCanvasProps) {
   };
 
   return (
-    <div ref={wrap} className={`vcanvas${still ? ' is-still' : ''}${reducedMotion ? ' motion-reduced' : ''}`} onKeyDown={still ? undefined : onKeyDown} style={still ? { height: stillH } : undefined}>
+    <div ref={wrap} className={`vcanvas${still ? ' is-still' : ''}${reducedMotion ? ' motion-reduced' : ''}${settled === key ? '' : ' is-afresh'}`} onKeyDown={still ? undefined : onKeyDown} style={still ? { height: stillH } : undefined}>
       <svg
         role={still ? 'img' : 'group'}
         aria-label={props.label}

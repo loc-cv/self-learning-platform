@@ -2,7 +2,7 @@
 // terminal until its view attaches (a replay fills terminals before they are drawn), and
 // request/response for lab actions and terminal opening.
 
-import type { FromWorker, LabAction, LabResult, LabState, ToWorker } from '../protocol.ts';
+import type { Clock, FromWorker, LabAction, LabResult, LabState, ToWorker } from '../protocol.ts';
 
 type Listener = (m: FromWorker) => void;
 
@@ -15,7 +15,8 @@ export interface EngineClient {
   /** Drops buffered output of terminals that no longer exist. */
   forget(tty: string): void;
   openTty(cols: number, rows: number): Promise<string>;
-  lab(action: LabAction): Promise<{ result: LabResult; state: LabState }>;
+  /** A lab action; `step` names a lesson's guided task. The clock is the attempt's time when it ran. */
+  lab(action: LabAction, step?: number): Promise<{ result: LabResult; state: LabState; clock: Clock }>;
   /** Called with every message as it arrives, before listeners: the latency probe uses it. */
   tap?: (m: FromWorker) => void;
 }
@@ -52,14 +53,14 @@ export function createEngineClient(worker: { postMessage(m: ToWorker): void; onm
         worker.postMessage({ type: 'tty.open', req: id, cols, rows });
       });
     },
-    lab(action) {
+    lab(action, step) {
       const id = ++req;
       return new Promise((ok) => {
         waiting.set(id, (m) => {
           const r = m as Extract<FromWorker, { type: 'lab.result' }>;
-          ok({ result: r.result, state: r.state });
+          ok({ result: r.result, state: r.state, clock: r.clock });
         });
-        worker.postMessage({ type: 'lab', req: id, action });
+        worker.postMessage(step === undefined ? { type: 'lab', req: id, action } : { type: 'lab', req: id, action, step });
       });
     },
   };

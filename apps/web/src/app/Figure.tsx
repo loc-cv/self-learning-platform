@@ -5,11 +5,11 @@
 //
 // Like the renderer it names no domain: what it draws comes from the rendered figure.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import type { Panel, RenderedBlock, RenderedFigure } from '@simlab/learn';
+import type { Panel, RenderedFigure } from '@simlab/learn';
 import { ViewCanvas, type CanvasMarks } from '../view/ViewCanvas.tsx';
-import { renderInline, renderMarkdown } from './markdown.ts';
+import { renderInline } from './markdown.ts';
 import { Button, Icon } from './ui.tsx';
 
 /** How long a replayed frame stays before the next (ms): long enough to read its caption. */
@@ -21,9 +21,16 @@ function marksOf(p: Panel): CanvasMarks {
   return { highlight: p.highlight, notes, changes: p.changes };
 }
 
-function Notes({ panels }: { panels: readonly Panel[] }) {
+/** The notes of some panels, each once. */
+function notesOf(panels: readonly Panel[]): Panel['notes'] {
   const seen = new Set<number>();
-  const notes = panels.flatMap((p) => p.notes).filter((n) => (seen.has(n.n) ? false : (seen.add(n.n), true)));
+  return panels.flatMap((p) => p.notes).filter((n) => (seen.has(n.n) ? false : (seen.add(n.n), true)));
+}
+
+/** `second`: the same panels with their texts in the other language, shown under each note. */
+function Notes({ panels, second }: { panels: readonly Panel[]; second?: readonly Panel[] | undefined }) {
+  const notes = notesOf(panels);
+  const other = second ? notesOf(second) : [];
   if (notes.length === 0) return null;
   return (
     <ol className="figure-notes">
@@ -32,7 +39,10 @@ function Notes({ panels }: { panels: readonly Panel[] }) {
           <span className="figure-note-n" aria-hidden={n.on.length === 0 ? undefined : true}>
             {n.on.length > 0 ? n.n : '·'}
           </span>
-          <span dangerouslySetInnerHTML={{ __html: renderInline(n.text) }} />
+          <span>
+            <span dangerouslySetInnerHTML={{ __html: renderInline(n.text) }} />
+            {other.find((o) => o.n === n.n && o.text !== n.text) ? <span className="figure-second" lang="vi" dangerouslySetInnerHTML={{ __html: renderInline(other.find((o) => o.n === n.n)?.text ?? '') }} /> : null}
+          </span>
           {n.divergence ? <span className="figure-divergence" title="Where the simulator is simpler than reality: docs/FIDELITY.md">{n.divergence}</span> : null}
         </li>
       ))}
@@ -73,7 +83,8 @@ function PanelView({ panel, label, reducedMotion }: { panel: Panel; label: strin
   );
 }
 
-function Scene({ figure, reducedMotion }: { figure: Extract<RenderedFigure, { kind: 'scene' }>; reducedMotion: boolean }) {
+function Scene({ figure, second, reducedMotion }: { figure: Extract<RenderedFigure, { kind: 'scene' }>; second?: RenderedFigure | undefined; reducedMotion: boolean }) {
+  const other = second?.kind === 'scene' ? second : undefined;
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const n = figure.frames.length;
@@ -129,14 +140,17 @@ function Scene({ figure, reducedMotion }: { figure: Extract<RenderedFigure, { ki
       </div>
       <p className="scene-caption" aria-live="polite">
         <span className="scene-caption-n">{i + 1}</span>
-        <span dangerouslySetInnerHTML={{ __html: renderInline(frame.caption) }} />
+        <span>
+          <span dangerouslySetInnerHTML={{ __html: renderInline(frame.caption) }} />
+          {other?.frames[i] && other.frames[i]?.caption !== frame.caption ? <span className="figure-second" lang="vi" dangerouslySetInnerHTML={{ __html: renderInline(other.frames[i]?.caption ?? '') }} /> : null}
+        </span>
       </p>
-      <Notes panels={[frame.panel]} />
+      <Notes panels={[frame.panel]} second={other?.frames[i] ? [other.frames[i].panel] : undefined} />
     </>
   );
 }
 
-function Body({ figure, reducedMotion }: { figure: RenderedFigure; reducedMotion: boolean }) {
+function Body({ figure, second, reducedMotion }: { figure: RenderedFigure; second?: RenderedFigure | undefined; reducedMotion: boolean }) {
   switch (figure.kind) {
     case 'compare':
       return (
@@ -146,40 +160,48 @@ function Body({ figure, reducedMotion }: { figure: RenderedFigure; reducedMotion
             <PanelView panel={figure.right} label={`${figure.right.title ?? ''}. ${figure.alt}`} reducedMotion={reducedMotion} />
           </div>
           <ChangeLegend panels={[figure.left, figure.right]} />
-          <Notes panels={[figure.left, figure.right]} />
+          <Notes panels={[figure.left, figure.right]} second={second?.kind === 'compare' ? [second.left, second.right] : undefined} />
         </>
       );
     case 'scene':
-      return <Scene figure={figure} reducedMotion={reducedMotion} />;
+      return <Scene figure={figure} second={second} reducedMotion={reducedMotion} />;
     default:
       return (
         <>
           <PanelView panel={figure.panel} label={figure.alt} reducedMotion={reducedMotion} />
-          <Notes panels={[figure.panel]} />
+          <Notes panels={[figure.panel]} second={second && 'panel' in second ? [second.panel] : undefined} />
         </>
       );
   }
 }
 
-export function Figure({ figure, reducedMotion, large }: { figure: RenderedFigure; reducedMotion: boolean; large?: boolean }) {
+/**
+ * `second` is the same figure with its texts in the other language (side by side): the drawing is
+ * `figure`'s, and each caption and note carries the other text under it.
+ */
+export function Figure({ figure, second, reducedMotion, large, badge }: { figure: RenderedFigure; second?: RenderedFigure | undefined; reducedMotion: boolean; large?: boolean; badge?: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <figure className={`figure figure-${figure.kind}${large ? ' is-large' : ''}`}>
       <figcaption className="figure-caption">
-        <span dangerouslySetInnerHTML={{ __html: renderInline(figure.caption) }} />
+        <span>
+          <span dangerouslySetInnerHTML={{ __html: renderInline(figure.caption) }} />
+          {second && second.caption !== figure.caption ? <span className="figure-second" lang="vi" dangerouslySetInnerHTML={{ __html: renderInline(second.caption) }} /> : null}
+          {badge}
+        </span>
         {large ? null : (
           <Button small variant="ghost" className="figure-expand" title="Show larger" aria-label="Show larger" onClick={() => setOpen(true)}>
             <Icon name="enlarge" />
           </Button>
         )}
       </figcaption>
-      <Body figure={figure} reducedMotion={reducedMotion} />
-      {open ? <FigureDialog figure={figure} reducedMotion={reducedMotion} close={() => setOpen(false)} /> : null}
+      <Body figure={figure} second={second} reducedMotion={reducedMotion} />
+      {open ? <FigureDialog figure={figure} second={second} reducedMotion={reducedMotion} close={() => setOpen(false)} /> : null}
     </figure>
   );
 }
 
-function FigureDialog({ figure, reducedMotion, close }: { figure: RenderedFigure; reducedMotion: boolean; close(): void }) {
+function FigureDialog({ figure, second, reducedMotion, close }: { figure: RenderedFigure; second?: RenderedFigure | undefined; reducedMotion: boolean; close(): void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.focus();
@@ -199,29 +221,9 @@ function FigureDialog({ figure, reducedMotion, close }: { figure: RenderedFigure
         <Button small variant="ghost" className="figure-dialog-close" title="Close (Escape)" aria-label="Close" onClick={close}>
           <Icon name="close" />
         </Button>
-        <Figure figure={figure} reducedMotion={reducedMotion} large />
+        <Figure figure={figure} second={second} reducedMotion={reducedMotion} large />
       </div>
     </div>,
     document.body,
-  );
-}
-
-/** Prose and figures in order; a figure that could not be built says so in its place. */
-export function Blocks({ blocks, reducedMotion }: { blocks: readonly RenderedBlock[]; reducedMotion: boolean }) {
-  const html = useMemo(() => blocks.map((b) => ('text' in b ? renderMarkdown(b.text) : '')), [blocks]);
-  return (
-    <>
-      {blocks.map((b, i) => {
-        if ('text' in b) return <div key={i} className="markdown" dangerouslySetInnerHTML={{ __html: html[i] ?? '' }} />;
-        if ('figure' in b) return <Figure key={i} figure={b.figure} reducedMotion={reducedMotion} />;
-        return (
-          <figure key={i} className="figure is-failed">
-            <figcaption className="figure-caption">{b.failed.caption}</figcaption>
-            <p>This figure could not be built: {b.failed.problems.join('; ')}</p>
-            <p className="figure-alt">{b.failed.alt}</p>
-          </figure>
-        );
-      })}
-    </>
   );
 }

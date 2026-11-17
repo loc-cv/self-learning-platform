@@ -458,7 +458,9 @@ type Input =
 - `createRecorder(kernel, header)` delivers and logs inputs and takes checkpoints;
   `replay(log, boot)` rebuilds the world and reports the first checkpoint that does not match.
 - Only inputs change the world from outside. `learn.action` inputs do not change it at all; they
-  are logged so that the debrief can place them on the timeline.
+  are logged so that the debrief can place them on the timeline. Since phase 12 they also carry what
+  the learner says about the attempt (`action: note`: a confidence, the explanation, a lesson's
+  prediction), so a resumed attempt has it again.
 - Speed changes, pauses and skips are not inputs. Their whole effect is in the stamps.
 - The log is appended to as the session runs and stored through the server under `data/`.
 - **Resume** replays the log on a fresh world. **Reset** starts a new log from the baseline.

@@ -2,7 +2,7 @@
 // editor keys, and keys that must never reach the shell by accident.
 
 import { expect, test } from '@playwright/test';
-import { openLab, run, screen, waitForPrompt } from './workspace.ts';
+import { openLab, run, screen, waitForPrompt, pressCheck } from './workspace.ts';
 
 test('copy the selection and paste into the terminal', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -83,6 +83,12 @@ test('plain editor keys: Ctrl+S saves, Ctrl+X closes, the choice is remembered',
   await page.reload();
   await waitForPrompt(page);
   expect(await page.evaluate(() => localStorage.getItem('simlab.settings.v1'))).toContain('"editorKeys":"plain"');
+  // The server keeps the settings too, for a browser that has none of its own.
+  await expect.poll(async () => ((await (await page.request.get('/api/settings')).json()) as { editorKeys?: string }).editorKeys).toBe('plain');
+  // Back to vim keys, so the tests after this one start from the defaults.
+  await page.locator('.topbar-trigger[title="Settings"]').click();
+  await page.getByRole('radio', { name: 'Vim' }).click();
+  await expect.poll(async () => ((await (await page.request.get('/api/settings')).json()) as { editorKeys?: string }).editorKeys).toBe('vim');
 });
 
 // FEEDBACK 2026-11-17 (Chrome on Windows): Ctrl+Shift+C opened DevTools, Ctrl+W closed the tab,
@@ -253,15 +259,15 @@ test('the page itself never scrolls: showing the solutions moves only the lab pa
     // After the app, not inside it: inside, it would be a flex item that squeezes the workspace away.
     document.body.append(tall);
   });
-  await page.getByRole('button', { name: /^Check/ }).click();
+  await pressCheck(page);
   await expect(page.locator('.report .verdict')).toBeVisible();
   // The check's report is taller than its tab here; a second check brings it back to its top.
   await page.locator('.lab-scroll.is-active').evaluate((el) => el.scrollTo(0, 400));
-  await page.getByRole('button', { name: /^Check/ }).click();
+  await pressCheck(page);
   await expect.poll(() => page.locator('.lab-scroll.is-active').evaluate((el) => el.scrollTop)).toBe(0);
   await page.locator('.lab-scroll.is-active').evaluate((el) => el.scrollTo(0, 400));
   await page.getByRole('tab', { name: /^Solutions/ }).click();
-  await page.getByRole('button', { name: 'Show solutions' }).click();
+  await page.getByRole('button', { name: 'Give up and see the solution' }).click();
   await expect(page.locator('.solutions')).toBeVisible();
   const moved = await page.evaluate(() => {
     // A script that tries to scroll the page, as scrollIntoView and focus do.

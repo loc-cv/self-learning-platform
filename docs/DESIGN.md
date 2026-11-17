@@ -48,7 +48,7 @@ them stays quiet.
 | `--fs-lg` | 15px | item titles in lists, headings in prose and popovers |
 | `--fs-xl` | 18px | pane titles (the lab's title) |
 | `--fs-2xl` | 24px | page titles (the lab list) |
-| `--fs-score` | 26px | the one big number of a pane (the check's score; a mastery figure in phase 12) |
+| `--fs-score` | 26px | the one big number of a pane (the check's score, a count on the home screen) |
 
 - **Faces.** `--font-ui` is IBM Plex Sans, bundled (`apps/web/src/app/fonts.ts`, weights 400, 500,
   600, every subset including Vietnamese; D-117, kept by D-132), so it looks the same on Windows
@@ -296,7 +296,7 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
   The tabs share the strip's width; in a narrow strip they drop their icons, then the strip
   scrolls sideways, so it holds any number of tabs. A tab can carry an icon, a badge (what it
   holds: a score, a count, with a spoken form) and a dot when something arrived since it was last
-  open. Phase 12's lesson steps are more tabs of this strip, not a second mechanism.
+  open. A lesson's pages are tabs of this strip (below), not a second mechanism.
 - **Lab panel**: the lab's kicker, title and id; the tab strip with **Ticket, Check, Hints,
   Debrief, Solutions**; one tab panel at a time, each with its own scroller, so every tab keeps
   its scroll position; the actions (Check, Hint, Reset) under every tab. An action opens the tab
@@ -320,9 +320,48 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
   a status bar below, no borders.
 - **Popovers, menus and dialogs**: `--overlay-bg` with `--overlay-blur` and `--elev-3`; a dialog is
   `--raised` over `--scrim`.
-- **The lab list** (the current home until phase 12): a page title in `--fs-2xl`, items as cards on
-  the floor (`--pane-bg`, `--r-lg`); the item in progress has an accent ring.
-
-Phase 12's home and learning screens are built from the same tokens: the type scale and states
-already cover mastery, due counts and scores (a meter uses the accent or a state color; a count
-uses `--font-code` with tabular figures; the one big number of a pane is `--fs-score`).
+- **Home** (`Home.tsx`, phase 12): a page on the floor that scrolls inside the workspace, two
+  columns from 960px of width. Left: **Today's session** (the one primary button, the time box as
+  a segmented control, due and new counts in `--font-code`, what the session holds as a bar of
+  segments against the time box and a numbered list), then mastery **by curriculum domain** (per
+  exam, a strip whose segments are the domains' shares of the exam, a meter per domain) and **by
+  skill** (a meter and a status per skill). Right: unfinished attempts, the streak with 28 days of
+  activity as cells, reviews due over the next 14 days as bars, recent mistakes. Mastery, due
+  counts and trends are drawn; every drawing has a text alternative. A status is a glyph and a
+  word in the state's color with no tint behind it (the tints fail AA on a card in the light
+  theme): mastered is the healthy dot, learning the progressing arc, due the degraded triangle,
+  new a ring, locked a lock. Quantities that are not states (the activity cells, the session
+  bar's segments) use accent-hued tokens (`--heat-*`, `--seg-*`). A first run says what will
+  happen instead of showing zeros.
+- **Content browser** (`Browser.tsx`): every item as a card with its kind, difficulty, target
+  time, skills and state; filters by track, skill, curriculum domain, kind and state. It is a page
+  from home and a sheet over the workspace (`Ctrl+Shift+O`), where Escape closes it.
+- **Top bar, while a session runs**: the session's pips (done, current, ahead), its count, the
+  minutes left of the time box, **Next** once the item is finished or given up (**Skip** before),
+  and **Stop**. The brand goes home. The language of prose is a segmented control: EN, VI, EN·VI.
+- **Confidence**: Check on an unsolved lab first shows five buttons in the action area, 1
+  (guessing) to 5 (certain); the keyboard is in it, a digit answers, Enter skips, Escape cancels.
+- **Giving up**: the Solutions tab, and the Debrief tab before the lab is solved, say that
+  opening them is giving up, on the warning tint; the kicker then carries "gave up".
+- **Debrief**: after a solve, first a text area for the root cause in the learner's words. Then,
+  in this order: the debrief's figures, the checks, "Your commands" beside "Reference solution"
+  (two columns from 620px of panel width, stacked below), the learner's explanation as a quote,
+  the prose, the rating, the button that moves on.
+- **Rating**: the grade's name in its state color (Again failed, Hard degraded, Good and Easy
+  healthy) with the reason in words, the four grades as a segmented control (one click replaces
+  the grade), and the next review as "in 5 days" with the date in `--font-code`.
+- **Lesson**: the lab panel with the lesson's pages as tabs, numbered, each with the icon of its
+  gate (a prediction, a task, reading), a check mark once done, a lock while the page before it
+  is open. A prediction and a guided task are cards on `--surface-2` with an accent kicker;
+  choices are full-width buttons with a letter, chosen in `--accent-soft`, and after locking in
+  the right one carries ✓ on the healthy tint and a wrong pick ✗ on the failed tint.
+- **Card**: with no world, one pane centered on the floor (`--card-max`), the prompt a step
+  larger than prose; with a world, the same body in the lab panel's place. Digits pick a choice
+  and, after the reveal of a self-graded card, the grade.
+- **Languages**: side by side, each text unit is a row of two cells, English left, Vietnamese
+  right behind a 2px tone line, so the two stay aligned whatever their lengths. A unit with no
+  current Vietnamese carries a pill: "EN only", or "VI outdated" on the warning tint. A figure is
+  drawn once; its captions and notes carry the other language under them, muted. An item with no
+  sidecar says "English only" once, in its kicker.
+- **A view laid out afresh is drawn in place** (D-162): no move transition when a pane gets its
+  width or the filter changes.

@@ -6,7 +6,7 @@
 // least every TICK ms otherwise. Sleeping longer while nothing is due changes nothing anyone can
 // see: every input first lets virtual time catch up with the wall clock.
 
-import { ITEMS } from '../content.ts';
+import { ITEMS, resolutionOf } from '../content.ts';
 import type { FromWorker, ToWorker } from '../protocol.ts';
 import { createEngine } from './session.ts';
 
@@ -14,7 +14,7 @@ import { createEngine } from './session.ts';
 const TICK = 250;
 
 const scope = self as unknown as { postMessage(m: FromWorker): void; onmessage: ((e: MessageEvent<ToWorker>) => void) | null };
-const engine = createEngine(ITEMS, (m) => scope.postMessage(m), () => performance.now());
+const engine = createEngine(ITEMS, (m) => scope.postMessage(m), () => performance.now(), resolutionOf);
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 const schedule = (): void => {

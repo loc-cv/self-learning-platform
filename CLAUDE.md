@@ -44,7 +44,9 @@ npm start                     # build apps/web, then serve it and the API (progr
                               # server options --port N, --data DIR
 npm run e2e                   # Playwright: build, serve, smoke test and exit-criteria tests in Chromium
                               # (not part of the gate, D-110); `npm run e2e -- <file|-g name>` for one;
-                              # screens.spec.ts writes screenshots of every screen to .tsbuild/playwright/screens/
+                              # screens.spec.ts writes screenshots of every screen to .tsbuild/playwright/screens/;
+                              # the build bundles the fixture pack (SIMLAB_FIXTURES=1, D-161) and a second
+                              # server on 4320 starts from an empty data directory
 npm run bench:web             # in-browser latency of read commands and keystrokes (p50/p95), X-ray closed, docked and floating
 npm run play -- --topology kubeadm-1cp-2w [--seed N]  # sit in a simulated machine from this terminal (Ctrl-] leaves);
                                                   # records to data/play/, $EDITOR answers vim/nano
@@ -127,16 +129,22 @@ packages/learn     content model, scenario runner, checks, grader, skills, FSRS,
                    src/testing.ts a counter plugin and fixtures for tests)
 packages/content   content packs (YAML + Markdown) and the loader: <pack>/pack.yaml, <pack>/<area>/<id>.yaml,
                    <id>.vi.yaml sidecars; fixtures/learning a fixture pack the apps do not load
-apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side, tested in
-                   Node), src/app (App, Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
-                   LabPanel (the lab's tabs), Figure (figures in the ticket and debrief), TopBar, ItemPicker,
-                   XRay (docked or floating; floating.ts its geometry), ui.tsx (buttons, the tab strip, the
-                   select, icons), storage, shortcuts and fullscreen, the probe for tests,
-                   tokens.css the design tokens of docs/DESIGN.md and styles.css the rules that use them
-                   (no literal values; tokens.test.ts also measures text contrast), fonts.ts the bundled font),
+apps/web           Vite + React workspace: src/engine (worker.ts and session.ts, the engine side for labs,
+                   lessons and cards, bilingual.ts text in two languages; tested in Node), src/app (App,
+                   Home and Browser (today's session, mastery, the content browser; homeModel.ts and
+                   charts.tsx), Terminal on xterm.js, EditorOverlay on CodeMirror with vim keys,
+                   LabPanel (the lab's tabs, confidence, the debrief), LessonPanel, CardView, parts.tsx
+                   (report, rating, next), Prose (EN, VI, side by side), Figure, TopBar (the session bar),
+                   progress.ts (the page's copy of the progress log and its outbox), daily.ts (the session),
+                   flow.ts (attempt → progress events), attempts.ts (the attempt's log, to storage and the
+                   server), XRay (docked or floating; floating.ts its geometry), ui.tsx (buttons, the tab
+                   strip, the select, icons), storage, shortcuts and fullscreen, the probe for tests,
+                   tokens.css the design tokens of docs/DESIGN.md, styles.css and learning.css the rules
+                   that use them (no literal values; tokens.test.ts also measures text contrast), fonts.ts),
                    src/view (the renderer: layout.ts, filter.ts, ViewCanvas.tsx; no domain names),
-                   src/protocol.ts (page ↔ worker messages), vite.config.ts (bundles the content packs,
-                   D-103), public/ (web app manifest and icons, D-113), e2e/ (Playwright)
+                   src/protocol.ts (page ↔ worker messages), src/content.ts (items, catalog, sidecars,
+                   curriculum), vite.config.ts (bundles the content packs, their sidecars and the
+                   curricula, D-103), public/ (web app manifest and icons, D-113), e2e/ (Playwright)
 apps/server        the local server: built app or Vite middleware, and the API over plain files under data/
                    (src/store.ts appends and atomic writes, src/api.ts progress, attempts, settings, gaps)
 apps/cli

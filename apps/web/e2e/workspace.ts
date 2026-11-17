@@ -69,13 +69,39 @@ export const labTab = (page: Page, name: string) => page.getByRole('tab', { name
 /** Opens the debrief before the lab is solved: its tab asks first. */
 export async function openDebrief(page: Page): Promise<void> {
   await labTab(page, 'Debrief').click();
-  await page.getByRole('button', { name: 'Read it anyway' }).click();
+  await page.getByRole('button', { name: 'Give up and read it' }).click();
   await expect(page.locator('.debrief .figure').first()).toBeVisible();
+}
+
+/**
+ * Presses Check. Until the lab is solved the panel first asks how sure the learner is: answered
+ * with `confidence`, or skipped.
+ */
+export async function pressCheck(page: Page, confidence?: number): Promise<void> {
+  await page.locator('.lab-actions').getByRole('button', { name: /^Check/ }).click();
+  const prompt = page.locator('.confidence');
+  await page.waitForTimeout(50);
+  if (!(await prompt.isVisible())) return;
+  if (confidence === undefined) await prompt.getByRole('button', { name: 'Skip' }).click();
+  else await prompt.getByRole('button', { name: new RegExp(`^${confidence}:`) }).click();
+}
+
+/** Opens the content browser from wherever the page is. */
+export async function openBrowser(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^Browse/ }).click();
+  await expect(page.getByRole('heading', { name: 'All items' })).toBeVisible();
+}
+
+/** Starts an item from the content browser by a part of its title. */
+export async function startFromBrowser(page: Page, title: string): Promise<void> {
+  await openBrowser(page);
+  // An earlier test may have left the item unfinished: then a new variant is what starts afresh.
+  await page.locator('.browser-list > li', { hasText: title }).getByRole('button', { name: /^(Start|New variant)$/ }).click();
 }
 
 /** Runs the check from the lab panel and returns the verdict text. */
 export async function check(page: Page): Promise<string> {
-  await page.getByRole('button', { name: /^Check/ }).click();
+  await pressCheck(page);
   const verdict = page.locator('.report .verdict');
   await expect(verdict).toBeVisible();
   return (await verdict.textContent()) ?? '';

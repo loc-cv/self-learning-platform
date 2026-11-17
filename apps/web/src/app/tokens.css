@@ -102,6 +102,16 @@
   /* The cursor while a floating panel is dragged; the drag sets it (XRay.tsx). */
   --drag-cursor: grabbing;
 
+  /* Learning screens of the workspace (phase 12): the card page, the debrief's two command lists,
+     the session's pips, a choice's key, a text area. */
+  --card-max: 720px;
+  --versus-max-h: 320px;
+  --versus-two: 520px;
+  --size-pip: 8px;
+  --size-choice-key: 22px;
+  --textarea-min: 64px;
+  --bi-two: 420px;
+
   /* Layers. */
   --z-splitter: 2;
   --z-editor: 5;
@@ -150,6 +160,28 @@
   --vfs-sm: 11px;
   --vfs-base: 12px;
   --vfs-title: 13px;
+
+  /* The home screen and the content browser (Home.tsx, Browser.tsx, learning.css; phase 12). */
+  --home-max: 1280px;
+  --home-side: 360px;
+  --domain-mastery-w: 45%;
+  --skill-col-min: 250px;
+  --card-min: 420px;
+  --browser-max: 1180px;
+  --size-glyph: 10px;
+  --size-swatch: 8px;
+  --size-seqbar: 12px;
+  --size-seq-n: 20px;
+  --size-examstrip: 30px;
+  --size-forecast: 72px;
+  --size-forecast-label: 14px;
+  --size-heat: 18px;
+  --size-heat-legend: 10px;
+  --size-row-count: 28px;
+  --size-kind: 64px;
+  --size-domain-weight: 36px;
+  --size-domain-num: 38px;
+  --size-meter-min: 60px;
 }
 
 /* ---------- the look's shape: type scale, radii, heights ---------- */
@@ -252,6 +284,16 @@
   --syn-keyword: #c7a2e0;
   --syn-punct: #8f95a3;
   --syn-type: #85cfd0;
+
+  /* Learning screens (phase 12): the activity strip's four strengths (a share of the time box)
+     and the session bar's segments. Quantities, not states: they use the accent's hue. */
+  --heat-1: rgba(143, 151, 245, 0.22);
+  --heat-2: rgba(143, 151, 245, 0.42);
+  --heat-3: rgba(143, 151, 245, 0.68);
+  --heat-4: #8f97f5;
+  --seg-review: #5e6ad2;
+  --seg-new: rgba(143, 151, 245, 0.34);
+  --seg-spent: rgba(255, 255, 255, 0.16);
   color-scheme: dark;
 }
 
@@ -319,6 +361,15 @@
   --syn-keyword: #8a3fa0;
   --syn-punct: #6a707c;
   --syn-type: #1f7a80;
+
+  /* Learning screens (phase 12): the activity strip's strengths and the session bar's segments. */
+  --heat-1: rgba(70, 80, 192, 0.16);
+  --heat-2: rgba(70, 80, 192, 0.34);
+  --heat-3: rgba(70, 80, 192, 0.6);
+  --heat-4: #4650c0;
+  --seg-review: #5560cf;
+  --seg-new: rgba(85, 96, 207, 0.3);
+  --seg-spent: rgba(15, 20, 40, 0.16);
   color-scheme: light;
 }
 

@@ -8,7 +8,7 @@
 // Chords the browser never gives to a page in an ordinary tab (Ctrl+W, Ctrl+T, Ctrl+N) cannot be
 // shortcuts at all; `isBrowserChord` is for the windows where the page does get them (D-113).
 
-export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'prevTab' | 'nextTab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy' | 'fullscreen' | 'xray' | 'prevLabTab' | 'nextLabTab' | 'grabXray';
+export type Shortcut = 'check' | 'hint' | 'newTerminal' | 'closeTerminal' | 'tab' | 'prevTab' | 'nextTab' | 'panel' | 'pause' | 'labs' | 'help' | 'copy' | 'fullscreen' | 'xray' | 'prevLabTab' | 'nextLabTab' | 'grabXray' | 'home' | 'next';
 
 export interface ShortcutInfo {
   id: Shortcut;
@@ -17,18 +17,20 @@ export interface ShortcutInfo {
 }
 
 export const SHORTCUTS: ShortcutInfo[] = [
-  { id: 'check', keys: 'Ctrl+Shift+Enter', what: 'Check the lab' },
+  { id: 'check', keys: 'Ctrl+Shift+Enter', what: 'Check: the lab (after the confidence prompt), the lesson\'s task, the card' },
   { id: 'hint', keys: 'Ctrl+Shift+H', what: 'Show the next hint' },
   { id: 'newTerminal', keys: 'Ctrl+Shift+E', what: 'Open another terminal' },
   { id: 'closeTerminal', keys: 'Ctrl+Shift+X', what: 'Close this terminal' },
   { id: 'tab', keys: 'Ctrl+Shift+1…9', what: 'Go to terminal 1…9' },
   { id: 'prevTab', keys: 'Ctrl+Shift+PgUp / PgDn', what: 'Go to the previous / next terminal' },
   { id: 'panel', keys: 'Ctrl+Shift+L', what: 'Show or hide the lab panel' },
-  { id: 'nextLabTab', keys: 'Ctrl+Shift+, / .', what: 'Go to the previous / next tab of the lab panel (Esc returns to the terminal)' },
+  { id: 'home', keys: 'Ctrl+Shift+D', what: 'Go to the home screen (an unfinished attempt stays open)' },
+  { id: 'next', keys: 'Ctrl+Shift+K', what: 'In a session: the next item, or skip this one' },
+  { id: 'nextLabTab', keys: 'Ctrl+Shift+, / .', what: 'Go to the previous / next tab of the lab panel, or step of a lesson (Esc returns to the terminal)' },
   { id: 'xray', keys: 'Ctrl+Shift+Y', what: 'Open or close the X-ray (counts as help)' },
   { id: 'grabXray', keys: 'Ctrl+Shift+G', what: 'Floating X-ray: take its move handle (arrows move, Shift+arrows resize, Esc returns)' },
   { id: 'pause', keys: 'Ctrl+Shift+Space', what: 'Pause or resume time' },
-  { id: 'labs', keys: 'Ctrl+Shift+O', what: 'Open the lab list' },
+  { id: 'labs', keys: 'Ctrl+Shift+O', what: 'Browse all content' },
   { id: 'copy', keys: 'Ctrl+Shift+C / V', what: 'Copy the selection / paste' },
   { id: 'fullscreen', keys: 'Ctrl+Shift+F', what: 'Full screen: every key reaches the shell' },
   { id: 'help', keys: 'Ctrl+Shift+?', what: 'Show these shortcuts' },
@@ -63,6 +65,10 @@ export function matchShortcut(e: Pick<KeyboardEvent, 'ctrlKey' | 'shiftKey' | 'a
       return { id: 'pause' };
     case 'KeyO':
       return { id: 'labs' };
+    case 'KeyD':
+      return { id: 'home' };
+    case 'KeyK':
+      return { id: 'next' };
     case 'KeyC':
       return { id: 'copy' };
     case 'KeyF':

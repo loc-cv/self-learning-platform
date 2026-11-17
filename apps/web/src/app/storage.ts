@@ -1,6 +1,7 @@
 // Browser storage: settings, and each item's attempt in progress so a reload resumes it by
-// replay (docs/ARCHITECTURE.md §2.8). Durable storage through the server comes in phase 11; until
-// then a private window or cleared site data loses the attempt, and every access is guarded.
+// replay (docs/ARCHITECTURE.md §2.8). It is a cache: the server holds the attempt's log and the
+// settings too (attempts.ts, docs/LEARNING_MODEL.md §10), so a private window or cleared site
+// data loses nothing that reached the server. Every access is guarded.
 
 import type { StoredAttempt } from '../protocol.ts';
 import type { Rect } from './floating.ts';
@@ -21,9 +22,13 @@ export interface Settings {
   xrayFloat?: Rect;
   /** Animation of change in views: as the system asks (prefers-reduced-motion), or reduced. */
   motion: 'system' | 'reduced';
+  /** The language of prose: English, Vietnamese, or both side by side. Terminal output is never translated. */
+  lang: Lang;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, xrayMode: 'docked', motion: 'system' };
+export type Lang = 'en' | 'vi' | 'both';
+
+export const DEFAULT_SETTINGS: Settings = { theme: 'dark', editorKeys: 'vim', panelWidth: 440, panelOpen: true, fontSize: 14, xrayWidth: 520, xrayMode: 'docked', motion: 'system', lang: 'en' };
 
 const SETTINGS = 'simlab.settings.v1';
 const ACTIVE = 'simlab.active.v1';
@@ -76,6 +81,8 @@ export function createStore(kv: KeyValue | undefined = browserStorage()) {
       return { ...DEFAULT_SETTINGS, ...(typeof s === 'object' && s !== null ? (s as Partial<Settings>) : {}) };
     },
     saveSettings: (s: Settings): boolean => write(SETTINGS, s),
+    /** Whether this browser has settings of its own (otherwise the server's are taken). */
+    hasSettings: (): boolean => read(SETTINGS) !== undefined,
     active(): string | undefined {
       const a = read(ACTIVE);
       return typeof a === 'string' ? a : undefined;

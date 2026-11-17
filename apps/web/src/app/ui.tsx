@@ -154,6 +154,8 @@ export interface TabItem<T extends string = string> {
   icon?: string;
   /** Something arrived in this tab since it was last open. */
   fresh?: boolean;
+  /** The tab's spoken name, when its label alone says too little (a lesson's step shows only its number). */
+  name?: string;
 }
 
 /** The DOM ids that tie a tab to its panel. */
@@ -188,7 +190,7 @@ export function TabStrip<T extends string>({ tabs, active, onSelect, label, pref
   return (
     <div className="tabstrip" role="tablist" aria-label={label} ref={strip} onKeyDown={key}>
       {tabs.map((t) => (
-        <button key={t.id} type="button" role="tab" id={tabDomId(prefix, t.id)} aria-selected={t.id === active} aria-controls={panelDomId(prefix, t.id)} tabIndex={t.id === active ? 0 : -1} className={`tabstrip-tab${t.id === active ? ' is-active' : ''}${t.tone ? ` is-${t.tone}` : ''}`} onMouseDown={(e) => e.preventDefault()} onClick={() => onSelect(t.id)}>
+        <button key={t.id} type="button" role="tab" id={tabDomId(prefix, t.id)} aria-selected={t.id === active} aria-controls={panelDomId(prefix, t.id)} aria-label={t.name} tabIndex={t.id === active ? 0 : -1} className={`tabstrip-tab${t.id === active ? ' is-active' : ''}${t.tone ? ` is-${t.tone}` : ''}`} onMouseDown={(e) => e.preventDefault()} onClick={() => onSelect(t.id)}>
           {t.icon ? <Icon name={t.icon} size={13} /> : null}
           <span className="tabstrip-label">{t.label}</span>
           {t.badge !== undefined ? (
@@ -288,6 +290,34 @@ export function Select<T extends string>({ value, options, onChange, label, clas
           ))}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A segmented control after the ARIA radio group pattern: one tab stop (the chosen option), the
+ * arrow keys move and choose, Home and End go to the ends.
+ */
+export function Segmented<T extends string | number>({ value, options, onChange, label, className }: { value: T; options: { value: T; label: string; title?: string }[]; onChange(v: T): void; label: string; className?: string }) {
+  const root = useRef<HTMLDivElement>(null);
+  const key = (e: ReactKeyboardEvent<HTMLDivElement>): void => {
+    const at = Math.max(0, options.findIndex((o) => o.value === value));
+    const n = options.length;
+    const to = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? (at + 1) % n : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? (at - 1 + n) % n : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : -1;
+    const next = options[to];
+    if (!next) return;
+    e.preventDefault();
+    if (next.value !== value) onChange(next.value);
+    root.current?.querySelectorAll<HTMLElement>('[role="radio"]')[to]?.focus();
+  };
+  const chosen = options.some((o) => o.value === value);
+  return (
+    <div className={`segmented${className ? ` ${className}` : ''}`} role="radiogroup" aria-label={label} ref={root} onKeyDown={key}>
+      {options.map((o, i) => (
+        <button key={String(o.value)} type="button" role="radio" aria-checked={o.value === value} tabIndex={o.value === value || (!chosen && i === 0) ? 0 : -1} title={o.title} className={o.value === value ? 'is-on' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => o.value !== value && onChange(o.value)}>
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }

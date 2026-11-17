@@ -50,7 +50,7 @@ test('the chords the browser keeps in a tab', () => {
 });
 
 test('every shortcut the help lists is one the matcher knows', () => {
-  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'KeyY', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash', 'Comma', 'Period', 'KeyG'];
+  const codes = ['Enter', 'KeyH', 'KeyE', 'KeyX', 'Digit1', 'PageUp', 'PageDown', 'KeyL', 'KeyY', 'Space', 'KeyO', 'KeyC', 'KeyF', 'Slash', 'Comma', 'Period', 'KeyG', 'KeyD', 'KeyK'];
   const matched = new Set(codes.map((c) => matchShortcut(key(c))?.id));
   // PageDown is listed on PageUp's line, the comma on the period's.
   for (const s of SHORTCUTS) expect(matched.has(s.id), s.id).toBe(true);

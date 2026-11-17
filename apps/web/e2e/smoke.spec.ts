@@ -1,12 +1,12 @@
 // The phase 10 smoke test: open a lab from the list, type a command, run the check, see a result.
 
 import { expect, test } from '@playwright/test';
-import { check, run, waitForPrompt } from './workspace.ts';
+import { check, run, waitForPrompt, startFromBrowser } from './workspace.ts';
 
 test('open a lab, type a command, check it', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Labs' })).toBeVisible();
-  await page.locator('.picker-item', { hasText: 'A new Deployment whose Pods never start' }).getByRole('button', { name: 'Start' }).click();
+  await expect(page.getByRole('heading', { name: "Today's session" })).toBeVisible();
+  await startFromBrowser(page, 'A new Deployment whose Pods never start');
   await waitForPrompt(page);
   const out = await run(page, 'kubectl get pods -A');
   expect(out).toMatch(/NAMESPACE\s+NAME\s+READY\s+STATUS/);

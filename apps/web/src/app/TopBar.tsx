@@ -5,7 +5,8 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import type { Clock } from '../protocol.ts';
 import type { GapEntry, SinkState } from './gaps.ts';
 import { SHORTCUTS } from './shortcuts.ts';
-import type { Settings } from './storage.ts';
+import type { SyncState } from './progress.ts';
+import type { Lang, Settings } from './storage.ts';
 import { Button, formatElapsed, Icon } from './ui.tsx';
 
 export type Popover = 'gaps' | 'settings' | 'help' | undefined;
@@ -26,9 +27,36 @@ interface Props {
   xrayOpen?: boolean;
   toggleXray(): void;
   openLabs(): void;
+  home(): void;
+  atHome: boolean;
+  /** An item with a terminal is on screen: the panel toggle makes sense. */
+  inWorkspace: boolean;
+  /** Whether the progress log reaches the server. */
+  sync: SyncState;
+  /** The daily session, while it runs. */
+  session?: SessionBar;
   fullscreen: boolean;
   toggleFullscreen(): void;
 }
+
+export interface SessionBar {
+  /** Items the session went through, and how many it holds with the ones ahead. */
+  done: number;
+  total: number;
+  /** Minutes of today's time box not yet spent. */
+  minutesLeft: number;
+  /** The item on screen is finished or given up: the next one can open. */
+  over: boolean;
+  next(): void;
+  skip(): void;
+  stop(): void;
+}
+
+const LANGS: { value: Lang; label: string; title: string }[] = [
+  { value: 'en', label: 'EN', title: 'Prose in English' },
+  { value: 'vi', label: 'VI', title: 'Prose in Vietnamese where it is translated' },
+  { value: 'both', label: 'EN·VI', title: 'English and Vietnamese side by side' },
+];
 
 function Pop({ children, onClose, label }: { children: ReactNode; onClose(): void; label: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -75,7 +103,7 @@ export function TopBar(p: Props) {
   const fresh = p.gaps.filter((g) => !g.replayed).length;
   return (
     <header className="topbar">
-      <div className="brand" aria-label="Simlab">
+      <button type="button" className="brand" aria-label="Simlab: home" title="Home (Ctrl+Shift+D)" aria-current={p.atHome ? 'page' : undefined} onMouseDown={(e) => e.preventDefault()} onClick={p.home}>
         <span className="brand-mark">
           <svg width="16" height="16" viewBox="4 4 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 11l6 5-6 5" />
@@ -83,14 +111,45 @@ export function TopBar(p: Props) {
           </svg>
         </span>
         <span>simlab</span>
-      </div>
-      <Button variant="ghost" small className="topbar-trigger" shortcut="Ctrl+Shift+L" title={p.panelOpen ? 'Hide the lab panel' : 'Show the lab panel'} aria-pressed={p.panelOpen} onClick={p.togglePanel}>
-        <Icon name="panel" />
-      </Button>
-      <Button variant="ghost" small shortcut="Ctrl+Shift+O" title="All labs" onClick={p.openLabs}>
+      </button>
+      {p.inWorkspace ? (
+        <Button variant="ghost" small className="topbar-trigger" shortcut="Ctrl+Shift+L" title={p.panelOpen ? 'Hide the lab panel' : 'Show the lab panel'} aria-pressed={p.panelOpen} onClick={p.togglePanel}>
+          <Icon name="panel" />
+        </Button>
+      ) : null}
+      <Button variant="ghost" small shortcut="Ctrl+Shift+O" title="Browse all content" onClick={p.openLabs}>
         <Icon name="list" />
-        Labs
+        Browse
       </Button>
+      {p.session ? (
+        <div className="session-bar" role="group" aria-label="Today's session">
+          <span className="session-label">Session</span>
+          <span className="session-pips" role="img" aria-label={`Item ${Math.min(p.session.done + 1, p.session.total)} of ${p.session.total}`}>
+            {Array.from({ length: p.session.total }, (_, i) => (
+              <span key={i} className={`session-pip${i < p.session!.done ? ' is-done' : i === p.session!.done ? ' is-current' : ''}`} />
+            ))}
+          </span>
+          <span className="session-count">
+            {Math.min(p.session.done + 1, p.session.total)}/{p.session.total}
+          </span>
+          <span className="session-left" title="What is left of today's time box">
+            {Math.ceil(p.session.minutesLeft)} min left
+          </span>
+          {p.session.over ? (
+            <Button variant="primary" small shortcut="Ctrl+Shift+K" title="The session's next item" onClick={p.session.next}>
+              Next
+              <Icon name="next" size={14} />
+            </Button>
+          ) : (
+            <Button variant="ghost" small shortcut="Ctrl+Shift+K" title="Skip this item: it stays due and changes no schedule" onClick={p.session.skip}>
+              Skip
+            </Button>
+          )}
+          <Button variant="ghost" small title="Stop the session: an unfinished item stays open and resumes later" onClick={p.session.stop}>
+            Stop
+          </Button>
+        </div>
+      ) : null}
       <div className="topbar-title">{p.title ?? ''}</div>
       {p.clock ? (
         <div className={`clock${p.clock.paused ? ' is-paused' : ''}`}>
@@ -104,6 +163,18 @@ export function TopBar(p: Props) {
         </div>
       ) : null}
       <div className="topbar-right">
+        {p.sync === 'offline' ? (
+          <span className="sync-note" title="The local server does not answer. Progress is kept in this browser and sent when it is back.">
+            offline
+          </span>
+        ) : null}
+        <div className="segmented lang-switch" role="radiogroup" aria-label="Language of prose">
+          {LANGS.map((l) => (
+            <button key={l.value} type="button" role="radio" aria-checked={p.settings.lang === l.value} title={l.title} className={p.settings.lang === l.value ? 'is-on' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => p.setSettings({ ...p.settings, lang: l.value })}>
+              {l.label}
+            </button>
+          ))}
+        </div>
         <Button variant="ghost" small className={`topbar-trigger gap-trigger${p.gaps.length > 0 ? ' has-gaps' : ''}`} title="Simulator notices this session" onClick={toggle('gaps')}>
           <span className="sim-tag">[sim]</span>
           <span className="gap-count">{p.gaps.length}</span>
@@ -152,6 +223,13 @@ export function TopBar(p: Props) {
           <div className="setting">
             <span>Theme</span>
             <Segmented value={p.settings.theme} options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} onChange={(theme) => p.setSettings({ ...p.settings, theme })} />
+          </div>
+          <div className="setting">
+            <span>
+              Language
+              <small>of lessons, tickets, hints and debriefs; the terminal stays English</small>
+            </span>
+            <Segmented value={p.settings.lang} options={[{ value: 'en', label: 'English' }, { value: 'vi', label: 'Tiếng Việt' }, { value: 'both', label: 'Both' }]} onChange={(lang) => p.setSettings({ ...p.settings, lang })} />
           </div>
           <div className="setting">
             <span>

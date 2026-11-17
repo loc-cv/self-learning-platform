@@ -1,37 +1,68 @@
-// The workspace: top bar, the lab panel and the terminals side by side, the editor overlay over
-// the terminal that asked for it. State lives here; the engine lives in the worker.
+// The app: the home screen with today's session, and the workspace for one item at a time: top
+// bar, the item's panel and the terminals side by side, the editor overlay over the terminal that
+// asked for it. State lives here; the engine lives in the worker; what is learned is the progress
+// log (progress.ts), which this file writes as things happen (docs/LEARNING_MODEL.md §12).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { ViewModel } from '@simlab/kernel';
-import type { Item, RenderedBlock } from '@simlab/learn';
-import type { Clock, LabAction, LabInfo, LabState, OpenEditor, ResumeProblem } from '../protocol.ts';
-import { itemById } from '../content.ts';
+import { cardReview, finishAttempt, PROGRESS_VERSION, seedFor, type AttemptMode, type ProgressEvent, type Rating, type RatingReason } from '@simlab/learn';
+import type { Clock, LabAction, LabInfo, LabState, Note, OpenEditor, ResumeProblem, SolutionText, StoredAttempt } from '../protocol.ts';
+import { CATALOG, itemById, ITEMS_BY_ID, type Practiced } from '../content.ts';
+import { Browser } from './Browser.tsx';
+import { CardPage, CardPanel } from './CardView.tsx';
+import { attemptId, initialSettings, loadSession, openAttemptOf, saveSession, sessionQueue, settingsEvent, today, type DailySession } from './daily.ts';
+import { gateDone, leaveOutcome, lessonDone, lessonPages, nextReview, noteEvent, resultEvents, startedEvent, type AttemptRef, type LeaveReason } from './flow.ts';
+import { Home } from './Home.tsx';
+import { LessonPanel } from './LessonPanel.tsx';
+import type { NextStep, Rated } from './parts.tsx';
+import { browserIo, createProgressStore } from './progress.ts';
 import { createEngineClient, type EngineClient } from './engine.ts';
 import { EditorOverlay, type SaveResult } from './EditorOverlay.tsx';
 import { createGapSink, type GapEntry, type SinkState } from './gaps.ts';
-import { ItemPicker } from './ItemPicker.tsx';
-import { LAB_TABS, LabPanel, TAB_OF_ACTION, type LabTab } from './LabPanel.tsx';
+import { LAB_TABS, LabPanel, TAB_OF_ACTION, type DebriefData, type LabTab } from './LabPanel.tsx';
 import { isBrowserChord, matchShortcut, neighbourTab } from './shortcuts.ts';
 import { isFullscreen, toggleFullscreen, watchFullscreen } from './fullscreen.ts';
-import { createStore, type Settings } from './storage.ts';
+import { createStore, type KeyValue, type Settings } from './storage.ts';
 import { TerminalView, type Tab, type TerminalHandle } from './Terminal.tsx';
 import { TopBar, type Popover } from './TopBar.tsx';
 import { Button, Icon } from './ui.tsx';
 import { installProbe } from './probe.ts';
-import { createAttemptKeeper } from './attempts.ts';
+import { attemptApi, createAttemptKeeper, longerAttempt } from './attempts.ts';
 import { XRay, type XRayMode } from './XRay.tsx';
 import type { Rect } from './floating.ts';
 import { tabDomId } from './ui.tsx';
 import { MONO_FONT } from './theme.ts';
 import { usePrefersReducedMotion } from './motion.ts';
 
-type Phase = { kind: 'picker' } | { kind: 'loading'; title: string; resuming: boolean } | { kind: 'ready' } | { kind: 'failed'; problem: ResumeProblem; message: string; item: string };
+type Phase = { kind: 'home' } | { kind: 'loading'; title: string; resuming: boolean } | { kind: 'ready' } | { kind: 'failed'; problem: ResumeProblem; message: string; item: string };
 
-function randomSeed(): number {
-  const a = new Uint32Array(1);
-  crypto.getRandomValues(a);
-  return (a[0] as number) % 1_000_000;
+/** The attempt on screen as the progress log knows it. */
+interface AttemptInfo extends AttemptRef {
+  seed: number;
+  /** Set once the attempt is finished in the log. */
+  outcome?: 'passed' | 'failed' | 'abandoned';
+  /** The grade of the finished attempt, as last recorded. */
+  rated?: Rated;
+  /** A card's recorded review. */
+  card?: { correct?: boolean; choice?: number };
 }
+
+interface StartOptions {
+  /** A new attempt, whatever is in progress. */
+  fresh: boolean;
+  seed?: number;
+  mode: AttemptMode;
+}
+
+function browserKv(): KeyValue | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+const utcOffset = (): number => -new Date().getTimezoneOffset();
 
 let tabKeys = 0;
 const newTab = (): Tab => ({ key: ++tabKeys, ended: false });
@@ -40,12 +71,53 @@ export function App() {
   const store = useMemo(() => createStore(), []);
   const client: EngineClient = useMemo(() => createEngineClient(new Worker(new URL('../engine/worker.ts', import.meta.url), { type: 'module' })), []);
   const [settings, setSettingsState] = useState<Settings>(() => store.settings());
-  const [phase, setPhase] = useState<Phase>({ kind: 'picker' });
+  const kv = useMemo(browserKv, []);
+  const progress = useMemo(() => createProgressStore(browserIo(), kv), [kv]);
+  useSyncExternalStore(progress.subscribe, progress.version);
+  const pstate = progress.state();
+  /** The log is loaded: until then there is no queue and nothing may be recorded. */
+  const [loaded, setLoaded] = useState(false);
+  /** Wall-clock time as the screens see it: moved on every minute and when the window comes back. */
+  const [now, setNow] = useState(() => Date.now());
+  const [session, setSessionState] = useState<DailySession>(() => loadSession(kv, today(progress.state(), Date.now())));
+  const sessionRef = useRef(session);
+  const setSession = useCallback(
+    (s: DailySession) => {
+      sessionRef.current = s;
+      setSessionState(s);
+      saveSession(kv, s);
+    },
+    [kv],
+  );
+  const [attempt, setAttemptState] = useState<AttemptInfo>();
+  const attemptRef = useRef<AttemptInfo | undefined>(undefined);
+  const setAttempt = useCallback((a: AttemptInfo | undefined) => {
+    attemptRef.current = a;
+    setAttemptState(a);
+  }, []);
+  const attempts = useMemo(attemptApi, []);
+  const [phase, setPhase] = useState<Phase>({ kind: 'home' });
   const [picker, setPicker] = useState(false);
   const [lab, setLab] = useState<LabInfo>();
-  const [labState, setLabState] = useState<LabState>();
-  const [debrief, setDebrief] = useState<RenderedBlock[]>();
-  const [solutions, setSolutions] = useState<{ name: string; text: string }[]>();
+  const [labState, setLabStateRaw] = useState<LabState>();
+  const labStateRef = useRef<LabState | undefined>(undefined);
+  const setLabState = useCallback((s: LabState | undefined) => {
+    labStateRef.current = s;
+    setLabStateRaw(s);
+  }, []);
+  const [debrief, setDebrief] = useState<DebriefData>();
+  const [solutions, setSolutions] = useState<SolutionText[]>();
+  /** Check was asked for and waits for the confidence prompt. */
+  const [asking, setAsking] = useState(false);
+  /** The lesson's open page. */
+  const [lessonPage, setLessonPageRaw] = useState(0);
+  const lessonPageRef = useRef(0);
+  const setLessonPage = useCallback((n: number) => {
+    lessonPageRef.current = n;
+    setLessonPageRaw(n);
+  }, []);
+  /** When a card with no world was shown, for the time it took. */
+  const cardShownAt = useRef(0);
   const [busy, setBusy] = useState<LabAction>();
   const [note, setNote] = useState<string>();
   /** The lab panel's open tab: the ticket at the start of every attempt. */
@@ -53,7 +125,12 @@ export function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTab, setActiveTab] = useState<number>();
   const [editors, setEditors] = useState<Record<string, OpenEditor>>({});
-  const [clock, setClock] = useState<Clock>();
+  const [clock, setClockRaw] = useState<Clock>();
+  const clockRef = useRef<Clock | undefined>(undefined);
+  const setClock = useCallback((c: Clock | undefined) => {
+    clockRef.current = c;
+    setClockRaw(c);
+  }, []);
   const [gaps, setGaps] = useState<GapEntry[]>([]);
   const [sinkState, setSinkState] = useState<SinkState>('idle');
   const [popover, setPopover] = useState<Popover>();
@@ -82,13 +159,24 @@ export function App() {
     [],
   );
 
-  const keeper = useMemo(() => createAttemptKeeper((a) => store.saveAttempt(a), { askForFull: () => client.send({ type: 'flush' }), onSaved: (ok) => setStorageWarning(!ok) }), [store, client]);
+  const keeper = useMemo(() => createAttemptKeeper((a) => store.saveAttempt(a), { askForFull: () => client.send({ type: 'flush' }), onSaved: (ok) => setStorageWarning(!ok), send: attempts.send }), [store, client, attempts]);
+
+  /** Appends to the progress log; before the log is loaded nothing is recorded. */
+  const record = useCallback(
+    (events: readonly (ProgressEvent | undefined)[]) => {
+      const list = events.filter((e): e is ProgressEvent => e !== undefined);
+      if (list.length > 0) progress.record(list);
+    },
+    [progress],
+  );
 
   const setSettings = useCallback(
     (s: Settings) => {
       setSettingsState(s);
       document.documentElement.dataset.theme = s.theme;
       store.saveSettings(s);
+      // The server's copy (data/settings.json) is what another browser starts from.
+      void fetch('/api/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(s) }).catch(() => undefined);
     },
     [store],
   );
@@ -103,35 +191,172 @@ export function App() {
     if (k !== undefined) requestAnimationFrame(() => handles.current.get(k)?.focus());
   }, []);
 
-  /** Starts an item: resumes its stored attempt unless `fresh`. */
-  const start = useCallback(
-    (item: Item, fresh: boolean, seed?: number) => {
-      const stored = fresh ? undefined : store.attempt(item.id);
-      // The attempt being left goes to storage as it stands.
+  /** The item's meta and how long its hint ladder is, for the rating. */
+  const hintCountOf = (info: LabInfo): number => (info.steps ? info.steps.reduce((n, st) => n + (st.kind === 'task' ? st.hintCount : 0), 0) : info.hintCount);
+
+  /** Ends the attempt on screen in the log, if it is still open there. */
+  const finish = useCallback(
+    (outcome: 'passed' | 'failed' | 'abandoned', activeMs?: number) => {
+      const a = attemptRef.current;
+      const info = current.current.lab;
+      const meta = a ? CATALOG.items[a.item] : undefined;
+      if (!a || a.outcome || !meta || !progress.state().open[a.id]) return;
+      const events = finishAttempt(progress.state(), meta, { attempt: a.id, at: Date.now(), outcome, activeMs: activeMs ?? clockRef.current?.elapsed ?? 0, hintCount: info ? hintCountOf(info) : 0 });
+      progress.record(events);
+      const rating = events.find((e) => e.type === 'rating');
+      setAttempt({ ...a, outcome, ...(rating?.type === 'rating' ? { rated: { rating: rating.rating, source: 'auto' as const, reasons: (rating.reasons ?? []) as RatingReason[] } } : {}) });
+    },
+    [progress, setAttempt],
+  );
+
+  /**
+   * Leaves the item on screen. An attempt that saw the answer without passing ends failed; a
+   * skipped one is abandoned; any other unfinished attempt stays open and resumes later.
+   */
+  const leaveItem = useCallback(
+    (reason: LeaveReason): 'passed' | 'failed' | 'abandoned' | undefined => {
+      const a = attemptRef.current;
+      const st = labStateRef.current;
+      if (!a) return undefined;
+      let outcome = a.outcome;
+      if (!outcome && current.current.lab?.kind !== 'card') {
+        const gaveUp = st !== undefined && !st.solved && (st.solutionViewed || st.debriefSeen);
+        const end = leaveOutcome(gaveUp, reason);
+        if (end) {
+          finish(end);
+          outcome = end;
+        }
+      }
+      // The attempt being left goes to storage as it stands; a finished one needs no copy.
       keeper.persist();
       keeper.clear();
-      if (fresh) store.dropAttempt(item.id);
+      if (outcome || current.current.lab?.kind === 'card') store.dropAttempt(a.item);
+      store.setActive(undefined);
+      setAttempt(undefined);
+      return outcome;
+    },
+    [finish, keeper, store, setAttempt],
+  );
+
+  /** Starts an item: resumes its unfinished attempt unless `fresh`. */
+  const start = useCallback(
+    async (item: Practiced, opts: StartOptions) => {
+      const leaving = attemptRef.current;
+      leaveItem(leaving && leaving.item === item.id && opts.fresh ? 'skip' : 'away');
       for (const t of current.current.tabs) if (t.tty) client.forget(t.tty);
       starting.current = item.id;
       setPicker(false);
-      setPhase({ kind: 'loading', title: item.title, resuming: stored !== undefined });
+      setPhase({ kind: 'loading', title: item.title, resuming: !opts.fresh && (store.attempt(item.id) !== undefined || openAttemptOf(progress.state(), item.id) !== undefined) });
       setTabs([]);
       setEditors({});
       setDebrief(undefined);
       setSolutions(undefined);
       setNote(undefined);
+      setAsking(false);
       setLabTab('ticket');
+      setLessonPage(0);
       setLab(undefined);
       setLabState(undefined);
       setClock(undefined);
       // Every attempt starts with the X-ray closed: it is help, opened on purpose.
       setXray(false);
       setViewModel(undefined);
+
+      // What there is to resume: the log's open attempt of this item, from this browser's copy or
+      // the server's, whichever holds more; or the attempt that just finished, to read its debrief
+      // again after a reload.
+      const state = progress.state();
+      const open = openAttemptOf(state, item.id);
+      let stored: StoredAttempt | undefined;
+      let info: AttemptInfo | undefined;
+      const local = store.attempt(item.id);
+      if (!opts.fresh && item.kind !== 'card') {
+        if (open !== undefined) {
+          stored = longerAttempt(local?.id === open ? local : undefined, await attempts.load(open));
+          if (starting.current !== item.id) return;
+          if (stored) info = { id: open, item: item.id, mode: opts.mode, seed: stored.seed };
+        } else if (local?.id !== undefined && state.items[item.id]?.last?.attempt === local.id) {
+          const last = state.items[item.id]?.last;
+          const p = state.items[item.id];
+          stored = local;
+          info = { id: local.id, item: item.id, mode: opts.mode, seed: local.seed, ...(last ? { outcome: last.outcome } : {}), ...(p?.ratedAttempt === local.id && p.schedule ? { rated: { rating: p.schedule.rating, source: 'auto' as const } } : {}) };
+        }
+      }
+      if (!info) {
+        // A new attempt. One left open earlier is given up: an item has one attempt at a time.
+        if (open !== undefined) {
+          const meta = CATALOG.items[item.id];
+          if (meta) progress.record(finishAttempt(state, meta, { attempt: open, at: Date.now(), outcome: 'abandoned', activeMs: 0, hintCount: 0 }));
+        }
+        store.dropAttempt(item.id);
+        const at = Date.now();
+        info = { id: attemptId(at, Math.random()), item: item.id, mode: opts.mode, seed: opts.seed ?? seedFor(item.id, progress.state(), { items: ITEMS_BY_ID }) };
+      }
+      setAttempt(info);
+      keeper.begin(item.kind === 'card' ? undefined : info.id);
       // An interactive session starts at the real current time (docs/SCENARIO_FORMAT.md §5.2).
-      client.send({ type: 'start', item: item.id, seed: seed ?? randomSeed(), startTime: Math.floor(Date.now() / 1000) * 1000, ...(stored ? { resume: stored } : {}) });
+      client.send({ type: 'start', item: item.id, seed: info.seed, startTime: Math.floor(Date.now() / 1000) * 1000, ...(stored ? { resume: stored } : {}) });
     },
-    [client, store, keeper],
+    [client, store, keeper, progress, attempts, leaveItem, setAttempt, setLabState, setClock],
   );
+  const startNow = useCallback((item: Practiced, opts: StartOptions) => void start(item, opts), [start]);
+
+  const goHome = useCallback(() => {
+    leaveItem('away');
+    for (const t of current.current.tabs) if (t.tty) client.forget(t.tty);
+    starting.current = undefined;
+    setPicker(false);
+    setLab(undefined);
+    setLabState(undefined);
+    setClock(undefined);
+    setTabs([]);
+    setEditors({});
+    setXray(false);
+    setViewModel(undefined);
+    setNow(Date.now());
+    setPhase({ kind: 'home' });
+  }, [leaveItem, client, setLabState, setClock]);
+
+  /** The session's next entry, or home when today's queue is empty. */
+  const openNext = useCallback(
+    (s: DailySession) => {
+      const q = sessionQueue(progress.state(), CATALOG, ITEMS_BY_ID, Date.now(), s.skipped);
+      const entry = q.entries[0];
+      const item = entry ? itemById(entry.item) : undefined;
+      if (!entry || !item) {
+        setSession({ ...s, running: false });
+        goHome();
+        return;
+      }
+      setSession({ ...s, running: true });
+      startNow(item, { fresh: false, seed: entry.seed, mode: entry.reason });
+    },
+    [progress, setSession, goHome, startNow],
+  );
+
+  const startSession = useCallback(() => {
+    const day = today(progress.state(), Date.now());
+    const s = sessionRef.current.day === day ? sessionRef.current : { day, running: false, skipped: [], done: [] };
+    openNext(s);
+  }, [progress, openNext]);
+
+  /** Moves the session on from the item on screen: finished, or skipped (abandoned, back tomorrow or from home). */
+  const sessionNext = useCallback(
+    (skip: boolean) => {
+      const a = attemptRef.current;
+      const s = sessionRef.current;
+      if (!a) return openNext(s);
+      const outcome = leaveItem(skip ? 'skip' : 'away') ?? 'abandoned';
+      const skipped = outcome === 'abandoned' && !s.skipped.includes(a.item) ? [...s.skipped, a.item] : s.skipped;
+      openNext({ ...s, skipped, done: [...s.done, { item: a.item, outcome }] });
+    },
+    [leaveItem, openNext],
+  );
+
+  const stopSession = useCallback(() => {
+    setSession({ ...sessionRef.current, running: false });
+    goHome();
+  }, [setSession, goHome]);
 
   // Messages from the engine.
   useEffect(
@@ -148,7 +373,19 @@ export function App() {
             const withEditor = m.editors.find((e) => e.tty !== undefined);
             setActiveTab((all.find((x) => x.tty === withEditor?.tty) ?? all[all.length - 1])?.key);
             setEditors(Object.fromEntries(m.editors.map((e) => [e.session, e])));
-            store.setActive(m.lab.id);
+            cardShownAt.current = Date.now();
+            if (m.lab.kind !== 'card') {
+              store.setActive(m.lab.id);
+              // A new attempt opens in the log; a resumed one is already there.
+              const a = attemptRef.current;
+              if (a && !a.outcome && !progress.state().open[a.id]) record([startedEvent(a, m.lab.seed, Date.now())]);
+            }
+            if (m.lab.steps) {
+              // A resumed lesson opens where the learner was: the first step not done yet.
+              const pages = lessonPages(m.lab.steps);
+              const at = pages.findIndex((pg) => !gateDone(pg, m.lab.steps ?? [], m.state.tasks, m.state.predictions));
+              setLessonPage(at === -1 ? pages.length - 1 : at);
+            }
             setPhase({ kind: 'ready' });
             return;
           }
@@ -188,10 +425,10 @@ export function App() {
             setViewModel(m.model);
             return;
           case 'attempt':
-            keeper.full(m.attempt);
+            if (current.current.lab?.kind !== 'card') keeper.full(m.attempt);
             return;
           case 'attempt.delta':
-            keeper.delta(m);
+            if (current.current.lab?.kind !== 'card') keeper.delta(m);
             return;
           case 'error':
             console.error(m.message);
@@ -201,36 +438,71 @@ export function App() {
             return;
         }
       }),
-    [client, store, sink, keeper, focusTerminal],
+    [client, store, sink, keeper, focusTerminal, progress, record, setLabState, setClock],
   );
 
-  // `?lab=<id>&seed=<n>` opens that variant (resuming it if it is the attempt in progress);
-  // otherwise the item in progress resumes after a reload.
+  // Once the log is loaded: `?lab=<id>&seed=<n>` opens that variant (resuming it if it is the
+  // attempt in progress); otherwise the item in progress resumes after a reload, a running
+  // session opens its next entry, and anything else is the home screen.
   useEffect(() => {
     installProbe(client, handles.current, () => current.current);
-    const q = new URLSearchParams(location.search);
-    const linked = q.get('lab');
-    if (linked !== null) {
-      history.replaceState(null, '', location.pathname);
-      const item = itemById(linked);
-      const seed = q.get('seed');
-      if (item) {
-        const n = seed !== null && /^\d+$/.test(seed) ? Number(seed) : undefined;
-        const stored = store.attempt(item.id);
-        start(item, stored === undefined || (n !== undefined && stored.seed !== n), n);
-        return;
+    let gone = false;
+    void progress.ready.then(() => {
+      if (gone) return;
+      const at = Date.now();
+      record([initialSettings(progress.state(), CATALOG, utcOffset(), at)]);
+      const s = loadSession(kv, today(progress.state(), at));
+      setSession(s);
+      setNow(at);
+      setLoaded(true);
+      const q = new URLSearchParams(location.search);
+      const linked = q.get('lab');
+      if (linked !== null) {
+        history.replaceState(null, '', location.pathname);
+        const item = itemById(linked);
+        const seed = q.get('seed');
+        if (item) {
+          const n = seed !== null && /^\d+$/.test(seed) ? Number(seed) : undefined;
+          const stored = store.attempt(item.id);
+          startNow(item, { fresh: stored === undefined || (n !== undefined && stored.seed !== n), mode: 'free', ...(n !== undefined ? { seed: n } : {}) });
+          return;
+        }
       }
-    }
-    const id = store.active();
-    const item = id === undefined ? undefined : itemById(id);
-    if (item && store.attempt(item.id)) start(item, false);
+      const id = store.active();
+      const item = id === undefined ? undefined : itemById(id);
+      if (item && store.attempt(item.id)) startNow(item, { fresh: false, mode: 'free' });
+      else if (s.running) openNext(s);
+    });
+    // Settings another browser left on the server, when this one has none of its own.
+    if (!store.hasSettings())
+      void fetch('/api/settings')
+        .then((r) => (r.ok ? (r.json() as Promise<Partial<Settings>>) : undefined))
+        .then((remote) => {
+          if (remote && typeof remote === 'object' && Object.keys(remote).length > 0 && !store.hasSettings()) setSettingsState((cur) => ({ ...cur, ...remote }));
+        })
+        .catch(() => undefined);
+    return () => {
+      gone = true;
+    };
+  }, []);
+
+  // The screens' clock: the home screen's "due today" follows the day.
+  useEffect(() => {
+    const tick = (): void => setNow(Date.now());
+    const timer = setInterval(tick, 60_000);
+    window.addEventListener('focus', tick);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', tick);
+    };
   }, []);
 
   // The attempt goes to storage before the page goes away: the page holds the latest log.
   useEffect(() => {
     const leave = (): void => {
-      keeper.persist();
+      keeper.persist(true);
       sink.flush(true);
+      progress.flush(true);
     };
     const hide = (): void => {
       if (document.visibilityState === 'hidden') leave();
@@ -241,21 +513,37 @@ export function App() {
       document.removeEventListener('visibilitychange', hide);
       window.removeEventListener('pagehide', leave);
     };
-  }, [keeper, sink]);
+  }, [keeper, sink, progress]);
 
-  const act = useCallback(
-    async (action: LabAction) => {
+  /**
+   * Runs a lab action in the engine and records what it means in the log. `step` names a
+   * lesson's guided task.
+   */
+  const run = useCallback(
+    async (action: LabAction, step?: number) => {
+      const before = labStateRef.current;
       setBusy(action);
       setNote(undefined);
+      setAsking(false);
       // An action shows its result: its tab opens, and the panel if it was hidden.
       setLabTab(TAB_OF_ACTION[action]);
       const now = settingsRef.current;
       if (!now.panelOpen) setSettings({ ...now, panelOpen: true });
-      const { result, state } = await client.lab(action);
+      const { result, state, clock: at } = await client.lab(action, step);
       setBusy(undefined);
       setLabState(state);
-      if (result.action === 'hint' && !result.hint) setNote(`No more hints: all ${state.hints.length} are shown. Solutions shows the reference solutions.`);
-      if (result.action === 'debrief') setDebrief(result.blocks);
+      setClock(at);
+      const a = attemptRef.current;
+      const info = current.current.lab;
+      if (a && info && info.kind !== 'card' && !a.outcome && progress.state().open[a.id]) {
+        // The answer shown before the attempt passed is giving up, once.
+        const gaveUp = (action === 'solutions' || action === 'debrief') && before !== undefined && !before.solved && !before.solutionViewed && !before.debriefSeen;
+        record(resultEvents(a.id, result, Date.now(), gaveUp));
+        const done = info.steps ? lessonDone(info.steps, state.tasks, state.predictions) : state.solved;
+        if (done) finish('passed', at.elapsed);
+      }
+      if (result.action === 'hint' && !result.hint) setNote(info?.steps ? 'No more hints for this task.' : `No more hints: all ${state.hints.length} are shown. Solutions shows the reference solutions.`);
+      if (result.action === 'debrief') setDebrief({ blocks: result.blocks, history: result.history, solutions: result.solutions });
       if (result.action === 'solutions') setSolutions(result.solutions);
       if (result.action === 'reset') {
         for (const t of current.current.tabs) if (t.tty) client.forget(t.tty);
@@ -267,8 +555,118 @@ export function App() {
       }
       // Back to the terminal, unless the action was run from the lab panel with the keyboard.
       if (!document.activeElement?.closest('.lab-panel')) focusTerminal();
+      return { result, state, clock: at };
     },
-    [client, focusTerminal, setSettings],
+    [client, focusTerminal, setSettings, progress, record, finish, setLabState, setClock],
+  );
+
+  /** The guided task of the lesson page that is open, if it has one that is not done. */
+  const lessonTask = useCallback((): number | undefined => {
+    const info = current.current.lab;
+    if (!info?.steps) return undefined;
+    const page = lessonPages(info.steps)[lessonPageRef.current];
+    return page?.gateKind === 'task' && page.gate !== undefined && labStateRef.current?.tasks?.[page.gate]?.passed !== true ? page.gate : undefined;
+  }, []);
+
+  /** A card with a world: its review is one event, recorded when the checks pass or the learner gives up. */
+  const reviewCard = useCallback(
+    (answer: { correct?: boolean; choice?: number; rating?: Rating }, activeMs: number) => {
+      const a = attemptRef.current;
+      if (!a || a.outcome) return;
+      const events = cardReview({ attempt: a.id, item: a.item, seed: a.seed, at: Date.now(), activeMs, ...answer });
+      record(events);
+      const rating = events.find((e) => e.type === 'rating');
+      const reviewed = events.find((e) => e.type === 'card.reviewed');
+      setAttempt({
+        ...a,
+        outcome: reviewed?.type === 'card.reviewed' ? reviewed.outcome : 'passed',
+        ...(rating?.type === 'rating' ? { rated: { rating: rating.rating, source: rating.source } } : {}),
+        card: { ...(answer.correct !== undefined ? { correct: answer.correct } : {}), ...(answer.choice !== undefined ? { choice: answer.choice } : {}) },
+      });
+    },
+    [record, setAttempt],
+  );
+
+  /**
+   * What Check, Hint and the lab panel's tabs ask for. A lab's check first asks how sure the
+   * learner is (until it is solved); a lesson's check and hint are its open task's.
+   */
+  const act = useCallback(
+    async (action: LabAction, step?: number) => {
+      const info = current.current.lab;
+      if (!info) return;
+      if (info.kind === 'card') {
+        if (action !== 'check' || attemptRef.current?.outcome) return;
+        const { state, clock: at } = await run('check');
+        if (state.solved) reviewCard({ correct: true }, at.elapsed);
+        return;
+      }
+      if (info.steps) {
+        const task = step ?? lessonTask();
+        if ((action === 'check' || action === 'hint') && task === undefined) return;
+        await run(action, action === 'check' || action === 'hint' ? task : undefined);
+        return;
+      }
+      if (action === 'check' && labStateRef.current?.solved !== true) {
+        const now = settingsRef.current;
+        if (!now.panelOpen) setSettings({ ...now, panelOpen: true });
+        setNote(undefined);
+        // The result will be in the Check tab: the question is asked there.
+        setLabTab('check');
+        setAsking(true);
+        return;
+      }
+      await run(action);
+    },
+    [run, reviewCard, lessonTask, setSettings],
+  );
+
+  /** Something the learner says about the attempt: kept in its log and recorded as an event. */
+  const say = useCallback(
+    (note: Note) => {
+      const a = attemptRef.current;
+      const info = current.current.lab;
+      const st = labStateRef.current;
+      if (!a || !info || !st) return;
+      client.send({ type: 'note', note });
+      // An explanation comes after the attempt passed, so the log has it although nothing is open.
+      if (progress.state().open[a.id] || note.kind === 'explanation') record([noteEvent(a.id, note, Date.now(), info.steps)]);
+      if (note.kind === 'confidence') setLabState({ ...st, confidence: note.value });
+      else if (note.kind === 'explanation') {
+        setLabState({ ...st, explanation: note.text.trim() });
+        void run('debrief');
+      } else {
+        const predictions = { ...st.predictions, [note.step]: { ...(note.choice !== undefined ? { choice: note.choice } : {}), ...(note.text !== undefined ? { text: note.text } : {}) } };
+        setLabState({ ...st, predictions });
+        if (info.steps && lessonDone(info.steps, st.tasks, predictions)) finish('passed');
+      }
+    },
+    [client, progress, record, run, finish, setLabState],
+  );
+
+  /** The confidence prompt's answer: recorded when given, then the check runs. */
+  const answerConfidence = useCallback(
+    (confidence: number | undefined) => {
+      setAsking(false);
+      if (confidence !== undefined) say({ kind: 'confidence', value: confidence });
+      void run('check');
+    },
+    [say, run],
+  );
+  const cancelAsk = useCallback(() => {
+    setAsking(false);
+    focusTerminal();
+  }, [focusTerminal]);
+
+  /** One click replaces the grade of the finished attempt (docs/LEARNING_MODEL.md §5.2). */
+  const rate = useCallback(
+    (rating: Rating) => {
+      const a = attemptRef.current;
+      if (!a?.outcome) return;
+      record([{ v: PROGRESS_VERSION, type: 'rating', at: Date.now(), attempt: a.id, item: a.item, rating, source: 'manual' }]);
+      setAttempt({ ...a, rated: { rating, source: 'manual' } });
+    },
+    [record, setAttempt],
   );
 
   /** After Escape in the lab panel or a drag of the X-ray: the terminal has the keyboard again at
@@ -279,7 +677,7 @@ export function App() {
     const k = current.current.activeTab;
     if (k !== undefined) handles.current.get(k)?.focus();
   }, []);
-  const actNow = useCallback((a: LabAction) => void act(a), [act]);
+  const actNow = useCallback((a: LabAction, step?: number) => void act(a, step), [act]);
 
   const openTerminal = useCallback(() => {
     const t = newTab();
@@ -311,13 +709,15 @@ export function App() {
   const xrayOpen = useRef(false);
   xrayOpen.current = xray;
   const toggleXray = useCallback(() => {
-    if (current.current.lab === undefined) return;
+    if (current.current.lab === undefined || current.current.lab.world === false) return;
     const open = !xrayOpen.current;
     client.send({ type: 'view', open });
+    const a = attemptRef.current;
+    if (a && !a.outcome && progress.state().open[a.id]) record([{ v: PROGRESS_VERSION, type: 'attempt.xray', at: Date.now(), attempt: a.id, open }]);
     setXray(open);
     if (!open) setViewModel(undefined);
     focusTerminal();
-  }, [client, focusTerminal]);
+  }, [client, focusTerminal, progress, record]);
 
   const togglePanel = useCallback(() => {
     setSettings({ ...settings, panelOpen: !settings.panelOpen });
@@ -344,7 +744,7 @@ export function App() {
   // Workspace shortcuts, before the terminal or the editor sees the key (shortcuts.ts).
   useEffect(() => {
     const down = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && picker && phase.kind !== 'picker') {
+      if (e.key === 'Escape' && picker) {
         e.preventDefault();
         e.stopPropagation();
         setPicker(false);
@@ -369,8 +769,12 @@ export function App() {
           return;
         }
         const ready = phase.kind === 'ready';
-        if (m.id === 'check' && ready) void act('check');
-        else if (m.id === 'hint' && ready) void act('hint');
+        const world = ready && current.current.lab?.world !== false;
+        if (m.id === 'check' && world) void act('check');
+        else if (m.id === 'hint' && world && current.current.lab?.kind !== 'card') void act('hint');
+        else if (m.id === 'home') goHome();
+        else if (m.id === 'next' && ready && sessionRef.current.running) sessionNext(attemptRef.current?.outcome === undefined);
+        else if (!world && m.id !== 'labs' && m.id !== 'help') return;
         else if (m.id === 'newTerminal' && ready) openTerminal();
         else if (m.id === 'closeTerminal' && ready && current.current.activeTab !== undefined) closeTerminal(current.current.activeTab);
         else if (m.id === 'tab') {
@@ -382,7 +786,15 @@ export function App() {
           const t = ts[neighbourTab(Math.max(at, 0), ts.length, m.id === 'prevTab' ? -1 : 1)];
           if (t) setActiveTab(t.key);
         } else if (m.id === 'panel') togglePanel();
-        else if ((m.id === 'prevLabTab' || m.id === 'nextLabTab') && ready) stepLabTab(m.id === 'prevLabTab' ? -1 : 1);
+        else if ((m.id === 'prevLabTab' || m.id === 'nextLabTab') && ready) {
+          const info = current.current.lab;
+          if (info?.steps) {
+            // A lesson's tabs are its pages.
+            const to = Math.min(Math.max(0, lessonPageRef.current + (m.id === 'prevLabTab' ? -1 : 1)), lessonPages(info.steps).length - 1);
+            setLessonPage(to);
+            requestAnimationFrame(() => document.getElementById(tabDomId('lesson', `p${to}`))?.focus());
+          } else if (info?.kind !== 'card') stepLabTab(m.id === 'prevLabTab' ? -1 : 1);
+        }
         else if (m.id === 'xray' && ready) toggleXray();
         // The floating X-ray's move handle takes the keyboard; docked or closed there is none.
         else if (m.id === 'grabXray') document.querySelector<HTMLElement>('.xray-grip')?.focus();
@@ -393,7 +805,7 @@ export function App() {
       }
       // Keys typed while nothing has focus (after selecting text in the panel) go to the terminal.
       const el = document.activeElement;
-      if (phase.kind !== 'ready' || picker || popover) return;
+      if (phase.kind !== 'ready' || picker || popover || current.current.lab?.world === false) return;
       if (el && el !== document.body) return;
       const k = current.current.activeTab;
       const h = k === undefined ? undefined : handles.current.get(k);
@@ -407,7 +819,7 @@ export function App() {
     };
     window.addEventListener('keydown', down, true);
     return () => window.removeEventListener('keydown', down, true);
-  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, stepLabTab, toggleXray, togglePause, focusTerminal]);
+  }, [phase.kind, picker, popover, act, openTerminal, closeTerminal, togglePanel, stepLabTab, toggleXray, togglePause, focusTerminal, goHome, sessionNext, setLessonPage]);
 
   // In full screen or an installed app window the browser hands over Ctrl+W, Ctrl+T and Ctrl+N.
   // The terminal and vim's insert mode use them; where nothing does (vim's normal mode, no
@@ -498,21 +910,72 @@ export function App() {
     document.documentElement.style.setProperty('--term-cell', `${c.measureText('M').width.toFixed(3)}px`);
   }, [settings.fontSize]);
 
+  const lang = settings.lang;
+  const worldless = phase.kind === 'ready' && lab?.world === false;
   const xrayDocked = phase.kind === 'ready' && xray && settings.xrayMode === 'docked';
-  const panelShown = phase.kind === 'ready' && settings.panelOpen;
+  const panelShown = phase.kind === 'ready' && settings.panelOpen && !worldless;
   const editorFor = (t: Tab): OpenEditor | undefined => Object.values(editors).find((e) => e.tty !== undefined && e.tty === t.tty);
-  const showPicker = phase.kind === 'picker' || picker;
+
+  // What the log says about the attempt on screen: its grade's next review, and where the session stands.
+  const itemProgress = attempt ? pstate.items[attempt.item] : undefined;
+  const reviewAt = attempt?.outcome && attempt.outcome !== 'abandoned' && itemProgress?.schedule && itemProgress.ratedAttempt === attempt.id ? nextReview(itemProgress.schedule, pstate.settings, now) : undefined;
+  const review = reviewAt ? { text: reviewAt.text, date: reviewAt.date } : undefined;
+  const queue = useMemo(() => sessionQueue(pstate, CATALOG, ITEMS_BY_ID, now, session.skipped), [pstate, now, session.skipped]);
+  const resumable = useMemo(() => {
+    const newest = new Map<string, { item: string; attempt: string; startedAt: number }>();
+    for (const [id, a] of Object.entries(pstate.open)) if (CATALOG.items[a.item] && (newest.get(a.item)?.startedAt ?? -1) < a.startedAt) newest.set(a.item, { item: a.item, attempt: id, startedAt: a.startedAt });
+    return [...newest.values()].sort((x, y) => y.startedAt - x.startedAt);
+  }, [pstate]);
+  const gaveUp = labState !== undefined && !labState.solved && (labState.solutionViewed || labState.debriefSeen);
+  const over = attempt?.outcome !== undefined || gaveUp;
+  const ahead = queue.entries.filter((e) => e.item !== attempt?.item).length;
+  const next: NextStep | undefined = !over ? undefined : session.running ? { label: ahead > 0 ? 'Next item' : 'Finish the session', run: () => sessionNext(false) } : { label: 'Back to home', run: goHome };
+  const spentToday = (pstate.days[String(today(pstate, now))]?.activeMs ?? 0) / 60_000;
+  const sessionBar =
+    session.running && phase.kind !== 'home'
+      ? {
+          done: session.done.length,
+          total: session.done.length + ahead + (attempt ? 1 : 0),
+          minutesLeft: Math.max(0, pstate.settings.dailyMinutes - spentToday - (attempt && !attempt.outcome ? (clock?.elapsed ?? 0) / 60_000 : 0)),
+          over,
+          next: () => sessionNext(false),
+          skip: () => sessionNext(true),
+          stop: stopSession,
+        }
+      : undefined;
+  const openItem = useCallback((id: string, o: { fresh: boolean }) => {
+    const item = itemById(id);
+    if (item) startNow(item, { fresh: o.fresh, mode: 'free' });
+  }, [startNow]);
+  const cardProps = lab && labState && lab.kind === 'card' ? {
+    lab,
+    state: labState,
+    lang,
+    reducedMotion,
+    busy: busy === 'check',
+    ...(attempt?.card ? { done: attempt.card } : {}),
+    ...(attempt?.rated ? { rated: attempt.rated } : {}),
+    ...(review ? { review } : {}),
+    answerChoice: (choice: number) => reviewCard({ correct: choice === lab.card?.correct, choice }, Date.now() - cardShownAt.current),
+    grade: (rating: Rating) => reviewCard({ rating }, Date.now() - cardShownAt.current),
+    giveUp: () => reviewCard({ correct: false }, clockRef.current?.elapsed ?? 0),
+    check: () => void act('check'),
+    rate,
+    ...(next ? { next } : {}),
+  } : undefined;
 
   return (
     <div className={`app${settings.panelOpen ? '' : ' panel-closed'}${panelShown ? ' has-panel' : ''}${xrayDocked ? ' has-xray-docked' : ''}${reducedMotion ? ' motion-reduced' : ''}`}>
       <TopBar
-        {...(lab ? { title: lab.title } : {})}
-        {...(clock ? { clock } : {})}
+        {...(lab ? { title: lang !== 'en' && lab.title.vi !== undefined ? lab.title.vi : lab.title.en } : {})}
+        {...(clock && !worldless ? { clock } : {})}
         gaps={gaps}
         sink={sinkState}
+        sync={progress.sync()}
         settings={settings}
         panelOpen={settings.panelOpen}
-        {...(phase.kind === 'ready' ? { xrayOpen: xray } : {})}
+        inWorkspace={phase.kind === 'ready' && !worldless}
+        {...(phase.kind === 'ready' && !worldless ? { xrayOpen: xray } : {})}
         toggleXray={toggleXray}
         popover={popover}
         setPopover={setPopover}
@@ -520,6 +983,9 @@ export function App() {
         togglePause={togglePause}
         togglePanel={togglePanel}
         openLabs={() => setPicker((v) => !v)}
+        home={goHome}
+        atHome={phase.kind === 'home'}
+        {...(sessionBar ? { session: sessionBar } : {})}
         fullscreen={fullscreen}
         toggleFullscreen={() => {
           toggleFullscreen();
@@ -536,12 +1002,68 @@ export function App() {
         </div>
       ) : null}
       <main className="workspace">
-        {phase.kind === 'ready' && lab && labState && settings.panelOpen ? (
+        {phase.kind === 'home' ? (
+          <div className="page">
+            {loaded ? (
+              <Home
+                state={pstate}
+                catalog={CATALOG}
+                items={ITEMS_BY_ID}
+                now={now}
+                queue={queue}
+                session={session}
+                resumable={resumable}
+                lang={lang}
+                sync={progress.sync()}
+                startSession={startSession}
+                setDailyMinutes={(dailyMinutes) => record([settingsEvent({ dailyMinutes }, Date.now())])}
+                setTrack={(activeTrack) => record([settingsEvent({ activeTrack }, Date.now())])}
+                openItem={openItem}
+                openBrowser={() => setPicker(true)}
+              />
+            ) : (
+              <div className="loading">
+                <div className="spinner" aria-hidden="true" />
+                <p>Reading your progress…</p>
+              </div>
+            )}
+          </div>
+        ) : null}
+        {worldless && cardProps ? <CardPage {...cardProps} /> : null}
+        {phase.kind === 'ready' && lab && labState && panelShown ? (
           <>
-            <LabPanel lab={lab} state={labState} reducedMotion={reducedMotion} {...(debrief ? { debrief } : {})} {...(solutions ? { solutions } : {})} {...(busy ? { busy } : {})} {...(note ? { note } : {})} tab={labTab} setTab={setLabTab} act={actNow} leave={focusTerminalNow} />
+            {lab.kind === 'card' && cardProps ? (
+              <CardPanel {...cardProps} leave={focusTerminalNow} />
+            ) : lab.steps ? (
+              <LessonPanel lab={lab} state={labState} lang={lang} reducedMotion={reducedMotion} {...(busy ? { busy } : {})} {...(note ? { note } : {})} page={lessonPage} setPage={setLessonPage} act={actNow} say={say} done={attempt?.outcome === 'passed'} {...(next ? { next } : {})} leave={focusTerminalNow} />
+            ) : (
+              <LabPanel
+                lab={lab}
+                state={labState}
+                lang={lang}
+                reducedMotion={reducedMotion}
+                {...(debrief ? { debrief } : {})}
+                {...(solutions ? { solutions } : {})}
+                {...(busy ? { busy } : {})}
+                {...(note ? { note } : {})}
+                tab={labTab}
+                setTab={setLabTab}
+                act={actNow}
+                say={say}
+                asking={asking}
+                answer={answerConfidence}
+                cancelAsk={cancelAsk}
+                {...(attempt?.rated ? { rated: attempt.rated } : {})}
+                {...(review ? { review } : {})}
+                rate={rate}
+                {...(next ? { next } : {})}
+                leave={focusTerminalNow}
+              />
+            )}
             <div className="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the lab panel" tabIndex={0} onPointerDown={startPanelDrag} onKeyDown={nudgePanel} />
           </>
         ) : null}
+        {phase.kind === 'home' || worldless ? null : (
         <section className="terminals pane" aria-label="Terminals">
           {phase.kind === 'ready' ? (
             <>
@@ -633,7 +1155,7 @@ export function App() {
           ) : null}
           {phase.kind === 'failed' ? (
             <div className="failed">
-              <h2>{phase.problem === 'error' ? 'The lab could not be started' : 'This attempt cannot be resumed'}</h2>
+              <h2>{phase.problem === 'error' ? 'This item could not be started' : 'This attempt cannot be resumed'}</h2>
               <p>{phase.message}</p>
               {phase.problem === 'changed' || phase.problem === 'diverged' ? <p>The simulator never continues on a world it cannot vouch for. Starting again builds the same variant from its initial state.</p> : null}
               <div className="failed-actions">
@@ -641,29 +1163,31 @@ export function App() {
                   <Button
                     variant="primary"
                     onClick={() => {
-                      const item = itemById(phase.item) as Item;
-                      start(item, true, store.attempt(item.id)?.seed);
+                      const item = itemById(phase.item) as Practiced;
+                      const seed = store.attempt(item.id)?.seed;
+                      startNow(item, { fresh: true, mode: 'free', ...(seed !== undefined ? { seed } : {}) });
                     }}
                   >
-                    Start this lab again
+                    Start it again
                   </Button>
                 ) : null}
-                <Button variant="ghost" onClick={() => setPhase({ kind: 'picker' })}>
-                  All labs
+                <Button variant="ghost" onClick={goHome}>
+                  Home
                 </Button>
               </div>
             </div>
           ) : null}
         </section>
+        )}
         {phase.kind === 'ready' && xray ? (
           <>
             {xrayDocked ? <div className="splitter splitter-xray" role="separator" aria-orientation="vertical" aria-label="Resize the X-ray" tabIndex={0} onPointerDown={startXrayDrag} onKeyDown={nudgeXray} /> : null}
             <XRay {...(viewModel ? { model: viewModel } : {})} reducedMotion={reducedMotion} mode={settings.xrayMode} setMode={setXrayMode} {...(settings.xrayFloat ? { rect: settings.xrayFloat } : {})} setRect={setXrayFloat} close={toggleXray} done={focusTerminalNow} />
           </>
         ) : null}
-        {showPicker ? (
-          <div className={phase.kind === 'picker' ? 'picker-page' : 'picker-overlay'} onMouseDown={(e) => e.target === e.currentTarget && setPicker(false)}>
-            <ItemPicker store={store} {...(lab ? { current: lab.id } : {})} start={(item, fresh) => (lab?.id === item.id && !fresh ? setPicker(false) : start(item, fresh))} {...(phase.kind !== 'picker' ? { onClose: () => setPicker(false) } : {})} />
+        {picker ? (
+          <div className={phase.kind === 'home' ? 'picker-page' : 'picker-overlay'} onMouseDown={(e) => e.target === e.currentTarget && setPicker(false)}>
+            <Browser state={pstate} catalog={CATALOG} items={ITEMS_BY_ID} now={now} lang={lang} resumable={resumable} {...(lab && phase.kind === 'ready' ? { current: lab.id } : {})} openItem={(id, o) => (lab?.id === id && !o.fresh && phase.kind === 'ready' ? setPicker(false) : openItem(id, o))} onClose={() => setPicker(false)} />
           </div>
         ) : null}
       </main>

@@ -4,6 +4,40 @@ What each run of `prompts/R3-feedback-and-gap-triage.md` did with the entries of
 and the groups of the gap log. Newest run first. `FEEDBACK.md` itself holds only what is still
 open.
 
+## 2026-11-17 — R3 after Checkpoint A2
+
+The owner played the labs again with the X-ray and the figures (phases 10b and 10c). Nothing was
+said against the figures or what the X-ray shows. No entry was *wrong* (the simulator teaching
+something false); all six are about the web app. Reproduced in headless Chromium on the
+workstation.
+
+### Feedback entries
+
+| Entry (the owner's words, shortened) | Class | Evidence | Outcome |
+|---|---|---|---|
+| "Fit everything" is buggy: after it, the layout jumps whenever I click a component in the X-ray | feel | Reproduced: after Fit, selecting a Pod moved node01 from x=1081, y=418, 158 px wide to x=1106, y=310, 109 px wide; deselecting moved it back. Any zoom did the same. The stored visible part kept the pane's old height; the facts of a selection shorten the pane and the SVG rescaled | **Fixed** (D-129): the height follows the pane. `e2e/xray.spec.ts` selects as opened, after Fit and after a zoom, and measures |
+| The font inside the vim editor is not monospace | feel | Found in the code: the editor's theme asked for `var(--mono)`, a token phase 10b renamed to `--font-code`, so the text fell back to IBM Plex Sans. Indentation in YAML does not line up in a proportional font | **Fixed**: `--font-code` for the text, vim's command line and its input. `e2e/workspace.spec.ts` compares the width of `iiiiiiiii` and `MMMMMMMMM` and the computed family |
+| Once, not reproducible: the first click on Solutions shifts the whole page upward, leaving a blank area at the bottom | feel | Not reproduced (1440×900, 1536×730 at 125%, 1280×600 at 150%; X-ray open and closed; after a check and a hint). The suspect: `scrollIntoView`, which also scrolls the page when it has any spare height | **Fixed defensively** (D-130): the panel scrolls only its own scroller and the page cannot scroll at all. The cause on the owner's machine is not proven; reopen if it happens again |
+| Put Hint, Debrief and Solutions in their own sub tabs instead of one sidebar | feel | Agreed from a screenshot: a failed check pushes the ticket out of view and the hints below the fold | **Plan changed**: phase 10d |
+| An option to open the X-ray as a floating window | idea | With three panes at 1440 px the terminal is about 50 columns and `kubectl get pods` wraps | **Plan changed**: phase 10d. Asked which kind: a floating panel in the page, not a separate browser window |
+| Make the UI more modern; it feels like old Bootstrap websites | feel | Agreed from screenshots, most in the light theme: bordered buttons with bevel and shadow, a hairline around every region, gray slabs, a native select. Asked what modern means: floating rounded panes, fewer lines and more air, more color and depth, and "show me options" | **Plan changed**: phase 10d reopens the look chosen in 10b; new directions as screenshots, the owner chooses (D-131, `PLAN.md` §15) |
+
+Confirmed by the owner on Chrome for Windows: Ctrl+W, Ctrl+T and Ctrl+N reach the shell and vim in
+full screen and in the installed app window. The other three confirmations stay in `FEEDBACK.md`.
+
+### Gap log groups (1 record, 1 group)
+
+| Group | Records | Finding | Outcome |
+|---|---|---|---|
+| readline's `digit-argument` (`\e1`, Alt+1) | 1 | *missing*. Real readline starts a numeric argument and shows `(arg: 1)` | Deferred to **22a**; written into its prompt. Marked handled |
+
+### Also fixed
+
+- The X-ray's header at its narrowest width (320 px): the title wrapped to two lines and the
+  buttons ran out of the pane. The filter now shrinks first and the note hides
+  (`e2e/xray.spec.ts`).
+- The lab panel's automatic scrolling ignored reduced motion (always smooth); it now follows it.
+
 ## 2026-11-17 — R3 after Checkpoint A
 
 The owner played the three labs in Chrome on Windows 11 (`memory/owner-environment.md`). Each

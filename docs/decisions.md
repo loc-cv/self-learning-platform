@@ -1246,3 +1246,27 @@ the same thing in every domain. The example in `PLAN.md` was updated to match.
 **D-128 — Figures in a terminal are their caption and alt text.** `npm run lab` prints `[Figure]`,
 the caption and the alt text where a figure stands. An ASCII drawing would be a second renderer to
 keep honest; the alt text is written for exactly this reader.
+
+## R3 after Checkpoint A2 (2026-11-17)
+
+**D-129 — A view's visible part is a corner and a zoom; its height follows the pane.** "Fit
+everything" and every zoom stored a rectangle with the height the pane had at that moment. Selecting
+an entity swaps the legend for its facts, the pane gets shorter, and the SVG scaled the stale
+rectangle into the new box (`preserveAspectRatio`'s default), so the whole drawing shrank and moved
+on every click. `ViewCanvas` now derives the height from the stored width and the pane's current
+shape. The top-left corner stays, so after "Fit everything" a selection's facts may cover the
+bottom of the drawing; that was preferred to rescaling on a click. `e2e/xray.spec.ts`.
+
+**D-130 — The page cannot scroll, also not by script.** The owner saw the whole page shift up with
+a blank band below after the first click on Solutions, once, in Chrome on Windows; it was not
+reproduced here (three window sizes, three display scales, X-ray open and closed). The one call
+tied to that button was `scrollIntoView`, which scrolls every scrollable ancestor, and `overflow:
+hidden` boxes can be scrolled by script. Two changes, neither proven to be the cause: the lab panel
+scrolls its own scroller with `scrollTo`, and `body` has `overflow: clip` (which refuses scrolling
+by script and passes no scrollable overflow up) under `html { overflow: hidden }` (on the root
+element `clip` would be applied to the viewport as `hidden`: CSS Overflow 3, "Overflow Viewport
+Propagation"). `e2e/workspace.spec.ts` puts a 3000px element in the page and tries to scroll it.
+
+**D-131 — The look is reopened; phase 10d.** The owner's verdict at Checkpoint A2 and the answers
+that shape phase 10d are in `PLAN.md` §15 and `docs/feedback-log.md`. D-117's font and the
+Instrument tokens stand until the owner chooses a direction in that phase.

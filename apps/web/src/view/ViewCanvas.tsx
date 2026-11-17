@@ -306,7 +306,14 @@ export function ViewCanvas(props: ViewCanvasProps) {
 
   // The visible part of the drawing (zoom and pan).
   const [vb, setVb] = useState<ViewBoxRect | undefined>(undefined);
-  const view: ViewBoxRect = still ? { x: -MARGIN, y: -MARGIN, w: Math.max(1, size.w), h: Math.max(1, stillH) } : (vb ?? { x: -MARGIN, y: -MARGIN, w: Math.max(1, size.w), h: Math.max(1, size.h) });
+  // The stored box gives the corner and the zoom (its width); the height follows the pane as it is
+  // now. A pane that changes height (the facts of a selection take more room than the legend) then
+  // shows more or less at the bottom, and nothing moves or rescales.
+  const view: ViewBoxRect = still
+    ? { x: -MARGIN, y: -MARGIN, w: Math.max(1, size.w), h: Math.max(1, stillH) }
+    : vb && size.w > 0
+      ? { x: vb.x, y: vb.y, w: vb.w, h: Math.max(1, (vb.w * size.h) / size.w) }
+      : { x: -MARGIN, y: -MARGIN, w: Math.max(1, size.w), h: Math.max(1, size.h) };
   const zoomOf = (r: ViewBoxRect): number => (size.w > 0 ? size.w / r.w : 1);
   const clampVb = useCallback(
     (r: ViewBoxRect): ViewBoxRect => {

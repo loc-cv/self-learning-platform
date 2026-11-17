@@ -206,3 +206,82 @@ test('icons sit in the middle of their buttons, at 100%, 125% and 150% display s
     await context.close();
   }
 });
+
+// Checkpoint A2: the editor asked for a font variable that no longer existed and fell back to
+// the interface's proportional font, in which YAML indentation does not line up.
+test('the editor overlay is set in the code font, like the terminal: columns line up', async ({ page }) => {
+  await openLab(page, 'k8s.workloads.deployment-service-01', 1);
+  await page.keyboard.type('vim font.yaml');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.editor-overlay')).toBeVisible();
+  await page.keyboard.type('iiiiiiiiii', { delay: 2 }); // i enters insert mode, then nine letters
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('MMMMMMMMM', { delay: 2 });
+  await page.keyboard.press('Escape');
+  const lines = page.locator('.editor-body .cm-line');
+  await expect(lines).toHaveCount(2);
+  const widths = await lines.evaluateAll((els) =>
+    els.map((el) => {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      return r.getBoundingClientRect().width;
+    }),
+  );
+  expect(widths[0]).toBeGreaterThan(40);
+  expect(Math.abs((widths[0] ?? 0) - (widths[1] ?? 0))).toBeLessThan(0.5);
+  // The same family as every other piece of code on the page, and vim's command line too.
+  const code = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--font-code').trim());
+  const family = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).fontFamily);
+  const norm = (s: string): string => s.replace(/["'\s]/g, '');
+  expect(norm(await family('.editor-body .cm-content'))).toBe(norm(code));
+  await page.keyboard.type(':');
+  await expect(page.locator('.editor-body .cm-vim-panel')).toBeVisible();
+  expect(norm(await family('.editor-body .cm-vim-panel'))).toBe(norm(code));
+  expect(norm(await family('.editor-body .cm-vim-panel input'))).toBe(norm(code));
+});
+
+// Checkpoint A2: "the whole page shifts upward, leaving a blank area at the bottom" on the first
+// click on Solutions. Not reproduced; whatever scrolled it, the page must not be scrollable, and
+// the lab panel moves only its own scroller.
+test('the page itself never scrolls: showing the solutions moves only the lab panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
+  // Something taller than the window, as a browser quirk or an extension might add.
+  await page.evaluate(() => {
+    const tall = document.createElement('div');
+    tall.style.height = '3000px';
+    document.querySelector('.app')?.append(tall);
+  });
+  await page.getByRole('button', { name: /^Check/ }).click();
+  await expect(page.locator('.report .verdict')).toBeVisible();
+  await page.getByRole('button', { name: 'Solutions' }).click();
+  await page.getByRole('button', { name: 'Show solutions' }).click();
+  await expect(page.locator('.solutions')).toBeVisible();
+  // The solutions come to the top of the panel's scroller.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const box = document.querySelector('.lab-scroll') as HTMLElement;
+        const el = document.querySelector('.solutions') as HTMLElement;
+        const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 1;
+        return atEnd || Math.abs(el.getBoundingClientRect().top - box.getBoundingClientRect().top) < 2;
+      }),
+    )
+    .toBe(true);
+  expect(await page.evaluate(() => (document.querySelector('.lab-scroll') as HTMLElement).scrollTop)).toBeGreaterThan(0);
+  const moved = await page.evaluate(() => {
+    // A script that tries to scroll the page, as scrollIntoView and focus do.
+    window.scrollTo(0, 200);
+    document.body.scrollTop = 200;
+    (document.querySelector('#root') as HTMLElement).scrollTop = 200;
+    (document.querySelector('.app') as HTMLElement).scrollTop = 200;
+    document.querySelector('.lab-actions')?.scrollIntoView({ block: 'end' });
+    const out: string[] = [];
+    if (window.scrollY !== 0) out.push(`window ${window.scrollY}`);
+    for (const el of document.querySelectorAll<HTMLElement>('*')) if (el.scrollTop !== 0 && !el.closest('.lab-scroll, .xterm')) out.push(`${el.tagName}.${el.className} ${el.scrollTop}`);
+    return out;
+  });
+  expect(moved).toEqual([]);
+  const top = await page.locator('.topbar').boundingBox();
+  expect(top?.y).toBe(0);
+});

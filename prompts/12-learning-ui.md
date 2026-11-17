@@ -1,6 +1,6 @@
 # Phase 12 — Learning UI: home, item flows, hints, prediction, debrief, languages
 
-**Milestone** M2 · **Needs** 11, 10c · Follow the session protocol in `CLAUDE.md`.
+**Milestone** M2 · **Needs** 11, 10d · Follow the session protocol in `CLAUDE.md`.
 
 ## Goal
 
@@ -23,7 +23,8 @@ built in that design language, and mastery, due counts and trends are drawn, not
   - Lesson: steps with figures, scenes and short prose beside the live terminal; guided tasks
     advance when their checks pass.
   - Drill, lab, incident: the workspace from phase 10 with target time, confidence prompt before
-    checking, and a "give up and see the solution" path that is recorded.
+    checking, and a "give up and see the solution" path that is recorded. The lab panel's tabs
+    (phase 10d) carry the parts of every item type; a lesson's steps use the same tab strip.
   - Card: prompt, answer entry or reveal, self-rating or auto-check.
 - **Prediction prompts**: ask before a marked step, lock in the answer, then show what happened.
 - **Hints**: the ladder, one rung at a time, each use recorded and reflected in the rating.

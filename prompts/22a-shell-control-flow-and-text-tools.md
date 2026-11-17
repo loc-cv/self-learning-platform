@@ -34,6 +34,12 @@ get decides the priorities.
   the Kubernetes topologies write those lines into the session user's `.bashrc` on the hosts a
   learner logs in to, so `k` and its completion work from the first prompt and `cat ~/.bashrc`
   shows why. Decide whether an item may opt out, and record it.
+- **readline's `digit-argument`** (deferred here by R3 after Checkpoint A2, 2026-11-17: Alt+1 was
+  pressed once and got a `[sim]` notice). Alt+digit and Alt+- start a numeric argument, shown as
+  `(arg: N)` in place of the prompt, that repeats the next command (`\e3\C-d`, `\e2\eb`) or the
+  next character. Capture the prompt's redraws from the real readline into
+  `fixtures/reference/bash/readline` like the other keys. `universal-argument` is unbound by
+  default (`bind -p`) and stays out.
 - **`vim` without a file name** (deferred here by R3, 2026-11-17: hit twice). Real vim opens an
   empty buffer; `:w` answers `E32: No file name` and `:w name` writes the file. Today the program
   prints a `[sim]` notice. It needs the editor request without a path, a save that names the

@@ -94,7 +94,7 @@ const highlight = HighlightStyle.define([
 
 const chrome = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'var(--term-bg)', color: 'var(--text)' },
-  '.cm-scroller': { fontFamily: 'var(--mono)', lineHeight: '1.5' },
+  '.cm-scroller': { fontFamily: 'var(--font-code)', lineHeight: '1.5' },
   '.cm-content': { caretColor: 'var(--accent)', padding: '8px 0' },
   '.cm-gutters': { backgroundColor: 'var(--term-bg)', color: 'var(--text-faint)', border: 'none', paddingLeft: '6px' },
   '.cm-activeLine': { backgroundColor: 'var(--line-active)' },
@@ -103,8 +103,8 @@ const chrome = EditorView.theme({
   '.cm-fat-cursor': { background: 'var(--accent) !important', color: 'var(--term-bg) !important' },
   '&:not(.cm-focused) .cm-fat-cursor': { background: 'none !important', outline: '1px solid var(--accent)' },
   '.cm-panels': { backgroundColor: 'var(--surface-2)', color: 'var(--text)', borderTop: '1px solid var(--border)' },
-  '.cm-panels input': { fontFamily: 'var(--mono)', color: 'var(--text)', background: 'transparent', border: 'none', outline: 'none' },
-  '.cm-vim-panel': { padding: '3px 10px', fontFamily: 'var(--mono)', fontSize: '13px' },
+  '.cm-panels input': { fontFamily: 'var(--font-code)', color: 'var(--text)', background: 'transparent', border: 'none', outline: 'none' },
+  '.cm-vim-panel': { padding: '3px 10px', fontFamily: 'var(--font-code)', fontSize: '13px' },
   '.cm-searchMatch': { backgroundColor: 'var(--search-match)' },
   '.cm-matchingBracket': { backgroundColor: 'var(--search-match)', color: 'inherit' },
 });

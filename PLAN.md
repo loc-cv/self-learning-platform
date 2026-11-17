@@ -470,9 +470,10 @@ Checks are functions registered by plugins (`k8s.*`, `host.*`, `net.reach`) plus
 A local web app, started with one command.
 
 - **Workspace.** Terminal tabs (xterm.js), a panel for the lesson or ticket with its figures and
-  check, hint and reset actions, and an optional X-ray view of the world (machines, nodes, Pods,
-  Services, health, the causal trace) that exam mode turns off. A speed control and "skip to next
-  event".
+  check, hint and reset actions, its parts (ticket, check, hints, debrief, solutions) in tabs
+  from phase 10d, and an optional X-ray view of the world (machines, nodes, Pods, Services,
+  health, the causal trace), docked beside the terminal or floating over the workspace, that exam
+  mode turns off. A speed control and "skip to next event".
 - **Home.** Today's session, mastery by skill and curriculum domain, due counts, recent mistakes,
   and a content browser for free practice.
 - **Debrief.** As described in §5: figures first, then the replay of my attempt, then prose.
@@ -553,7 +554,11 @@ the terminal feels real; the product is all text and looks bland. Hence 10b and 
 
 **Checkpoint A2.** I play the three labs again with the X-ray and the figures. Exit: the labs show
 the system as well as describe it, and I'd rather use this than a text-only lab. Then run
-`prompts/R3` if `FEEDBACK.md` has entries.
+`prompts/R3` if `FEEDBACK.md` has entries. (Done 2026-11-17: no complaint about the figures or
+the X-ray's content; the interface around them looks dated and the lab panel is one long scroll.
+Hence 10d.)
+
+- 10d Interface refresh: a modern look chosen from screenshots, the lab panel in tabs, a floating X-ray
 
 **M2 — Learning loop**
 - 11 Learning core: content model, i18n, progress log, skills, FSRS, daily queue, local server
@@ -664,3 +669,12 @@ there is always fresh material to learn from while the platform grows.
     timeline, the replay, time controls and assist levels. Its view contract and panel moved to 10b.
   - A text-only debrief is a defect from 10c on (§5); phases 12, 14, R1, R4 and 34 were revised
     to build on figures.
+- **2026-11-17** After Checkpoint A2 (`docs/feedback-log.md`), decided by me when asked:
+  - Phase 10d comes next, before the learning loop (§13): the look is reopened, the lab panel's
+    parts become tabs, and the X-ray can float over the workspace inside the page (§10). My
+    verdict: the interface "feels like old Bootstrap websites". Asked what modern means, I chose
+    floating rounded panes, fewer lines and more air, more color and depth, and to be shown
+    options. In 10b I chose Instrument over Studio from two directions; 10d shows new ones as
+    screenshots and I choose again. Phase 12 builds its screens on the result, which is why 10d
+    is not folded into it.
+  - The floating X-ray is a panel in the page, not a separate browser window.

@@ -179,12 +179,23 @@ body,
   margin: 0;
 }
 
+/* The workspace fills the window and its panes scroll, never the page. `hidden` still lets a
+   script scroll a box that has overflow (focus, scrollIntoView); `clip` does not, and what it
+   cuts off adds no scrollable overflow to the box around it. The root element's value goes to
+   the viewport, where `clip` would mean `hidden`, so the body is the one that clips. */
+html {
+  overflow: hidden;
+}
+
+body {
+  overflow: clip;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
   font: var(--fs-body)/1.5 var(--font-ui);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
 }
 
 body.is-dragging {
@@ -1439,6 +1450,7 @@ kbd {
 }
 
 .xray {
+  container: xray / inline-size;
   flex: none;
   width: var(--xray-width);
   min-width: 320px;
@@ -1461,16 +1473,17 @@ kbd {
 }
 
 .xray-title {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  min-width: 0;
 }
 
 .xray-title h2 {
   margin: 0;
   font: var(--fw-semibold) var(--fs-base)/1 var(--font-ui);
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .xray-note {
@@ -1479,14 +1492,33 @@ kbd {
   white-space: nowrap;
 }
 
+/* In a narrow pane the filter gives way first, then the note goes; the title and the buttons stay. */
 .xray-tools {
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
+.xray-tools > button {
+  flex: none;
+}
+
+.xray-filter {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+@container xray (max-width: 440px) {
+  .xray-note {
+    display: none;
+  }
+}
+
 .xray-filter select {
   height: 26px;
+  width: 100%;
   max-width: 190px;
   margin-right: var(--sp-1);
   padding: 0 var(--sp-2);

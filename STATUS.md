@@ -32,8 +32,11 @@ Legend: `[ ]` not started · `[~]` partly done, see carry-over · `[x]` done
   next (`PLAN.md` §15)
 - [x] 10b `prompts/10b-visual-foundation.md`
 - [x] 10c `prompts/10c-figures-and-scenes.md`
-- [ ] **Checkpoint A2** — play the three labs again with the X-ray and the figures, write
-  `FEEDBACK.md`; run R3 if it has entries
+- [x] **Checkpoint A2** — played 2026-11-17; R3 run the same day (`docs/feedback-log.md`). Verdict:
+  nothing against the figures or what the X-ray shows; the interface looks dated, the lab panel is
+  one long scroll, the docked X-ray takes the terminal's width. Three bugs fixed by R3; the rest is
+  phase 10d (`PLAN.md` §15)
+- [ ] 10d `prompts/10d-interface-refresh.md`
 
 **M2 — Learning loop**
 - [ ] 11 `prompts/11-learning-core.md`
@@ -89,7 +92,7 @@ Edit the target line at the top of the prompt file, or name the target in your m
   features a target needs exist. Runs completed: none
 - `prompts/R2-translation-pass.md` — Vietnamese translation. Runs completed: none
 - `prompts/R3-feedback-and-gap-triage.md` — fix what `FEEDBACK.md` and the gap log report. Runs
-  completed: 2026-11-17 after Checkpoint A (`docs/feedback-log.md`)
+  completed: 2026-11-17 after Checkpoint A; 2026-11-17 after Checkpoint A2 (`docs/feedback-log.md`)
 - `prompts/R4-new-domain.md` — add a domain (three stages)
 - `prompts/R5-version-bump.md` — move to a new Kubernetes version
 
@@ -226,13 +229,16 @@ Seeded or simplified behavior that a later phase must replace. Each session adds
 Entries of `FEEDBACK.md` and the gap log that a triage run assigned to a planned phase. The phase
 that takes one removes it here. Details and evidence: `docs/feedback-log.md`.
 
+- **10d** — a modern look chosen from screenshots; Ticket, Check, Hints, Debrief and Solutions as
+  tabs of the lab panel; the X-ray as a floating panel in the page (Checkpoint A2).
 - **13** — the debrief replays the attempt with its causes.
 - **16a** — nginx "built by" lines for every nginx tag in the catalog (16 gap records; the
   carry-over item "image facts read by hand" below is the same work).
 - **18b** — `kubectl top` (1 gap record).
 - **22a** — `alias k=kubectl` and kubectl completion preset in the session user's `.bashrc`, as on
   the exam's hosts (3 gap records); `vim` without a file name (2); the `for` loop (1). All three
-  are in the phase's prompt.
+  are in the phase's prompt. Also readline's `digit-argument` (Alt+digit; 1 gap record, Checkpoint
+  A2), in the prompt too.
 - **22b** — `less` (1 gap record).
 
 ## Candidates
@@ -307,6 +313,34 @@ Unfinished work from a phase, precise enough for the next session to continue.
 ## Handoff notes
 
 Newest first. Each session adds: what was built, decisions made, surprises, known gaps.
+
+- 2026-11-17 — **R3 after Checkpoint A2.** Three bugs fixed, one phase added.
+  - The owner's verdict: nothing against the figures or what the X-ray shows. The interface
+    "feels like old Bootstrap websites", the lab panel is one long scroll, the docked X-ray takes
+    the terminal's width. Entries, evidence and outcomes: `docs/feedback-log.md`.
+  - Fixed, each with a browser test. The X-ray's drawing rescaled on every selection after "Fit
+    everything" or a zoom (D-129: the visible part's height follows the pane). The editor overlay
+    was in the interface's proportional font: its theme used `var(--mono)`, a token 10b renamed.
+    The page shifting up on Solutions was not reproduced; the lab panel now scrolls only its own
+    scroller and the page cannot scroll, also by script (D-130). The X-ray's header overflowed at
+    320 px.
+  - Plan: **phase 10d** (`prompts/10d-interface-refresh.md`) runs next: the look reopened and
+    chosen again from screenshots, the lab panel in tabs, the X-ray as a floating panel in the
+    page. Phases 11 and 12 now need 10d. `PLAN.md` §10, §13, §15; D-131.
+  - Gap log: readline's `digit-argument` (Alt+1, one record) deferred to 22a, in its prompt.
+  - Surprises. A CSS variable that does not exist fails silently: the declaration is dropped and
+    the property inherits. After renaming tokens, search TypeScript too (`EditorView.theme`
+    takes CSS as strings). `overflow: clip` on the root element is applied to the viewport as
+    `hidden`, so it is the body that must clip. `npm run e2e -- <file> -g "a|b"` breaks on the
+    `|`; run `npx playwright test -c playwright.config.ts … -g "a|b"` in `apps/web` instead.
+  - Verified: `npm run check` green (3947 tests); `npm run e2e` 34 browser tests. Not verified on
+    Chrome for Windows: the three fixes, listed in `FEEDBACK.md` for the owner to confirm, with
+    three confirmations still open from Checkpoint A (Ctrl+W/T/N in full screen and the app
+    window is confirmed).
+  - For 10d. After "Fit everything", a selection's facts cover the bottom of the drawing (the
+    footer grows); a floating or redesigned X-ray should show facts without taking the canvas's
+    height. With the X-ray docked at 1440 px the terminal has about 50 columns; the prompt asks
+    for 80 with the lab panel open.
 
 - 2026-11-17 — **Phase 10c done.** Figures in content: views, comparisons, scenes, diagrams; the
   three labs rewritten around them.

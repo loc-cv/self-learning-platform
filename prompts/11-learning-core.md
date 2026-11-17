@@ -1,6 +1,6 @@
 # Phase 11 — Learning core: content model, progress, skills, scheduling, persistence
 
-**Milestone** M2 · **Needs** 10c and Checkpoint A2 · Follow the session protocol in `CLAUDE.md`.
+**Milestone** M2 · **Needs** 10d · Follow the session protocol in `CLAUDE.md`.
 
 ## Goal
 

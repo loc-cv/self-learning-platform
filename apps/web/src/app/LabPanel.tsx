@@ -84,18 +84,35 @@ export function LabPanel(p: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const reportAt = p.state.report?.at;
 
-  // Bring new results into view.
+  // Bring new results into view. Only the panel's own scroller moves: `scrollIntoView` also scrolls
+  // every ancestor that can scroll, the page included.
+  const reveal = (selector: string, block: 'nearest' | 'start'): void => {
+    const box = scroller.current;
+    const el = box?.querySelector<HTMLElement>(selector);
+    if (!box || !el) return;
+    const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    const bottom = top + el.offsetHeight;
+    let to = top;
+    if (block === 'nearest') {
+      if (top >= box.scrollTop && bottom <= box.scrollTop + box.clientHeight) return;
+      // Whichever edge is nearer; an element taller than the scroller shows its start.
+      to = top < box.scrollTop || el.offsetHeight > box.clientHeight ? top : bottom - box.clientHeight;
+    }
+    box.scrollTo({ top: to, behavior: p.reducedMotion ? 'auto' : 'smooth' });
+  };
+  const revealRef = useRef(reveal);
+  revealRef.current = reveal;
   useEffect(() => {
-    if (reportAt !== undefined) scroller.current?.querySelector('.report')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (reportAt !== undefined) revealRef.current('.report', 'nearest');
   }, [reportAt]);
   useEffect(() => {
-    scroller.current?.querySelector('.hints li:last-child')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    revealRef.current('.hints li:last-child', 'nearest');
   }, [p.state.hints.length]);
   useEffect(() => {
-    if (p.debrief) scroller.current?.querySelector('.debrief')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (p.debrief) revealRef.current('.debrief', 'start');
   }, [p.debrief]);
   useEffect(() => {
-    if (p.solutions) scroller.current?.querySelector('.solutions')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (p.solutions) revealRef.current('.solutions', 'start');
   }, [p.solutions]);
 
   const ask = (what: Pending): void => {

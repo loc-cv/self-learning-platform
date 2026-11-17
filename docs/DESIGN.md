@@ -19,6 +19,11 @@ lab with the X-ray open, each in both themes:
 
 The owner chose **Instrument** (2026-11-17). Studio's tokens and its font were removed.
 
+**Reopened at Checkpoint A2** (2026-11-17, `docs/feedback-log.md`): the owner finds the result
+"like old Bootstrap websites" and wants floating rounded panes, fewer lines and more air, more
+color and depth. Phase 10d shows new directions and rewrites §1 to §4 and §7 for the chosen one.
+Until then this file describes the interface as it is.
+
 The system on screen is what gives the product its character: the views carry the look, and the
 chrome around them stays quiet.
 
@@ -183,6 +188,10 @@ Interaction: click or Enter selects and Escape clears; Tab and the arrow keys mo
 selection; the wheel scrolls, Ctrl+wheel zooms, dragging the background pans. Every entity has an
 accessible name: kind, name, status and state.
 
+Selecting never moves the drawing. The visible part is kept as a corner and a zoom; its height
+follows the pane, so a pane that loses height to the facts of a selection shows less at the bottom
+and nothing rescales (D-129).
+
 ### 6.4 Honesty
 
 A view shows what the model holds and nothing else (`PLAN.md` §6.5). Words a real tool also prints
@@ -224,7 +233,10 @@ the label in `--font-ui`, the value in `--font-code` at `--fs-xs`, shortened in 
 
 - **Top bar**: the floor's darkest pane, `--topbar-h`, brand, lab title, clock, notices, the
   X-ray toggle (pressed state in the accent), settings.
+- **The page** never scrolls: the workspace fills the window and only panes scroll (D-130).
 - **Lab panel**, **terminals**, **X-ray**: three panes edge to edge, resizable by their splitters.
+  In a narrow X-ray the filter shrinks first and the "counts as help" note goes; the title and
+  the buttons stay.
   The X-ray is closed at the start of every attempt (it is help); its width is remembered.
 - **Popovers and dialogs**: `--raised` with `--elev-3` and `--r-lg`.
 - **The lab list** (the current home until phase 12): a page title in `--fs-2xl`, items as cards.

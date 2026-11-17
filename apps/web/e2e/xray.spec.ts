@@ -175,3 +175,50 @@ test('reduced motion: change is instant, from the system or the setting', async 
   expect(await pod.evaluate((el) => parseFloat(getComputedStyle(el).transitionDuration))).toBeGreaterThan(0);
   await ctx.close();
 });
+
+// Checkpoint A2: after "Fit everything" the drawing jumped on every click. Fit and zoom stored
+// the pane's height, the facts of a selection take more room than the legend, and the drawing
+// rescaled into the stale box.
+test('selecting an entity never moves or rescales the drawing, also after fit and zoom', async ({ page }) => {
+  await settings(page, {});
+  await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
+  await openXray(page);
+  const pod = page.locator('.xray [data-id^="k8s/Pod/billing/worker-"]').first();
+  const node = '.xray [data-id="k8s/Node/node01"] .vbox-frame';
+  const steps: [string, () => Promise<void>][] = [
+    ['as opened', async () => {}],
+    ['after Fit everything', () => page.getByRole('button', { name: 'Fit everything' }).click()],
+    ['after zooming out', () => page.getByRole('button', { name: 'Zoom out' }).click()],
+  ];
+  for (const [name, prepare] of steps) {
+    await prepare();
+    await page.waitForTimeout(400);
+    const before = await box(page, node);
+    const bodyBefore = await box(page, '.xray-body');
+    await pod.click();
+    await expect(page.locator('.xray-detail')).toBeVisible();
+    await page.waitForTimeout(400);
+    const after = await box(page, node);
+    // The facts did take room from the drawing, which is what used to move it.
+    expect((await box(page, '.xray-body')).height, name).toBeLessThan(bodyBefore.height);
+    for (const k of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[k] - before[k]), `${name}: ${k}`).toBeLessThan(0.5);
+    await pod.click();
+    await expect(page.locator('.xray-detail')).toHaveCount(0);
+  }
+});
+
+test('a narrow X-ray keeps its title on one line', async ({ page }) => {
+  await settings(page, { xrayWidth: 320 });
+  await openLab(page, 'k8s.scheduling.pending-pods-01', 1);
+  await openXray(page);
+  const h2 = await box(page, '.xray-title h2');
+  expect(h2.height).toBeLessThan(20);
+  const head = await box(page, '.xray-head');
+  const tools = await box(page, '.xray-tools');
+  expect(tools.x + tools.width).toBeLessThanOrEqual(head.x + head.width + 0.5);
+  expect(tools.x).toBeGreaterThanOrEqual(h2.x + h2.width);
+  // Every tool is still there and wide enough to hit.
+  for (const name of ['Zoom out', 'Zoom in', 'Fit everything', 'Close the X-ray']) expect((await page.getByRole('button', { name }).boundingBox())?.width).toBeGreaterThanOrEqual(24);
+  expect((await box(page, '.xray-filter select')).width).toBeGreaterThan(60);
+  await page.screenshot({ path: `${SHOTS}/xray-narrow.png` });
+});
